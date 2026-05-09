@@ -1,8 +1,16 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request)
+  const { pathname } = request.nextUrl
+  const supabaseResponse = await updateSession(request)
+
+  // Player is always public — no auth needed for pairing code display
+  if (pathname.startsWith('/player')) {
+    return supabaseResponse
+  }
+
+  return supabaseResponse
 }
 
 export const config = {

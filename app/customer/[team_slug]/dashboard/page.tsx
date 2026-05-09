@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { notFound } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import styles from './dashboard.module.css'
 
 interface Props {
@@ -60,20 +59,21 @@ export default async function DashboardPage({ params }: Props) {
 
         <nav className={styles.sidebarNav}>
           {[
-            { icon: '⬡', label: 'Dashboard', active: true },
-            { icon: '◫', label: 'Screens', active: false },
-            { icon: '◈', label: 'Content', active: false },
-            { icon: '◉', label: 'Schedules', active: false },
-            { icon: '◎', label: 'Analytics', active: false },
-            { icon: '◌', label: 'Settings', active: false },
+            { icon: '⬡', label: 'Dashboard', href: `/customer/${team_slug}/dashboard`, active: true  },
+            { icon: '◫', label: 'Screens',   href: `/customer/${team_slug}/screens`,   active: false },
+            { icon: '◈', label: 'Content',   href: '#', active: false },
+            { icon: '◉', label: 'Schedules', href: '#', active: false },
+            { icon: '◎', label: 'Analytics', href: '#', active: false },
+            { icon: '◌', label: 'Settings',  href: '#', active: false },
           ].map((item) => (
-            <div
+            <Link
               key={item.label}
+              href={item.href}
               className={`${styles.navItem} ${item.active ? styles.navItemActive : ''}`}
             >
               <span className={styles.navIcon}>{item.icon}</span>
               {item.label}
-            </div>
+            </Link>
           ))}
         </nav>
 

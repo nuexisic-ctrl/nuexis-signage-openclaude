@@ -34,8 +34,8 @@ export async function updateSession(request: NextRequest) {
   const customerMatch = pathname.match(/^\/customer\/([^/]+)/)
   const teamSlug = customerMatch?.[1]
 
-  // 1. Protected dashboard routes — require auth
-  if (pathname.includes('/dashboard')) {
+  // 1. Protected dashboard/screens routes — require auth
+  if (pathname.includes('/dashboard') || pathname.includes('/screens')) {
     if (!user) {
       const loginUrl = request.nextUrl.clone()
       loginUrl.pathname = teamSlug
