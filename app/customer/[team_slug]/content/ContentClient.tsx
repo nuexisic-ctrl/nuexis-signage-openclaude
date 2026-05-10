@@ -209,25 +209,13 @@ export default function ContentClient({ initialAssets, teamId, teamSlug }: Props
   const router = useRouter()
   const supabase = createClient()
 
-  // Generate signed URLs for image previews
-  const fetchPreviewUrl = useCallback(async (filePath: string, assetId: string) => {
-    if (previewUrls[assetId]) return
-    const { data } = await supabase.storage
+  // Generate public URLs for image previews
+  const getPreviewUrl = useCallback((filePath: string) => {
+    const { data } = supabase.storage
       .from('workspace-media')
-      .createSignedUrl(filePath, 60 * 60) // 1 hour
-    if (data?.signedUrl) {
-      setPreviewUrls(prev => ({ ...prev, [assetId]: data.signedUrl }))
-    }
-  }, [supabase, previewUrls])
-
-  // Fetch preview URLs for all image assets on mount
-  useState(() => {
-    initialAssets.forEach((asset) => {
-      if (isImage(asset.mime_type)) {
-        fetchPreviewUrl(asset.file_path, asset.id)
-      }
-    })
-  })
+      .getPublicUrl(filePath)
+    return data.publicUrl
+  }, [supabase])
 
   const handleFiles = useCallback(async (files: File[]) => {
     if (!teamId) {
@@ -282,10 +270,7 @@ export default function ContentClient({ initialAssets, teamId, teamSlug }: Props
           }
           newAssets.push(newAsset)
 
-          // Pre-fetch preview URL for images
-          if (isImage(file.type)) {
-            fetchPreviewUrl(filePath, result.id)
-          }
+          // We no longer need to pre-fetch preview URL since it's synchronous now
         }
       } catch (err) {
         console.error('[upload] unexpected error:', err)
@@ -310,7 +295,7 @@ export default function ContentClient({ initialAssets, teamId, teamSlug }: Props
     startTransition(() => {
       router.refresh()
     })
-  }, [teamId, teamSlug, supabase, fetchPreviewUrl, router])
+  }, [teamId, teamSlug, supabase, router])
 
   const handleDelete = useCallback(async (assetId: string, filePath: string) => {
     setDeletingIds(prev => new Set(prev).add(assetId))
@@ -327,11 +312,7 @@ export default function ContentClient({ initialAssets, teamId, teamSlug }: Props
       })
     } else {
       setAssets(prev => prev.filter(a => a.id !== assetId))
-      setPreviewUrls(prev => {
-        const next = { ...prev }
-        delete next[assetId]
-        return next
-      })
+      setPreviewUrls({}) // Clear any old state if it existed
       setDeletingIds(prev => {
         const next = new Set(prev)
         next.delete(assetId)
@@ -385,15 +366,11 @@ export default function ContentClient({ initialAssets, teamId, teamSlug }: Props
           </div>
           <div className={styles.grid}>
             {assets.map((asset) => {
-              // Eagerly fetch preview for any asset missing a URL
-              if (isImage(asset.mime_type) && !previewUrls[asset.id]) {
-                fetchPreviewUrl(asset.file_path, asset.id)
-              }
               return (
                 <AssetCard
                   key={asset.id}
                   asset={asset}
-                  previewUrl={previewUrls[asset.id] ?? null}
+                  previewUrl={isImage(asset.mime_type) ? getPreviewUrl(asset.file_path) : null}
                   onDelete={handleDelete}
                   isDeleting={deletingIds.has(asset.id)}
                 />
