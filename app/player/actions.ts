@@ -79,3 +79,29 @@ export async function getDeviceState(hardwareOrDeviceId: string) {
   }
   return data
 }
+
+export async function unpairDevice(deviceId: string) {
+  const supabase = getAdminClient()
+  const { error } = await supabase
+    .from('devices')
+    .delete()
+    .eq('id', deviceId)
+
+  if (error) {
+    console.error('[unpairDevice] Error:', error)
+    throw new Error('Failed to unpair device')
+  }
+}
+
+export async function updateDeviceOrientation(deviceId: string, orientation: number) {
+  const supabase = getAdminClient()
+  const { error } = await supabase
+    .from('devices')
+    .update({ orientation })
+    .eq('id', deviceId)
+
+  if (error) {
+    console.error('[updateDeviceOrientation] Error:', error)
+    throw new Error('Failed to update device orientation')
+  }
+}
