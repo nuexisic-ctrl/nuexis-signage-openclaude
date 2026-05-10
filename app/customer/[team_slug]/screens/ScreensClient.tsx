@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useTransition, useRef, useEffect } from 'react'
+import { useState, useTransition, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { claimDevice, updateDeviceAssignment, AssignmentData } from './actions'
 import styles from './screens.module.css'
+
+type LiveStatus = 'online' | 'offline' | 'pairing'
 
 interface Device {
   id: string
@@ -33,49 +35,37 @@ interface Props {
   teamId: string
 }
 
-function StatusBadge({ status }: { status: Device['status'] }) {
-  const cls = {
+function StatusBadge({ status }: { status: LiveStatus }) {
+  const cls: Record<LiveStatus, string> = {
     online:  styles.statusOnline,
     offline: styles.statusOffline,
     pairing: styles.statusPairing,
-  }[status]
+  }
 
-  const dotCls = {
+  const dotCls: Record<LiveStatus, string> = {
     online:  styles.statusDotOnline,
     offline: styles.statusDotOffline,
     pairing: styles.statusDotPairing,
-  }[status]
+  }
 
   return (
-    <span className={`${styles.statusBadge} ${cls}`}>
-      <span className={`${styles.statusDot} ${dotCls}`} />
+    <span className={`${styles.statusBadge} ${cls[status]}`}>
+      <span className={`${styles.statusDot} ${dotCls[status]}`} />
       {status}
     </span>
   )
 }
 
-function DeviceCard({ device, now, onClick }: { device: Device; now: number; onClick?: () => void }) {
+function DeviceCard({ device, liveStatus, onClick }: { device: Device; liveStatus: LiveStatus; onClick?: () => void }) {
   const createdAt = new Date(device.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   })
-
-  // Compute status on the fly. If it's pairing, leave it. Otherwise,
-  // 45 seconds is the threshold (heartbeat is 30s).
-  let dynamicStatus = device.status
-  if (device.status !== 'pairing') {
-    if (device.last_seen_at) {
-      const lastSeen = new Date(device.last_seen_at).getTime()
-      dynamicStatus = (now - lastSeen < 45000) ? 'online' : 'offline'
-    } else {
-      dynamicStatus = 'offline'
-    }
-  }
 
   return (
     <div className={`${styles.deviceCard} ${onClick ? styles.clickableCard : ''}`} onClick={onClick}>
       <div className={styles.deviceCardHeader}>
         <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
-        <StatusBadge status={dynamicStatus} />
+        <StatusBadge status={liveStatus} />
       </div>
       <div className={styles.deviceMeta}>
         <div className={styles.deviceMetaRow}>
@@ -321,26 +311,106 @@ function AssignModal({
   )
 }
 
+const PING_TIMEOUT_MS = 3000
+
 export default function ScreensClient({ devices: initialDevices, assets, teamSlug, teamId }: Props) {
   const [devices, setDevices] = useState<Device[]>(initialDevices)
   const [showPairModal, setShowPairModal] = useState(false)
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
-  const [now, setNow] = useState(Date.now())
+  const [deviceStatuses, setDeviceStatuses] = useState<Record<string, LiveStatus>>({})
+  const [isPinging, setIsPinging] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
-  // Keep `now` updated every 5 seconds to re-evaluate the online/offline thresholds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now())
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
+  // Persistent team broadcast channel ref
+  const teamChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const respondedIdsRef = useRef<Set<string>>(new Set())
+  const pingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setDevices(initialDevices)
   }, [initialDevices])
 
+  // ── Persistent team broadcast channel ─────────────────────────────────
+  useEffect(() => {
+    if (!teamId) return
+
+    const channel = supabase
+      .channel(`team-status:${teamId}`)
+      .on('broadcast', { event: 'PONG' }, (payload) => {
+        const id = payload.payload?.device_id as string | undefined
+        if (id) {
+          respondedIdsRef.current.add(id)
+          setDeviceStatuses((prev) => ({ ...prev, [id]: 'online' }))
+        }
+      })
+      .subscribe((status) => {
+        console.log('[Dashboard] Team status channel:', status)
+      })
+
+    teamChannelRef.current = channel
+
+    return () => {
+      supabase.removeChannel(channel)
+      teamChannelRef.current = null
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId])
+
+  // ── Ping all screens ──────────────────────────────────────────────────
+  const pingAllScreens = useCallback(() => {
+    if (!teamChannelRef.current || isPinging) return
+
+    // Clear any pending timeout from a previous ping
+    if (pingTimeoutRef.current) clearTimeout(pingTimeoutRef.current)
+
+    setIsPinging(true)
+    respondedIdsRef.current = new Set()
+
+    // Mark all paired devices as 'offline' until they respond
+    const newStatuses: Record<string, LiveStatus> = {}
+    devices.forEach((d) => {
+      newStatuses[d.id] = d.status === 'pairing' ? 'pairing' : 'offline'
+    })
+    setDeviceStatuses(newStatuses)
+
+    // Send PING broadcast
+    teamChannelRef.current.send({
+      type: 'broadcast',
+      event: 'PING',
+      payload: { timestamp: Date.now() },
+    })
+
+    // After timeout, mark non-responders as offline
+    pingTimeoutRef.current = setTimeout(() => {
+      setDeviceStatuses((prev) => {
+        const final = { ...prev }
+        devices.forEach((d) => {
+          if (d.status !== 'pairing' && !respondedIdsRef.current.has(d.id)) {
+            final[d.id] = 'offline'
+          }
+        })
+        return final
+      })
+      setIsPinging(false)
+    }, PING_TIMEOUT_MS)
+  }, [devices, isPinging])
+
+  // ── Fire initial ping on mount once the channel is ready ──────────────
+  const hasPingedRef = useRef(false)
+  useEffect(() => {
+    if (!teamChannelRef.current || hasPingedRef.current || devices.length === 0) return
+
+    // Small delay to allow the broadcast channel subscription to stabilize
+    const t = setTimeout(() => {
+      hasPingedRef.current = true
+      pingAllScreens()
+    }, 600)
+
+    return () => clearTimeout(t)
+  }, [teamId, devices.length, pingAllScreens])
+
+  // ── Postgres Changes for device list (INSERT/UPDATE/DELETE) ───────────
   useEffect(() => {
     if (!teamId) return
 
@@ -371,7 +441,8 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [teamId, supabase])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId])
 
   function handlePairSuccess() {
     setShowPairModal(false)
@@ -383,16 +454,34 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     router.refresh()
   }
 
+  // ── Derive live status for each device ────────────────────────────────
+  function getLiveStatus(device: Device): LiveStatus {
+    if (device.status === 'pairing') return 'pairing'
+    return deviceStatuses[device.id] || 'offline'
+  }
+
   return (
     <>
-      <button
-        id="add-screen-btn"
-        className={styles.addBtn}
-        onClick={() => setShowPairModal(true)}
-      >
-        <span className={styles.addBtnIcon}>+</span>
-        Add Screen
-      </button>
+      <div className={styles.actionBar}>
+        <button
+          id="refresh-status-btn"
+          className={styles.refreshBtn}
+          onClick={pingAllScreens}
+          disabled={isPinging}
+        >
+          <span className={`${styles.refreshIcon} ${isPinging ? styles.refreshIconSpin : ''}`}>↻</span>
+          {isPinging ? 'Checking…' : 'Refresh Status'}
+        </button>
+
+        <button
+          id="add-screen-btn"
+          className={styles.addBtn}
+          onClick={() => setShowPairModal(true)}
+        >
+          <span className={styles.addBtnIcon}>+</span>
+          Add Screen
+        </button>
+      </div>
 
       <div className={styles.grid}>
         {devices.length === 0 ? (
@@ -406,7 +495,12 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
           </div>
         ) : (
           devices.map((device) => (
-            <DeviceCard key={device.id} device={device} now={now} onClick={() => setAssignModalDevice(device)} />
+            <DeviceCard
+              key={device.id}
+              device={device}
+              liveStatus={getLiveStatus(device)}
+              onClick={() => setAssignModalDevice(device)}
+            />
           ))
         )}
       </div>

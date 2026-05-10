@@ -38,13 +38,15 @@ export default function PlayerPage() {
   const [scaleMode, setScaleMode] = useState<string>('Fit')
   const [orientation, setOrientation] = useState<number>(0)
 
-  const deviceIdRef   = useRef<string | null>(null)
-  const isPairedRef   = useRef(false)
-  const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const intervalRef   = useRef<ReturnType<typeof setInterval> | null>(null)
-  const heartbeatRef  = useRef<ReturnType<typeof setInterval> | null>(null)
-  const channelRef    = useRef<RealtimeChannel>(null)
-  const supabaseRef   = useRef(createClient())
+  const deviceIdRef      = useRef<string | null>(null)
+  const isPairedRef      = useRef(false)
+  const teamIdRef        = useRef<string | null>(null)
+  const timerRef         = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const intervalRef      = useRef<ReturnType<typeof setInterval> | null>(null)
+  const heartbeatRef     = useRef<ReturnType<typeof setInterval> | null>(null)
+  const channelRef       = useRef<RealtimeChannel>(null)
+  const teamChannelRef   = useRef<RealtimeChannel>(null)
+  const supabaseRef      = useRef(createClient())
 
   useEffect(() => {
     const supabase = supabaseRef.current
@@ -125,6 +127,32 @@ export default function PlayerPage() {
       }, HEARTBEAT_INTERVAL_MS)
     }
 
+    // ── Ping-Pong: respond to dashboard health checks ──────────────────
+    function startPingListener(teamId: string, deviceId: string) {
+      // Clean up any existing team channel
+      if (teamChannelRef.current) {
+        supabase.removeChannel(teamChannelRef.current)
+      }
+
+      console.log('[Player] Subscribing to team ping channel:', `team-status:${teamId}`)
+
+      const teamChannel = supabase
+        .channel(`team-status:${teamId}`)
+        .on('broadcast', { event: 'PING' }, () => {
+          console.log('[Player] PING received, sending PONG for device:', deviceId)
+          teamChannel.send({
+            type: 'broadcast',
+            event: 'PONG',
+            payload: { device_id: deviceId },
+          })
+        })
+        .subscribe((status: string) => {
+          console.log('[Player] Team ping channel status:', status)
+        })
+
+      teamChannelRef.current = teamChannel
+    }
+
     // ── Main init ────────────────────────────────────────────────────────
     async function init() {
       const hardwareId = await getHardwareId()
@@ -148,10 +176,12 @@ export default function PlayerPage() {
           console.log('[Player] Found persistent paired device')
           deviceIdRef.current = existing.id
           isPairedRef.current = true
+          teamIdRef.current = existing.team_id
           setState('paired')
           activeDevice = existing
           applyDeviceState(existing)
           startHeartbeat(existing.id)
+          startPingListener(existing.team_id, existing.id)
         } else {
           // ── Unpaired — check expiry ──────────────────────────────────
           const existingExpiry = new Date(existing.expires_at).getTime()
@@ -255,10 +285,12 @@ export default function PlayerPage() {
               if (!isPairedRef.current) {
                 console.log('[Player] Device claimed! Transitioning to paired state.')
                 isPairedRef.current = true
+                teamIdRef.current = payload.new.team_id
                 setState('paired')
                 clearTimeout(timerRef.current!)
                 clearInterval(intervalRef.current!)
                 startHeartbeat(activeDevice.id)
+                startPingListener(payload.new.team_id, activeDevice.id)
               }
               applyDeviceState(payload.new)
             } else {
@@ -298,10 +330,12 @@ export default function PlayerPage() {
                 if (fresh.team_id && !isPairedRef.current) {
                   console.log('[Player] Race condition caught — device already claimed.')
                   isPairedRef.current = true
+                  teamIdRef.current = fresh.team_id
                   setState('paired')
                   clearTimeout(timerRef.current!)
                   clearInterval(intervalRef.current!)
                   startHeartbeat(fresh.id)
+                  startPingListener(fresh.team_id, fresh.id)
                   applyDeviceState(fresh)
                 } else if (fresh.team_id && isPairedRef.current) {
                   // Already paired — just resync state
@@ -323,6 +357,9 @@ export default function PlayerPage() {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current)
       if (channelRef.current) {
         supabaseRef.current.removeChannel(channelRef.current)
+      }
+      if (teamChannelRef.current) {
+        supabaseRef.current.removeChannel(teamChannelRef.current)
       }
     }
   }, [])
@@ -378,7 +415,7 @@ export default function PlayerPage() {
             loop
             autoPlay
             playsInline
-            muted={false}
+            muted={true}
           />
         )
       } else {

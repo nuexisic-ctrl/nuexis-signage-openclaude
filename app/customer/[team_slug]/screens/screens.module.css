@@ -198,6 +198,56 @@
   padding-top: 8px;
 }
 
+/* ─── Action Bar (Refresh + Add Screen) ──────────────────────────────────── */
+.actionBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.refreshBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--surface-lowest);
+  color: var(--primary);
+  border: 1.5px solid rgba(9, 76, 178, 0.15);
+  border-radius: var(--radius-full);
+  font-family: var(--font-label);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: background 0.18s, border-color 0.18s, transform 0.18s;
+}
+
+.refreshBtn:hover:not(:disabled) {
+  background: rgba(9, 76, 178, 0.06);
+  border-color: rgba(9, 76, 178, 0.3);
+  transform: translateY(-1px);
+}
+
+.refreshBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.refreshIcon {
+  font-size: 1.15rem;
+  line-height: 1;
+  display: inline-block;
+}
+
+.refreshIconSpin {
+  animation: spinRefresh 0.8s linear infinite;
+}
+
+@keyframes spinRefresh {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* ─── Add Screen Button ───────────────────────────────────────────────────── */
 .addBtn {
   display: flex;
@@ -295,17 +345,24 @@
   flex-shrink: 0;
 }
 
-.statusOnline  { background: rgba(22, 163, 74, 0.1);  color: #16a34a; }
-.statusOffline { background: rgba(100, 116, 139, 0.1); color: #64748b; }
-.statusPairing { background: rgba(9, 76, 178, 0.1);    color: #094cb2; }
+.statusOnline   { background: rgba(22, 163, 74, 0.1);  color: #16a34a; }
+.statusOffline  { background: rgba(100, 116, 139, 0.1); color: #64748b; }
+.statusPairing  { background: rgba(9, 76, 178, 0.1);    color: #094cb2; }
+.statusChecking { background: rgba(217, 119, 6, 0.1);   color: #d97706; }
 
-.statusDotOnline  { background: #16a34a; }
-.statusDotOffline { background: #94a3b8; }
-.statusDotPairing { background: #094cb2; animation: blinkDot 1.2s ease-in-out infinite; }
+.statusDotOnline   { background: #16a34a; }
+.statusDotOffline  { background: #94a3b8; }
+.statusDotPairing  { background: #094cb2; animation: blinkDot 1.2s ease-in-out infinite; }
+.statusDotChecking { background: #d97706; animation: pulseDot 0.8s ease-in-out infinite; }
 
 @keyframes blinkDot {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.3; }
+}
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%      { transform: scale(1.6); opacity: 0.4; }
 }
 
 .deviceMeta {
