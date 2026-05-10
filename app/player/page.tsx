@@ -8,7 +8,7 @@ import styles from './player.module.css'
 type PlayerState = 'loading' | 'pairing' | 'paired' | 'expired'
 
 const PAIRING_DURATION_MS = 15 * 60 * 1000 // 15 minutes
-const HEARTBEAT_INTERVAL_MS = 60 * 1000     // 60 seconds
+const HEARTBEAT_INTERVAL_MS = 30 * 1000     // 30 seconds
 
 function formatTime(ms: number): string {
   const totalSecs = Math.max(0, Math.floor(ms / 1000))
@@ -86,34 +86,42 @@ export default function PlayerPage() {
     }
 
     // ── Heartbeat: updates last_seen_at + resyncs state ─────────────────
+    async function sendHeartbeat(deviceId: string) {
+      if (cancelled) return
+
+      // Update last_seen_at
+      await supabase
+        .from('devices')
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq('id', deviceId)
+
+      // Resync: re-fetch device state to recover from Realtime drops
+      const { data: fresh } = await supabase
+        .from('devices')
+        .select('content_type, asset_id, scale_mode, orientation, team_id')
+        .eq('id', deviceId)
+        .single()
+
+      if (fresh && !cancelled) {
+        // If the device has been unpaired from the CMS, reload
+        if (!fresh.team_id && isPairedRef.current) {
+          window.location.reload()
+          return
+        }
+        applyDeviceState(fresh)
+      }
+    }
+
     function startHeartbeat(deviceId: string) {
       // Clear any existing heartbeat
       if (heartbeatRef.current) clearInterval(heartbeatRef.current)
 
-      heartbeatRef.current = setInterval(async () => {
-        if (cancelled) return
+      // Fire immediately so the device shows 'online' right away
+      sendHeartbeat(deviceId)
 
-        // Update last_seen_at
-        await supabase
-          .from('devices')
-          .update({ last_seen_at: new Date().toISOString() })
-          .eq('id', deviceId)
-
-        // Resync: re-fetch device state to recover from Realtime drops
-        const { data: fresh } = await supabase
-          .from('devices')
-          .select('content_type, asset_id, scale_mode, orientation, team_id')
-          .eq('id', deviceId)
-          .single()
-
-        if (fresh && !cancelled) {
-          // If the device has been unpaired from the CMS, reload
-          if (!fresh.team_id && isPairedRef.current) {
-            window.location.reload()
-            return
-          }
-          applyDeviceState(fresh)
-        }
+      // Then repeat every 30 seconds
+      heartbeatRef.current = setInterval(() => {
+        sendHeartbeat(deviceId)
       }, HEARTBEAT_INTERVAL_MS)
     }
 

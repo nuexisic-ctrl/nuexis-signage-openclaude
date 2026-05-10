@@ -41,11 +41,10 @@ export default async function ScreensPage({ params }: Props) {
     .eq('id', user.id)
     .single()
 
-  // Fetch all devices for this team
   const devices = profile?.team_id
     ? (await supabase
         .from('devices')
-        .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation')
+        .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at')
         .eq('team_id', profile.team_id)
         .order('created_at', { ascending: false })
       ).data ?? []
@@ -127,6 +126,7 @@ export default async function ScreensPage({ params }: Props) {
           devices={devices as any}
           assets={assets as any}
           teamSlug={team_slug}
+          teamId={profile?.team_id as string}
         />
       </main>
     </div>

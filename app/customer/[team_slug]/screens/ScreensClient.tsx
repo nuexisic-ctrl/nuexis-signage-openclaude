@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition, useRef } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { claimDevice, updateDeviceAssignment, AssignmentData } from './actions'
 import styles from './screens.module.css'
 
@@ -14,6 +15,7 @@ interface Device {
   asset_id?: string | null
   scale_mode?: string | null
   orientation?: number | null
+  last_seen_at?: string | null
 }
 
 export interface Asset {
@@ -28,6 +30,7 @@ interface Props {
   devices: Device[]
   assets: Asset[]
   teamSlug: string
+  teamId: string
 }
 
 function StatusBadge({ status }: { status: Device['status'] }) {
@@ -51,16 +54,28 @@ function StatusBadge({ status }: { status: Device['status'] }) {
   )
 }
 
-function DeviceCard({ device, onClick }: { device: Device; onClick?: () => void }) {
+function DeviceCard({ device, now, onClick }: { device: Device; now: number; onClick?: () => void }) {
   const createdAt = new Date(device.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   })
+
+  // Compute status on the fly. If it's pairing, leave it. Otherwise,
+  // 45 seconds is the threshold (heartbeat is 30s).
+  let dynamicStatus = device.status
+  if (device.status !== 'pairing') {
+    if (device.last_seen_at) {
+      const lastSeen = new Date(device.last_seen_at).getTime()
+      dynamicStatus = (now - lastSeen < 45000) ? 'online' : 'offline'
+    } else {
+      dynamicStatus = 'offline'
+    }
+  }
 
   return (
     <div className={`${styles.deviceCard} ${onClick ? styles.clickableCard : ''}`} onClick={onClick}>
       <div className={styles.deviceCardHeader}>
         <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
-        <StatusBadge status={device.status} />
+        <StatusBadge status={dynamicStatus} />
       </div>
       <div className={styles.deviceMeta}>
         <div className={styles.deviceMetaRow}>
@@ -306,10 +321,57 @@ function AssignModal({
   )
 }
 
-export default function ScreensClient({ devices: initialDevices, assets, teamSlug }: Props) {
+export default function ScreensClient({ devices: initialDevices, assets, teamSlug, teamId }: Props) {
+  const [devices, setDevices] = useState<Device[]>(initialDevices)
   const [showPairModal, setShowPairModal] = useState(false)
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
+  const [now, setNow] = useState(Date.now())
   const router = useRouter()
+  const supabase = createClient()
+
+  // Keep `now` updated every 5 seconds to re-evaluate the online/offline thresholds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now())
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    setDevices(initialDevices)
+  }, [initialDevices])
+
+  useEffect(() => {
+    if (!teamId) return
+
+    const channel = supabase
+      .channel('screens-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'devices',
+          filter: `team_id=eq.${teamId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setDevices((prev) => [payload.new as Device, ...prev])
+          } else if (payload.eventType === 'UPDATE') {
+            setDevices((prev) =>
+              prev.map((d) => (d.id === payload.new.id ? { ...d, ...payload.new } as Device : d))
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setDevices((prev) => prev.filter((d) => d.id !== payload.old.id))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [teamId, supabase])
 
   function handlePairSuccess() {
     setShowPairModal(false)
@@ -333,7 +395,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
       </button>
 
       <div className={styles.grid}>
-        {initialDevices.length === 0 ? (
+        {devices.length === 0 ? (
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>◫</div>
             <h3 className={styles.emptyTitle}>No screens yet</h3>
@@ -343,8 +405,8 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
             </p>
           </div>
         ) : (
-          initialDevices.map((device) => (
-            <DeviceCard key={device.id} device={device} onClick={() => setAssignModalDevice(device)} />
+          devices.map((device) => (
+            <DeviceCard key={device.id} device={device} now={now} onClick={() => setAssignModalDevice(device)} />
           ))
         )}
       </div>
