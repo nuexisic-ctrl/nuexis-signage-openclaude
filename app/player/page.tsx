@@ -32,6 +32,7 @@ export default function PlayerPage() {
   const [remainingMs, setRemainingMs] = useState(PAIRING_DURATION_MS)
 
   const deviceIdRef  = useRef<string | null>(null)
+  const isPairedRef  = useRef(false)           // tracks paired status for safe cleanup
   const timerRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const channelRef   = useRef<RealtimeChannel>(null)
@@ -98,6 +99,7 @@ export default function PlayerPage() {
             console.log('[Player] Realtime UPDATE received:', payload.new)
             if (payload.new.team_id) {
               console.log('[Player] Device claimed! Transitioning to paired state.')
+              isPairedRef.current = true   // mark as paired before state update
               setState('paired')
               clearTimeout(timerRef.current!)
               clearInterval(intervalRef.current!)
@@ -122,17 +124,15 @@ export default function PlayerPage() {
       }
       // Only delete the device row if it was NOT successfully paired.
       // A paired device must persist in the database for the dashboard.
-      setState((currentState) => {
-        if (currentState !== 'paired' && deviceIdRef.current) {
-          console.log('[Player] Unmount: cleaning up unclaimed device', deviceIdRef.current)
-          supabaseRef.current
-            .from('devices')
-            .delete()
-            .eq('id', deviceIdRef.current)
-            .then(() => console.log('[Player] Unclaimed device cleaned up on unmount'))
-        }
-        return currentState
-      })
+      // Use isPairedRef (not a setState callback) to avoid the async-in-setState anti-pattern.
+      if (!isPairedRef.current && deviceIdRef.current) {
+        console.log('[Player] Unmount: cleaning up unclaimed device', deviceIdRef.current)
+        supabaseRef.current
+          .from('devices')
+          .delete()
+          .eq('id', deviceIdRef.current)
+          .then(() => console.log('[Player] Unclaimed device cleaned up on unmount'))
+      }
     }
   }, [])
 

@@ -7,6 +7,10 @@ export type PairDeviceResult =
   | { success: true }
   | { success: false; error: string }
 
+// Rate-limiting constants
+const MAX_ATTEMPTS   = 5
+const WINDOW_MINUTES = 15
+
 export async function claimDevice(
   teamSlug: string,
   pairingCode: string,
@@ -14,12 +18,6 @@ export async function claimDevice(
 ): Promise<PairDeviceResult> {
   const trimmedCode = pairingCode.trim().replace(/\s/g, '')
   const trimmedName = screenName.trim()
-
-  // Anti-brute-force: artificial delay prevents rapid-fire automated guessing.
-  // With only 1,000,000 possible 6-digit codes, without this an attacker could
-  // enumerate all codes in seconds. This limits attempts to ~60/minute per caller.
-  // TODO (production): replace with per-user attempt tracking + lockout in DB.
-  await new Promise((resolve) => setTimeout(resolve, 1000))
 
   console.log('[claimDevice] called with code:', trimmedCode, 'name:', trimmedName, 'team:', teamSlug)
 
@@ -40,7 +38,27 @@ export async function claimDevice(
     return { success: false, error: 'You must be logged in to add a screen.' }
   }
 
-  // 2. Get user's team_id from profiles
+  // 2. Rate-limit check — count failed attempts within the rolling window
+  const windowStart = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString()
+
+  const { count, error: countError } = await supabase
+    .from('login_attempts')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .gte('attempted_at', windowStart)
+
+  if (countError) {
+    console.error('[claimDevice] rate-limit check error:', countError)
+    // Non-fatal — allow through if we can't read the count
+  } else if (count !== null && count >= MAX_ATTEMPTS) {
+    console.warn('[claimDevice] rate limit exceeded for user:', user.id)
+    return {
+      success: false,
+      error: `Too many failed attempts. Please wait ${WINDOW_MINUTES} minutes before trying again.`,
+    }
+  }
+
+  // 3. Get user's team_id from profiles
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('team_id')
@@ -53,7 +71,7 @@ export async function claimDevice(
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
-  // 3. Find an unclaimed, non-expired device with this code
+  // 4. Find an unclaimed, non-expired device with this code
   const { data: device, error: deviceError } = await supabase
     .from('devices')
     .select('id, expires_at')
@@ -68,11 +86,17 @@ export async function claimDevice(
     console.error('[claimDevice] device lookup error:', deviceError)
     return { success: false, error: 'An error occurred while looking up the code. Please try again.' }
   }
+
   if (!device) {
+    // Record this as a failed attempt for rate-limiting
+    await supabase
+      .from('login_attempts')
+      .insert({ user_id: user.id })
+
     return { success: false, error: 'Invalid or expired pairing code. Please check the code on screen and try again.' }
   }
 
-  // 4. Claim the device — assign team_id, name, and mark online
+  // 5. Claim the device — assign team_id, name, and mark online
   // Use select() to detect if RLS silently blocked the update (0 rows affected)
   const { data: updated, error: updateError } = await supabase
     .from('devices')
@@ -99,8 +123,15 @@ export async function claimDevice(
 
   console.log('[claimDevice] success! device', device.id, 'claimed by team', profile.team_id)
 
-  // 5. Revalidate the screens page so the grid refreshes on next server render
+  // Success — clear any recorded failed attempts for this user
+  await supabase
+    .from('login_attempts')
+    .delete()
+    .eq('user_id', user.id)
+
+  // 6. Revalidate the screens page so the grid refreshes on next server render
   revalidatePath(`/customer/${teamSlug}/screens`)
 
   return { success: true }
 }
+

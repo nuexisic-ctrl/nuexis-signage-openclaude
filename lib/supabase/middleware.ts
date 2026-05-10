@@ -34,14 +34,27 @@ export async function updateSession(request: NextRequest) {
   const customerMatch = pathname.match(/^\/customer\/([^/]+)/)
   const teamSlug = customerMatch?.[1]
 
-  // 1. Protected dashboard/screens routes — require auth
-  if (pathname.includes('/dashboard') || pathname.includes('/screens')) {
+  // Protected routes — all non-login routes under /customer/[team_slug]/
+  const isProtectedRoute =
+    teamSlug &&
+    !pathname.endsWith('/login') &&
+    pathname.startsWith(`/customer/${teamSlug}/`)
+
+  // 1. Require authentication on protected routes
+  if (isProtectedRoute) {
     if (!user) {
       const loginUrl = request.nextUrl.clone()
-      loginUrl.pathname = teamSlug
-        ? `/customer/${teamSlug}/login`
-        : '/login'
+      loginUrl.pathname = `/customer/${teamSlug}/login`
       return NextResponse.redirect(loginUrl)
+    }
+
+    // 2. Cross-tenant check — ensure the logged-in user belongs to this team
+    const userTeamSlug = user.user_metadata?.team_slug as string | undefined
+    if (userTeamSlug && userTeamSlug !== teamSlug) {
+      // Redirect to the user's actual dashboard, not the one they typed in the URL
+      const correctDashboard = request.nextUrl.clone()
+      correctDashboard.pathname = `/customer/${userTeamSlug}/dashboard`
+      return NextResponse.redirect(correctDashboard)
     }
   }
 
