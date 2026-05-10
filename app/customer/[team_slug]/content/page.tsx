@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import ScreensClient from './ScreensClient'
-import styles from './screens.module.css'
+import ContentClient from './ContentClient'
+import styles from './content.module.css'
 
 interface Props {
   params: Promise<{ team_slug: string }>
@@ -12,12 +12,12 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { team_slug } = await params
   return {
-    title: `Screens — ${team_slug} | NuExis`,
-    description: 'Manage and pair digital displays for your workspace.',
+    title: `Content — ${team_slug} | NuExis`,
+    description: 'Upload and manage media assets for your digital displays.',
   }
 }
 
-export default async function ScreensPage({ params }: Props) {
+export default async function ContentPage({ params }: Props) {
   const { team_slug } = await params
 
   if (!/^[a-z0-9-]+$/.test(team_slug)) notFound()
@@ -29,23 +29,23 @@ export default async function ScreensPage({ params }: Props) {
 
   const userTeamSlug = user.user_metadata?.team_slug as string | undefined
   if (userTeamSlug && userTeamSlug !== team_slug) {
-    redirect(`/customer/${userTeamSlug}/screens`)
+    redirect(`/customer/${userTeamSlug}/content`)
   }
 
   const fullName = user.user_metadata?.full_name as string | undefined
 
-  // Get the user's team_id from their profile
+  // Get user's team_id
   const { data: profile } = await supabase
     .from('profiles')
     .select('team_id')
     .eq('id', user.id)
     .single()
 
-  // Fetch all devices for this team
-  const devices = profile?.team_id
+  // Fetch all assets for this team
+  const assets = profile?.team_id
     ? (await supabase
-        .from('devices')
-        .select('id, name, status, created_at')
+        .from('assets')
+        .select('id, file_name, file_path, mime_type, size_bytes, created_at')
         .eq('team_id', profile.team_id)
         .order('created_at', { ascending: false })
       ).data ?? []
@@ -53,8 +53,8 @@ export default async function ScreensPage({ params }: Props) {
 
   const navItems = [
     { icon: '⬡', label: 'Dashboard', href: `/customer/${team_slug}/dashboard`, active: false },
-    { icon: '◫', label: 'Screens',   href: `/customer/${team_slug}/screens`,   active: true  },
-    { icon: '◈', label: 'Content',   href: `/customer/${team_slug}/content`, active: false },
+    { icon: '◫', label: 'Screens',   href: `/customer/${team_slug}/screens`,   active: false },
+    { icon: '◈', label: 'Content',   href: `/customer/${team_slug}/content`,   active: true  },
     { icon: '◉', label: 'Schedules', href: '#', active: false },
     { icon: '◎', label: 'Analytics', href: '#', active: false },
     { icon: '◌', label: 'Settings',  href: '#', active: false },
@@ -104,17 +104,18 @@ export default async function ScreensPage({ params }: Props) {
       <main className={styles.main}>
         <div className={styles.topbar}>
           <div>
-            <h1 className={styles.pageTitle}>Screens</h1>
+            <h1 className={styles.pageTitle}>Content Library</h1>
             <p className={styles.pageSubtitle}>
-              {devices.length > 0
-                ? `${devices.length} screen${devices.length === 1 ? '' : 's'} paired to this workspace.`
-                : 'Pair your first screen to get started.'}
+              {assets.length > 0
+                ? `${assets.length} asset${assets.length === 1 ? '' : 's'} in your library.`
+                : 'Upload images and videos to get started.'}
             </p>
           </div>
         </div>
 
-        <ScreensClient
-          devices={devices as Parameters<typeof ScreensClient>[0]['devices']}
+        <ContentClient
+          initialAssets={assets as Parameters<typeof ContentClient>[0]['initialAssets']}
+          teamId={profile?.team_id ?? ''}
           teamSlug={team_slug}
         />
       </main>

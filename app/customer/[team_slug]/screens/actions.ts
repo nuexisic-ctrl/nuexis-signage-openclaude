@@ -15,6 +15,12 @@ export async function claimDevice(
   const trimmedCode = pairingCode.trim().replace(/\s/g, '')
   const trimmedName = screenName.trim()
 
+  // Anti-brute-force: artificial delay prevents rapid-fire automated guessing.
+  // With only 1,000,000 possible 6-digit codes, without this an attacker could
+  // enumerate all codes in seconds. This limits attempts to ~60/minute per caller.
+  // TODO (production): replace with per-user attempt tracking + lockout in DB.
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+
   console.log('[claimDevice] called with code:', trimmedCode, 'name:', trimmedName, 'team:', teamSlug)
 
   if (!/^\d{6}$/.test(trimmedCode)) {

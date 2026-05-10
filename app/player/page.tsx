@@ -16,7 +16,11 @@ function formatTime(ms: number): string {
 }
 
 function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
+  // Use Web Crypto API for cryptographically secure random numbers
+  const array = new Uint32Array(1)
+  window.crypto.getRandomValues(array)
+  const code = 100000 + (array[0] % 900000)
+  return code.toString()
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,19 +115,24 @@ export default function PlayerPage() {
 
     return () => {
       cancelled = true
-      console.log('[Player] Cleanup — removing channel and deleting device')
       clearTimeout(timerRef.current!)
       clearInterval(intervalRef.current!)
       if (channelRef.current) {
         supabaseRef.current.removeChannel(channelRef.current)
       }
-      if (deviceIdRef.current) {
-        supabaseRef.current
-          .from('devices')
-          .delete()
-          .eq('id', deviceIdRef.current)
-          .then(() => console.log('[Player] Device row deleted on unmount'))
-      }
+      // Only delete the device row if it was NOT successfully paired.
+      // A paired device must persist in the database for the dashboard.
+      setState((currentState) => {
+        if (currentState !== 'paired' && deviceIdRef.current) {
+          console.log('[Player] Unmount: cleaning up unclaimed device', deviceIdRef.current)
+          supabaseRef.current
+            .from('devices')
+            .delete()
+            .eq('id', deviceIdRef.current)
+            .then(() => console.log('[Player] Unclaimed device cleaned up on unmount'))
+        }
+        return currentState
+      })
     }
   }, [])
 

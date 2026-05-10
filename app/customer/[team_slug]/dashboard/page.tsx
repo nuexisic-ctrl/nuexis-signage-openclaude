@@ -61,7 +61,7 @@ export default async function DashboardPage({ params }: Props) {
           {[
             { icon: '⬡', label: 'Dashboard', href: `/customer/${team_slug}/dashboard`, active: true  },
             { icon: '◫', label: 'Screens',   href: `/customer/${team_slug}/screens`,   active: false },
-            { icon: '◈', label: 'Content',   href: '#', active: false },
+            { icon: '◈', label: 'Content',   href: `/customer/${team_slug}/content`, active: false },
             { icon: '◉', label: 'Schedules', href: '#', active: false },
             { icon: '◎', label: 'Analytics', href: '#', active: false },
             { icon: '◌', label: 'Settings',  href: '#', active: false },

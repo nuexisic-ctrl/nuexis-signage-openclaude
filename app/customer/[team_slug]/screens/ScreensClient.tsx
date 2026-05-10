@@ -133,7 +133,13 @@ function PairModal({
               placeholder="000 000"
               maxLength={7}
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                setCode(val)
+                if (val.length === 6) {
+                  document.getElementById('screen-name')?.focus()
+                }
+              }}
               autoFocus
               autoComplete="off"
             />
