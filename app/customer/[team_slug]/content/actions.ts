@@ -72,7 +72,43 @@ export async function deleteAsset(
     return { success: false, error: 'You must be logged in.' }
   }
 
-  // Delete from storage
+  // ── Resolve caller's team ──────────────────────────────────────────────────
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('team_id')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile?.team_id) {
+    return { success: false, error: 'Could not determine your team. Please try again.' }
+  }
+
+  // ── Verify ownership before touching anything ──────────────────────────────
+  const { data: asset, error: assetError } = await supabase
+    .from('assets')
+    .select('id, team_id, file_path')
+    .eq('id', assetId)
+    .single()
+
+  if (assetError || !asset) {
+    return { success: false, error: 'Asset not found.' }
+  }
+
+  if (asset.team_id !== profile.team_id) {
+    console.warn(
+      `[deleteAsset] Unauthorized: user ${user.id} (team ${profile.team_id}) ` +
+      `attempted to delete asset ${assetId} (team ${asset.team_id})`
+    )
+    return { success: false, error: 'You do not have permission to delete this asset.' }
+  }
+
+  // Sanity-check: filePath the client sent must match the DB record
+  if (asset.file_path !== filePath) {
+    console.warn(`[deleteAsset] filePath mismatch for asset ${assetId}`)
+    return { success: false, error: 'Invalid file path.' }
+  }
+
+  // ── Delete from storage ────────────────────────────────────────────────────
   const { error: storageError } = await supabase.storage
     .from('workspace-media')
     .remove([filePath])
@@ -82,11 +118,12 @@ export async function deleteAsset(
     return { success: false, error: `Failed to remove file from storage: ${storageError.message}` }
   }
 
-  // Delete from database
+  // ── Delete from database (double-lock: ownership filter + RLS) ────────────
   const { error: dbError } = await supabase
     .from('assets')
     .delete()
     .eq('id', assetId)
+    .eq('team_id', profile.team_id)
 
   if (dbError) {
     console.error('[deleteAsset] db error:', dbError)

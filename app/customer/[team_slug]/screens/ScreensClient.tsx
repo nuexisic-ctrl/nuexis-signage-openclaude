@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useRef, useEffect, useCallback } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { claimDevice, updateDeviceAssignment, AssignmentData } from './actions'
@@ -311,41 +311,58 @@ function AssignModal({
   )
 }
 
-const PING_TIMEOUT_MS = 3000
-
 export default function ScreensClient({ devices: initialDevices, assets, teamSlug, teamId }: Props) {
   const [devices, setDevices] = useState<Device[]>(initialDevices)
   const [showPairModal, setShowPairModal] = useState(false)
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
-  const [deviceStatuses, setDeviceStatuses] = useState<Record<string, LiveStatus>>({})
-  const [isPinging, setIsPinging] = useState(false)
+  const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
   const router = useRouter()
   const supabase = createClient()
 
-  // Persistent team broadcast channel ref
+  // Persistent presence channel ref
   const teamChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
-  const respondedIdsRef = useRef<Set<string>>(new Set())
-  const pingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setDevices(initialDevices)
   }, [initialDevices])
 
-  // ── Persistent team broadcast channel ─────────────────────────────────
+  // ── Persistent presence channel ────────────────────────────────────────
   useEffect(() => {
     if (!teamId) return
 
     const channel = supabase
       .channel(`team-status:${teamId}`)
-      .on('broadcast', { event: 'PONG' }, (payload) => {
-        const id = payload.payload?.device_id as string | undefined
-        if (id) {
-          respondedIdsRef.current.add(id)
-          setDeviceStatuses((prev) => ({ ...prev, [id]: 'online' }))
-        }
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState<{ device_id: string }>()
+        const ids = new Set(
+          Object.values(state)
+            .flat()
+            .map((p) => p.device_id)
+            .filter(Boolean)
+        )
+        setOnlineDeviceIds(ids)
+        console.log('[Dashboard] Presence sync — online devices:', [...ids])
+      })
+      .on('presence', { event: 'join' }, ({ newPresences }: { newPresences: Array<{ device_id: string }> }) => {
+        const joined = newPresences.map((p) => p.device_id).filter(Boolean)
+        setOnlineDeviceIds((prev) => {
+          const next = new Set(prev)
+          joined.forEach((id) => next.add(id))
+          return next
+        })
+        console.log('[Dashboard] Presence join:', joined)
+      })
+      .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: Array<{ device_id: string }> }) => {
+        const left = leftPresences.map((p) => p.device_id).filter(Boolean)
+        setOnlineDeviceIds((prev) => {
+          const next = new Set(prev)
+          left.forEach((id) => next.delete(id))
+          return next
+        })
+        console.log('[Dashboard] Presence leave:', left)
       })
       .subscribe((status) => {
-        console.log('[Dashboard] Team status channel:', status)
+        console.log('[Dashboard] Presence channel status:', status)
       })
 
     teamChannelRef.current = channel
@@ -356,59 +373,6 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId])
-
-  // ── Ping all screens ──────────────────────────────────────────────────
-  const pingAllScreens = useCallback(() => {
-    if (!teamChannelRef.current || isPinging) return
-
-    // Clear any pending timeout from a previous ping
-    if (pingTimeoutRef.current) clearTimeout(pingTimeoutRef.current)
-
-    setIsPinging(true)
-    respondedIdsRef.current = new Set()
-
-    // Mark all paired devices as 'offline' until they respond
-    const newStatuses: Record<string, LiveStatus> = {}
-    devices.forEach((d) => {
-      newStatuses[d.id] = d.status === 'pairing' ? 'pairing' : 'offline'
-    })
-    setDeviceStatuses(newStatuses)
-
-    // Send PING broadcast
-    teamChannelRef.current.send({
-      type: 'broadcast',
-      event: 'PING',
-      payload: { timestamp: Date.now() },
-    })
-
-    // After timeout, mark non-responders as offline
-    pingTimeoutRef.current = setTimeout(() => {
-      setDeviceStatuses((prev) => {
-        const final = { ...prev }
-        devices.forEach((d) => {
-          if (d.status !== 'pairing' && !respondedIdsRef.current.has(d.id)) {
-            final[d.id] = 'offline'
-          }
-        })
-        return final
-      })
-      setIsPinging(false)
-    }, PING_TIMEOUT_MS)
-  }, [devices, isPinging])
-
-  // ── Fire initial ping on mount once the channel is ready ──────────────
-  const hasPingedRef = useRef(false)
-  useEffect(() => {
-    if (!teamChannelRef.current || hasPingedRef.current || devices.length === 0) return
-
-    // Small delay to allow the broadcast channel subscription to stabilize
-    const t = setTimeout(() => {
-      hasPingedRef.current = true
-      pingAllScreens()
-    }, 600)
-
-    return () => clearTimeout(t)
-  }, [teamId, devices.length, pingAllScreens])
 
   // ── Postgres Changes for device list (INSERT/UPDATE/DELETE) ───────────
   useEffect(() => {
@@ -457,22 +421,12 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   // ── Derive live status for each device ────────────────────────────────
   function getLiveStatus(device: Device): LiveStatus {
     if (device.status === 'pairing') return 'pairing'
-    return deviceStatuses[device.id] || 'offline'
+    return onlineDeviceIds.has(device.id) ? 'online' : 'offline'
   }
 
   return (
     <>
-      <div className={styles.actionBar}>
-        <button
-          id="refresh-status-btn"
-          className={styles.refreshBtn}
-          onClick={pingAllScreens}
-          disabled={isPinging}
-        >
-          <span className={`${styles.refreshIcon} ${isPinging ? styles.refreshIconSpin : ''}`}>↻</span>
-          {isPinging ? 'Checking…' : 'Refresh Status'}
-        </button>
-
+      <div className={styles.addBtnWrapper}>
         <button
           id="add-screen-btn"
           className={styles.addBtn}

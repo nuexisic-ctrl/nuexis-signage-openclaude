@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getHardwareId } from '@/lib/utils/fingerprint'
+import { registerDevice, refreshDeviceCode, heartbeatDevice, getDeviceState } from './actions'
 import styles from './player.module.css'
 
 type PlayerState = 'loading' | 'pairing' | 'paired' | 'expired'
@@ -92,17 +93,10 @@ export default function PlayerPage() {
       if (cancelled) return
 
       // Update last_seen_at
-      await supabase
-        .from('devices')
-        .update({ last_seen_at: new Date().toISOString() })
-        .eq('id', deviceId)
+      await heartbeatDevice(deviceId).catch(err => console.error(err))
 
       // Resync: re-fetch device state to recover from Realtime drops
-      const { data: fresh } = await supabase
-        .from('devices')
-        .select('content_type, asset_id, scale_mode, orientation, team_id')
-        .eq('id', deviceId)
-        .single()
+      const fresh = await getDeviceState(deviceId).catch(() => null)
 
       if (fresh && !cancelled) {
         // If the device has been unpaired from the CMS, reload
@@ -127,27 +121,29 @@ export default function PlayerPage() {
       }, HEARTBEAT_INTERVAL_MS)
     }
 
-    // ── Ping-Pong: respond to dashboard health checks ──────────────────
-    function startPingListener(teamId: string, deviceId: string) {
+    // ── Presence: track this device as online ─────────────────────────────
+    function startPresenceTracking(teamId: string, deviceId: string) {
       // Clean up any existing team channel
       if (teamChannelRef.current) {
+        teamChannelRef.current.untrack()
         supabase.removeChannel(teamChannelRef.current)
       }
 
-      console.log('[Player] Subscribing to team ping channel:', `team-status:${teamId}`)
+      console.log('[Player] Starting presence tracking for team:', teamId)
 
       const teamChannel = supabase
-        .channel(`team-status:${teamId}`)
-        .on('broadcast', { event: 'PING' }, () => {
-          console.log('[Player] PING received, sending PONG for device:', deviceId)
-          teamChannel.send({
-            type: 'broadcast',
-            event: 'PONG',
-            payload: { device_id: deviceId },
-          })
+        .channel(`team-status:${teamId}`, {
+          config: { presence: { key: deviceId } },
         })
-        .subscribe((status: string) => {
-          console.log('[Player] Team ping channel status:', status)
+        .subscribe(async (status: string) => {
+          console.log('[Player] Presence channel status:', status)
+          if (status === 'SUBSCRIBED') {
+            await teamChannel.track({
+              device_id: deviceId,
+              online_at: new Date().toISOString(),
+            })
+            console.log('[Player] Presence tracked for device:', deviceId)
+          }
         })
 
       teamChannelRef.current = teamChannel
@@ -158,11 +154,7 @@ export default function PlayerPage() {
       const hardwareId = await getHardwareId()
       console.log('[Player] Hardware ID:', hardwareId)
 
-      const { data: existing } = await supabase
-        .from('devices')
-        .select('*')
-        .eq('hardware_id', hardwareId)
-        .maybeSingle()
+      const existing = await getDeviceState(hardwareId)
 
       if (cancelled) return
 
@@ -181,7 +173,7 @@ export default function PlayerPage() {
           activeDevice = existing
           applyDeviceState(existing)
           startHeartbeat(existing.id)
-          startPingListener(existing.team_id, existing.id)
+          startPresenceTracking(existing.team_id, existing.id)
         } else {
           // ── Unpaired — check expiry ──────────────────────────────────
           const existingExpiry = new Date(existing.expires_at).getTime()
@@ -197,16 +189,7 @@ export default function PlayerPage() {
             console.log('[Player] Session expired, resetting')
             activeCode = generateCode()
             expiresAtMs = Date.now() + PAIRING_DURATION_MS
-            const { data: updated } = await supabase
-              .from('devices')
-              .update({
-                pairing_code: activeCode,
-                status: 'pairing',
-                expires_at: new Date(expiresAtMs).toISOString()
-              })
-              .eq('id', existing.id)
-              .select('id, expires_at')
-              .single()
+            const updated = await refreshDeviceCode(existing.id, hardwareId, activeCode, expiresAtMs).catch(() => null)
 
             if (updated && !cancelled) {
               deviceIdRef.current = updated.id
@@ -221,16 +204,13 @@ export default function PlayerPage() {
         console.log('[Player] Initialising — generating new pairing code')
         activeCode = generateCode()
         expiresAtMs = Date.now() + PAIRING_DURATION_MS
-        const { data, error } = await supabase
-          .from('devices')
-          .insert({
-            hardware_id: hardwareId,
-            pairing_code: activeCode,
-            status: 'pairing',
-            expires_at: new Date(expiresAtMs).toISOString()
-          })
-          .select('id, expires_at')
-          .single()
+        let data = null
+        let error = null
+        try {
+          data = await registerDevice(hardwareId, activeCode, expiresAtMs)
+        } catch (err) {
+          error = err
+        }
 
         if (!error && data && !cancelled) {
           deviceIdRef.current = data.id
@@ -273,15 +253,15 @@ export default function PlayerPage() {
         .on(
           'postgres_changes',
           {
-            event: 'UPDATE',
+            event: '*',
             schema: 'public',
             table: 'devices',
             filter: `id=eq.${activeDevice.id}`,
           },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (payload: { new: any }) => {
-            console.log('[Player] Realtime UPDATE received:', payload.new)
-            if (payload.new.team_id) {
+          (payload: { new: any, eventType: string }) => {
+            console.log(`[Player] Realtime ${payload.eventType} received:`, payload.new)
+            if (payload.new && payload.new.team_id) {
               if (!isPairedRef.current) {
                 console.log('[Player] Device claimed! Transitioning to paired state.')
                 isPairedRef.current = true
@@ -290,7 +270,7 @@ export default function PlayerPage() {
                 clearTimeout(timerRef.current!)
                 clearInterval(intervalRef.current!)
                 startHeartbeat(activeDevice.id)
-                startPingListener(payload.new.team_id, activeDevice.id)
+                startPresenceTracking(payload.new.team_id, activeDevice.id)
               }
               applyDeviceState(payload.new)
             } else {
@@ -319,13 +299,9 @@ export default function PlayerPage() {
           // Once the subscription is confirmed, re-fetch the device state
           // to catch any UPDATE events that fired between init() and now.
           if (status === 'SUBSCRIBED') {
-            supabase
-              .from('devices')
-              .select('*')
-              .eq('id', activeDevice.id)
-              .single()
+            getDeviceState(activeDevice.id)
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .then(({ data: fresh }: { data: any }) => {
+              .then((fresh: any) => {
                 if (!fresh || cancelled) return
                 if (fresh.team_id && !isPairedRef.current) {
                   console.log('[Player] Race condition caught — device already claimed.')
@@ -335,13 +311,14 @@ export default function PlayerPage() {
                   clearTimeout(timerRef.current!)
                   clearInterval(intervalRef.current!)
                   startHeartbeat(fresh.id)
-                  startPingListener(fresh.team_id, fresh.id)
+                  startPresenceTracking(fresh.team_id, fresh.id)
                   applyDeviceState(fresh)
                 } else if (fresh.team_id && isPairedRef.current) {
                   // Already paired — just resync state
                   applyDeviceState(fresh)
                 }
               })
+              .catch(console.error)
           }
         })
 
@@ -359,6 +336,7 @@ export default function PlayerPage() {
         supabaseRef.current.removeChannel(channelRef.current)
       }
       if (teamChannelRef.current) {
+        teamChannelRef.current.untrack()
         supabaseRef.current.removeChannel(teamChannelRef.current)
       }
     }
