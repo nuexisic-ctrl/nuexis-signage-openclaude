@@ -8,6 +8,7 @@ import styles from './player.module.css'
 type PlayerState = 'loading' | 'pairing' | 'paired' | 'expired'
 
 const PAIRING_DURATION_MS = 15 * 60 * 1000 // 15 minutes
+const HEARTBEAT_INTERVAL_MS = 60 * 1000     // 60 seconds
 
 function formatTime(ms: number): string {
   const totalSecs = Math.max(0, Math.floor(ms / 1000))
@@ -17,7 +18,6 @@ function formatTime(ms: number): string {
 }
 
 function generateCode(): string {
-  // Use Web Crypto API for cryptographically secure random numbers
   const array = new Uint32Array(1)
   window.crypto.getRandomValues(array)
   const code = 100000 + (array[0] % 900000)
@@ -38,17 +38,20 @@ export default function PlayerPage() {
   const [scaleMode, setScaleMode] = useState<string>('Fit')
   const [orientation, setOrientation] = useState<number>(0)
 
-  const deviceIdRef  = useRef<string | null>(null)
-  const isPairedRef  = useRef(false)           // tracks paired status for safe cleanup
-  const timerRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
-  const channelRef   = useRef<RealtimeChannel>(null)
-  const supabaseRef  = useRef(createClient())
+  const deviceIdRef   = useRef<string | null>(null)
+  const isPairedRef   = useRef(false)
+  const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const intervalRef   = useRef<ReturnType<typeof setInterval> | null>(null)
+  const heartbeatRef  = useRef<ReturnType<typeof setInterval> | null>(null)
+  const channelRef    = useRef<RealtimeChannel>(null)
+  const supabaseRef   = useRef(createClient())
 
   useEffect(() => {
     const supabase = supabaseRef.current
     let cancelled = false
 
+    // ── Asset resolver ───────────────────────────────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async function resolveAsset(client: any, assetId: string | null) {
       if (!assetId) {
         setAssetUrl(null)
@@ -71,11 +74,55 @@ export default function PlayerPage() {
       }
     }
 
+    // ── Apply device state to local React state ─────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    function applyDeviceState(device: any) {
+      setContentType(device.content_type)
+      setScaleMode(device.scale_mode || 'Fit')
+      setOrientation(device.orientation || 0)
+      if (device.content_type === 'Asset') {
+        resolveAsset(supabase, device.asset_id)
+      }
+    }
+
+    // ── Heartbeat: updates last_seen_at + resyncs state ─────────────────
+    function startHeartbeat(deviceId: string) {
+      // Clear any existing heartbeat
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
+
+      heartbeatRef.current = setInterval(async () => {
+        if (cancelled) return
+
+        // Update last_seen_at
+        await supabase
+          .from('devices')
+          .update({ last_seen_at: new Date().toISOString() })
+          .eq('id', deviceId)
+
+        // Resync: re-fetch device state to recover from Realtime drops
+        const { data: fresh } = await supabase
+          .from('devices')
+          .select('content_type, asset_id, scale_mode, orientation, team_id')
+          .eq('id', deviceId)
+          .single()
+
+        if (fresh && !cancelled) {
+          // If the device has been unpaired from the CMS, reload
+          if (!fresh.team_id && isPairedRef.current) {
+            window.location.reload()
+            return
+          }
+          applyDeviceState(fresh)
+        }
+      }, HEARTBEAT_INTERVAL_MS)
+    }
+
+    // ── Main init ────────────────────────────────────────────────────────
     async function init() {
       const hardwareId = await getHardwareId()
       console.log('[Player] Hardware ID:', hardwareId)
 
-      const { data: existing, error: fetchErr } = await supabase
+      const { data: existing } = await supabase
         .from('devices')
         .select('*')
         .eq('hardware_id', hardwareId)
@@ -89,20 +136,16 @@ export default function PlayerPage() {
 
       if (existing) {
         if (existing.team_id) {
+          // ── Already paired — go straight to content ──────────────────
           console.log('[Player] Found persistent paired device')
           deviceIdRef.current = existing.id
           isPairedRef.current = true
           setState('paired')
           activeDevice = existing
-
-          setContentType(existing.content_type)
-          setScaleMode(existing.scale_mode || 'Fit')
-          setOrientation(existing.orientation || 0)
-          if (existing.content_type === 'Asset') {
-            resolveAsset(supabase, existing.asset_id)
-          }
+          applyDeviceState(existing)
+          startHeartbeat(existing.id)
         } else {
-          // Unpaired - check expiry
+          // ── Unpaired — check expiry ──────────────────────────────────
           const existingExpiry = new Date(existing.expires_at).getTime()
           if (existingExpiry > Date.now()) {
             console.log('[Player] Resuming active pairing session')
@@ -118,10 +161,10 @@ export default function PlayerPage() {
             expiresAtMs = Date.now() + PAIRING_DURATION_MS
             const { data: updated } = await supabase
               .from('devices')
-              .update({ 
-                pairing_code: activeCode, 
-                status: 'pairing', 
-                expires_at: new Date(expiresAtMs).toISOString() 
+              .update({
+                pairing_code: activeCode,
+                status: 'pairing',
+                expires_at: new Date(expiresAtMs).toISOString()
               })
               .eq('id', existing.id)
               .select('id, expires_at')
@@ -136,14 +179,15 @@ export default function PlayerPage() {
           }
         }
       } else {
+        // ── Brand new device — register ────────────────────────────────
         console.log('[Player] Initialising — generating new pairing code')
         activeCode = generateCode()
         expiresAtMs = Date.now() + PAIRING_DURATION_MS
         const { data, error } = await supabase
           .from('devices')
-          .insert({ 
-            hardware_id: hardwareId, 
-            pairing_code: activeCode, 
+          .insert({
+            hardware_id: hardwareId,
+            pairing_code: activeCode,
             status: 'pairing',
             expires_at: new Date(expiresAtMs).toISOString()
           })
@@ -164,29 +208,26 @@ export default function PlayerPage() {
 
       if (cancelled || !activeDevice) return
 
-      // Only set up timers if we are still pairing
+      // ── Countdown timers (only while pairing) ──────────────────────────
       if (!isPairedRef.current) {
         const left = expiresAtMs - Date.now()
         setRemainingMs(left > 0 ? left : 0)
 
-        // Countdown interval
         intervalRef.current = setInterval(() => {
           const timeLeft = expiresAtMs - Date.now()
           setRemainingMs(timeLeft)
           if (timeLeft <= 0) clearInterval(intervalRef.current!)
         }, 1000)
 
-        // Expiry timer
         timerRef.current = setTimeout(() => {
           if (cancelled) return
           console.log('[Player] Code expired')
           setState('expired')
           clearInterval(intervalRef.current!)
-          // We rely on pg_cron to clean up the DB row, no need to delete here
         }, Math.max(0, expiresAtMs - Date.now()))
       }
 
-      // Realtime subscription (watch for team_id assignment or unpairing)
+      // ── Realtime subscription ──────────────────────────────────────────
       console.log('[Player] Setting up Realtime subscription for device', activeDevice.id)
 
       const channel = supabase
@@ -209,18 +250,15 @@ export default function PlayerPage() {
                 setState('paired')
                 clearTimeout(timerRef.current!)
                 clearInterval(intervalRef.current!)
+                startHeartbeat(activeDevice.id)
               }
-              setContentType(payload.new.content_type)
-              setScaleMode(payload.new.scale_mode || 'Fit')
-              setOrientation(payload.new.orientation || 0)
-              resolveAsset(supabase, payload.new.asset_id)
+              applyDeviceState(payload.new)
             } else {
               console.log('[Player] Device unpaired! Reloading player.')
               window.location.reload()
             }
           }
         )
-        // Also watch for DELETE to handle dashboard removals
         .on(
           'postgres_changes',
           {
@@ -236,6 +274,33 @@ export default function PlayerPage() {
         )
         .subscribe((status: string) => {
           console.log('[Player] Realtime subscription status:', status)
+
+          // ── Race condition fix ───────────────────────────────────────
+          // Once the subscription is confirmed, re-fetch the device state
+          // to catch any UPDATE events that fired between init() and now.
+          if (status === 'SUBSCRIBED') {
+            supabase
+              .from('devices')
+              .select('*')
+              .eq('id', activeDevice.id)
+              .single()
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .then(({ data: fresh }: { data: any }) => {
+                if (!fresh || cancelled) return
+                if (fresh.team_id && !isPairedRef.current) {
+                  console.log('[Player] Race condition caught — device already claimed.')
+                  isPairedRef.current = true
+                  setState('paired')
+                  clearTimeout(timerRef.current!)
+                  clearInterval(intervalRef.current!)
+                  startHeartbeat(fresh.id)
+                  applyDeviceState(fresh)
+                } else if (fresh.team_id && isPairedRef.current) {
+                  // Already paired — just resync state
+                  applyDeviceState(fresh)
+                }
+              })
+          }
         })
 
       channelRef.current = channel
@@ -247,12 +312,10 @@ export default function PlayerPage() {
       cancelled = true
       clearTimeout(timerRef.current!)
       clearInterval(intervalRef.current!)
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
       if (channelRef.current) {
         supabaseRef.current.removeChannel(channelRef.current)
       }
-      // Note: We no longer delete the row on unmount.
-      // This allows the device pairing session to persist across page refreshes.
-      // Stale rows are cleaned up automatically via pg_cron.
     }
   }, [])
 
@@ -270,9 +333,11 @@ export default function PlayerPage() {
 
     const fit = objectFitMap[scaleMode] || 'contain'
 
+    const isRotated = orientation === 90 || orientation === 270
+
     const containerStyle: React.CSSProperties = {
-      width: (orientation === 90 || orientation === 270) ? '100vh' : '100vw',
-      height: (orientation === 90 || orientation === 270) ? '100vw' : '100vh',
+      width: isRotated ? '100vh' : '100vw',
+      height: isRotated ? '100vw' : '100vh',
       transform: `rotate(${orientation}deg)`,
       transformOrigin: 'center center',
       display: 'flex',
@@ -281,37 +346,40 @@ export default function PlayerPage() {
       position: 'absolute',
       top: '50%',
       left: '50%',
-      marginLeft: (orientation === 90 || orientation === 270) ? '-50vh' : '-50vw',
-      marginTop: (orientation === 90 || orientation === 270) ? '-50vw' : '-50vh',
+      marginLeft: isRotated ? '-50vh' : '-50vw',
+      marginTop: isRotated ? '-50vw' : '-50vh',
       backgroundColor: '#000',
       overflow: 'hidden'
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mediaStyle: React.CSSProperties = {
       width: '100%',
       height: '100%',
-      objectFit: fit as any,
+      objectFit: fit,
     }
 
     let content = null
     if (contentType === 'Asset' && assetUrl) {
       if (mimeType?.startsWith('video/')) {
         content = (
-          <video 
-            src={assetUrl} 
-            style={mediaStyle} 
-            loop 
-            autoPlay 
-            playsInline 
-            muted={false} 
+          <video
+            key={assetUrl}
+            src={assetUrl}
+            style={mediaStyle}
+            loop
+            autoPlay
+            playsInline
+            muted={false}
           />
         )
       } else {
         content = (
-          <img 
-            src={assetUrl} 
-            style={mediaStyle} 
-            alt="Assigned content" 
+          <img
+            key={assetUrl}
+            src={assetUrl}
+            style={mediaStyle}
+            alt="Assigned content"
           />
         )
       }
