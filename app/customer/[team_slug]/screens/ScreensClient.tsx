@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { claimDevice, updateDeviceAssignment, AssignmentData } from './actions'
+import { claimDevice, updateDeviceAssignment, deleteAndUnpairDevice, AssignmentData } from './actions'
 import styles from './screens.module.css'
 
 type LiveStatus = 'online' | 'offline' | 'pairing'
@@ -56,27 +56,75 @@ function StatusBadge({ status }: { status: LiveStatus }) {
   )
 }
 
-function DeviceCard({ device, liveStatus, onClick }: { device: Device; liveStatus: LiveStatus; onClick?: () => void }) {
+function formatLastSeen(dateStr: string | null | undefined, isOnline: boolean): string {
+  if (!dateStr) return 'Never'
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const prefix = isOnline ? 'Active' : 'Seen'
+  if (diff < 60000) return `${prefix} just now`
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `${prefix} ${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${prefix} ${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${prefix} ${days}d ago`
+}
+
+function DeviceCard({
+  device,
+  liveStatus,
+  onEdit,
+  onDelete,
+  menuOpen,
+  onToggleMenu
+}: {
+  device: Device
+  liveStatus: LiveStatus
+  onEdit: () => void
+  onDelete: () => void
+  menuOpen: boolean
+  onToggleMenu: (e: React.MouseEvent) => void
+}) {
   const createdAt = new Date(device.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   })
+  const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online')
 
   return (
-    <div className={`${styles.deviceCard} ${onClick ? styles.clickableCard : ''}`} onClick={onClick}>
-      <div className={styles.deviceCardHeader}>
+    <div className={styles.deviceCard}>
+      <div className={styles.deviceCardHeaderTop}>
         <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
-        <StatusBadge status={liveStatus} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <StatusBadge status={liveStatus} />
+          <div className={styles.moreMenuWrapper}>
+            <button 
+              className={`${styles.moreBtn} ${menuOpen ? styles.active : ''}`}
+              onClick={onToggleMenu}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className={styles.moreDropdown}>
+                <button className={styles.dropdownItem} onClick={onEdit}>
+                  Edit Content
+                </button>
+                <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={onDelete}>
+                  Unpair & Delete
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      <div className={styles.deviceMeta}>
+      <div className={styles.deviceMeta} onClick={onEdit} style={{ cursor: 'pointer' }}>
         <div className={styles.deviceMetaRow}>
           <span className={styles.deviceMetaLabel}>Added</span>
           <span className={styles.deviceMetaValue}>{createdAt}</span>
         </div>
         <div className={styles.deviceMetaRow}>
-          <span className={styles.deviceMetaLabel}>ID</span>
-          <span className={styles.deviceMetaValue} style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
-            {device.id.slice(0, 8)}…
-          </span>
+          <span className={styles.deviceMetaLabel}>Last Seen</span>
+          <span className={styles.deviceMetaValue}>{lastSeen}</span>
         </div>
       </div>
     </div>
@@ -316,6 +364,11 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   const [showPairModal, setShowPairModal] = useState(false)
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
+  
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -408,6 +461,35 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId])
 
+  // ── Polling fallback (Heartbeat check) ────────────────────────────────
+  useEffect(() => {
+    if (!teamId) return
+
+    // Every 30 seconds, fetch the latest device states
+    const intervalId = setInterval(async () => {
+      const { data, error } = await supabase
+        .from('devices')
+        .select('*')
+        .eq('team_id', teamId)
+      
+      if (!error && data) {
+        // We do a functional update to avoid race conditions with Realtime,
+        // though Realtime is also updating this state. This ensures we have 
+        // a reliable heartbeat check if Realtime drops.
+        setDevices(data as Device[])
+      }
+    }, 30000) // 30s
+
+    return () => clearInterval(intervalId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId])
+
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null)
+    if (openMenuId) document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [openMenuId])
+
   function handlePairSuccess() {
     setShowPairModal(false)
     router.refresh()
@@ -418,11 +500,29 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     router.refresh()
   }
 
+  async function handleDeleteDevice(deviceId: string) {
+    if (confirm('Are you sure you want to unpair and delete this screen? The physical screen will automatically reset to pairing mode.')) {
+      await deleteAndUnpairDevice(teamSlug, deviceId)
+      setOpenMenuId(null)
+    }
+  }
+
   // ── Derive live status for each device ────────────────────────────────
   function getLiveStatus(device: Device): LiveStatus {
     if (device.status === 'pairing') return 'pairing'
-    return onlineDeviceIds.has(device.id) ? 'online' : 'offline'
+    
+    // Consider online if tracked via Presence OR if last_seen_at is recent (within ~60 seconds).
+    // The player sends a heartbeat every 30s, so 60s allows for 1 missed heartbeat.
+    const isRecentlySeen = device.last_seen_at && (Date.now() - new Date(device.last_seen_at).getTime() < 60000)
+    
+    return (onlineDeviceIds.has(device.id) || isRecentlySeen) ? 'online' : 'offline'
   }
+
+  const filteredDevices = devices.filter(d => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    return (d.name?.toLowerCase().includes(q) || d.status.includes(q))
+  })
 
   return (
     <>
@@ -437,27 +537,130 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
         </button>
       </div>
 
-      <div className={styles.grid}>
-        {devices.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>◫</div>
-            <h3 className={styles.emptyTitle}>No screens yet</h3>
-            <p className={styles.emptyText}>
-              Open the NuExis player app on a screen, then click{' '}
-              <strong>Add Screen</strong> to pair it to your workspace.
-            </p>
-          </div>
-        ) : (
-          devices.map((device) => (
+      <div className={styles.controlsBar}>
+        <div className={styles.searchBox}>
+          <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input 
+            type="text" 
+            className={styles.searchInput}
+            placeholder="Search screens by name or status..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className={styles.viewToggleGroup}>
+          <button 
+            className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+            onClick={() => setViewMode('grid')}
+            title="Grid View"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+          </button>
+          <button 
+            className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
+            onClick={() => setViewMode('table')}
+            title="Table View"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {filteredDevices.length === 0 ? (
+        <div className={styles.emptyState}>
+          <div className={styles.emptyIcon}>◫</div>
+          <h3 className={styles.emptyTitle}>No screens found</h3>
+          <p className={styles.emptyText}>
+            {devices.length === 0 
+              ? <>Open the NuExis player app on a screen, then click <strong>Add Screen</strong> to pair it to your workspace.</>
+              : "No screens matched your search criteria."
+            }
+          </p>
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className={styles.grid}>
+          {filteredDevices.map((device) => (
             <DeviceCard
               key={device.id}
               device={device}
               liveStatus={getLiveStatus(device)}
-              onClick={() => setAssignModalDevice(device)}
+              onEdit={() => setAssignModalDevice(device)}
+              onDelete={() => handleDeleteDevice(device.id)}
+              menuOpen={openMenuId === device.id}
+              onToggleMenu={(e) => {
+                e.stopPropagation();
+                setOpenMenuId(openMenuId === device.id ? null : device.id);
+              }}
             />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className={styles.tableContainer}>
+          <table className={styles.screensTable}>
+            <thead className={styles.tableHeader}>
+              <tr>
+                <th>Screen Name</th>
+                <th>Status</th>
+                <th>Last Seen</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDevices.map(device => {
+                const status = getLiveStatus(device)
+                const lastSeen = formatLastSeen(device.last_seen_at, status === 'online')
+                const isMenuOpen = openMenuId === device.id
+
+                return (
+                  <tr key={device.id} className={styles.tableRow}>
+                    <td className={styles.tableCell}>
+                      <div className={styles.cellName}>{device.name || 'Unnamed Screen'}</div>
+                      <div className={styles.cellId}>{device.id.slice(0,8)}...</div>
+                    </td>
+                    <td className={styles.tableCell}>
+                      <StatusBadge status={status} />
+                    </td>
+                    <td className={styles.tableCell}>
+                      <div className={styles.cellLastSeen}>{lastSeen}</div>
+                    </td>
+                    <td className={styles.tableCell}>
+                      <div className={styles.actionsGroup}>
+                        <button className={styles.editBtn} onClick={() => setAssignModalDevice(device)}>Edit</button>
+                        <div className={styles.moreMenuWrapper}>
+                          <button 
+                            className={`${styles.moreBtn} ${isMenuOpen ? styles.active : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuId(isMenuOpen ? null : device.id)
+                            }}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                            </svg>
+                          </button>
+                          {isMenuOpen && (
+                            <div className={styles.moreDropdown}>
+                              <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => handleDeleteDevice(device.id)}>
+                                Unpair & Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {showPairModal && (
         <PairModal

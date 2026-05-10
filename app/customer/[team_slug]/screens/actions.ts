@@ -168,3 +168,39 @@ export async function updateDeviceAssignment(
   revalidatePath(`/customer/${teamSlug}/screens`)
   return { success: true }
 }
+
+export async function deleteAndUnpairDevice(
+  teamSlug: string,
+  deviceId: string
+): Promise<PairDeviceResult> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to delete a screen.' }
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('team_id')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile?.team_id) {
+    return { success: false, error: 'Could not determine your team.' }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('devices')
+    .delete()
+    .eq('id', deviceId)
+    .eq('team_id', profile.team_id)
+
+  if (deleteError) {
+    console.error('[deleteAndUnpairDevice] delete error:', deleteError)
+    return { success: false, error: 'Failed to delete screen. Permission denied or device not found.' }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/screens`)
+  return { success: true }
+}
