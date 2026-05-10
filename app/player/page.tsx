@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getHardwareId } from '@/lib/utils/fingerprint'
 import styles from './player.module.css'
 
 type PlayerState = 'loading' | 'pairing' | 'paired' | 'expired'
@@ -43,67 +44,152 @@ export default function PlayerPage() {
     let cancelled = false
 
     async function init() {
-      console.log('[Player] Initialising — generating pairing code')
-      const pairingCode = generateCode()
+      const hardwareId = await getHardwareId()
+      console.log('[Player] Hardware ID:', hardwareId)
 
-      const { data, error } = await supabase
+      const { data: existing, error: fetchErr } = await supabase
         .from('devices')
-        .insert({ pairing_code: pairingCode, status: 'pairing' })
-        .select('id')
-        .single()
+        .select('*')
+        .eq('hardware_id', hardwareId)
+        .maybeSingle()
 
       if (cancelled) return
 
-      if (error || !data) {
-        console.error('[Player] Failed to register device:', error)
-        setState('expired')
-        return
+      let activeDevice = null
+      let activeCode = ''
+      let expiresAtMs = Date.now() + PAIRING_DURATION_MS
+
+      if (existing) {
+        if (existing.team_id) {
+          console.log('[Player] Found persistent paired device')
+          deviceIdRef.current = existing.id
+          isPairedRef.current = true
+          setState('paired')
+          activeDevice = existing
+        } else {
+          // Unpaired - check expiry
+          const existingExpiry = new Date(existing.expires_at).getTime()
+          if (existingExpiry > Date.now()) {
+            console.log('[Player] Resuming active pairing session')
+            deviceIdRef.current = existing.id
+            activeCode = existing.pairing_code
+            expiresAtMs = existingExpiry
+            setCode(activeCode)
+            setState('pairing')
+            activeDevice = existing
+          } else {
+            console.log('[Player] Session expired, resetting')
+            activeCode = generateCode()
+            expiresAtMs = Date.now() + PAIRING_DURATION_MS
+            const { data: updated } = await supabase
+              .from('devices')
+              .update({ 
+                pairing_code: activeCode, 
+                status: 'pairing', 
+                expires_at: new Date(expiresAtMs).toISOString() 
+              })
+              .eq('id', existing.id)
+              .select('id, expires_at')
+              .single()
+
+            if (updated && !cancelled) {
+              deviceIdRef.current = updated.id
+              setCode(activeCode)
+              setState('pairing')
+              activeDevice = updated
+            }
+          }
+        }
+      } else {
+        console.log('[Player] Initialising — generating new pairing code')
+        activeCode = generateCode()
+        expiresAtMs = Date.now() + PAIRING_DURATION_MS
+        const { data, error } = await supabase
+          .from('devices')
+          .insert({ 
+            hardware_id: hardwareId, 
+            pairing_code: activeCode, 
+            status: 'pairing',
+            expires_at: new Date(expiresAtMs).toISOString()
+          })
+          .select('id, expires_at')
+          .single()
+
+        if (!error && data && !cancelled) {
+          deviceIdRef.current = data.id
+          setCode(activeCode)
+          setState('pairing')
+          activeDevice = data
+        } else if (error) {
+          console.error('[Player] Failed to register device:', error)
+          if (!cancelled) setState('expired')
+          return
+        }
       }
 
-      console.log('[Player] Device registered, id:', data.id, 'code:', pairingCode)
-      deviceIdRef.current = data.id
-      setCode(pairingCode)
-      setState('pairing')
+      if (cancelled || !activeDevice) return
 
-      // ── Countdown interval ────────────────────────────────────────────────
-      const expiresAt = Date.now() + PAIRING_DURATION_MS
-      intervalRef.current = setInterval(() => {
-        const left = expiresAt - Date.now()
-        setRemainingMs(left)
-        if (left <= 0) clearInterval(intervalRef.current!)
-      }, 1000)
+      // Only set up timers if we are still pairing
+      if (!isPairedRef.current) {
+        const left = expiresAtMs - Date.now()
+        setRemainingMs(left > 0 ? left : 0)
 
-      // ── Expiry timer ──────────────────────────────────────────────────────
-      timerRef.current = setTimeout(async () => {
-        if (cancelled) return
-        console.log('[Player] Code expired — cleaning up device')
-        setState('expired')
-        clearInterval(intervalRef.current!)
-        await supabase.from('devices').delete().eq('id', data.id)
-      }, PAIRING_DURATION_MS)
+        // Countdown interval
+        intervalRef.current = setInterval(() => {
+          const timeLeft = expiresAtMs - Date.now()
+          setRemainingMs(timeLeft)
+          if (timeLeft <= 0) clearInterval(intervalRef.current!)
+        }, 1000)
 
-      // ── Realtime subscription ─────────────────────────────────────────────
-      console.log('[Player] Setting up Realtime subscription for device', data.id)
+        // Expiry timer
+        timerRef.current = setTimeout(() => {
+          if (cancelled) return
+          console.log('[Player] Code expired')
+          setState('expired')
+          clearInterval(intervalRef.current!)
+          // We rely on pg_cron to clean up the DB row, no need to delete here
+        }, Math.max(0, expiresAtMs - Date.now()))
+      }
+
+      // Realtime subscription (watch for team_id assignment or unpairing)
+      console.log('[Player] Setting up Realtime subscription for device', activeDevice.id)
 
       const channel = supabase
-        .channel(`device-pair-${data.id}`)
+        .channel(`device-pair-${activeDevice.id}`)
         .on(
           'postgres_changes',
           {
             event: 'UPDATE',
             schema: 'public',
             table: 'devices',
-            filter: `id=eq.${data.id}`,
+            filter: `id=eq.${activeDevice.id}`,
           },
           (payload: { new: { team_id: string | null } }) => {
             console.log('[Player] Realtime UPDATE received:', payload.new)
             if (payload.new.team_id) {
               console.log('[Player] Device claimed! Transitioning to paired state.')
-              isPairedRef.current = true   // mark as paired before state update
+              isPairedRef.current = true
               setState('paired')
               clearTimeout(timerRef.current!)
               clearInterval(intervalRef.current!)
+            } else {
+              console.log('[Player] Device unpaired! Reloading player.')
+              window.location.reload()
             }
+          }
+        )
+        // Also watch for DELETE to handle dashboard removals
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'devices',
+            filter: `id=eq.${activeDevice.id}`,
+          },
+          () => {
+            console.log('[Player] Device deleted! Reloading player.')
+            window.location.reload()
           }
         )
         .subscribe((status: string) => {
@@ -122,17 +208,9 @@ export default function PlayerPage() {
       if (channelRef.current) {
         supabaseRef.current.removeChannel(channelRef.current)
       }
-      // Only delete the device row if it was NOT successfully paired.
-      // A paired device must persist in the database for the dashboard.
-      // Use isPairedRef (not a setState callback) to avoid the async-in-setState anti-pattern.
-      if (!isPairedRef.current && deviceIdRef.current) {
-        console.log('[Player] Unmount: cleaning up unclaimed device', deviceIdRef.current)
-        supabaseRef.current
-          .from('devices')
-          .delete()
-          .eq('id', deviceIdRef.current)
-          .then(() => console.log('[Player] Unclaimed device cleaned up on unmount'))
-      }
+      // Note: We no longer delete the row on unmount.
+      // This allows the device pairing session to persist across page refreshes.
+      // Stale rows are cleaned up automatically via pg_cron.
     }
   }, [])
 
