@@ -135,3 +135,53 @@ export async function claimDevice(
   return { success: true }
 }
 
+export interface AssignmentData {
+  content_type: 'Asset' | 'Playlist' | 'Schedule'
+  asset_id: string | null
+  scale_mode: 'None' | 'Fit' | 'Stretch' | 'Zoom'
+  orientation: 0 | 90 | 180 | 270
+}
+
+export async function updateDeviceAssignment(
+  teamSlug: string,
+  deviceId: string,
+  data: AssignmentData
+): Promise<PairDeviceResult> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to update a screen.' }
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('team_id')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile?.team_id) {
+    return { success: false, error: 'Could not determine your team.' }
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from('devices')
+    .update({
+      content_type: data.content_type,
+      asset_id: data.asset_id,
+      scale_mode: data.scale_mode,
+      orientation: data.orientation,
+    })
+    .eq('id', deviceId)
+    .eq('team_id', profile.team_id)
+    .select('id')
+
+  if (updateError || !updated || updated.length === 0) {
+    console.error('[updateDeviceAssignment] update error:', updateError)
+    return { success: false, error: 'Failed to update screen assignment. Permission denied or device not found.' }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/screens`)
+  return { success: true }
+}
+

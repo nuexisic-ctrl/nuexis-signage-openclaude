@@ -32,6 +32,12 @@ export default function PlayerPage() {
   const [code, setCode] = useState<string>('')
   const [remainingMs, setRemainingMs] = useState(PAIRING_DURATION_MS)
 
+  const [contentType, setContentType] = useState<string | null>(null)
+  const [assetUrl, setAssetUrl] = useState<string | null>(null)
+  const [mimeType, setMimeType] = useState<string | null>(null)
+  const [scaleMode, setScaleMode] = useState<string>('Fit')
+  const [orientation, setOrientation] = useState<number>(0)
+
   const deviceIdRef  = useRef<string | null>(null)
   const isPairedRef  = useRef(false)           // tracks paired status for safe cleanup
   const timerRef     = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -42,6 +48,28 @@ export default function PlayerPage() {
   useEffect(() => {
     const supabase = supabaseRef.current
     let cancelled = false
+
+    async function resolveAsset(client: any, assetId: string | null) {
+      if (!assetId) {
+        setAssetUrl(null)
+        setMimeType(null)
+        return
+      }
+      const { data: asset } = await client
+        .from('assets')
+        .select('file_path, mime_type')
+        .eq('id', assetId)
+        .single()
+
+      if (asset) {
+        const { data } = client.storage.from('workspace-media').getPublicUrl(asset.file_path)
+        setAssetUrl(data.publicUrl)
+        setMimeType(asset.mime_type)
+      } else {
+        setAssetUrl(null)
+        setMimeType(null)
+      }
+    }
 
     async function init() {
       const hardwareId = await getHardwareId()
@@ -66,6 +94,13 @@ export default function PlayerPage() {
           isPairedRef.current = true
           setState('paired')
           activeDevice = existing
+
+          setContentType(existing.content_type)
+          setScaleMode(existing.scale_mode || 'Fit')
+          setOrientation(existing.orientation || 0)
+          if (existing.content_type === 'Asset') {
+            resolveAsset(supabase, existing.asset_id)
+          }
         } else {
           // Unpaired - check expiry
           const existingExpiry = new Date(existing.expires_at).getTime()
@@ -164,14 +199,21 @@ export default function PlayerPage() {
             table: 'devices',
             filter: `id=eq.${activeDevice.id}`,
           },
-          (payload: { new: { team_id: string | null } }) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (payload: { new: any }) => {
             console.log('[Player] Realtime UPDATE received:', payload.new)
             if (payload.new.team_id) {
-              console.log('[Player] Device claimed! Transitioning to paired state.')
-              isPairedRef.current = true
-              setState('paired')
-              clearTimeout(timerRef.current!)
-              clearInterval(intervalRef.current!)
+              if (!isPairedRef.current) {
+                console.log('[Player] Device claimed! Transitioning to paired state.')
+                isPairedRef.current = true
+                setState('paired')
+                clearTimeout(timerRef.current!)
+                clearInterval(intervalRef.current!)
+              }
+              setContentType(payload.new.content_type)
+              setScaleMode(payload.new.scale_mode || 'Fit')
+              setOrientation(payload.new.orientation || 0)
+              resolveAsset(supabase, payload.new.asset_id)
             } else {
               console.log('[Player] Device unpaired! Reloading player.')
               window.location.reload()
@@ -219,14 +261,76 @@ export default function PlayerPage() {
 
   // ── Paired ──────────────────────────────────────────────────────────────────
   if (state === 'paired') {
-    return (
-      <div className={styles.pairedView}>
+    const objectFitMap: Record<string, 'none' | 'contain' | 'fill' | 'cover'> = {
+      'None': 'none',
+      'Fit': 'contain',
+      'Stretch': 'fill',
+      'Zoom': 'cover',
+    }
+
+    const fit = objectFitMap[scaleMode] || 'contain'
+
+    const containerStyle: React.CSSProperties = {
+      width: (orientation === 90 || orientation === 270) ? '100vh' : '100vw',
+      height: (orientation === 90 || orientation === 270) ? '100vw' : '100vh',
+      transform: `rotate(${orientation}deg)`,
+      transformOrigin: 'center center',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      marginLeft: (orientation === 90 || orientation === 270) ? '-50vh' : '-50vw',
+      marginTop: (orientation === 90 || orientation === 270) ? '-50vw' : '-50vh',
+      backgroundColor: '#000',
+      overflow: 'hidden'
+    }
+
+    const mediaStyle: React.CSSProperties = {
+      width: '100%',
+      height: '100%',
+      objectFit: fit as any,
+    }
+
+    let content = null
+    if (contentType === 'Asset' && assetUrl) {
+      if (mimeType?.startsWith('video/')) {
+        content = (
+          <video 
+            src={assetUrl} 
+            style={mediaStyle} 
+            loop 
+            autoPlay 
+            playsInline 
+            muted={false} 
+          />
+        )
+      } else {
+        content = (
+          <img 
+            src={assetUrl} 
+            style={mediaStyle} 
+            alt="Assigned content" 
+          />
+        )
+      }
+    } else {
+      content = (
         <div className={styles.pairedFlash}>
           <svg className={styles.pairedIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path strokeLinecap="round" strokeLinejoin="round"
               d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className={styles.pairedText}>Screen Connected</p>
+          <p className={styles.pairedText}>Screen Connected. Waiting for content...</p>
+        </div>
+      )
+    }
+
+    return (
+      <div className={styles.pairedView} style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#000' }}>
+        <div style={containerStyle}>
+          {content}
         </div>
       </div>
     )

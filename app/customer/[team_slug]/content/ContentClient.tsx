@@ -202,6 +202,7 @@ export default function ContentClient({ initialAssets, teamId, teamSlug }: Props
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
   const [, startTransition] = useTransition()
@@ -300,6 +301,11 @@ export default function ContentClient({ initialAssets, teamId, teamSlug }: Props
     setIsUploading(false)
     setUploadProgress(0)
 
+    if (newAssets.length > 0) {
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 5000)
+    }
+
     // Trigger a server-side revalidation
     startTransition(() => {
       router.refresh()
@@ -346,6 +352,18 @@ export default function ContentClient({ initialAssets, teamId, teamSlug }: Props
         <div className={styles.errorBanner} role="alert">
           <span className={styles.errorIcon}>⚠</span>
           {uploadError}
+        </div>
+      )}
+
+      {showSuccess && (
+        <div className={styles.successBanner} role="alert" style={{
+          display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px',
+          background: 'rgba(22, 163, 74, 0.08)', borderRadius: 'var(--radius-sm)',
+          fontSize: '0.875rem', color: '#16a34a', fontFamily: 'var(--font-label)',
+          marginBottom: '16px'
+        }}>
+          <span className={styles.successIcon}>✓</span>
+          Media successfully uploaded. Ready to be assigned in the Screens page!
         </div>
       )}
 

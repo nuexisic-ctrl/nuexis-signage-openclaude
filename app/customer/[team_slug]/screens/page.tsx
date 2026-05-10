@@ -45,7 +45,17 @@ export default async function ScreensPage({ params }: Props) {
   const devices = profile?.team_id
     ? (await supabase
         .from('devices')
-        .select('id, name, status, created_at')
+        .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation')
+        .eq('team_id', profile.team_id)
+        .order('created_at', { ascending: false })
+      ).data ?? []
+    : []
+
+  // Fetch all assets for this team
+  const assets = profile?.team_id
+    ? (await supabase
+        .from('assets')
+        .select('id, file_name, file_path, mime_type, size_bytes')
         .eq('team_id', profile.team_id)
         .order('created_at', { ascending: false })
       ).data ?? []
@@ -114,7 +124,8 @@ export default async function ScreensPage({ params }: Props) {
         </div>
 
         <ScreensClient
-          devices={devices as Parameters<typeof ScreensClient>[0]['devices']}
+          devices={devices as any}
+          assets={assets as any}
           teamSlug={team_slug}
         />
       </main>
