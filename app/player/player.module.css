@@ -75,7 +75,7 @@
 .codeDigit {
   width: 72px;
   height: 88px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -84,7 +84,7 @@
   font-size: 2.75rem;
   font-weight: 700;
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: none;
   backdrop-filter: blur(8px);
   transition: background 0.2s;
 }
@@ -364,7 +364,7 @@
   width: 320px;
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(24px);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: none;
   z-index: 300;
   display: flex;
   flex-direction: column;
@@ -382,7 +382,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .sidebarHeader h2 {
@@ -444,7 +444,7 @@
   width: 100%;
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
   border-radius: 8px;
   color: white;
   font-size: 0.9375rem;
@@ -481,7 +481,7 @@
   width: 100%;
   padding: 12px 16px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
   border-radius: 8px;
   color: white;
   font-size: 0.9375rem;

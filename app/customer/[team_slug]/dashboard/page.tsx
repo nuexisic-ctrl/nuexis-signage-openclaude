@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import styles from './dashboard.module.css'
+import Header from '../components/Header'
 
 interface Props {
   params: Promise<{ team_slug: string }>
@@ -97,6 +98,7 @@ export default async function DashboardPage({ params }: Props) {
 
       {/* Main */}
       <main className={styles.main}>
+        <Header fullName={fullName} email={user.email} />
         {/* Topbar */}
         <div className={styles.topbar}>
           <div>

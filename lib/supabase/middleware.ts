@@ -1,10 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import type { Database } from '@/types/supabase'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -48,29 +49,41 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
-    // 2. Cross-tenant check — verify team membership against the DB (source of truth)
-    //    instead of trusting user_metadata which can be modified client-side.
-    const { data: membership } = await supabase
-      .from('profiles')
-      .select('team_id, teams!inner(slug)')
-      .eq('id', user.id)
-      .single()
+    // 2. Cross-tenant check — check cache first to avoid DB load
+    const cachedCookie = request.cookies.get('cached_team_slug')?.value
+    let cachedTeamSlug: string | undefined
+    
+    if (cachedCookie && cachedCookie.startsWith(`${user.id}:`)) {
+      cachedTeamSlug = cachedCookie.substring(user.id.length + 1)
+    }
 
-    if (!membership) {
-      // User has no profile/team — redirect to home
+    if (cachedTeamSlug) {
+      if (cachedTeamSlug === teamSlug) {
+        return supabaseResponse
+      } else {
+        const correctDashboard = request.nextUrl.clone()
+        correctDashboard.pathname = `/customer/${cachedTeamSlug}/dashboard`
+        return NextResponse.redirect(correctDashboard)
+      }
+    }
+
+    // Cache miss — read from JWT claims instead of hitting the DB
+    const dbTeamSlug = (user.app_metadata?.team_slug || user.user_metadata?.team_slug) as string | undefined
+
+    if (!dbTeamSlug) {
       const homeUrl = request.nextUrl.clone()
       homeUrl.pathname = '/'
       return NextResponse.redirect(homeUrl)
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const dbTeamSlug = (membership as any).teams?.slug as string | undefined
-
-    if (dbTeamSlug && dbTeamSlug !== teamSlug) {
-      // User is trying to access a team they don't belong to — redirect to their real dashboard
+    if (dbTeamSlug !== teamSlug) {
       const correctDashboard = request.nextUrl.clone()
       correctDashboard.pathname = `/customer/${dbTeamSlug}/dashboard`
-      return NextResponse.redirect(correctDashboard)
+      const response = NextResponse.redirect(correctDashboard)
+      response.cookies.set('cached_team_slug', `${user.id}:${dbTeamSlug}`, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 7 })
+      return response
+    } else {
+      supabaseResponse.cookies.set('cached_team_slug', `${user.id}:${dbTeamSlug}`, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 7 })
     }
   }
 
@@ -81,21 +94,27 @@ export async function updateSession(request: NextRequest) {
     (teamSlug && pathname === `/customer/${teamSlug}/login`)
 
   if (isAuthPage && user) {
-    // Look up the user's actual team from the DB
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('teams!inner(slug)')
-      .eq('id', user.id)
-      .single()
+    const cachedCookie = request.cookies.get('cached_team_slug')?.value
+    let userTeamSlug: string | undefined
+    
+    if (cachedCookie && cachedCookie.startsWith(`${user.id}:`)) {
+      userTeamSlug = cachedCookie.substring(user.id.length + 1)
+    }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userTeamSlug = (profile as any)?.teams?.slug as string | undefined
+    if (!userTeamSlug) {
+      userTeamSlug = (user.app_metadata?.team_slug || user.user_metadata?.team_slug) as string | undefined
+    }
 
     const dashboardUrl = request.nextUrl.clone()
     dashboardUrl.pathname = userTeamSlug
       ? `/customer/${userTeamSlug}/dashboard`
       : '/'
-    return NextResponse.redirect(dashboardUrl)
+      
+    const response = NextResponse.redirect(dashboardUrl)
+    if (userTeamSlug) {
+      response.cookies.set('cached_team_slug', `${user.id}:${userTeamSlug}`, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 7 })
+    }
+    return response
   }
 
   return supabaseResponse

@@ -11,7 +11,6 @@
   background: var(--surface-lowest);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--outline-variant);
   position: fixed;
   top: 0;
   left: 0;
@@ -24,7 +23,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-dim);
 }
 
 .sidebarTeam {
@@ -83,7 +82,7 @@
 
 .sidebarFooter {
   padding: 16px 12px;
-  border-top: 1px solid var(--outline-variant);
+  background: var(--surface-dim);
   display: flex;
   align-items: center;
   gap: 8px;

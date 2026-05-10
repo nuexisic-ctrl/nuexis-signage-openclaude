@@ -1,17 +1,34 @@
 'use server'
 
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import type { Database } from '@/types/supabase'
 
-// We use the service role key to securely bypass RLS for player mutations.
-// This prevents malicious actors from directly calling Supabase APIs to hijack screens.
-function getAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-  return createClient(supabaseUrl, supabaseServiceKey)
+async function getPlayerClient(hardwareId: string) {
+  const cookieStore = await cookies()
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: {
+        headers: {
+          'x-hardware-id': hardwareId
+        }
+      },
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+          } catch (error) {}
+        }
+      }
+    }
+  )
 }
 
 export async function registerDevice(hardwareId: string, pairingCode: string, expiresAtMs: number) {
-  const supabase = getAdminClient()
+  const supabase = await getPlayerClient(hardwareId)
   const { data, error } = await supabase
     .from('devices')
     .insert({
@@ -31,8 +48,8 @@ export async function registerDevice(hardwareId: string, pairingCode: string, ex
 }
 
 export async function refreshDeviceCode(deviceId: string, hardwareId: string, pairingCode: string, expiresAtMs: number) {
-  const supabase = getAdminClient()
   // We enforce that the hardware_id matches to prevent spoofing
+  const supabase = await getPlayerClient(hardwareId)
   const { data, error } = await supabase
     .from('devices')
     .update({
@@ -52,12 +69,15 @@ export async function refreshDeviceCode(deviceId: string, hardwareId: string, pa
   return data
 }
 
-export async function heartbeatDevice(deviceId: string) {
-  const supabase = getAdminClient()
+export async function heartbeatDevice(deviceId: string, hardwareId: string) {
+  const supabase = await getPlayerClient(hardwareId)
   const { error } = await supabase
-    .from('devices')
-    .update({ last_seen_at: new Date().toISOString() })
-    .eq('id', deviceId)
+    .from('device_heartbeats')
+    .upsert({
+      device_id: deviceId,
+      hardware_id: hardwareId,
+      last_seen_at: new Date().toISOString()
+    })
 
   if (error) {
     console.error('[heartbeatDevice] Error:', error)
@@ -65,27 +85,40 @@ export async function heartbeatDevice(deviceId: string) {
   }
 }
 
-export async function getDeviceState(hardwareOrDeviceId: string) {
-  const supabase = getAdminClient()
-  const { data, error } = await supabase
+export async function getDeviceState(hardwareId: string) {
+  const supabase = await getPlayerClient(hardwareId)
+  // Explicitly select only public fields, never return hardware_id to the client
+  const query = supabase
     .from('devices')
-    .select('*')
-    .or(`hardware_id.eq.${hardwareOrDeviceId},id.eq.${hardwareOrDeviceId}`)
+    .select('id, team_id, name, pairing_code, expires_at, status, content_type, asset_id, scale_mode, orientation, created_at, device_heartbeats(last_seen_at)')
+    .eq('hardware_id', hardwareId)
     .maybeSingle()
+
+  const { data, error } = await query
 
   if (error) {
     console.error('[getDeviceState] Error:', error)
     throw new Error('Failed to get device state')
   }
-  return data
+  
+  if (data) {
+    const { device_heartbeats, ...rest } = data
+    const hb = Array.isArray(device_heartbeats) ? device_heartbeats[0] : device_heartbeats
+    return {
+      ...rest,
+      last_seen_at: hb?.last_seen_at || null
+    }
+  }
+  return null
 }
 
-export async function unpairDevice(deviceId: string) {
-  const supabase = getAdminClient()
+export async function unpairDevice(deviceId: string, hardwareId: string) {
+  const supabase = await getPlayerClient(hardwareId)
   const { error } = await supabase
     .from('devices')
     .delete()
     .eq('id', deviceId)
+    .eq('hardware_id', hardwareId)
 
   if (error) {
     console.error('[unpairDevice] Error:', error)
@@ -93,12 +126,13 @@ export async function unpairDevice(deviceId: string) {
   }
 }
 
-export async function updateDeviceOrientation(deviceId: string, orientation: number) {
-  const supabase = getAdminClient()
+export async function updateDeviceOrientation(deviceId: string, hardwareId: string, orientation: number) {
+  const supabase = await getPlayerClient(hardwareId)
   const { error } = await supabase
     .from('devices')
     .update({ orientation })
     .eq('id', deviceId)
+    .eq('hardware_id', hardwareId)
 
   if (error) {
     console.error('[updateDeviceOrientation] Error:', error)

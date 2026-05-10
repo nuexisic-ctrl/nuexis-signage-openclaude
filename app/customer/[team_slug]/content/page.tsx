@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ContentClient from './ContentClient'
 import styles from './content.module.css'
+import Header from '../components/Header'
 
 interface Props {
   params: Promise<{ team_slug: string }>
@@ -102,6 +103,7 @@ export default async function ContentPage({ params }: Props) {
 
       {/* Main */}
       <main className={styles.main}>
+        <Header fullName={fullName} email={user.email} />
         <div className={styles.topbar}>
           <div>
             <h1 className={styles.pageTitle}>Content Library</h1>

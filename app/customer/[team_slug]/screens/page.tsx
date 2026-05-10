@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ScreensClient from './ScreensClient'
 import styles from './screens.module.css'
+import Header from '../components/Header'
 
 interface Props {
   params: Promise<{ team_slug: string }>
@@ -41,14 +42,25 @@ export default async function ScreensPage({ params }: Props) {
     .eq('id', user.id)
     .single()
 
-  const devices = profile?.team_id
-    ? (await supabase
-        .from('devices')
-        .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at')
-        .eq('team_id', profile.team_id)
-        .order('created_at', { ascending: false })
-      ).data ?? []
+  const query = supabase
+    .from('devices')
+    .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation, device_heartbeats(last_seen_at)')
+    .eq('team_id', profile?.team_id as string)
+    .order('created_at', { ascending: false })
+
+  const devicesData = profile?.team_id
+    ? ((await query).data ?? [])
     : []
+
+  const devices = devicesData.map((d) => {
+    const hb = Array.isArray(d.device_heartbeats) ? d.device_heartbeats[0] : d.device_heartbeats
+    const { device_heartbeats, ...rest } = d
+    return {
+      ...rest,
+      last_seen_at: hb?.last_seen_at || null,
+      device_heartbeats: undefined
+    }
+  })
 
   // Fetch all assets for this team
   const assets = profile?.team_id
@@ -111,6 +123,7 @@ export default async function ScreensPage({ params }: Props) {
 
       {/* Main */}
       <main className={styles.main}>
+        <Header fullName={fullName} email={user.email} />
         <div className={styles.topbar}>
           <div>
             <h1 className={styles.pageTitle}>Screens</h1>
@@ -123,8 +136,8 @@ export default async function ScreensPage({ params }: Props) {
         </div>
 
         <ScreensClient
-          devices={devices as any}
-          assets={assets as any}
+          devices={devices}
+          assets={assets}
           teamSlug={team_slug}
           teamId={profile?.team_id as string}
         />

@@ -195,12 +195,12 @@ function PairModal({
               id="pairing-code"
               className={styles.codeInput}
               type="text"
-              inputMode="numeric"
-              placeholder="000 000"
+              inputMode="text"
+              placeholder="A1B 2C3"
               maxLength={7}
               value={code}
               onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+                const val = e.target.value.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6)
                 setCode(val)
                 if (val.length === 6) {
                   document.getElementById('screen-name')?.focus()
@@ -309,7 +309,7 @@ function AssignModal({
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.fieldGroup}>
             <label className={styles.label}>Content Type</label>
-            <select className={styles.input} value={contentType} onChange={(e) => setContentType(e.target.value as any)}>
+            <select className={styles.input} value={contentType} onChange={(e) => setContentType(e.target.value as 'Asset' | 'Playlist' | 'Schedule')}>
               <option value="Asset">Asset</option>
               <option value="Playlist" disabled>Playlist (Coming Soon)</option>
               <option value="Schedule" disabled>Schedule (Coming Soon)</option>
@@ -330,7 +330,7 @@ function AssignModal({
 
           <div className={styles.fieldGroup}>
             <label className={styles.label}>Scale Mode</label>
-            <select className={styles.input} value={scaleMode} onChange={(e) => setScaleMode(e.target.value as any)}>
+            <select className={styles.input} value={scaleMode} onChange={(e) => setScaleMode(e.target.value as 'None' | 'Fit' | 'Stretch' | 'Zoom')}>
               <option value="None">None</option>
               <option value="Fit">Fit</option>
               <option value="Stretch">Stretch</option>
@@ -340,7 +340,7 @@ function AssignModal({
 
           <div className={styles.fieldGroup}>
             <label className={styles.label}>Orientation</label>
-            <select className={styles.input} value={orientation} onChange={(e) => setOrientation(Number(e.target.value) as any)}>
+            <select className={styles.input} value={orientation} onChange={(e) => setOrientation(Number(e.target.value) as 0 | 90 | 180 | 270)}>
               <option value={0}>Landscape (0°)</option>
               <option value={90}>Rotate 90°</option>
               <option value={180}>Rotate 180°</option>
@@ -469,14 +469,19 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     const intervalId = setInterval(async () => {
       const { data, error } = await supabase
         .from('devices')
-        .select('*')
+        .select('*, device_heartbeats(last_seen_at)')
         .eq('team_id', teamId)
       
       if (!error && data) {
         // We do a functional update to avoid race conditions with Realtime,
         // though Realtime is also updating this state. This ensures we have 
         // a reliable heartbeat check if Realtime drops.
-        setDevices(data as Device[])
+        const mapped = data.map((d: any) => ({
+          ...d,
+          last_seen_at: d.device_heartbeats?.last_seen_at || null,
+          device_heartbeats: undefined
+        })) as Device[]
+        setDevices(mapped)
       }
     }, 30000) // 30s
 

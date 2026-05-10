@@ -19,10 +19,14 @@ function formatTime(ms: number): string {
 }
 
 function generateCode(): string {
-  const array = new Uint32Array(1)
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const array = new Uint32Array(6)
   window.crypto.getRandomValues(array)
-  const code = 100000 + (array[0] % 900000)
-  return code.toString()
+  let code = ''
+  for (let i = 0; i < 6; i++) {
+    code += chars[array[i] % chars.length]
+  }
+  return code
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,6 +48,7 @@ export default function PlayerPage() {
   const [isMuted, setIsMuted] = useState(true)
 
   const deviceIdRef      = useRef<string | null>(null)
+  const hardwareIdRef    = useRef<string | null>(null)
   const isPairedRef      = useRef(false)
   const teamIdRef        = useRef<string | null>(null)
   const timerRef         = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -111,12 +116,14 @@ export default function PlayerPage() {
     // ── Heartbeat: updates last_seen_at + resyncs state ─────────────────
     async function sendHeartbeat(deviceId: string) {
       if (cancelled) return
+      const hwId = hardwareIdRef.current
+      if (!hwId) return
 
       // Update last_seen_at
-      await heartbeatDevice(deviceId).catch(err => console.error(err))
+      await heartbeatDevice(deviceId, hwId).catch(err => console.error(err))
 
       // Resync: re-fetch device state to recover from Realtime drops
-      const fresh = await getDeviceState(deviceId).catch(() => null)
+      const fresh = await getDeviceState(hwId).catch(() => null)
 
       if (fresh && !cancelled) {
         // If the device has been unpaired from the CMS, reload
@@ -172,6 +179,7 @@ export default function PlayerPage() {
     // ── Main init ────────────────────────────────────────────────────────
     async function init() {
       const hardwareId = await getHardwareId()
+      hardwareIdRef.current = hardwareId
       console.log('[Player] Hardware ID:', hardwareId)
 
       const existing = await getDeviceState(hardwareId)
@@ -197,7 +205,7 @@ export default function PlayerPage() {
         } else {
           // ── Unpaired — check expiry ──────────────────────────────────
           const existingExpiry = new Date(existing.expires_at).getTime()
-          if (existingExpiry > Date.now()) {
+          if (existingExpiry > Date.now() && existing.pairing_code) {
             console.log('[Player] Resuming active pairing session')
             deviceIdRef.current = existing.id
             activeCode = existing.pairing_code
@@ -206,7 +214,7 @@ export default function PlayerPage() {
             setState('pairing')
             activeDevice = existing
           } else {
-            console.log('[Player] Session expired, resetting')
+            console.log('[Player] Session expired or no code, resetting')
             activeCode = generateCode()
             expiresAtMs = Date.now() + PAIRING_DURATION_MS
             const updated = await refreshDeviceCode(existing.id, hardwareId, activeCode, expiresAtMs).catch(() => null)
@@ -319,8 +327,10 @@ export default function PlayerPage() {
           // Once the subscription is confirmed, re-fetch the device state
           // to catch any UPDATE events that fired between init() and now.
           if (status === 'SUBSCRIBED') {
-            getDeviceState(activeDevice.id)
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const hwId = hardwareIdRef.current
+            if (hwId) {
+              getDeviceState(hwId)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
               .then((fresh: any) => {
                 if (!fresh || cancelled) return
                 if (fresh.team_id && !isPairedRef.current) {
@@ -339,6 +349,7 @@ export default function PlayerPage() {
                 }
               })
               .catch(console.error)
+            }
           }
         })
 
@@ -378,8 +389,8 @@ export default function PlayerPage() {
 
   const handleUnpair = async () => {
     if (confirm('Are you sure you want to unpair this device?')) {
-      if (deviceIdRef.current) {
-        await unpairDevice(deviceIdRef.current).catch(err => console.error(err))
+      if (deviceIdRef.current && hardwareIdRef.current) {
+        await unpairDevice(deviceIdRef.current, hardwareIdRef.current).catch(err => console.error(err))
       }
       window.location.reload()
     }
@@ -387,8 +398,8 @@ export default function PlayerPage() {
 
   const handleOrientationChange = async (val: number) => {
     setOrientation(val)
-    if (deviceIdRef.current) {
-      await updateDeviceOrientation(deviceIdRef.current, val).catch(err => console.error(err))
+    if (deviceIdRef.current && hardwareIdRef.current) {
+      await updateDeviceOrientation(deviceIdRef.current, hardwareIdRef.current, val).catch(err => console.error(err))
     }
   }
 

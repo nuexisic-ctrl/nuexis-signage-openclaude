@@ -16,13 +16,13 @@ export async function claimDevice(
   pairingCode: string,
   screenName: string
 ): Promise<PairDeviceResult> {
-  const trimmedCode = pairingCode.trim().replace(/\s/g, '')
+  const trimmedCode = pairingCode.trim().replace(/\s/g, '').toUpperCase()
   const trimmedName = screenName.trim()
 
   console.log('[claimDevice] called with code:', trimmedCode, 'name:', trimmedName, 'team:', teamSlug)
 
-  if (!/^\d{6}$/.test(trimmedCode)) {
-    return { success: false, error: 'Please enter a valid 6-digit pairing code.' }
+  if (!/^[A-Z0-9]{6}$/.test(trimmedCode)) {
+    return { success: false, error: 'Please enter a valid 6-character pairing code.' }
   }
   if (!trimmedName) {
     return { success: false, error: 'Please provide a name for this screen.' }
