@@ -17,8 +17,10 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             )
-          } catch {
-            // Server Component — cookies can only be set in middleware or route handlers
+          } catch (error) {
+            // Server Component — cookies can only be set in middleware or route handlers.
+            // Log for diagnostics; this is expected in Server Components but not elsewhere.
+            console.warn('[Supabase Server] Could not set cookies (expected in Server Components):', error)
           }
         },
       },

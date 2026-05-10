@@ -48,26 +48,48 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
-    // 2. Cross-tenant check — ensure the logged-in user belongs to this team
-    const userTeamSlug = user.user_metadata?.team_slug as string | undefined
-    if (userTeamSlug && userTeamSlug !== teamSlug) {
-      // Redirect to the user's actual dashboard, not the one they typed in the URL
+    // 2. Cross-tenant check — verify team membership against the DB (source of truth)
+    //    instead of trusting user_metadata which can be modified client-side.
+    const { data: membership } = await supabase
+      .from('profiles')
+      .select('team_id, teams!inner(slug)')
+      .eq('id', user.id)
+      .single()
+
+    if (!membership) {
+      // User has no profile/team — redirect to home
+      const homeUrl = request.nextUrl.clone()
+      homeUrl.pathname = '/'
+      return NextResponse.redirect(homeUrl)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dbTeamSlug = (membership as any).teams?.slug as string | undefined
+
+    if (dbTeamSlug && dbTeamSlug !== teamSlug) {
+      // User is trying to access a team they don't belong to — redirect to their real dashboard
       const correctDashboard = request.nextUrl.clone()
-      correctDashboard.pathname = `/customer/${userTeamSlug}/dashboard`
+      correctDashboard.pathname = `/customer/${dbTeamSlug}/dashboard`
       return NextResponse.redirect(correctDashboard)
     }
   }
 
-  // 2. Auth pages — redirect logged-in users to their dashboard
+  // 3. Auth pages — redirect logged-in users to their dashboard
   const isAuthPage =
     pathname === '/login' ||
     pathname === '/signup' ||
     (teamSlug && pathname === `/customer/${teamSlug}/login`)
 
   if (isAuthPage && user) {
-    // Look up the user's team slug from metadata
-    const userTeamSlug =
-      user.user_metadata?.team_slug as string | undefined
+    // Look up the user's actual team from the DB
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('teams!inner(slug)')
+      .eq('id', user.id)
+      .single()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userTeamSlug = (profile as any)?.teams?.slug as string | undefined
 
     const dashboardUrl = request.nextUrl.clone()
     dashboardUrl.pathname = userTeamSlug

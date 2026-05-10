@@ -71,23 +71,32 @@ export async function claimDevice(
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
-  // 4. Find an unclaimed, non-expired device with this code
-  const { data: device, error: deviceError } = await supabase
+  // 4. ATOMIC claim — single UPDATE with all conditions in WHERE clause.
+  //    This eliminates the race condition where two users could claim the
+  //    same device simultaneously. Only one UPDATE can succeed because
+  //    the first one sets team_id to non-null, causing the second's
+  //    WHERE team_id IS NULL to match 0 rows.
+  const { data: updated, error: updateError } = await supabase
     .from('devices')
-    .select('id, expires_at')
+    .update({
+      team_id: profile.team_id,
+      name: trimmedName,
+      status: 'online',
+    })
     .eq('pairing_code', trimmedCode)
     .is('team_id', null)
     .gt('expires_at', new Date().toISOString())
-    .maybeSingle()
+    .select('id')
 
-  console.log('[claimDevice] found device:', device, 'deviceError:', deviceError)
+  console.log('[claimDevice] atomic update result:', updated, 'updateError:', updateError)
 
-  if (deviceError) {
-    console.error('[claimDevice] device lookup error:', deviceError)
-    return { success: false, error: 'An error occurred while looking up the code. Please try again.' }
+  if (updateError) {
+    console.error('[claimDevice] update error:', updateError)
+    return { success: false, error: `Failed to pair the screen: ${updateError.message}` }
   }
 
-  if (!device) {
+  // If 0 rows were affected, the code was invalid, expired, or already claimed
+  if (!updated || updated.length === 0) {
     // Record this as a failed attempt for rate-limiting
     await supabase
       .from('login_attempts')
@@ -96,32 +105,7 @@ export async function claimDevice(
     return { success: false, error: 'Invalid or expired pairing code. Please check the code on screen and try again.' }
   }
 
-  // 5. Claim the device — assign team_id, name, and mark online
-  // Use select() to detect if RLS silently blocked the update (0 rows affected)
-  const { data: updated, error: updateError } = await supabase
-    .from('devices')
-    .update({
-      team_id: profile.team_id,
-      name: trimmedName,
-      status: 'online',
-    })
-    .eq('id', device.id)
-    .select('id')
-
-  console.log('[claimDevice] update result:', updated, 'updateError:', updateError)
-
-  if (updateError) {
-    console.error('[claimDevice] update error:', updateError)
-    return { success: false, error: `Failed to pair the screen: ${updateError.message}` }
-  }
-
-  // If RLS blocked the update, updated will be an empty array
-  if (!updated || updated.length === 0) {
-    console.error('[claimDevice] update was silently blocked by RLS — 0 rows affected')
-    return { success: false, error: 'Permission denied: could not claim this device. Please try again.' }
-  }
-
-  console.log('[claimDevice] success! device', device.id, 'claimed by team', profile.team_id)
+  console.log('[claimDevice] success! device', updated[0].id, 'claimed by team', profile.team_id)
 
   // Success — clear any recorded failed attempts for this user
   await supabase
@@ -129,7 +113,7 @@ export async function claimDevice(
     .delete()
     .eq('user_id', user.id)
 
-  // 6. Revalidate the screens page so the grid refreshes on next server render
+  // 5. Revalidate the screens page so the grid refreshes on next server render
   revalidatePath(`/customer/${teamSlug}/screens`)
 
   return { success: true }
@@ -184,4 +168,3 @@ export async function updateDeviceAssignment(
   revalidatePath(`/customer/${teamSlug}/screens`)
   return { success: true }
 }
-
