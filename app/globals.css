@@ -15,11 +15,13 @@
   /* Typography */
   --font-serif: 'Noto Serif', Georgia, serif;
   --font-body:  'Inter', system-ui, sans-serif;
+  --font-sans:  'Inter', system-ui, sans-serif;
   --font-label: 'Public Sans', system-ui, sans-serif;
 
   /* Brand / Primary */
   --primary:           #094cb2;
   --primary-container: #dce8ff;
+  --primary-gradient:  linear-gradient(135deg, var(--primary) 0%, var(--color-brand-light, #2563eb) 100%);
   --on-primary:        #ffffff;
 
   /* Secondary */
@@ -70,6 +72,38 @@
   /* Transitions */
   --transition-base: 150ms ease;
   --transition-slow: 300ms ease;
+}
+
+/* ─── Dark Mode Tokens ────────────────────────────────────────────────────── */
+:root[data-theme="dark"] {
+  /* Brand / Primary (slightly desaturated for dark mode) */
+  --primary:           #60a5fa;
+  --primary-container: #1e3a8a;
+  --on-primary:        #0f172a;
+
+  /* Surface tiers (dark) */
+  --surface-dim:             #020617;
+  --surface:                 #0f172a;
+  --surface-bright:          #1e293b;
+  --surface-container-lowest:#020617;
+  --surface-lowest:          #0f172a;
+  --surface-low:             #1e293b;
+  --surface-container:       #334155;
+  --surface-container-high:  #475569;
+  --surface-high:            #475569;
+
+  /* On-surface text */
+  --on-surface:        #f8fafc;
+  --on-surface-muted:  #cbd5e1;
+  --on-surface-subtle: #94a3b8;
+
+  /* Outline */
+  --outline:         #475569;
+  --outline-variant: rgba(255, 255, 255, 0.15);
+
+  /* Shadows (dark mode shadows are more subtle usually) */
+  --shadow-modal: 0 8px 40px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-card:  0 2px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* ─── Base Reset ──────────────────────────────────────────────────────────── */

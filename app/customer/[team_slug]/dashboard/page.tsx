@@ -160,7 +160,7 @@ export default async function DashboardPage({ params }: Props) {
           </div>
           <div className={styles.infoCard}>
             <p className={styles.infoLabel}>Status</p>
-            <p className={styles.infoValue} style={{ color: '#16a34a' }}>● Active</p>
+            <p className={`${styles.infoValue} ${styles.statusActive}`}>● Active</p>
           </div>
           <div className={styles.infoCard}>
             <p className={styles.infoLabel}>Your URL</p>

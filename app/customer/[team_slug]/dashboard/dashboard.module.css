@@ -10,6 +10,7 @@
   width: 240px;
   flex-shrink: 0;
   background: var(--surface-lowest);
+  border-right: 1px solid var(--outline-variant);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -24,7 +25,6 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  background: var(--surface-dim);
 }
 
 .sidebarTeam {
@@ -83,10 +83,10 @@
 /* Sidebar footer */
 .sidebarFooter {
   padding: 16px 12px;
-  background: var(--surface-dim);
   display: flex;
   align-items: center;
   gap: 8px;
+  border-top: 1px solid var(--outline-variant);
 }
 
 .userInfo {
@@ -183,7 +183,7 @@
 }
 
 .pageSubtitle {
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 0.9375rem;
   color: var(--on-surface-muted);
   margin: 6px 0 0;
@@ -214,6 +214,11 @@
   border-radius: 24px;
   padding: 48px;
   overflow: hidden;
+}
+
+[data-theme="dark"] .comingSoonCard {
+  background: linear-gradient(135deg, #020617 0%, #0a1120 60%, #0f172a 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .comingSoonGlow {
@@ -317,6 +322,12 @@
   flex-direction: column;
   gap: 6px;
   box-shadow: var(--shadow-card);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.infoCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-modal);
 }
 
 .infoLabel {
@@ -334,6 +345,14 @@
   font-weight: 600;
   color: var(--on-surface);
   margin: 0;
+}
+
+.statusActive {
+  color: #16a34a;
+}
+
+[data-theme="dark"] .statusActive {
+  color: #4ade80;
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */

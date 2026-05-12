@@ -93,7 +93,7 @@ function DeviceCard({
     <div className={styles.deviceCard}>
       <div className={styles.deviceCardHeaderTop}>
         <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className={styles.statusAndMenu}>
           <StatusBadge status={liveStatus} />
           <div className={styles.moreMenuWrapper}>
             <button 

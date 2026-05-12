@@ -2,10 +2,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border-color, #333);
-  margin-bottom: 2rem;
+  width: auto;
+  margin: -40px -48px 2rem -48px;
+  padding: 16px 48px;
+  background: var(--surface-lowest);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .left {
@@ -28,25 +29,26 @@
 .searchIcon {
   position: absolute;
   left: 0.75rem;
-  color: #888;
+  color: var(--on-surface-subtle);
   width: 16px;
   height: 16px;
 }
 
 .searchInput {
-  background-color: var(--input-bg, #1a1a1a);
-  border: 1px solid var(--border-color, #333);
-  color: #fff;
+  background-color: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface);
   padding: 0.5rem 0.5rem 0.5rem 2.5rem;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-size: 0.875rem;
   width: 250px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .searchInput:focus {
-  border-color: #666;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(9, 76, 178, 0.1);
 }
 
 .kbd {
@@ -59,30 +61,69 @@
 }
 
 .kbdKey {
-  background-color: #333;
-  color: #aaa;
+  background-color: var(--surface-dim);
+  color: var(--on-surface-muted);
   font-size: 0.65rem;
   padding: 0.125rem 0.375rem;
   border-radius: 4px;
-  border: 1px solid #444;
+  border: 1px solid var(--outline-variant);
 }
 
+/* ─── Theme Toggle ────────────────────────────────────────────────────────── */
+.themeToggle {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  border-radius: 24px;
+  background-color: var(--surface-dim);
+  border: 1px solid var(--outline-variant);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: background-color var(--transition-base);
+}
+
+.themeToggle.dark {
+  background-color: var(--surface-container-high);
+}
+
+.themeToggleThumb {
+  position: absolute;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: var(--surface-lowest);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-surface);
+  transition: transform var(--transition-base);
+}
+
+.themeToggle.dark .themeToggleThumb {
+  transform: translateX(24px);
+}
+
+/* ─── Buttons & Dropdown ──────────────────────────────────────────────────── */
 .iconBtn {
   background: none;
   border: none;
-  color: #aaa;
+  color: var(--on-surface-subtle);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.5rem;
-  border-radius: 6px;
-  transition: background-color 0.2s, color 0.2s;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-base), color var(--transition-base);
 }
 
 .iconBtn:hover {
-  background-color: #2a2a2a;
-  color: #fff;
+  background-color: var(--surface-container);
+  color: var(--on-surface);
 }
 
 .profileContainer {
@@ -98,7 +139,7 @@
   gap: 0.5rem;
   padding: 0.25rem;
   border-radius: 50%;
-  transition: opacity 0.2s;
+  transition: opacity var(--transition-base);
 }
 
 .profileBtn:hover {
@@ -109,8 +150,8 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: #444;
-  color: #fff;
+  background: var(--primary-gradient);
+  color: var(--on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,13 +164,13 @@
   top: 100%;
   right: 0;
   margin-top: 0.5rem;
-  background-color: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 6px;
+  background-color: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
   min-width: 150px;
   padding: 0.5rem;
   z-index: 50;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-card);
 }
 
 .dropdownItem {
@@ -139,21 +180,21 @@
   padding: 0.5rem;
   border: none;
   background: none;
-  color: #fff;
+  color: var(--on-surface);
   cursor: pointer;
   border-radius: 4px;
   font-size: 0.875rem;
-  transition: background-color 0.2s;
+  transition: background-color var(--transition-base);
 }
 
 .dropdownItem:hover {
-  background-color: #2a2a2a;
+  background-color: var(--surface-low);
 }
 
 .logoutBtn {
-  color: #ef4444;
+  color: var(--error);
 }
 
 .logoutBtn:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--error-container);
 }
