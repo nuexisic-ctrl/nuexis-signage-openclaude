@@ -376,6 +376,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   const teamChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDevices(initialDevices)
   }, [initialDevices])
 
@@ -518,7 +519,8 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     
     // Consider online if tracked via Presence OR if last_seen_at is recent (within ~60 seconds).
     // The player sends a heartbeat every 30s, so 60s allows for 1 missed heartbeat.
-    const isRecentlySeen = device.last_seen_at && (Date.now() - new Date(device.last_seen_at).getTime() < 60000)
+    const now = new Date().getTime()
+    const isRecentlySeen = device.last_seen_at && (now - new Date(device.last_seen_at).getTime() < 60000)
     
     return (onlineDeviceIds.has(device.id) || isRecentlySeen) ? 'online' : 'offline'
   }

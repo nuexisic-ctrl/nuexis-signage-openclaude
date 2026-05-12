@@ -57,6 +57,7 @@ export default async function ScreensPage({ params }: Props) {
     const { device_heartbeats, ...rest } = d
     return {
       ...rest,
+      status: rest.status as 'online' | 'offline' | 'pairing',
       last_seen_at: hb?.last_seen_at || null,
       device_heartbeats: undefined
     }

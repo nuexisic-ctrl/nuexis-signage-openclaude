@@ -39,6 +39,7 @@ export default function PlayerPage() {
 
   const [contentType, setContentType] = useState<string | null>(null)
   const [assetUrl, setAssetUrl] = useState<string | null>(null)
+  const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [mimeType, setMimeType] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState<string>('Fit')
   const [orientation, setOrientation] = useState<number>(0)
@@ -59,8 +60,18 @@ export default function PlayerPage() {
   const supabaseRef      = useRef(createClient())
 
   useEffect(() => {
+    // Cleanup previous blob URL when it changes or unmounts
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl)
+      }
+    }
+  }, [blobUrl])
+
+  useEffect(() => {
     const savedMute = localStorage.getItem('nuexis_player_muted')
     if (savedMute !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsMuted(savedMute === 'true')
     }
 
@@ -79,10 +90,27 @@ export default function PlayerPage() {
     let cancelled = false
 
     // ── Asset resolver ───────────────────────────────────────────────────
+    async function cleanupOldCaches(currentUrlToKeep: string) {
+      try {
+        const cache = await caches.open('nuexis-media-cache');
+        const keys = await cache.keys();
+        
+        for (const request of keys) {
+          if (request.url !== currentUrlToKeep) {
+            await cache.delete(request);
+            console.log('[Player] Deleted old cached asset:', request.url);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to clean up old caches', err);
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async function resolveAsset(client: any, assetId: string | null) {
       if (!assetId) {
         setAssetUrl(null)
+        setBlobUrl(null)
         setMimeType(null)
         return
       }
@@ -94,10 +122,44 @@ export default function PlayerPage() {
 
       if (asset) {
         const { data } = client.storage.from('workspace-media').getPublicUrl(asset.file_path)
-        setAssetUrl(data.publicUrl)
-        setMimeType(asset.mime_type)
+        const publicUrl = data.publicUrl
+        
+        try {
+          const cache = await caches.open('nuexis-media-cache')
+          let response = await cache.match(publicUrl)
+          
+          if (!response) {
+            console.log('[Player] Downloading media for offline cache...')
+            response = await fetch(publicUrl)
+            if (response.ok) {
+              await cache.put(publicUrl, response.clone())
+            }
+          } else {
+            console.log('[Player] Playing media from offline cache!')
+          }
+
+          if (response && response.ok) {
+            const blob = await response.blob()
+            const localBlobUrl = URL.createObjectURL(blob)
+            
+            setBlobUrl(localBlobUrl)
+            setAssetUrl(localBlobUrl) // We use the blob URL for rendering
+            setMimeType(asset.mime_type)
+
+            // Clean up other cached videos so we don't run out of storage
+            cleanupOldCaches(publicUrl)
+          } else {
+            throw new Error('Failed to load media')
+          }
+        } catch (err) {
+          console.error('[Player] Offline caching failed, falling back to network stream', err)
+          setBlobUrl(null)
+          setAssetUrl(publicUrl)
+          setMimeType(asset.mime_type)
+        }
       } else {
         setAssetUrl(null)
+        setBlobUrl(null)
         setMimeType(null)
       }
     }
@@ -126,9 +188,13 @@ export default function PlayerPage() {
       const fresh = await getDeviceState(hwId).catch(() => null)
 
       if (fresh && !cancelled) {
-        // If the device has been unpaired from the CMS, reload
+        // If the device has been unpaired from the CMS, reload ONLY if online
         if (!fresh.team_id && isPairedRef.current) {
-          window.location.reload()
+          if (navigator.onLine) {
+            window.location.reload()
+          } else {
+            console.log('[Player] Device unpaired but offline. Skipping reload to keep app shell alive.')
+          }
           return
         }
         applyDeviceState(fresh)
@@ -302,8 +368,12 @@ export default function PlayerPage() {
               }
               applyDeviceState(payload.new)
             } else {
-              console.log('[Player] Device unpaired! Reloading player.')
-              window.location.reload()
+              if (navigator.onLine) {
+                console.log('[Player] Device unpaired! Reloading player.')
+                window.location.reload()
+              } else {
+                console.log('[Player] Device unpaired but offline. Skipping reload.')
+              }
             }
           }
         )
@@ -316,8 +386,10 @@ export default function PlayerPage() {
             filter: `id=eq.${activeDevice.id}`,
           },
           () => {
-            console.log('[Player] Device deleted! Reloading player.')
-            window.location.reload()
+            if (navigator.onLine) {
+              console.log('[Player] Device deleted! Reloading player.')
+              window.location.reload()
+            }
           }
         )
         .subscribe((status: string) => {

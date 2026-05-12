@@ -1,0 +1,16 @@
+{
+  "name": "NuExis Player",
+  "short_name": "NuExis",
+  "description": "NuExis Digital Signage Player",
+  "start_url": "/player",
+  "display": "standalone",
+  "background_color": "#07111f",
+  "theme_color": "#094cb2",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}
