@@ -4,7 +4,7 @@ import { useState, useCallback, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { insertAsset, deleteAsset } from './actions'
-import styles from './content.module.css'
+import styles from './asset.module.css'
 
 interface Asset {
   id: string
@@ -197,7 +197,7 @@ function UploadZone({
 
 // ─── Main Client Component ────────────────────────────────────────────────────
 
-export default function ContentClient({ initialAssets, teamId, teamSlug }: Props) {
+export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -322,7 +322,7 @@ export default function ContentClient({ initialAssets, teamId, teamSlug }: Props
   }, [teamSlug])
 
   return (
-    <div className={styles.contentArea}>
+    <div className={styles.assetArea}>
       <UploadZone
         onFiles={handleFiles}
         isUploading={isUploading}
@@ -353,7 +353,7 @@ export default function ContentClient({ initialAssets, teamId, teamSlug }: Props
           <div className={styles.emptyIcon}>◈</div>
           <h3 className={styles.emptyTitle}>No assets yet</h3>
           <p className={styles.emptyText}>
-            Upload images or videos above to start building your content library.
+            Upload images or videos above to start building your asset library.
             Your media will be displayed on your paired screens.
           </p>
         </div>

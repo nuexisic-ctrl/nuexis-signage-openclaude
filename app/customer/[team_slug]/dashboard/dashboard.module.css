@@ -138,6 +138,22 @@
   text-overflow: ellipsis;
 }
 
+.userRoleBadge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 6px;
+  background: var(--surface-dim);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-label);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--on-surface-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  width: max-content;
+}
+
 .signOutBtn {
   background: none;
   border: none;
@@ -158,12 +174,18 @@
 /* ─── Main Content ────────────────────────────────────────────────────────── */
 .main {
   flex: 1;
-  margin-left: 240px;
+  margin-left: 260px;
   padding: 40px 48px;
   display: flex;
   flex-direction: column;
   gap: 32px;
-  max-width: calc(100vw - 240px);
+  max-width: calc(100vw - 260px);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:global(.sidebar-collapsed) .main {
+  margin-left: 80px;
+  max-width: calc(100vw - 80px);
 }
 
 /* ─── Topbar ──────────────────────────────────────────────────────────────── */

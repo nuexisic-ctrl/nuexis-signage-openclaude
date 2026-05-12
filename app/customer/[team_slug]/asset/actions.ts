@@ -52,7 +52,7 @@ export async function insertAsset(
     return { success: false, error: `Failed to save asset metadata: ${error.message}` }
   }
 
-  revalidatePath(`/customer/${teamSlug}/content`)
+  revalidatePath(`/customer/${teamSlug}/asset`)
   return { success: true, id: data.id }
 }
 
@@ -130,6 +130,6 @@ export async function deleteAsset(
     return { success: false, error: `Failed to delete asset record: ${dbError.message}` }
   }
 
-  revalidatePath(`/customer/${teamSlug}/content`)
+  revalidatePath(`/customer/${teamSlug}/asset`)
   return { success: true }
 }

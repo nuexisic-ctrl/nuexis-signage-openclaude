@@ -35,6 +35,47 @@ interface Props {
   teamId: string
 }
 
+function DeviceIcon({ name, orientation }: { name: string, orientation?: number | null }) {
+  const isMobile = name.toLowerCase().includes('mobile') || name.toLowerCase().includes('phone');
+  const isTablet = name.toLowerCase().includes('tablet') || name.toLowerCase().includes('ipad');
+  const isKiosk = name.toLowerCase().includes('kiosk') || orientation === 90 || orientation === 270;
+
+  if (isMobile) {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+        <line x1="12" y1="18" x2="12.01" y2="18"></line>
+      </svg>
+    )
+  }
+  if (isTablet) {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+        <line x1="12" y1="18" x2="12.01" y2="18"></line>
+      </svg>
+    )
+  }
+  if (isKiosk) {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="7" y="2" width="10" height="14" rx="1" ry="1"></rect>
+        <line x1="12" y1="16" x2="12" y2="20"></line>
+        <line x1="8" y1="20" x2="16" y2="20"></line>
+      </svg>
+    )
+  }
+  
+  // Default monitor/display
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="12" rx="2" ry="2"></rect>
+      <line x1="12" y1="16" x2="12" y2="20"></line>
+      <line x1="8" y1="20" x2="16" y2="20"></line>
+    </svg>
+  )
+}
+
 function StatusBadge({ status }: { status: LiveStatus }) {
   const cls: Record<LiveStatus, string> = {
     online:  styles.statusOnline,
@@ -51,7 +92,7 @@ function StatusBadge({ status }: { status: LiveStatus }) {
   return (
     <span className={`${styles.statusBadge} ${cls[status]}`}>
       <span className={`${styles.statusDot} ${dotCls[status]}`} />
-      {status}
+      {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   )
 }
@@ -369,6 +410,18 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   const [searchQuery, setSearchQuery] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
+  useEffect(() => {
+    const saved = localStorage.getItem('screensViewMode')
+    if (saved === 'grid' || saved === 'table') {
+      setViewMode(saved)
+    }
+  }, [])
+
+  const handleSetViewMode = (mode: 'grid' | 'table') => {
+    setViewMode(mode)
+    localStorage.setItem('screensViewMode', mode)
+  }
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -531,161 +584,273 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     return (d.name?.toLowerCase().includes(q) || d.status.includes(q))
   })
 
+  const onlineCount = devices.filter(d => getLiveStatus(d) === 'online').length;
+  const offlineCount = devices.length - onlineCount;
+
   return (
     <>
-      <div className={styles.addBtnWrapper}>
-        <button
-          id="add-screen-btn"
-          className={styles.addBtn}
-          onClick={() => setShowPairModal(true)}
-        >
-          <span className={styles.addBtnIcon}>+</span>
-          Add Screen
-        </button>
-      </div>
-
-      <div className={styles.controlsBar}>
-        <div className={styles.searchBox}>
-          <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-          </svg>
-          <input 
-            type="text" 
-            className={styles.searchInput}
-            placeholder="Search screens by name or status..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className={styles.viewToggleGroup}>
-          <button 
-            className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-            onClick={() => setViewMode('grid')}
-            title="Grid View"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-            </svg>
-          </button>
-          <button 
-            className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
-            onClick={() => setViewMode('table')}
-            title="Table View"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {filteredDevices.length === 0 ? (
-        <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}>◫</div>
-          <h3 className={styles.emptyTitle}>No screens found</h3>
-          <p className={styles.emptyText}>
-            {devices.length === 0 
-              ? <>Open the NuExis player app on a screen, then click <strong>Add Screen</strong> to pair it to your workspace.</>
-              : "No screens matched your search criteria."
-            }
+      <div className={styles.topbar}>
+        <div>
+          <h1 className={styles.pageTitle}>Screens</h1>
+          <p className={styles.pageSubtitle}>
+            Manage and monitor your workspace screens
           </p>
         </div>
-      ) : viewMode === 'grid' ? (
-        <div className={styles.grid}>
-          {filteredDevices.map((device) => (
-            <DeviceCard
-              key={device.id}
-              device={device}
-              liveStatus={getLiveStatus(device)}
-              onEdit={() => setAssignModalDevice(device)}
-              onDelete={() => handleDeleteDevice(device.id)}
-              menuOpen={openMenuId === device.id}
-              onToggleMenu={(e) => {
-                e.stopPropagation();
-                setOpenMenuId(openMenuId === device.id ? null : device.id);
-              }}
-            />
-          ))}
+        <div className={styles.topbarActions}>
+          <button
+            id="add-screen-btn"
+            className={styles.addBtn}
+            onClick={() => setShowPairModal(true)}
+          >
+            <span className={styles.addBtnIcon}>+</span>
+            Add Screen
+          </button>
         </div>
-      ) : (
-        <div className={styles.tableContainer}>
-          <table className={styles.screensTable}>
-            <thead className={styles.tableHeader}>
-              <tr>
-                <th>Screen Name</th>
-                <th>Status</th>
-                <th>Last Seen</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDevices.map(device => {
-                const status = getLiveStatus(device)
-                const lastSeen = formatLastSeen(device.last_seen_at, status === 'online')
-                const isMenuOpen = openMenuId === device.id
+      </div>
 
-                return (
-                  <tr key={device.id} className={styles.tableRow}>
-                    <td className={styles.tableCell}>
-                      <div className={styles.cellName}>{device.name || 'Unnamed Screen'}</div>
-                      <div className={styles.cellId}>{device.id.slice(0,8)}...</div>
-                    </td>
-                    <td className={styles.tableCell}>
-                      <StatusBadge status={status} />
-                    </td>
-                    <td className={styles.tableCell}>
-                      <div className={styles.cellLastSeen}>{lastSeen}</div>
-                    </td>
-                    <td className={styles.tableCell}>
-                      <div className={styles.actionsGroup}>
-                        <button className={styles.editBtn} onClick={() => setAssignModalDevice(device)}>Edit</button>
-                        <div className={styles.moreMenuWrapper}>
-                          <button 
-                            className={`${styles.moreBtn} ${isMenuOpen ? styles.active : ''}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenuId(isMenuOpen ? null : device.id)
-                            }}
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <div className={`${styles.statIconWrapper} ${styles.statIconTotal}`}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <div className={styles.statInfo}>
+            <span className={styles.statValue}>{devices.length}</span>
+            <span className={styles.statLabel}>Total Screens</span>
+          </div>
+        </div>
+
+        <div className={styles.statCard}>
+          <div className={`${styles.statIconWrapper} ${styles.statIconOnline}`}>
+            <span className={styles.statusDotOnlineLarge} />
+          </div>
+          <div className={styles.statInfo}>
+            <span className={styles.statValue}>{onlineCount}</span>
+            <span className={styles.statLabel}>Online</span>
+          </div>
+        </div>
+
+        <div className={styles.statCard}>
+          <div className={`${styles.statIconWrapper} ${styles.statIconOffline}`}>
+            <span className={styles.statusDotOfflineLarge} />
+          </div>
+          <div className={styles.statInfo}>
+            <span className={styles.statValue}>{offlineCount}</span>
+            <span className={styles.statLabel}>Offline</span>
+          </div>
+        </div>
+
+        <div className={styles.statCard}>
+          <div className={`${styles.statIconWrapper} ${styles.statIconPlaytime}`}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div className={styles.statInfo}>
+            <span className={styles.statValue}>2h 34m</span>
+            <span className={styles.statLabel}>Total Playtime</span>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.mainBlockContainer}>
+        <div className={styles.controlsBar}>
+          <div className={styles.searchBox}>
+            <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <input 
+              type="text" 
+              className={styles.searchInput}
+              placeholder="Search by name or status..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className={styles.controlsRight}>
+            <div className={styles.viewToggleGroup}>
+              <button 
+                className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                onClick={() => handleSetViewMode('grid')}
+                title="Grid View"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                  <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                  <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                  <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                </svg>
+              </button>
+              <button 
+                className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
+                onClick={() => handleSetViewMode('table')}
+                title="Table View"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <button className={styles.filterBtn}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+              Filters
+            </button>
+          </div>
+        </div>
+
+        {filteredDevices.length === 0 ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>◫</div>
+            <h3 className={styles.emptyTitle}>No screens found</h3>
+            <p className={styles.emptyText}>
+              {devices.length === 0 
+                ? <>Open the NuExis player app on a screen, then click <strong>Add Screen</strong> to pair it to your workspace.</>
+                : "No screens matched your search criteria."
+              }
+            </p>
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className={styles.grid}>
+            {filteredDevices.map((device) => (
+              <DeviceCard
+                key={device.id}
+                device={device}
+                liveStatus={getLiveStatus(device)}
+                onEdit={() => setAssignModalDevice(device)}
+                onDelete={() => handleDeleteDevice(device.id)}
+                menuOpen={openMenuId === device.id}
+                onToggleMenu={(e) => {
+                  e.stopPropagation();
+                  setOpenMenuId(openMenuId === device.id ? null : device.id);
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className={styles.tableContainer}>
+            <table className={styles.screensTable}>
+              <thead className={styles.tableHeader}>
+                <tr>
+                  <th>Screen Name</th>
+                  <th>Status</th>
+                  <th>Last Seen</th>
+                  <th>Current Playlist</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDevices.map(device => {
+                  const status = getLiveStatus(device)
+                  const lastSeen = formatLastSeen(device.last_seen_at, status === 'online')
+                  const isMenuOpen = openMenuId === device.id
+                  const isOnline = status === 'online'
+
+                  return (
+                    <tr key={device.id} className={styles.tableRow}>
+                      <td className={styles.tableCell}>
+                        <div className={styles.nameCellContent}>
+                          <div className={styles.deviceIconWrapper}>
+                            <DeviceIcon name={device.name || ''} orientation={device.orientation} />
+                          </div>
+                          <div>
+                            <div className={styles.cellName}>{device.name || 'Unnamed Screen'}</div>
+                            <div className={styles.cellId}>ID: NX-{device.id.slice(0, 4).toUpperCase()}-{device.id.slice(4, 5).toUpperCase()}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className={styles.tableCell}>
+                        <StatusBadge status={status} />
+                      </td>
+                      <td className={styles.tableCell}>
+                        <div className={styles.cellLastSeen}>
+                          <span className={`${styles.statusDot} ${isOnline ? styles.statusDotOnline : styles.statusDotOffline}`} style={{ marginRight: '8px' }} />
+                          {lastSeen}
+                        </div>
+                      </td>
+                      <td className={styles.tableCell}>
+                        <div className={styles.playlistCell}>
+                          <svg className={styles.playlistIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            {device.asset_id ? (
+                              <>
+                                <line x1="8" y1="6" x2="21" y2="6"></line>
+                                <line x1="8" y1="12" x2="21" y2="12"></line>
+                                <line x1="8" y1="18" x2="21" y2="18"></line>
+                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                              </>
+                            ) : (
+                              <>
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.44l5.36-1.36"></path>
+                              </>
+                            )}
+                          </svg>
+                          <span style={!device.asset_id ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}>
+                            {device.asset_id 
+                              ? (assets.find(a => a.id === device.asset_id)?.file_name || 'Assigned Asset') 
+                              : 'Sync Failed'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className={styles.tableCell}>
+                        <div className={styles.actionsGroup}>
+                          <button className={styles.actionBtnBox} onClick={() => setAssignModalDevice(device)} aria-label="Edit">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
                             </svg>
                           </button>
-                          {isMenuOpen && (
-                            <div className={styles.moreDropdown}>
-                              <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => handleDeleteDevice(device.id)}>
-                                Unpair & Delete
-                              </button>
-                            </div>
-                          )}
+                          <div className={styles.moreMenuWrapper}>
+                            <button 
+                              className={`${styles.actionBtnBox} ${isMenuOpen ? styles.active : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(isMenuOpen ? null : device.id)
+                              }}
+                              aria-label="More Actions"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                                <circle cx="12" cy="12" r="1.5"></circle>
+                                <circle cx="12" cy="5" r="1.5"></circle>
+                                <circle cx="12" cy="19" r="1.5"></circle>
+                              </svg>
+                            </button>
+                            {isMenuOpen && (
+                              <div className={styles.moreDropdown}>
+                                <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => handleDeleteDevice(device.id)}>
+                                  Unpair & Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {showPairModal && (
-        <PairModal
-          teamSlug={teamSlug}
-          onClose={() => setShowPairModal(false)}
-          onSuccess={handlePairSuccess}
-        />
-      )}
-
-      {assignModalDevice && (
-        <AssignModal
-          device={assignModalDevice}
-          assets={assets}
-          teamSlug={teamSlug}
-          onClose={() => setAssignModalDevice(null)}
-          onSuccess={handleAssignSuccess}
-        />
-      )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            <div className={styles.tableFooter}>
+              <div>Showing 1 to {filteredDevices.length || 0} of {filteredDevices.length || 0} screens</div>
+              <div className={styles.pagination}>
+                <button className={styles.pageBtn}>Prev</button>
+                <button className={`${styles.pageBtn} ${styles.active}`}>1</button>
+                <button className={styles.pageBtn}>Next</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   )
 }

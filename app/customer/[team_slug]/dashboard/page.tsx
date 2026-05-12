@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import styles from './dashboard.module.css'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 
 interface Props {
   params: Promise<{ team_slug: string }>
@@ -47,54 +48,18 @@ export default async function DashboardPage({ params }: Props) {
     redirect(`/customer/${userTeamSlug}/dashboard`)
   }
 
+  // Fetch the user's role from the profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const userRole = profile?.role || 'Owner'
+
   return (
     <div className={styles.shell}>
-      {/* Sidebar */}
-      <aside className={styles.sidebar}>
-        <div className={styles.sidebarLogo}>
-          <Link href="/" className="navbar-logo" style={{ fontSize: '1.25rem' }}>
-            Nu<span>Exis</span>
-          </Link>
-          <span className={styles.sidebarTeam}>{team_slug}</span>
-        </div>
-
-        <nav className={styles.sidebarNav}>
-          {[
-            { icon: '⬡', label: 'Dashboard', href: `/customer/${team_slug}/dashboard`, active: true  },
-            { icon: '◫', label: 'Screens',   href: `/customer/${team_slug}/screens`,   active: false },
-            { icon: '◈', label: 'Content',   href: `/customer/${team_slug}/content`, active: false },
-            { icon: '◉', label: 'Schedules', href: '#', active: false },
-            { icon: '◎', label: 'Analytics', href: '#', active: false },
-            { icon: '◌', label: 'Settings',  href: '#', active: false },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`${styles.navItem} ${item.active ? styles.navItemActive : ''}`}
-            >
-              <span className={styles.navIcon}>{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className={styles.sidebarFooter}>
-          <div className={styles.userInfo}>
-            <div className={styles.userAvatar}>
-              {fullName ? fullName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
-            </div>
-            <div className={styles.userDetails}>
-              <span className={styles.userName}>{fullName || 'Team Owner'}</span>
-              <span className={styles.userEmail}>{user.email}</span>
-            </div>
-          </div>
-          <form action="/auth/signout" method="post">
-            <button type="submit" className={styles.signOutBtn} title="Sign out">
-              ↩
-            </button>
-          </form>
-        </div>
-      </aside>
+      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} />
 
       {/* Main */}
       <main className={styles.main}>
@@ -133,7 +98,7 @@ export default async function DashboardPage({ params }: Props) {
           <div className={styles.featurePreviewGrid}>
             {[
               { icon: '◫', title: 'Screen Management', desc: 'Connect and manage your digital displays' },
-              { icon: '◈', title: 'Content Library', desc: 'Upload and organise all your media assets' },
+              { icon: '◈', title: 'Asset Library', desc: 'Upload and organise all your media assets' },
               { icon: '◉', title: 'Smart Scheduling', desc: 'Automate content delivery with timezone-aware rules' },
               { icon: '◎', title: 'Live Analytics', desc: 'Proof-of-play reports and uptime metrics' },
             ].map((f) => (
@@ -156,7 +121,7 @@ export default async function DashboardPage({ params }: Props) {
           </div>
           <div className={styles.infoCard}>
             <p className={styles.infoLabel}>Role</p>
-            <p className={styles.infoValue}>Owner</p>
+            <p className={styles.infoValue}>{userRole.charAt(0).toUpperCase() + userRole.slice(1)}</p>
           </div>
           <div className={styles.infoCard}>
             <p className={styles.infoLabel}>Status</p>

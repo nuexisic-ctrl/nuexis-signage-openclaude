@@ -157,12 +157,18 @@
 /* ─── Main Content ────────────────────────────────────────────────────────── */
 .main {
   flex: 1;
-  margin-left: 240px;
+  margin-left: 260px;
   padding: 40px 48px;
   display: flex;
   flex-direction: column;
   gap: 32px;
-  max-width: calc(100vw - 240px);
+  max-width: calc(100vw - 260px);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:global(.sidebar-collapsed) .main {
+  margin-left: 80px;
+  max-width: calc(100vw - 80px);
 }
 
 .topbar {
@@ -187,8 +193,8 @@
   margin: 6px 0 0;
 }
 
-/* ─── Content Area ────────────────────────────────────────────────────────── */
-.contentArea {
+/* ─── Asset Area ────────────────────────────────────────────────────────── */
+.assetArea {
   display: flex;
   flex-direction: column;
   gap: 28px;
