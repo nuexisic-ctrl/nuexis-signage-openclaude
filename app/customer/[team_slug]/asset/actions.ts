@@ -35,7 +35,13 @@ export async function insertAsset(
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
-  const { data, error } = await supabase
+  const adminSupabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll() { return [] }, setAll() {} } }
+  )
+
+  const { data, error } = await adminSupabase
     .from('assets')
     .insert({
       team_id: profile.team_id,
@@ -48,12 +54,67 @@ export async function insertAsset(
     .single()
 
   if (error) {
-    console.error('[insertAsset] error:', error)
-    return { success: false, error: `Failed to save asset metadata: ${error.message}` }
+    console.error('[insertAsset] error:', { message: error.message, details: error.details, hint: error.hint })
+    return { success: false, error: 'An unexpected error occurred while managing your media.' }
   }
 
   revalidatePath(`/customer/${teamSlug}/asset`)
   return { success: true, id: data.id }
+}
+
+import { createServerClient } from '@supabase/ssr'
+
+export type GetUploadUrlResult =
+  | { success: true; signedUrl: string; token: string; path: string }
+  | { success: false; error: string }
+
+export async function getUploadUrl(
+  teamSlug: string,
+  fileName: string
+): Promise<GetUploadUrlResult> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to upload assets.' }
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('team_id')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile?.team_id) {
+    return { success: false, error: 'Could not determine your team.' }
+  }
+
+  const ext = fileName.split('.').pop() || ''
+  const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext ? `.${ext}` : ''}`
+  const path = `${profile.team_id}/${uniqueName}`
+
+  // Use service role client to bypass RLS for creating the signed URL
+  const adminSupabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll() { return [] }, setAll() {} } }
+  )
+
+  const { data, error } = await adminSupabase.storage
+    .from('workspace-media')
+    .createSignedUploadUrl(path)
+
+  if (error || !data) {
+    console.error('[getUploadUrl] error:', error ? { message: error.message, name: error.name } : 'No data returned')
+    return { success: false, error: 'An unexpected error occurred while managing your media.' }
+  }
+
+  return {
+    success: true,
+    signedUrl: data.signedUrl,
+    token: data.token,
+    path
+  }
 }
 
 export type DeleteAssetResult =
@@ -115,19 +176,25 @@ export async function deleteAsset(
 
   if (storageError) {
     console.error('[deleteAsset] storage error:', storageError)
-    return { success: false, error: `Failed to remove file from storage: ${storageError.message}` }
+    return { success: false, error: 'An unexpected error occurred while managing your media.' }
   }
 
   // ── Delete from database (double-lock: ownership filter + RLS) ────────────
-  const { error: dbError } = await supabase
+  const adminSupabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll() { return [] }, setAll() {} } }
+  )
+
+  const { error: dbError } = await adminSupabase
     .from('assets')
     .delete()
     .eq('id', assetId)
     .eq('team_id', profile.team_id)
 
   if (dbError) {
-    console.error('[deleteAsset] db error:', dbError)
-    return { success: false, error: `Failed to delete asset record: ${dbError.message}` }
+    console.error('[deleteAsset] db error:', { message: dbError.message, details: dbError.details, hint: dbError.hint })
+    return { success: false, error: 'An unexpected error occurred while managing your media.' }
   }
 
   revalidatePath(`/customer/${teamSlug}/asset`)

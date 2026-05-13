@@ -198,3 +198,27 @@
 .logoutBtn:hover {
   background-color: var(--error-container);
 }
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .header {
+    margin: -24px -20px 2rem -20px;
+    padding: 16px 20px;
+  }
+  
+  .searchInput {
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  .kbd {
+    display: none; /* Hide shortcut hint on mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  .searchInput {
+    max-width: 140px;
+  }
+}
+

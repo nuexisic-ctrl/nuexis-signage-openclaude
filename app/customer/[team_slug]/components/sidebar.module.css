@@ -270,36 +270,83 @@
   margin-top: 2px;
 }
 
-.signOutForm {
-  width: 100%;
+/* ─── Mobile Bottom Navigation ───────────────────────────────────────────── */
+.bottomNav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: var(--surface-lowest, #ffffff);
+  border-top: 1px solid var(--outline-variant, #e2e8f0);
+  z-index: 100;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-.signOutBtn {
-  width: 100%;
+[data-theme="dark"] .bottomNav {
+  background: var(--surface-lowest, #0f172a);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.bottomNavList {
   display: flex;
+  height: 100%;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border: none;
-  background: transparent;
-  color: var(--on-surface-muted, #475569);
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  justify-content: space-around;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-[data-theme="dark"] .signOutBtn {
+.bottomNavItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--on-surface-muted, #475569);
+  text-decoration: none;
+  flex: 1;
+  height: 100%;
+  transition: color 0.2s ease;
+}
+
+[data-theme="dark"] .bottomNavItem {
   color: #94a3b8;
 }
 
-.sidebar.collapsed .signOutBtn {
-  justify-content: center;
-  padding: 10px;
+.bottomNavItem:hover {
+  color: var(--on-surface, #0f172a);
 }
 
-.signOutBtn:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+[data-theme="dark"] .bottomNavItem:hover {
+  color: #f8fafc;
 }
+
+.bottomNavItem.active {
+  color: var(--primary, #2563eb);
+}
+
+[data-theme="dark"] .bottomNavItem.active {
+  color: #60a5fa;
+}
+
+.bottomNavLabel {
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar {
+    display: none; /* Hide sidebar on mobile */
+  }
+  .bottomNav {
+    display: flex;
+    flex-direction: column;
+    justify-content: stretch;
+  }
+}
+

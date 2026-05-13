@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ScreensClient from './ScreensClient'
@@ -76,9 +77,12 @@ export default async function ScreensPage({ params }: Props) {
       ).data ?? []
     : []
 
+  const cookieStore = await cookies();
+  const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
+
   return (
     <div className={styles.shell}>
-      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} />
+      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} initialCollapsed={initialCollapsed} />
 
       {/* Main */}
       <main className={styles.main}>

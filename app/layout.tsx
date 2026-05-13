@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,11 +8,14 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const sidebarCollapsed = cookieStore.get("nuexis_sidebar_collapsed")?.value === "true";
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -29,7 +33,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>{children}</body>
+      <body className={sidebarCollapsed ? "sidebar-collapsed" : ""}>{children}</body>
     </html>
   );
 }

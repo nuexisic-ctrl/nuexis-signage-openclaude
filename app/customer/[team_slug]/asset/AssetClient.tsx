@@ -3,7 +3,7 @@
 import { useState, useCallback, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { insertAsset, deleteAsset } from './actions'
+import { insertAsset, deleteAsset, getUploadUrl } from './actions'
 import styles from './asset.module.css'
 
 interface Asset {
@@ -204,7 +204,6 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
   const [, startTransition] = useTransition()
   const router = useRouter()
   const supabase = createClient()
@@ -232,13 +231,18 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
 
     for (const file of files) {
       try {
-        const ext = file.name.split('.').pop()
-        const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-        const filePath = `${teamId}/${uniqueName}`
+        const uploadUrlResult = await getUploadUrl(teamSlug, file.name)
+        
+        if (!uploadUrlResult.success) {
+          setUploadError(`Failed to get upload URL for "${file.name}": ${uploadUrlResult.error}`)
+          continue
+        }
+
+        const { path: filePath, token } = uploadUrlResult
 
         const { error: storageError } = await supabase.storage
           .from('workspace-media')
-          .upload(filePath, file, {
+          .uploadToSignedUrl(filePath, token, file, {
             cacheControl: '3600',
             upsert: false,
           })
@@ -312,7 +316,6 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
       })
     } else {
       setAssets(prev => prev.filter(a => a.id !== assetId))
-      setPreviewUrls({}) // Clear any old state if it existed
       setDeletingIds(prev => {
         const next = new Set(prev)
         next.delete(assetId)

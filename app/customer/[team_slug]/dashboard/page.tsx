@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import styles from './dashboard.module.css'
@@ -57,9 +58,12 @@ export default async function DashboardPage({ params }: Props) {
 
   const userRole = profile?.role || 'Owner'
 
+  const cookieStore = await cookies();
+  const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
+
   return (
     <div className={styles.shell}>
-      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} />
+      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} initialCollapsed={initialCollapsed} />
 
       {/* Main */}
       <main className={styles.main}>

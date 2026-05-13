@@ -91,8 +91,8 @@ export async function claimDevice(
   console.log('[claimDevice] atomic update result:', updated, 'updateError:', updateError)
 
   if (updateError) {
-    console.error('[claimDevice] update error:', updateError)
-    return { success: false, error: `Failed to pair the screen: ${updateError.message}` }
+    console.error('[claimDevice] update error:', { message: updateError.message, details: updateError.details, hint: updateError.hint })
+    return { success: false, error: 'Failed to update screen settings. Please try again later.' }
   }
 
   // If 0 rows were affected, the code was invalid, expired, or already claimed
@@ -161,8 +161,8 @@ export async function updateDeviceAssignment(
     .select('id')
 
   if (updateError || !updated || updated.length === 0) {
-    console.error('[updateDeviceAssignment] update error:', updateError)
-    return { success: false, error: 'Failed to update screen assignment. Permission denied or device not found.' }
+    console.error('[updateDeviceAssignment] update error:', updateError ? { message: updateError.message, details: updateError.details, hint: updateError.hint } : 'No rows updated')
+    return { success: false, error: 'Failed to update screen settings. Please try again later.' }
   }
 
   revalidatePath(`/customer/${teamSlug}/screens`)
@@ -197,8 +197,8 @@ export async function deleteAndUnpairDevice(
     .eq('team_id', profile.team_id)
 
   if (deleteError) {
-    console.error('[deleteAndUnpairDevice] delete error:', deleteError)
-    return { success: false, error: 'Failed to delete screen. Permission denied or device not found.' }
+    console.error('[deleteAndUnpairDevice] delete error:', { message: deleteError.message, details: deleteError.details, hint: deleteError.hint })
+    return { success: false, error: 'Failed to update screen settings. Please try again later.' }
   }
 
   revalidatePath(`/customer/${teamSlug}/screens`)

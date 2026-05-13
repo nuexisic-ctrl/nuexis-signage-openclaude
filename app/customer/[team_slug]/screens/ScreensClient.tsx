@@ -133,7 +133,12 @@ function DeviceCard({
   return (
     <div className={styles.deviceCard}>
       <div className={styles.deviceCardHeaderTop}>
-        <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
+        <div className={styles.deviceCardHeaderLeft}>
+          <div className={styles.deviceCardIcon}>
+            <DeviceIcon name={device.name || ''} orientation={device.orientation} />
+          </div>
+          <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
+        </div>
         <div className={styles.statusAndMenu}>
           <StatusBadge status={liveStatus} />
           <div className={styles.moreMenuWrapper}>
@@ -142,7 +147,9 @@ function DeviceCard({
               onClick={onToggleMenu}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="12" cy="5" r="1.5" />
+                <circle cx="12" cy="19" r="1.5" />
               </svg>
             </button>
             {menuOpen && (
@@ -160,11 +167,11 @@ function DeviceCard({
       </div>
       <div className={styles.deviceMeta} onClick={onEdit} style={{ cursor: 'pointer' }}>
         <div className={styles.deviceMetaRow}>
-          <span className={styles.deviceMetaLabel}>Added</span>
+          <span className={styles.deviceMetaLabel}>ADDED</span>
           <span className={styles.deviceMetaValue}>{createdAt}</span>
         </div>
         <div className={styles.deviceMetaRow}>
-          <span className={styles.deviceMetaLabel}>Last Seen</span>
+          <span className={styles.deviceMetaLabel}>LAST SEEN</span>
           <span className={styles.deviceMetaValue}>{lastSeen}</span>
         </div>
       </div>
@@ -840,13 +847,25 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                 })}
               </tbody>
             </table>
-            <div className={styles.tableFooter}>
-              <div>Showing 1 to {filteredDevices.length || 0} of {filteredDevices.length || 0} screens</div>
-              <div className={styles.pagination}>
-                <button className={styles.pageBtn}>Prev</button>
-                <button className={`${styles.pageBtn} ${styles.active}`}>1</button>
-                <button className={styles.pageBtn}>Next</button>
-              </div>
+          </div>
+        )}
+        
+        {/* Render pagination footer below grid or table if we have screens */}
+        {filteredDevices.length > 0 && (
+          <div className={styles.tableFooter}>
+            <div>Showing 1 to {filteredDevices.length || 0} of {filteredDevices.length || 0} screens</div>
+            <div className={styles.pagination}>
+              <button className={styles.pageBtn}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+              </button>
+              <button className={`${styles.pageBtn} ${styles.active}`}>1</button>
+              <button className={styles.pageBtn}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
             </div>
           </div>
         )}

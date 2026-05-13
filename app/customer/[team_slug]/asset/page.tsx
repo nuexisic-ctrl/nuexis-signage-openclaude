@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import AssetClient from './AssetClient'
@@ -55,18 +56,12 @@ export default async function AssetPage({ params }: Props) {
       ).data ?? []
     : []
 
-  const navItems = [
-    { icon: '⬡', label: 'Dashboard', href: `/customer/${team_slug}/dashboard`, active: false },
-    { icon: '◫', label: 'Screens',   href: `/customer/${team_slug}/screens`,   active: false },
-    { icon: '◈', label: 'Assets',   href: `/customer/${team_slug}/asset`,   active: true  },
-    { icon: '◉', label: 'Schedules', href: '#', active: false },
-    { icon: '◎', label: 'Analytics', href: '#', active: false },
-    { icon: '◌', label: 'Settings',  href: '#', active: false },
-  ]
+  const cookieStore = await cookies();
+  const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
 
   return (
     <div className={styles.shell}>
-      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} />
+      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} initialCollapsed={initialCollapsed} />
 
       {/* Main */}
       <main className={styles.main}>
