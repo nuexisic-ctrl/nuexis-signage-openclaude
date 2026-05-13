@@ -35,6 +35,10 @@ export async function insertAsset(
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
+  if (!asset.file_path.startsWith(`${profile.team_id}/`)) {
+    return { success: false, error: 'Invalid file path.' }
+  }
+
   const adminSupabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -89,9 +93,7 @@ export async function getUploadUrl(
     return { success: false, error: 'Could not determine your team.' }
   }
 
-  const ext = fileName.split('.').pop() || ''
-  const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext ? `.${ext}` : ''}`
-  const path = `${profile.team_id}/${uniqueName}`
+  const path = `${profile.team_id}/${Date.now()}-${fileName}`
 
   // Use service role client to bypass RLS for creating the signed URL
   const adminSupabase = createServerClient(
@@ -170,7 +172,13 @@ export async function deleteAsset(
   }
 
   // ── Delete from storage ────────────────────────────────────────────────────
-  const { error: storageError } = await supabase.storage
+  const adminSupabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll() { return [] }, setAll() {} } }
+  )
+
+  const { error: storageError } = await adminSupabase.storage
     .from('workspace-media')
     .remove([filePath])
 
@@ -180,12 +188,6 @@ export async function deleteAsset(
   }
 
   // ── Delete from database (double-lock: ownership filter + RLS) ────────────
-  const adminSupabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll() { return [] }, setAll() {} } }
-  )
-
   const { error: dbError } = await adminSupabase
     .from('assets')
     .delete()

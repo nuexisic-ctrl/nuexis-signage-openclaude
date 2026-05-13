@@ -48,7 +48,7 @@ export async function claimDevice(
     .gte('attempted_at', windowStart)
 
   if (countError) {
-    console.error('[claimDevice] rate-limit check error:', countError)
+    console.error('[claimDevice] rate-limit check error:', { message: countError.message, details: countError.details, hint: countError.hint })
     // Non-fatal — allow through if we can't read the count
   } else if (count !== null && count >= MAX_ATTEMPTS) {
     console.warn('[claimDevice] rate limit exceeded for user:', user.id)
@@ -98,9 +98,14 @@ export async function claimDevice(
   // If 0 rows were affected, the code was invalid, expired, or already claimed
   if (!updated || updated.length === 0) {
     // Record this as a failed attempt for rate-limiting
-    await supabase
+    const { error: insertError } = await supabase
       .from('login_attempts')
       .insert({ user_id: user.id })
+
+    if (insertError) {
+      console.error('[claimDevice] insert login_attempts error:', { message: insertError.message, details: insertError.details, hint: insertError.hint })
+      return { success: false, error: 'Maximum login attempts exceeded or system error. Please try again later.' }
+    }
 
     return { success: false, error: 'Invalid or expired pairing code. Please check the code on screen and try again.' }
   }
@@ -108,10 +113,14 @@ export async function claimDevice(
   console.log('[claimDevice] success! device', updated[0].id, 'claimed by team', profile.team_id)
 
   // Success — clear any recorded failed attempts for this user
-  await supabase
+  const { error: deleteError } = await supabase
     .from('login_attempts')
     .delete()
     .eq('user_id', user.id)
+
+  if (deleteError) {
+    console.error('[claimDevice] clear login_attempts error:', { message: deleteError.message, details: deleteError.details, hint: deleteError.hint })
+  }
 
   // 5. Revalidate the screens page so the grid refreshes on next server render
   revalidatePath(`/customer/${teamSlug}/screens`)
