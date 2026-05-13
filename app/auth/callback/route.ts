@@ -13,10 +13,17 @@ export async function GET(request: NextRequest) {
 
     if (!error && data.user) {
       // Prefer the team_slug from the URL param (set during signup redirectTo)
-      // Fall back to the user's metadata if the param is missing
-      const teamSlug =
-        teamSlugParam ||
-        (data.user.user_metadata?.team_slug as string | undefined)
+      // Fall back to fetching it securely from the database if the param is missing
+      let teamSlug = teamSlugParam
+      
+      if (!teamSlug) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('teams(slug)')
+          .eq('id', data.user.id)
+          .single()
+        teamSlug = profile?.teams && !Array.isArray(profile.teams) ? profile.teams.slug : null
+      }
 
       if (teamSlug) {
         return NextResponse.redirect(`${origin}/customer/${teamSlug}/dashboard`)

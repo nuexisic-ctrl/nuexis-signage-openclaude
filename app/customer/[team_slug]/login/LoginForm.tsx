@@ -41,8 +41,16 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
       return
     }
 
-    // Verify the signed-in user actually belongs to this team
-    const userTeamSlug = data.user?.user_metadata?.team_slug as string | undefined
+    // Verify the signed-in user actually belongs to this team securely via the database
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('teams(slug)')
+      .eq('id', data.user.id)
+      .single()
+    
+    const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) 
+      ? profile.teams.slug 
+      : undefined
 
     if (userTeamSlug && userTeamSlug !== teamSlug) {
       await supabase.auth.signOut()

@@ -10,10 +10,8 @@ interface HeaderProps {
 }
 
 export default function Header({ fullName, email }: HeaderProps) {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof document === 'undefined') return false
-    return document.documentElement.getAttribute('data-theme') === 'dark'
-  })
+  const [isDark, setIsDark] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -21,9 +19,10 @@ export default function Header({ fullName, email }: HeaderProps) {
   const initial = fullName ? fullName.charAt(0).toUpperCase() : email?.charAt(0).toUpperCase() || 'U'
 
   useEffect(() => {
-    requestAnimationFrame(() => {
-      setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
-    })
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -73,13 +72,13 @@ export default function Header({ fullName, email }: HeaderProps) {
 
       <div className={styles.right}>
         <button
-          className={`${styles.themeToggle} ${isDark ? styles.dark : ''}`}
+          className={`${styles.themeToggle} ${mounted && isDark ? styles.dark : ''}`}
           onClick={toggleTheme}
           title="Toggle theme"
           aria-label="Toggle theme"
         >
           <div className={styles.themeToggleThumb}>
-            {isDark ? <Moon size={14} /> : <Sun size={14} />}
+            {mounted && isDark ? <Moon size={14} /> : <Sun size={14} />}
           </div>
         </button>
 

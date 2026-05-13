@@ -67,8 +67,17 @@ export async function updateSession(request: NextRequest) {
       }
     }
 
-    // Cache miss — read from JWT claims instead of hitting the DB
-    const dbTeamSlug = (user.app_metadata?.team_slug || user.user_metadata?.team_slug) as string | undefined
+    // Cache miss — fetch securely from DB
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('teams(slug)')
+      .eq('id', user.id)
+      .single()
+    
+    // Type casting because Postgrest might return an array or object for joined tables
+    const dbTeamSlug = profile?.teams && !Array.isArray(profile.teams) 
+      ? profile.teams.slug 
+      : undefined
 
     if (!dbTeamSlug) {
       const homeUrl = request.nextUrl.clone()
@@ -102,7 +111,14 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!userTeamSlug) {
-      userTeamSlug = (user.app_metadata?.team_slug || user.user_metadata?.team_slug) as string | undefined
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('teams(slug)')
+        .eq('id', user.id)
+        .single()
+      userTeamSlug = profile?.teams && !Array.isArray(profile.teams) 
+        ? profile.teams.slug 
+        : undefined
     }
 
     const dashboardUrl = request.nextUrl.clone()

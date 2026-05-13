@@ -32,21 +32,21 @@ export default async function DashboardPage({ params }: Props) {
   }
 
   const fullName = user.user_metadata?.full_name as string | undefined
-  const userTeamSlug = user.user_metadata?.team_slug as string | undefined
+
+  // Fetch the user's role and team from the profile securely
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, teams(slug)')
+    .eq('id', user.id)
+    .single()
+
+  const userRole = profile?.role || 'Owner'
+  const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? profile.teams.slug : undefined
 
   // If this user belongs to a different team, redirect them to their correct dashboard
   if (userTeamSlug && userTeamSlug !== team_slug) {
     redirect(`/customer/${userTeamSlug}/dashboard`)
   }
-
-  // Fetch the user's role from the profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  const userRole = profile?.role || 'Owner'
 
   const cookieStore = await cookies();
   const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';

@@ -39,13 +39,7 @@ export async function insertAsset(
     return { success: false, error: 'Invalid file path.' }
   }
 
-  const adminSupabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll() { return [] }, setAll() {} } }
-  )
-
-  const { data, error } = await adminSupabase
+  const { data, error } = await supabase
     .from('assets')
     .insert({
       team_id: profile.team_id,
@@ -65,8 +59,6 @@ export async function insertAsset(
   revalidatePath(`/customer/${teamSlug}/asset`)
   return { success: true, id: data.id }
 }
-
-import { createServerClient } from '@supabase/ssr'
 
 export type GetUploadUrlResult =
   | { success: true; signedUrl: string; token: string; path: string }
@@ -95,14 +87,7 @@ export async function getUploadUrl(
 
   const path = `${profile.team_id}/${Date.now()}-${fileName}`
 
-  // Use service role client to bypass RLS for creating the signed URL
-  const adminSupabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll() { return [] }, setAll() {} } }
-  )
-
-  const { data, error } = await adminSupabase.storage
+  const { data, error } = await supabase.storage
     .from('workspace-media')
     .createSignedUploadUrl(path)
 
@@ -172,13 +157,7 @@ export async function deleteAsset(
   }
 
   // ── Delete from storage ────────────────────────────────────────────────────
-  const adminSupabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll() { return [] }, setAll() {} } }
-  )
-
-  const { error: storageError } = await adminSupabase.storage
+  const { error: storageError } = await supabase.storage
     .from('workspace-media')
     .remove([filePath])
 
@@ -188,7 +167,7 @@ export async function deleteAsset(
   }
 
   // ── Delete from database (double-lock: ownership filter + RLS) ────────────
-  const { error: dbError } = await adminSupabase
+  const { error: dbError } = await supabase
     .from('assets')
     .delete()
     .eq('id', assetId)

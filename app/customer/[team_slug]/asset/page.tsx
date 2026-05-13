@@ -29,19 +29,19 @@ export default async function AssetPage({ params }: Props) {
 
   if (!user) redirect(`/customer/${team_slug}/login`)
 
-  const userTeamSlug = user.user_metadata?.team_slug as string | undefined
+  // Get user's team_id, role, and team slug securely from their profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('team_id, role, teams(slug)')
+    .eq('id', user.id)
+    .single()
+
+  const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? profile.teams.slug : undefined
   if (userTeamSlug && userTeamSlug !== team_slug) {
     redirect(`/customer/${userTeamSlug}/asset`)
   }
 
   const fullName = user.user_metadata?.full_name as string | undefined
-
-  // Get user's team_id and role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('team_id, role')
-    .eq('id', user.id)
-    .single()
 
   const userRole = profile?.role || 'Owner'
 
