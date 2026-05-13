@@ -10,8 +10,10 @@ interface HeaderProps {
 }
 
 export default function Header({ fullName, email }: HeaderProps) {
-  const [isDark, setIsDark] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document === 'undefined') return false
+    return document.documentElement.getAttribute('data-theme') === 'dark'
+  })
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -19,9 +21,9 @@ export default function Header({ fullName, email }: HeaderProps) {
   const initial = fullName ? fullName.charAt(0).toUpperCase() : email?.charAt(0).toUpperCase() || 'U'
 
   useEffect(() => {
-    setMounted(true)
-    const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark'
-    setIsDark(isDarkMode)
+    requestAnimationFrame(() => {
+      setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
+    })
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -70,18 +72,16 @@ export default function Header({ fullName, email }: HeaderProps) {
       </div>
 
       <div className={styles.right}>
-        {mounted && (
-          <button 
-            className={`${styles.themeToggle} ${isDark ? styles.dark : ''}`}
-            onClick={toggleTheme}
-            title="Toggle theme"
-            aria-label="Toggle theme"
-          >
-            <div className={styles.themeToggleThumb}>
-              {isDark ? <Moon size={14} /> : <Sun size={14} />}
-            </div>
-          </button>
-        )}
+        <button
+          className={`${styles.themeToggle} ${isDark ? styles.dark : ''}`}
+          onClick={toggleTheme}
+          title="Toggle theme"
+          aria-label="Toggle theme"
+        >
+          <div className={styles.themeToggleThumb}>
+            {isDark ? <Moon size={14} /> : <Sun size={14} />}
+          </div>
+        </button>
 
         <button className={styles.iconBtn} title="Notifications">
           <Bell size={20} />

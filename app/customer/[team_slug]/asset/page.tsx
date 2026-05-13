@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
@@ -61,7 +60,7 @@ export default async function AssetPage({ params }: Props) {
 
   return (
     <div className={styles.shell}>
-      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} initialCollapsed={initialCollapsed} />
+      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} initialCollapsed={initialCollapsed} />
 
       {/* Main */}
       <main className={styles.main}>

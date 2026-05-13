@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
@@ -58,12 +57,16 @@ export default async function ScreensPage({ params }: Props) {
 
   const devices = devicesData.map((d) => {
     const hb = Array.isArray(d.device_heartbeats) ? d.device_heartbeats[0] : d.device_heartbeats
-    const { device_heartbeats, ...rest } = d
     return {
-      ...rest,
-      status: rest.status as 'online' | 'offline' | 'pairing',
+      id: d.id,
+      name: d.name,
+      created_at: d.created_at,
+      content_type: d.content_type,
+      asset_id: d.asset_id,
+      scale_mode: d.scale_mode,
+      orientation: d.orientation,
+      status: d.status as 'online' | 'offline' | 'pairing',
       last_seen_at: hb?.last_seen_at || null,
-      device_heartbeats: undefined
     }
   })
 
@@ -82,7 +85,7 @@ export default async function ScreensPage({ params }: Props) {
 
   return (
     <div className={styles.shell}>
-      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} initialCollapsed={initialCollapsed} />
+      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} initialCollapsed={initialCollapsed} />
 
       {/* Main */}
       <main className={styles.main}>

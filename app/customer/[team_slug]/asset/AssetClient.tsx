@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { AlertTriangle, Check, File, Play, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { insertAsset, deleteAsset, getUploadUrl } from './actions'
 import styles from './asset.module.css'
@@ -64,11 +65,11 @@ function AssetCard({
           <img src={previewUrl} alt={asset.file_name} className={styles.assetImg} />
         ) : isVideo(asset.mime_type) ? (
           <div className={styles.videoThumb}>
-            <span className={styles.videoIcon}>▶</span>
+            <Play className={styles.videoIcon} size={28} />
           </div>
         ) : (
           <div className={styles.genericThumb}>
-            <span className={styles.genericIcon}>◈</span>
+            <File className={styles.genericIcon} size={30} />
           </div>
         )}
         <button
@@ -78,7 +79,7 @@ function AssetCard({
           aria-label={`Delete ${asset.file_name}`}
           title="Delete asset"
         >
-          ✕
+          <X size={15} />
         </button>
         <div className={styles.mimeChip}>
           {asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE'}
@@ -334,26 +335,21 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
 
       {uploadError && (
         <div className={styles.errorBanner} role="alert">
-          <span className={styles.errorIcon}>⚠</span>
+          <AlertTriangle className={styles.errorIcon} size={17} />
           {uploadError}
         </div>
       )}
 
       {showSuccess && (
-        <div className={styles.successBanner} role="alert" style={{
-          display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px',
-          background: 'rgba(22, 163, 74, 0.08)', borderRadius: 'var(--radius-sm)',
-          fontSize: '0.875rem', color: '#16a34a', fontFamily: 'var(--font-label)',
-          marginBottom: '16px'
-        }}>
-          <span className={styles.successIcon}>✓</span>
+        <div className={styles.successBanner} role="alert">
+          <Check className={styles.successIcon} size={17} />
           Media successfully uploaded. Ready to be assigned in the Screens page!
         </div>
       )}
 
       {assets.length === 0 ? (
         <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}>◈</div>
+          <div className={styles.emptyIcon}><File size={28} /></div>
           <h3 className={styles.emptyTitle}>No assets yet</h3>
           <p className={styles.emptyText}>
             Upload images or videos above to start building your asset library.

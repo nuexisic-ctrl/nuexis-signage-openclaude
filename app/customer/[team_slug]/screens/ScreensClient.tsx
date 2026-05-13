@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { AlertTriangle, Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { claimDevice, updateDeviceAssignment, deleteAndUnpairDevice, AssignmentData } from './actions'
 import styles from './screens.module.css'
@@ -18,6 +19,10 @@ interface Device {
   scale_mode?: string | null
   orientation?: number | null
   last_seen_at?: string | null
+}
+
+type DeviceWithHeartbeat = Device & {
+  device_heartbeats?: { last_seen_at?: string | null } | Array<{ last_seen_at?: string | null }> | null
 }
 
 export interface Asset {
@@ -232,7 +237,7 @@ function PairModal({
             onClick={onClose}
             aria-label="Close modal"
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 
@@ -274,7 +279,7 @@ function PairModal({
 
           {error && (
             <div className={styles.errorMsg} role="alert">
-              <span>⚠</span>
+              <AlertTriangle size={16} />
               {error}
             </div>
           )}
@@ -351,7 +356,7 @@ function AssignModal({
             <h2 className={styles.modalTitle}>Assign Content</h2>
             <p className={styles.modalSubtitle}>Configure what plays on {device.name || 'Unnamed Screen'}</p>
           </div>
-          <button className={styles.modalClose} onClick={onClose}>✕</button>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close modal"><X size={18} /></button>
         </div>
 
         <form className={styles.form} onSubmit={handleSubmit}>
@@ -396,7 +401,7 @@ function AssignModal({
             </select>
           </div>
 
-          {error && <div className={styles.errorMsg}><span>⚠</span>{error}</div>}
+          {error && <div className={styles.errorMsg}><AlertTriangle size={16} />{error}</div>}
 
           <button className={styles.submitBtn} type="submit" disabled={isPending || (contentType === 'Asset' && !assetId)}>
             {isPending ? 'Saving…' : 'Save Assignment'}
@@ -413,16 +418,13 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
   
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
+    if (typeof window === 'undefined') return 'grid'
+    const saved = localStorage.getItem('screensViewMode')
+    return saved === 'grid' || saved === 'table' ? saved : 'grid'
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const saved = localStorage.getItem('screensViewMode')
-    if (saved === 'grid' || saved === 'table') {
-      setViewMode(saved)
-    }
-  }, [])
 
   const handleSetViewMode = (mode: 'grid' | 'table') => {
     setViewMode(mode)
@@ -537,11 +539,20 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
         // We do a functional update to avoid race conditions with Realtime,
         // though Realtime is also updating this state. This ensures we have 
         // a reliable heartbeat check if Realtime drops.
-        const mapped = data.map((d: any) => ({
-          ...d,
-          last_seen_at: d.device_heartbeats?.last_seen_at || null,
-          device_heartbeats: undefined
-        })) as Device[]
+        const mapped = (data as DeviceWithHeartbeat[]).map((d) => {
+          const heartbeat = Array.isArray(d.device_heartbeats) ? d.device_heartbeats[0] : d.device_heartbeats
+          return {
+            id: d.id,
+            name: d.name,
+            status: d.status,
+            created_at: d.created_at,
+            content_type: d.content_type,
+            asset_id: d.asset_id,
+            scale_mode: d.scale_mode,
+            orientation: d.orientation,
+            last_seen_at: heartbeat?.last_seen_at || null,
+          }
+        }) as Device[]
         setDevices(mapped)
       }
     }, 30000) // 30s
@@ -609,7 +620,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
             className={styles.addBtn}
             onClick={() => setShowPairModal(true)}
           >
-            <span className={styles.addBtnIcon}>+</span>
+            <Plus className={styles.addBtnIcon} size={18} />
             Add Screen
           </button>
         </div>
@@ -718,7 +729,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
 
         {filteredDevices.length === 0 ? (
           <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>◫</div>
+            <div className={styles.emptyIcon}>NX</div>
             <h3 className={styles.emptyTitle}>No screens found</h3>
             <p className={styles.emptyText}>
               {devices.length === 0 
@@ -870,6 +881,24 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
           </div>
         )}
       </div>
+
+      {showPairModal && (
+        <PairModal
+          teamSlug={teamSlug}
+          onClose={() => setShowPairModal(false)}
+          onSuccess={handlePairSuccess}
+        />
+      )}
+
+      {assignModalDevice && (
+        <AssignModal
+          device={assignModalDevice}
+          assets={assets}
+          teamSlug={teamSlug}
+          onClose={() => setAssignModalDevice(null)}
+          onSuccess={handleAssignSuccess}
+        />
+      )}
     </>
   )
 }

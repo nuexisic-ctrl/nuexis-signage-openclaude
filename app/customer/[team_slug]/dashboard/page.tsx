@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
+import { Activity, Images, Monitor, RadioTower, ShieldCheck, Sparkles, Timer } from 'lucide-react'
 import styles from './dashboard.module.css'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
@@ -16,16 +16,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `Dashboard — ${team_slug}`,
   }
-}
-
-async function SignOutButton() {
-  return (
-    <form action="/auth/signout" method="post">
-      <button type="submit" className="btn btn-ghost" style={{ padding: '8px 16px', fontSize: '0.875rem' }}>
-        Sign Out
-      </button>
-    </form>
-  )
 }
 
 export default async function DashboardPage({ params }: Props) {
@@ -85,7 +75,9 @@ export default async function DashboardPage({ params }: Props) {
         <div className={styles.comingSoonCard}>
           <div className={styles.comingSoonGlow} aria-hidden="true" />
           <div className={styles.comingSoonContent}>
-            <div className={styles.comingSoonIcon}>🚧</div>
+            <div className={styles.comingSoonIcon}>
+              <Sparkles size={26} />
+            </div>
             <div>
               <h2 className={styles.comingSoonTitle}>
                 Your dashboard is being built
@@ -100,14 +92,14 @@ export default async function DashboardPage({ params }: Props) {
           </div>
 
           <div className={styles.featurePreviewGrid}>
-            {[
-              { icon: '◫', title: 'Screen Management', desc: 'Connect and manage your digital displays' },
-              { icon: '◈', title: 'Asset Library', desc: 'Upload and organise all your media assets' },
-              { icon: '◉', title: 'Smart Scheduling', desc: 'Automate content delivery with timezone-aware rules' },
-              { icon: '◎', title: 'Live Analytics', desc: 'Proof-of-play reports and uptime metrics' },
+              {[
+              { icon: Monitor, title: 'Screen Management', desc: 'Connect and manage your digital displays' },
+              { icon: Images, title: 'Asset Library', desc: 'Upload and organise all your media assets' },
+              { icon: Timer, title: 'Smart Scheduling', desc: 'Automate content delivery with timezone-aware rules' },
+              { icon: Activity, title: 'Live Analytics', desc: 'Proof-of-play reports and uptime metrics' },
             ].map((f) => (
               <div key={f.title} className={styles.featurePreviewItem}>
-                <span className={styles.featurePreviewIcon}>{f.icon}</span>
+                <span className={styles.featurePreviewIcon}><f.icon size={20} /></span>
                 <div>
                   <p className={styles.featurePreviewTitle}>{f.title}</p>
                   <p className={styles.featurePreviewDesc}>{f.desc}</p>
@@ -129,11 +121,12 @@ export default async function DashboardPage({ params }: Props) {
           </div>
           <div className={styles.infoCard}>
             <p className={styles.infoLabel}>Status</p>
-            <p className={`${styles.infoValue} ${styles.statusActive}`}>● Active</p>
+            <p className={`${styles.infoValue} ${styles.statusActive}`}><ShieldCheck size={18} /> Active</p>
           </div>
           <div className={styles.infoCard}>
             <p className={styles.infoLabel}>Your URL</p>
-            <p className={styles.infoValue} style={{ fontSize: '0.8125rem', fontFamily: 'var(--font-label)' }}>
+            <p className={`${styles.infoValue} ${styles.urlValue}`}>
+              <RadioTower size={17} />
               /customer/{team_slug}
             </p>
           </div>
