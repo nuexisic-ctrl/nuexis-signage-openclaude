@@ -75,16 +75,10 @@ export async function claimDevice(
     }
   }
 
-  // 3. Get user's team_id from profiles
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('team_id')
-    .eq('id', user.id)
-    .single()
+  // 3. Get user's team_id from app_metadata in JWT
+  const teamId = user.app_metadata?.team_id as string | undefined
 
-  console.log('[claimDevice] profile:', profile, 'profileError:', profileError)
-
-  if (profileError || !profile?.team_id) {
+  if (!teamId) {
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
@@ -96,7 +90,7 @@ export async function claimDevice(
   const { data: updated, error: updateError } = await supabase
     .from('devices')
     .update({
-      team_id: profile.team_id,
+      team_id: teamId,
       name: trimmedName,
       status: 'online',
     })
@@ -127,7 +121,7 @@ export async function claimDevice(
     return { success: false, error: 'Invalid or expired pairing code. Please check the code on screen and try again.' }
   }
 
-  console.log('[claimDevice] success! device', updated[0].id, 'claimed by team', profile.team_id)
+  console.log('[claimDevice] success! device', updated[0].id, 'claimed by team', teamId)
 
   // Success — clear any recorded failed attempts for this user/IP/code
   const { error: deleteError } = await adminSupabase
@@ -164,13 +158,9 @@ export async function updateDeviceAssignment(
     return { success: false, error: 'You must be logged in to update a screen.' }
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('team_id')
-    .eq('id', user.id)
-    .single()
+  const teamId = user.app_metadata?.team_id as string | undefined
 
-  if (profileError || !profile?.team_id) {
+  if (!teamId) {
     return { success: false, error: 'Could not determine your team.' }
   }
 
@@ -183,7 +173,7 @@ export async function updateDeviceAssignment(
       orientation: data.orientation,
     })
     .eq('id', deviceId)
-    .eq('team_id', profile.team_id)
+    .eq('team_id', teamId)
     .select('id')
 
   if (updateError || !updated || updated.length === 0) {
@@ -206,13 +196,9 @@ export async function deleteAndUnpairDevice(
     return { success: false, error: 'You must be logged in to delete a screen.' }
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('team_id')
-    .eq('id', user.id)
-    .single()
+  const teamId = user.app_metadata?.team_id as string | undefined
 
-  if (profileError || !profile?.team_id) {
+  if (!teamId) {
     return { success: false, error: 'Could not determine your team.' }
   }
 
@@ -220,7 +206,7 @@ export async function deleteAndUnpairDevice(
     .from('devices')
     .delete()
     .eq('id', deviceId)
-    .eq('team_id', profile.team_id)
+    .eq('team_id', teamId)
 
   if (deleteError) {
     console.error('[deleteAndUnpairDevice] delete error:', { message: deleteError.message, details: deleteError.details, hint: deleteError.hint })

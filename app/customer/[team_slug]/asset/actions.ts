@@ -25,24 +25,20 @@ export async function insertAsset(
     return { success: false, error: 'You must be logged in to upload assets.' }
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('team_id')
-    .eq('id', user.id)
-    .single()
+  const teamId = user.app_metadata?.team_id as string | undefined
 
-  if (profileError || !profile?.team_id) {
+  if (!teamId) {
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
-  if (!asset.file_path.startsWith(`${profile.team_id}/`)) {
+  if (!asset.file_path.startsWith(`${teamId}/`)) {
     return { success: false, error: 'Invalid file path.' }
   }
 
   const { data, error } = await supabase
     .from('assets')
     .insert({
-      team_id: profile.team_id,
+      team_id: teamId,
       file_name: asset.file_name,
       file_path: asset.file_path,
       mime_type: asset.mime_type,
@@ -75,17 +71,13 @@ export async function getUploadUrl(
     return { success: false, error: 'You must be logged in to upload assets.' }
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('team_id')
-    .eq('id', user.id)
-    .single()
+  const teamId = user.app_metadata?.team_id as string | undefined
 
-  if (profileError || !profile?.team_id) {
+  if (!teamId) {
     return { success: false, error: 'Could not determine your team.' }
   }
 
-  const path = `${profile.team_id}/${Date.now()}-${fileName}`
+  const path = `${teamId}/${Date.now()}-${fileName}`
 
   const { data, error } = await supabase.storage
     .from('workspace-media')
@@ -121,13 +113,9 @@ export async function deleteAsset(
   }
 
   // ── Resolve caller's team ──────────────────────────────────────────────────
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('team_id')
-    .eq('id', user.id)
-    .single()
+  const teamId = user.app_metadata?.team_id as string | undefined
 
-  if (profileError || !profile?.team_id) {
+  if (!teamId) {
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
@@ -142,9 +130,9 @@ export async function deleteAsset(
     return { success: false, error: 'Asset not found.' }
   }
 
-  if (asset.team_id !== profile.team_id) {
+  if (asset.team_id !== teamId) {
     console.warn(
-      `[deleteAsset] Unauthorized: user ${user.id} (team ${profile.team_id}) ` +
+      `[deleteAsset] Unauthorized: user ${user.id} (team ${teamId}) ` +
       `attempted to delete asset ${assetId} (team ${asset.team_id})`
     )
     return { success: false, error: 'You do not have permission to delete this asset.' }
@@ -171,7 +159,7 @@ export async function deleteAsset(
     .from('assets')
     .delete()
     .eq('id', assetId)
-    .eq('team_id', profile.team_id)
+    .eq('team_id', teamId)
 
   if (dbError) {
     console.error('[deleteAsset] db error:', { message: dbError.message, details: dbError.details, hint: dbError.hint })
