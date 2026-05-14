@@ -47,7 +47,7 @@ export default async function ScreensPage({ params }: Props) {
 
   const query = supabase
     .from('devices')
-    .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at')
+    .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at, total_playtime_seconds')
     .eq('team_id', profile?.team_id as string)
     .order('created_at', { ascending: false })
 
@@ -66,6 +66,7 @@ export default async function ScreensPage({ params }: Props) {
       orientation: d.orientation,
       status: d.status as 'online' | 'offline' | 'pairing',
       last_seen_at: d.last_seen_at || null,
+      total_playtime_seconds: d.total_playtime_seconds || 0,
     }
   })
 

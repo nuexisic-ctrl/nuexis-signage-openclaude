@@ -115,3 +115,17 @@ export async function updateDeviceOrientation(deviceId: string, hardwareId: stri
     throw new Error('Failed to update device orientation')
   }
 }
+
+export async function incrementPlaytime(deviceId: string, hardwareId: string, secret: string, seconds: number) {
+  const supabase = getPlayerAdminClient()
+  const { error } = await supabase.rpc('increment_device_playtime', {
+    p_device_id: deviceId,
+    p_hardware_id: hardwareId,
+    p_secret: secret,
+    p_seconds: seconds
+  })
+
+  if (error) {
+    console.error('[incrementPlaytime] Error:', error)
+  }
+}

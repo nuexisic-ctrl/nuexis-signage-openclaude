@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getHardwareId } from '@/lib/utils/fingerprint'
-import { registerDevice, refreshDeviceCode, getDeviceState, unpairDevice, updateDeviceOrientation } from './actions'
+import { registerDevice, refreshDeviceCode, getDeviceState, unpairDevice, updateDeviceOrientation, incrementPlaytime } from './actions'
 import styles from './player.module.css'
 
 type PlayerState = 'loading' | 'pairing' | 'paired' | 'expired'
@@ -46,6 +46,36 @@ export default function PlayerPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isMuted, setIsMuted] = useState(true)
+
+  // We need refs to latest state for the interval
+  const stateRef = useRef(state)
+  const assetUrlRef = useRef(assetUrl)
+
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
+
+  useEffect(() => {
+    assetUrlRef.current = assetUrl
+  }, [assetUrl])
+
+  useEffect(() => {
+    // Playtime tracking interval
+    const playtimeInterval = setInterval(() => {
+      const hwId = hardwareIdRef.current
+      const devId = deviceIdRef.current
+      const secret = secretRef.current
+
+      // If we are paired and actively showing an asset, increment playtime by 60 seconds
+      if (stateRef.current === 'paired' && assetUrlRef.current && hwId && devId && secret) {
+        incrementPlaytime(devId, hwId, secret, 60).catch(err => {
+          console.error('[Player] Failed to track playtime', err)
+        })
+      }
+    }, 60000) // every 60 seconds
+
+    return () => clearInterval(playtimeInterval)
+  }, [])
 
   const deviceIdRef      = useRef<string | null>(null)
   const hardwareIdRef    = useRef<string | null>(null)

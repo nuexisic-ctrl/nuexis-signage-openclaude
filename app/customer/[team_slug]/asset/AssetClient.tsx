@@ -4,7 +4,8 @@ import { useState, useCallback, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Check, File, Play, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { insertAsset, deleteAsset, getUploadUrl } from './actions'
+import { getUploadUrl, insertAsset, deleteAsset } from './actions'
+import { AssetPreviewModal } from './AssetPreviewModal'
 import styles from './asset.module.css'
 
 interface Asset {
@@ -46,11 +47,13 @@ function AssetCard({
   asset,
   previewUrl,
   onDelete,
+  onPreview,
   isDeleting,
 }: {
   asset: Asset
   previewUrl: string | null
   onDelete: (id: string, path: string) => void
+  onPreview: (asset: Asset) => void
   isDeleting: boolean
 }) {
   const date = new Date(asset.created_at).toLocaleDateString('en-US', {
@@ -59,13 +62,30 @@ function AssetCard({
 
   return (
     <div className={`${styles.assetCard} ${isDeleting ? styles.assetCardDeleting : ''}`}>
-      <div className={styles.assetThumb}>
+      <div 
+        className={`${styles.assetThumb} ${styles.assetThumbInteractive}`}
+        onClick={() => onPreview(asset)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onPreview(asset) }}
+        aria-label={`Preview ${asset.file_name}`}
+      >
         {isImage(asset.mime_type) && previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewUrl} alt={asset.file_name} className={styles.assetImg} />
-        ) : isVideo(asset.mime_type) ? (
-          <div className={styles.videoThumb}>
-            <Play className={styles.videoIcon} size={28} />
+        ) : isVideo(asset.mime_type) && previewUrl ? (
+          <div className={styles.videoThumbWrapper} style={{ position: 'relative', width: '100%', height: '100%' }}>
+            <video 
+              src={`${previewUrl}#t=0.001`} 
+              className={styles.assetImg} 
+              preload="metadata" 
+              muted 
+              playsInline 
+              style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+            />
+            <div className={styles.videoOverlay}>
+              <Play className={styles.videoIcon} size={28} />
+            </div>
           </div>
         ) : (
           <div className={styles.genericThumb}>
@@ -74,7 +94,7 @@ function AssetCard({
         )}
         <button
           className={styles.deleteBtn}
-          onClick={() => onDelete(asset.id, asset.file_path)}
+          onClick={(e) => { e.stopPropagation(); onDelete(asset.id, asset.file_path); }}
           disabled={isDeleting}
           aria-label={`Delete ${asset.file_name}`}
           title="Delete asset"
@@ -200,6 +220,7 @@ function UploadZone({
 
 export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets)
+  const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -369,14 +390,23 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
                 <AssetCard
                   key={asset.id}
                   asset={asset}
-                  previewUrl={isImage(asset.mime_type) ? getPreviewUrl(asset.file_path) : null}
+                  previewUrl={isImage(asset.mime_type) || isVideo(asset.mime_type) ? getPreviewUrl(asset.file_path) : null}
                   onDelete={handleDelete}
+                  onPreview={setPreviewAsset}
                   isDeleting={deletingIds.has(asset.id)}
                 />
               )
             })}
           </div>
         </>
+      )}
+
+      {previewAsset && (
+        <AssetPreviewModal
+          asset={previewAsset}
+          previewUrl={getPreviewUrl(previewAsset.file_path)}
+          onClose={() => setPreviewAsset(null)}
+        />
       )}
     </div>
   )

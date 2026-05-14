@@ -25,6 +25,7 @@ interface Device {
   scale_mode?: string | null
   orientation?: number | null
   last_seen_at?: string | null
+  total_playtime_seconds?: number | null
 }
 
 export interface Asset {
@@ -116,6 +117,14 @@ function formatLastSeen(dateStr: string | null | undefined, isOnline: boolean, n
   if (hours < 24) return `${prefix} ${hours}h ago`
   const days = Math.floor(hours / 24)
   return `${prefix} ${days}d ago`
+}
+
+function formatPlaytime(seconds: number): string {
+  if (!seconds || seconds === 0) return '0m'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0) return `${h}h ${m > 0 ? `${m}m` : ''}`.trim()
+  return `${m}m`
 }
 
 function DeviceCard({
@@ -615,6 +624,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
 
   const onlineCount = devices.filter(d => getLiveStatus(d) === 'online').length;
   const offlineCount = devices.length - onlineCount;
+  const totalPlaytimeSeconds = devices.reduce((acc, d) => acc + (d.total_playtime_seconds || 0), 0);
 
   return (
     <>
@@ -680,7 +690,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
             </svg>
           </div>
           <div className={styles.statInfo}>
-            <span className={styles.statValue}>2h 34m</span>
+            <span className={styles.statValue}>{formatPlaytime(totalPlaytimeSeconds)}</span>
             <span className={styles.statLabel}>Total Playtime</span>
           </div>
         </div>
