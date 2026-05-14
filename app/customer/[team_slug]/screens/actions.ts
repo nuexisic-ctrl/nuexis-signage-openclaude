@@ -13,6 +13,14 @@ export type PairDeviceResult =
 const MAX_ATTEMPTS   = 5
 const WINDOW_MINUTES = 15
 
+function createAdminClient() {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll() { return [] }, setAll() {} } }
+  )
+}
+
 export async function claimDevice(
   teamSlug: string,
   pairingCode: string,
@@ -46,11 +54,7 @@ export async function claimDevice(
   // 2. Rate-limit check — count failed attempts within the rolling window
   const windowStart = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString()
 
-  const adminSupabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll() { return [] }, setAll() {} } }
-  )
+  const adminSupabase = createAdminClient()
 
   // Rate limit by IP address OR specific pairing code to prevent brute force
   const { count: ipCount, error: ipCountError } = await adminSupabase
@@ -87,12 +91,13 @@ export async function claimDevice(
   //    same device simultaneously. Only one UPDATE can succeed because
   //    the first one sets team_id to non-null, causing the second's
   //    WHERE team_id IS NULL to match 0 rows.
-  const { data: updated, error: updateError } = await supabase
+  const { data: updated, error: updateError } = await adminSupabase
     .from('devices')
     .update({
       team_id: teamId,
       name: trimmedName,
       status: 'online',
+      last_seen_at: new Date().toISOString(),
     })
     .eq('pairing_code', trimmedCode)
     .is('team_id', null)
@@ -164,7 +169,8 @@ export async function updateDeviceAssignment(
     return { success: false, error: 'Could not determine your team.' }
   }
 
-  const { data: updated, error: updateError } = await supabase
+  const adminSupabase = createAdminClient()
+  const { data: updated, error: updateError } = await adminSupabase
     .from('devices')
     .update({
       content_type: data.content_type,
@@ -202,7 +208,8 @@ export async function deleteAndUnpairDevice(
     return { success: false, error: 'Could not determine your team.' }
   }
 
-  const { error: deleteError } = await supabase
+  const adminSupabase = createAdminClient()
+  const { error: deleteError } = await adminSupabase
     .from('devices')
     .delete()
     .eq('id', deviceId)
@@ -214,5 +221,40 @@ export async function deleteAndUnpairDevice(
   }
 
   revalidatePath(`/customer/${teamSlug}/screens`)
+  return { success: true }
+}
+
+export async function updateDeviceLastSeen(
+  teamSlug: string,
+  deviceIds: string[]
+): Promise<{ success: boolean }> {
+  if (!deviceIds.length) return { success: true }
+  
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+  if (!teamId) {
+    return { success: false }
+  }
+
+  const adminSupabase = createAdminClient()
+  const { error } = await adminSupabase
+    .from('devices')
+    .update({
+      status: 'offline',
+      last_seen_at: new Date().toISOString(),
+    })
+    .in('id', deviceIds)
+    .eq('team_id', teamId)
+
+  if (error) {
+    console.error('[updateDeviceLastSeen] error:', error)
+    return { success: false }
+  }
+
   return { success: true }
 }

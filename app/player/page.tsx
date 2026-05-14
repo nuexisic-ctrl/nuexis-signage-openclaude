@@ -9,7 +9,6 @@ import styles from './player.module.css'
 type PlayerState = 'loading' | 'pairing' | 'paired' | 'expired'
 
 const PAIRING_DURATION_MS = 15 * 60 * 1000 // 15 minutes
-const HEARTBEAT_INTERVAL_MS = 30 * 1000     // 30 seconds
 
 function formatTime(ms: number): string {
   const totalSecs = Math.max(0, Math.floor(ms / 1000))
@@ -53,9 +52,9 @@ export default function PlayerPage() {
   const secretRef        = useRef<string | null>(null)
   const isPairedRef      = useRef(false)
   const teamIdRef        = useRef<string | null>(null)
+  const presenceKeyRef   = useRef<string>(crypto.randomUUID())
   const timerRef         = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef      = useRef<ReturnType<typeof setInterval> | null>(null)
-  const heartbeatRef     = useRef<ReturnType<typeof setInterval> | null>(null)
   const channelRef       = useRef<RealtimeChannel>(null)
   const teamChannelRef   = useRef<RealtimeChannel>(null)
   const supabaseRef      = useRef(createClient())
@@ -176,43 +175,6 @@ export default function PlayerPage() {
       }
     }
 
-    // ── Heartbeat: updates last_seen_at + resyncs state ─────────────────
-    async function sendHeartbeat(deviceId: string) {
-      if (cancelled) return
-      const hwId = hardwareIdRef.current
-      const secret = secretRef.current
-      if (!hwId || !secret) return
-
-      // Resync: re-fetch device state to recover from Realtime drops
-      const fresh = await getDeviceState(hwId, secret).catch(() => null)
-
-      if (fresh && !cancelled) {
-        // If the device has been unpaired from the CMS, reload ONLY if online
-        if (!fresh.team_id && isPairedRef.current) {
-          if (navigator.onLine) {
-            window.location.reload()
-          } else {
-            console.log('[Player] Device unpaired but offline. Skipping reload to keep app shell alive.')
-          }
-          return
-        }
-        applyDeviceState(fresh)
-      }
-    }
-
-    function startHeartbeat(deviceId: string) {
-      // Clear any existing heartbeat
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
-
-      // Fire immediately so the device shows 'online' right away
-      sendHeartbeat(deviceId)
-
-      // Then repeat every 30 seconds
-      heartbeatRef.current = setInterval(() => {
-        sendHeartbeat(deviceId)
-      }, HEARTBEAT_INTERVAL_MS)
-    }
-
     // ── Presence: track this device as online ─────────────────────────────
     function startPresenceTracking(teamId: string, deviceId: string) {
       // Clean up any existing team channel
@@ -225,7 +187,7 @@ export default function PlayerPage() {
 
       const teamChannel = supabase
         .channel(`team-status:${teamId}`, {
-          config: { presence: { key: deviceId } },
+          config: { presence: { key: `${deviceId}:${presenceKeyRef.current}` } },
         })
         .subscribe(async (status: string) => {
           console.log('[Player] Presence channel status:', status)
@@ -247,7 +209,7 @@ export default function PlayerPage() {
       hardwareIdRef.current = hardwareId
       console.log('[Player] Hardware ID:', hardwareId)
 
-      let savedSecret = localStorage.getItem('nuexis_device_secret')
+      const savedSecret = localStorage.getItem('nuexis_device_secret')
       
       const existing = await getDeviceState(hardwareId, savedSecret || undefined)
 
@@ -268,7 +230,6 @@ export default function PlayerPage() {
           setState('paired')
           activeDevice = existing
           applyDeviceState(existing)
-          startHeartbeat(existing.id)
           startPresenceTracking(existing.team_id, existing.id)
         } else {
           // ── Unpaired — check expiry ──────────────────────────────────
@@ -332,6 +293,29 @@ export default function PlayerPage() {
         intervalRef.current = setInterval(() => {
           const timeLeft = expiresAtMs - Date.now()
           setRemainingMs(timeLeft)
+          
+          if (timeLeft % 3000 < 1000) {
+             const hwId = hardwareIdRef.current
+             const sec = secretRef.current
+             if (hwId && !isPairedRef.current) {
+               getDeviceState(hwId, sec || undefined)
+                 .then((fresh) => {
+                   if (!fresh || cancelled) return
+                   if (fresh.team_id && !isPairedRef.current) {
+                     console.log('[Player] Polling caught — device claimed.')
+                     isPairedRef.current = true
+                     teamIdRef.current = fresh.team_id
+                     setState('paired')
+                     clearTimeout(timerRef.current!)
+                     clearInterval(intervalRef.current!)
+                     startPresenceTracking(fresh.team_id, fresh.id)
+                     applyDeviceState(fresh)
+                   }
+                 })
+                 .catch(console.error)
+             }
+          }
+
           if (timeLeft <= 0) clearInterval(intervalRef.current!)
         }, 1000)
 
@@ -367,7 +351,6 @@ export default function PlayerPage() {
                 setState('paired')
                 clearTimeout(timerRef.current!)
                 clearInterval(intervalRef.current!)
-                startHeartbeat(activeDevice.id)
                 startPresenceTracking(payload.new.team_id, activeDevice.id)
               }
               applyDeviceState(payload.new)
@@ -417,7 +400,6 @@ export default function PlayerPage() {
                   setState('paired')
                   clearTimeout(timerRef.current!)
                   clearInterval(intervalRef.current!)
-                  startHeartbeat(fresh.id)
                   startPresenceTracking(fresh.team_id, fresh.id)
                   applyDeviceState(fresh)
                 } else if (fresh.team_id && isPairedRef.current) {
@@ -439,7 +421,6 @@ export default function PlayerPage() {
       cancelled = true
       clearTimeout(timerRef.current!)
       clearInterval(intervalRef.current!)
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current)
       if (channelRef.current) {
         supabaseRef.current.removeChannel(channelRef.current)
       }

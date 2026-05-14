@@ -4,10 +4,16 @@ import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { claimDevice, updateDeviceAssignment, deleteAndUnpairDevice, AssignmentData } from './actions'
+import { claimDevice, updateDeviceAssignment, deleteAndUnpairDevice, updateDeviceLastSeen, AssignmentData } from './actions'
 import styles from './screens.module.css'
 
 type LiveStatus = 'online' | 'offline' | 'pairing'
+
+const OFFLINE_TIMEOUT_MS = 45 * 1000
+const FALLBACK_REFRESH_MS = 120 * 1000
+const RELATIVE_TIME_TICK_MS = 15 * 1000
+const DEVICE_SELECT_FIELDS =
+  'id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at'
 
 interface Device {
   id: string
@@ -98,10 +104,11 @@ function StatusBadge({ status }: { status: LiveStatus }) {
   )
 }
 
-function formatLastSeen(dateStr: string | null | undefined, isOnline: boolean): string {
+function formatLastSeen(dateStr: string | null | undefined, isOnline: boolean, nowMs = Date.now()): string {
+  if (isOnline) return 'Active now'
   if (!dateStr) return 'Never'
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const prefix = isOnline ? 'Active' : 'Seen'
+  const diff = nowMs - new Date(dateStr).getTime()
+  const prefix = 'Seen'
   if (diff < 60000) return `${prefix} just now`
   const mins = Math.floor(diff / 60000)
   if (mins < 60) return `${prefix} ${mins}m ago`
@@ -413,13 +420,17 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   const [showPairModal, setShowPairModal] = useState(false)
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
+  const [nowMs, setNowMs] = useState(() => Date.now())
   
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
-    if (typeof window === 'undefined') return 'grid'
-    const saved = localStorage.getItem('screensViewMode')
-    return saved === 'grid' || saved === 'table' ? saved : 'grid'
-  })
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    const saved = localStorage.getItem('screensViewMode')
+    if (saved === 'grid' || saved === 'table') {
+      setViewMode(saved)
+    }
+  }, [])
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   const handleSetViewMode = (mode: 'grid' | 'table') => {
@@ -437,6 +448,11 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDevices(initialDevices)
   }, [initialDevices])
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setNowMs(Date.now()), RELATIVE_TIME_TICK_MS)
+    return () => clearInterval(intervalId)
+  }, [])
 
   // ── Persistent presence channel ────────────────────────────────────────
   useEffect(() => {
@@ -471,6 +487,11 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
           left.forEach((id) => next.delete(id))
           return next
         })
+        
+        if (left.length > 0) {
+          updateDeviceLastSeen(teamSlug, left).catch(err => console.error('[Dashboard] Error updating last seen:', err))
+        }
+        
         console.log('[Dashboard] Presence leave:', left)
       })
       .subscribe((status) => {
@@ -524,11 +545,12 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   useEffect(() => {
     if (!teamId) return
 
-    // Every 30 seconds, fetch the latest device states
+    // Presence and Postgres changes drive the live UI. This slower fetch is
+    // only a recovery path if Realtime drops or a tab wakes from suspension.
     const intervalId = setInterval(async () => {
       const { data, error } = await supabase
         .from('devices')
-        .select('*')
+        .select(DEVICE_SELECT_FIELDS)
         .eq('team_id', teamId)
       
       if (!error && data) {
@@ -550,7 +572,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
         }) as Device[]
         setDevices(mapped)
       }
-    }, 30000) // 30s
+    }, FALLBACK_REFRESH_MS)
 
     return () => clearInterval(intervalId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -582,19 +604,13 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   // ── Derive live status for each device ────────────────────────────────
   function getLiveStatus(device: Device): LiveStatus {
     if (device.status === 'pairing') return 'pairing'
-    
-    // Consider online if tracked via Presence OR if last_seen_at is recent (within ~60 seconds).
-    // The player sends a heartbeat every 30s, so 60s allows for 1 missed heartbeat.
-    const now = new Date().getTime()
-    const isRecentlySeen = device.last_seen_at && (now - new Date(device.last_seen_at).getTime() < 60000)
-    
-    return (onlineDeviceIds.has(device.id) || isRecentlySeen) ? 'online' : 'offline'
+    return onlineDeviceIds.has(device.id) ? 'online' : 'offline'
   }
 
   const filteredDevices = devices.filter(d => {
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
-    return (d.name?.toLowerCase().includes(q) || d.status.includes(q))
+    return (d.name?.toLowerCase().includes(q) || getLiveStatus(d).includes(q) || d.status.includes(q))
   })
 
   const onlineCount = devices.filter(d => getLiveStatus(d) === 'online').length;
