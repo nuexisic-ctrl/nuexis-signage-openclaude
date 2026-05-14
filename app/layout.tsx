@@ -19,10 +19,8 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={sidebarCollapsed ? "sidebar-collapsed" : ""}>
-        <Script
-          id="theme-script"
-          strategy="beforeInteractive"
+      <head>
+        <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
@@ -35,6 +33,8 @@ export default async function RootLayout({
             `,
           }}
         />
+      </head>
+      <body className={sidebarCollapsed ? "sidebar-collapsed" : ""}>
         {children}
       </body>
     </html>

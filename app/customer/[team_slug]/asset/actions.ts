@@ -31,7 +31,7 @@ export async function insertAsset(
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
-  if (!asset.file_path.startsWith(`${teamId}/`)) {
+  if (!asset.mime_type.startsWith('application/x-widget') && !asset.file_path.startsWith(`${teamId}/`)) {
     return { success: false, error: 'Invalid file path.' }
   }
 
@@ -122,7 +122,7 @@ export async function deleteAsset(
   // ── Verify ownership before touching anything ──────────────────────────────
   const { data: asset, error: assetError } = await supabase
     .from('assets')
-    .select('id, team_id, file_path')
+    .select('id, team_id, file_path, mime_type')
     .eq('id', assetId)
     .single()
 
@@ -145,13 +145,15 @@ export async function deleteAsset(
   }
 
   // ── Delete from storage ────────────────────────────────────────────────────
-  const { error: storageError } = await supabase.storage
-    .from('workspace-media')
-    .remove([filePath])
+  if (!asset.mime_type.startsWith('application/x-widget')) {
+    const { error: storageError } = await supabase.storage
+      .from('workspace-media')
+      .remove([filePath])
 
-  if (storageError) {
-    console.error('[deleteAsset] storage error:', storageError)
-    return { success: false, error: 'An unexpected error occurred while managing your media.' }
+    if (storageError) {
+      console.error('[deleteAsset] storage error:', storageError)
+      return { success: false, error: 'An unexpected error occurred while managing your media.' }
+    }
   }
 
   // ── Delete from database (double-lock: ownership filter + RLS) ────────────

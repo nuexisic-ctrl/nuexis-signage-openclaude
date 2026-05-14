@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, MonitorSmartphone, Layers, Zap } from 'lucide-react';
 
@@ -7,11 +8,8 @@ export default function Home() {
       {/* Navigation */}
       <nav className="fixed w-full bg-white/80 backdrop-blur-md border-b border-slate-200 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-brand w-8 h-8 rounded-lg flex items-center justify-center">
-              <MonitorSmartphone className="text-white w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">NuExis</span>
+          <div className="flex items-center">
+            <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={140} height={40} priority />
           </div>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
@@ -92,9 +90,8 @@ export default function Home() {
 
       <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <MonitorSmartphone className="w-5 h-5 text-slate-500" />
-            <span className="text-lg font-semibold text-slate-200">NuExis</span>
+          <div className="flex items-center">
+            <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={110} height={32} className="brightness-0 invert opacity-80" />
           </div>
           <p className="text-sm">© {new Date().getFullYear()} NuExis. All rights reserved.</p>
         </div>

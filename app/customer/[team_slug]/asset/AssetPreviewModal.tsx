@@ -13,7 +13,7 @@ interface Asset {
 
 interface Props {
   asset: Asset
-  previewUrl: string
+  previewUrl: string | null
   onClose: () => void
 }
 
@@ -62,10 +62,10 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
         </div>
         
         <div className={styles.modalContent}>
-          {isImg ? (
+          {isImg && previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt={asset.file_name} className={styles.modalMedia} />
-          ) : isVid ? (
+          ) : isVid && previewUrl ? (
             <video src={previewUrl} controls autoPlay className={styles.modalMedia} />
           ) : (
             <div className={styles.modalUnsupported}>

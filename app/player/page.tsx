@@ -151,6 +151,13 @@ export default function PlayerPage() {
         .single()
 
       if (asset) {
+        if (asset.mime_type === 'application/x-widget-youtube') {
+          setBlobUrl(null)
+          setAssetUrl(asset.file_path)
+          setMimeType(asset.mime_type)
+          return
+        }
+
         const { data } = client.storage.from('workspace-media').getPublicUrl(asset.file_path)
         const publicUrl = data.publicUrl
         
@@ -534,7 +541,18 @@ export default function PlayerPage() {
 
     let content = null
     if (contentType === 'Asset' && assetUrl) {
-      if (mimeType?.startsWith('video/')) {
+      if (mimeType === 'application/x-widget-youtube') {
+        const videoId = assetUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || ''
+        content = (
+          <iframe 
+            key={assetUrl}
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=0`}
+            style={{ ...mediaStyle, border: 'none', pointerEvents: 'none' }}
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+          />
+        )
+      } else if (mimeType?.startsWith('video/')) {
         content = (
           <video
             key={assetUrl}

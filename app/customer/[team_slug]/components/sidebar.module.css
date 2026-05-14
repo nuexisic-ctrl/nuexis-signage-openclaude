@@ -44,22 +44,25 @@
 }
 
 .logoLink {
-  display: flex;
-  align-items: baseline;
-  font-family: var(--font-serif);
-  font-size: 1.35rem;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--on-surface);
+  display: block;
   text-decoration: none;
 }
 
-.logoIcon {
-  color: var(--primary);
+.logoWrapper {
+  position: relative;
+  width: 140px;
+  height: 40px;
+  transition: width 0.2s ease;
 }
 
-.logoText {
-  color: inherit;
+.sidebar.collapsed .logoWrapper {
+  width: 40px;
+  overflow: hidden;
+}
+
+.logoImage {
+  object-fit: cover;
+  object-position: left center;
 }
 
 .teamSlug {

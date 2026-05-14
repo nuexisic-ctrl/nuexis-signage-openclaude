@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, File, Play, X } from 'lucide-react'
+import { AlertTriangle, Check, File, Play, X, LayoutTemplate, Plus, MonitorPlay } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getUploadUrl, insertAsset, deleteAsset } from './actions'
 import { AssetPreviewModal } from './AssetPreviewModal'
@@ -39,6 +39,106 @@ function isImage(mimeType: string) {
 
 function isVideo(mimeType: string) {
   return mimeType.startsWith('video/')
+}
+
+function isWidget(mimeType: string) {
+  return mimeType.startsWith('application/x-widget')
+}
+
+// ─── Modals ───────────────────────────────────────────────────────────────────
+
+function WidgetSelectionModal({
+  onClose,
+  onSelectYouTube
+}: {
+  onClose: () => void
+  onSelectYouTube: () => void
+}) {
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>Select Widget</h2>
+          <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+          <button 
+            onClick={() => { onClose(); onSelectYouTube(); }}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: '12px', padding: '16px',
+              background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
+              borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s',
+              color: 'var(--on-surface)', fontSize: '1rem', fontWeight: 600,
+              fontFamily: 'var(--font-label)'
+            }}
+            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
+            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--outline-variant)'}
+          >
+            <MonitorPlay color="#ff0000" size={28} />
+            YouTube Player
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function YouTubeWidgetModal({
+  onClose,
+  onSubmit,
+  isSubmitting
+}: {
+  onClose: () => void
+  onSubmit: (name: string, url: string) => void
+  isSubmitting: boolean
+}) {
+  const [name, setName] = useState('')
+  const [url, setUrl] = useState('')
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>Configure YouTube Widget</h2>
+          <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
+        </div>
+        <form onSubmit={e => { e.preventDefault(); onSubmit(name, url); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>Widget Name</label>
+            <input 
+              required
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="e.g. Lobby YouTube Video"
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>YouTube URL</label>
+            <input 
+              required
+              type="url"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
+            />
+          </div>
+          <button 
+            type="submit" 
+            disabled={isSubmitting || !name || !url}
+            style={{ 
+              marginTop: '8px', padding: '12px', background: 'var(--primary)', color: 'var(--on-primary)', 
+              border: 'none', borderRadius: '8px', fontWeight: 600, cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting ? 0.7 : 1
+            }}
+          >
+            {isSubmitting ? 'Saving...' : 'Save Widget'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
 }
 
 // ─── Asset Card ───────────────────────────────────────────────────────────────
@@ -87,6 +187,16 @@ function AssetCard({
               <Play className={styles.videoIcon} size={28} />
             </div>
           </div>
+        ) : isWidget(asset.mime_type) ? (
+          <div className={styles.videoThumbWrapper} style={{ position: 'relative', width: '100%', height: '100%' }}>
+             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #3f0a0a, #0f172a)' }}>
+               {asset.mime_type === 'application/x-widget-youtube' ? (
+                 <MonitorPlay color="#ff0000" size={48} />
+               ) : (
+                 <LayoutTemplate color="#ffffff" size={48} />
+               )}
+             </div>
+          </div>
         ) : (
           <div className={styles.genericThumb}>
             <File className={styles.genericIcon} size={30} />
@@ -102,7 +212,7 @@ function AssetCard({
           <X size={15} />
         </button>
         <div className={styles.mimeChip}>
-          {asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE'}
+          {isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
         </div>
       </div>
 
@@ -226,6 +336,9 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
+  const [showWidgetSelection, setShowWidgetSelection] = useState(false)
+  const [showYouTubeConfig, setShowYouTubeConfig] = useState(false)
+  const [isSubmittingWidget, setIsSubmittingWidget] = useState(false)
   const [, startTransition] = useTransition()
   const router = useRouter()
   const supabase = createClient()
@@ -346,8 +459,56 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
     }
   }, [teamSlug])
 
+  const handleCreateYouTubeWidget = async (name: string, url: string) => {
+    setIsSubmittingWidget(true)
+    setUploadError(null)
+
+    const result = await insertAsset(teamSlug, {
+      file_name: name,
+      file_path: url,
+      mime_type: 'application/x-widget-youtube',
+      size_bytes: 0,
+    })
+
+    if (!result.success) {
+      setUploadError(`Failed to save widget: ${result.error}`)
+    } else {
+      const newAsset: Asset = {
+        id: result.id!,
+        file_name: name,
+        file_path: url,
+        mime_type: 'application/x-widget-youtube',
+        size_bytes: 0,
+        created_at: new Date().toISOString(),
+      }
+      setAssets(prev => [newAsset, ...prev])
+      setShowYouTubeConfig(false)
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 5000)
+      startTransition(() => {
+        router.refresh()
+      })
+    }
+    setIsSubmittingWidget(false)
+  }
+
   return (
     <div className={styles.assetArea}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>Media Library</h2>
+        <button 
+          onClick={() => setShowWidgetSelection(true)}
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
+            background: 'var(--primary)', color: 'var(--on-primary)', borderRadius: '8px', 
+            border: 'none', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-label)' 
+          }}
+        >
+          <Plus size={16} />
+          Create Widget
+        </button>
+      </div>
+
       <UploadZone
         onFiles={handleFiles}
         isUploading={isUploading}
@@ -404,8 +565,23 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
       {previewAsset && (
         <AssetPreviewModal
           asset={previewAsset}
-          previewUrl={getPreviewUrl(previewAsset.file_path)}
+          previewUrl={isWidget(previewAsset.mime_type) ? null : getPreviewUrl(previewAsset.file_path)}
           onClose={() => setPreviewAsset(null)}
+        />
+      )}
+
+      {showWidgetSelection && (
+        <WidgetSelectionModal 
+          onClose={() => setShowWidgetSelection(false)} 
+          onSelectYouTube={() => setShowYouTubeConfig(true)}
+        />
+      )}
+
+      {showYouTubeConfig && (
+        <YouTubeWidgetModal 
+          onClose={() => setShowYouTubeConfig(false)}
+          onSubmit={handleCreateYouTubeWidget}
+          isSubmitting={isSubmittingWidget}
         />
       )}
     </div>

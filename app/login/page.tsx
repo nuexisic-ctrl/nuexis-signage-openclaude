@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import styles from './generic-login.module.css'
 
 export const metadata: Metadata = {
@@ -16,8 +17,8 @@ export default function GenericLoginPage({
     <div className="auth-shell">
       <div className={styles.wrapper}>
         {/* Logo */}
-        <Link href="/" className="navbar-logo" style={{ fontSize: '1.375rem' }}>
-          Nu<span>Exis</span>
+        <Link href="/" className="navbar-logo" style={{ display: 'block', marginBottom: '32px', textAlign: 'center' }}>
+          <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto' }} />
         </Link>
 
         {/* Main Card */}

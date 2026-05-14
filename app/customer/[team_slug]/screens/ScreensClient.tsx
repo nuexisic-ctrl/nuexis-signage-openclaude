@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -41,6 +42,9 @@ interface Props {
   assets: Asset[]
   teamSlug: string
   teamId: string
+  totalScreens?: number
+  currentPage?: number
+  pageSize?: number
 }
 
 function DeviceIcon({ name, orientation }: { name: string, orientation?: number | null }) {
@@ -133,7 +137,8 @@ function DeviceCard({
   onEdit,
   onDelete,
   menuOpen,
-  onToggleMenu
+  onToggleMenu,
+  isCheckingStatus
 }: {
   device: Device
   liveStatus: LiveStatus
@@ -141,6 +146,7 @@ function DeviceCard({
   onDelete: () => void
   menuOpen: boolean
   onToggleMenu: (e: React.MouseEvent) => void
+  isCheckingStatus?: boolean
 }) {
   const createdAt = new Date(device.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
@@ -157,7 +163,11 @@ function DeviceCard({
           <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
         </div>
         <div className={styles.statusAndMenu}>
-          <StatusBadge status={liveStatus} />
+          {isCheckingStatus ? (
+            <div style={{ width: '70px', height: '22px', borderRadius: '12px', background: 'var(--surface-low)' }} />
+          ) : (
+            <StatusBadge status={liveStatus} />
+          )}
           <div className={styles.moreMenuWrapper}>
             <button 
               className={`${styles.moreBtn} ${menuOpen ? styles.active : ''}`}
@@ -175,7 +185,7 @@ function DeviceCard({
                   Edit Content
                 </button>
                 <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={onDelete}>
-                  Unpair & Delete
+                  Delete
                 </button>
               </div>
             )}
@@ -189,7 +199,11 @@ function DeviceCard({
         </div>
         <div className={styles.deviceMetaRow}>
           <span className={styles.deviceMetaLabel}>LAST SEEN</span>
-          <span className={styles.deviceMetaValue}>{lastSeen}</span>
+          {isCheckingStatus ? (
+            <div style={{ width: '80px', height: '14px', borderRadius: '4px', background: 'var(--surface-low)' }} />
+          ) : (
+            <span className={styles.deviceMetaValue}>{lastSeen}</span>
+          )}
         </div>
       </div>
     </div>
@@ -383,12 +397,19 @@ function AssignModal({
 
           {contentType === 'Asset' && (
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>Selected Asset</label>
+              <label className={styles.label}>Selected Content</label>
               <select className={styles.input} value={assetId} onChange={(e) => setAssetId(e.target.value)}>
-                <option value="">-- Select an asset --</option>
-                {assets.map(asset => (
-                  <option key={asset.id} value={asset.id}>{asset.file_name}</option>
-                ))}
+                <option value="">-- Select an item --</option>
+                <optgroup label="Widgets">
+                  {assets.filter(a => a.mime_type.startsWith('application/x-widget')).map(asset => (
+                    <option key={asset.id} value={asset.id}>📺 {asset.file_name}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Media Library">
+                  {assets.filter(a => !a.mime_type.startsWith('application/x-widget')).map(asset => (
+                    <option key={asset.id} value={asset.id}>{asset.file_name}</option>
+                  ))}
+                </optgroup>
               </select>
             </div>
           )}
@@ -424,23 +445,110 @@ function AssignModal({
   )
 }
 
-export default function ScreensClient({ devices: initialDevices, assets, teamSlug, teamId }: Props) {
+function DeleteModal({
+  deviceId,
+  deviceName,
+  teamSlug,
+  onClose,
+  onSuccess,
+}: {
+  deviceId: string
+  deviceName: string
+  teamSlug: string
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [isPending, startTransition] = useTransition()
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose()
+  }
+
+  function handleConfirm() {
+    startTransition(async () => {
+      await deleteAndUnpairDevice(teamSlug, deviceId)
+      onSuccess()
+    })
+  }
+
+  return (
+    <div className={styles.overlay} ref={overlayRef} onClick={handleOverlayClick}>
+      <div className={styles.modal} role="dialog" style={{ maxWidth: '400px' }}>
+        <div className={styles.modalHeader} style={{ marginBottom: '16px' }}>
+          <div>
+            <h2 className={styles.modalTitle} style={{ color: 'var(--error)' }}>Delete Screen</h2>
+            <p className={styles.modalSubtitle}>
+              Are you sure you want to unpair and delete <strong>{deviceName}</strong>?
+            </p>
+          </div>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close modal"><X size={18} /></button>
+        </div>
+        
+        <p style={{ fontSize: '0.88rem', color: 'var(--on-surface)', marginBottom: '24px', lineHeight: '1.5' }}>
+          The physical screen will automatically reset to pairing mode. This action cannot be undone.
+        </p>
+
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <button 
+            className={styles.submitBtn} 
+            style={{ background: 'var(--surface-low)', color: 'var(--on-surface)', border: '1px solid var(--outline-variant)' }} 
+            onClick={onClose} 
+            disabled={isPending}
+          >
+            Cancel
+          </button>
+          <button 
+            className={styles.submitBtn} 
+            style={{ background: 'var(--error)', color: 'var(--on-primary)' }} 
+            onClick={handleConfirm} 
+            disabled={isPending}
+          >
+            {isPending ? 'Deleting…' : 'Delete Screen'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function ScreensClient({ devices: initialDevices, assets, teamSlug, teamId, totalScreens = 0, currentPage = 1, pageSize = 30 }: Props) {
   const [devices, setDevices] = useState<Device[]>(initialDevices)
   const [showPairModal, setShowPairModal] = useState(false)
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
+  const [deleteModalDevice, setDeleteModalDevice] = useState<Device | null>(null)
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
   const [nowMs, setNowMs] = useState(() => Date.now())
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
   
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsCheckingStatus(false)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     const saved = localStorage.getItem('screensViewMode')
     if (saved === 'grid' || saved === 'table') {
       setViewMode(saved)
     }
+    setIsMounted(true)
   }, [])
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPosition, setMenuPosition] = useState<{ top: number, right: number } | null>(null)
+  
+  // Advanced Filter States
+  const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false)
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [filterOrientation, setFilterOrientation] = useState<string>('all')
+  const [filterDatePreset, setFilterDatePreset] = useState<string>('all')
+  const [filterStartDate, setFilterStartDate] = useState<string>('')
+  const [filterEndDate, setFilterEndDate] = useState<string>('')
 
   const handleSetViewMode = (mode: 'grid' | 'table') => {
     setViewMode(mode)
@@ -588,7 +696,10 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   }, [teamId])
 
   useEffect(() => {
-    const handleClick = () => setOpenMenuId(null)
+    const handleClick = () => {
+      setOpenMenuId(null)
+      setMenuPosition(null)
+    }
     if (openMenuId) document.addEventListener('click', handleClick)
     return () => document.removeEventListener('click', handleClick)
   }, [openMenuId])
@@ -603,11 +714,9 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     router.refresh()
   }
 
-  async function handleDeleteDevice(deviceId: string) {
-    if (confirm('Are you sure you want to unpair and delete this screen? The physical screen will automatically reset to pairing mode.')) {
-      await deleteAndUnpairDevice(teamSlug, deviceId)
-      setOpenMenuId(null)
-    }
+  function handleDeleteSuccess() {
+    setDeleteModalDevice(null)
+    router.refresh()
   }
 
   // ── Derive live status for each device ────────────────────────────────
@@ -617,14 +726,59 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   }
 
   const filteredDevices = devices.filter(d => {
+    const liveStatus = getLiveStatus(d)
+    
+    // 1. Status Filter
+    if (filterStatus !== 'all' && liveStatus !== filterStatus) return false
+    
+    // 2. Orientation Filter
+    if (filterOrientation !== 'all') {
+      const o = d.orientation === null || d.orientation === undefined ? '0' : d.orientation.toString()
+      if (o !== filterOrientation) return false
+    }
+    
+    // 3. Date Filters
+    if (filterDatePreset !== 'all') {
+      const now = new Date();
+      const dDate = new Date(d.created_at).getTime();
+      
+      if (filterDatePreset === 'today') {
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        if (dDate < startOfToday) return false;
+      } else if (filterDatePreset === '7days') {
+        const startOf7DaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).getTime();
+        if (dDate < startOf7DaysAgo) return false;
+      } else if (filterDatePreset === '30days') {
+        const startOf30DaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).getTime();
+        if (dDate < startOf30DaysAgo) return false;
+      } else if (filterDatePreset === 'custom') {
+        if (filterStartDate) {
+          const start = new Date(filterStartDate).getTime()
+          if (dDate < start) return false
+        }
+        if (filterEndDate) {
+          const end = new Date(filterEndDate)
+          end.setDate(end.getDate() + 1)
+          if (dDate >= end.getTime()) return false
+        }
+      }
+    }
+    
+    // 4. Search Query
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
-    return (d.name?.toLowerCase().includes(q) || getLiveStatus(d).includes(q) || d.status.includes(q))
+    return (d.name?.toLowerCase().includes(q) || liveStatus.includes(q) || d.status.includes(q))
   })
 
   const onlineCount = devices.filter(d => getLiveStatus(d) === 'online').length;
   const offlineCount = devices.length - onlineCount;
   const totalPlaytimeSeconds = devices.reduce((acc, d) => acc + (d.total_playtime_seconds || 0), 0);
+
+  const totalPages = Math.ceil(totalScreens / pageSize)
+  const hasNextPage = currentPage < totalPages
+  const hasPrevPage = currentPage > 1
+  const startItem = (currentPage - 1) * pageSize + 1
+  const endItem = Math.min(currentPage * pageSize, totalScreens)
 
   return (
     <>
@@ -646,6 +800,9 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
           </button>
         </div>
       </div>
+
+      <div className={styles.pageLayout}>
+        <div className={`${styles.mainContent} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
 
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
@@ -711,12 +868,25 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
             />
           </div>
           <div className={styles.controlsRight}>
-            <div className={styles.viewToggleGroup}>
-              <button 
-                className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-                onClick={() => handleSetViewMode('grid')}
-                title="Grid View"
-              >
+            <button 
+              className={`${styles.filterBtn} ${isFilterSidebarOpen || filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' ? styles.active : ''}`}
+              onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+              Filters
+              {(filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all') && (
+                <span className={styles.filterDot} />
+              )}
+            </button>
+            {isMounted && (
+              <div className={styles.viewToggleGroup}>
+                <button 
+                  className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                  onClick={() => handleSetViewMode('grid')}
+                  title="Grid View"
+                >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
                   <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
@@ -739,16 +909,15 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                 </svg>
               </button>
             </div>
-            <button className={styles.filterBtn}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-              </svg>
-              Filters
-            </button>
+            )}
           </div>
         </div>
 
-        {filteredDevices.length === 0 ? (
+        {!isMounted ? (
+          <div className={styles.grid} style={{ opacity: 0 }}>
+            <div style={{ height: '300px' }} />
+          </div>
+        ) : filteredDevices.length === 0 ? (
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>NX</div>
             <h3 className={styles.emptyTitle}>No screens found</h3>
@@ -767,12 +936,16 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                 device={device}
                 liveStatus={getLiveStatus(device)}
                 onEdit={() => setAssignModalDevice(device)}
-                onDelete={() => handleDeleteDevice(device.id)}
+                onDelete={() => {
+                  setOpenMenuId(null);
+                  setDeleteModalDevice(device);
+                }}
                 menuOpen={openMenuId === device.id}
                 onToggleMenu={(e) => {
                   e.stopPropagation();
                   setOpenMenuId(openMenuId === device.id ? null : device.id);
                 }}
+                isCheckingStatus={isCheckingStatus}
               />
             ))}
           </div>
@@ -809,12 +982,22 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                         </div>
                       </td>
                       <td className={styles.tableCell}>
-                        <StatusBadge status={status} />
+                        {isCheckingStatus ? (
+                          <div style={{ width: '70px', height: '22px', borderRadius: '12px', background: 'var(--surface-low)' }} />
+                        ) : (
+                          <StatusBadge status={status} />
+                        )}
                       </td>
                       <td className={styles.tableCell}>
                         <div className={styles.cellLastSeen}>
-                          <span className={`${styles.statusDot} ${isOnline ? styles.statusDotOnline : styles.statusDotOffline}`} style={{ marginRight: '8px' }} />
-                          {lastSeen}
+                          {isCheckingStatus ? (
+                            <div style={{ width: '100px', height: '14px', borderRadius: '4px', background: 'var(--surface-low)' }} />
+                          ) : (
+                            <>
+                              <span className={`${styles.statusDot} ${isOnline ? styles.statusDotOnline : styles.statusDotOffline}`} style={{ marginRight: '8px' }} />
+                              {lastSeen}
+                            </>
+                          )}
                         </div>
                       </td>
                       <td className={styles.tableCell}>
@@ -838,7 +1021,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                           <span style={!device.asset_id ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}>
                             {device.asset_id 
                               ? (assets.find(a => a.id === device.asset_id)?.file_name || 'Assigned Asset') 
-                              : 'Sync Failed'}
+                              : 'No content'}
                           </span>
                         </div>
                       </td>
@@ -854,7 +1037,14 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                               className={`${styles.actionBtnBox} ${isMenuOpen ? styles.active : ''}`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setOpenMenuId(isMenuOpen ? null : device.id)
+                                if (isMenuOpen) {
+                                  setOpenMenuId(null);
+                                  setMenuPosition(null);
+                                } else {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setMenuPosition({ top: rect.bottom + window.scrollY + 6, right: window.innerWidth - rect.right });
+                                  setOpenMenuId(device.id);
+                                }
                               }}
                               aria-label="More Actions"
                             >
@@ -864,12 +1054,21 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                                 <circle cx="12" cy="19" r="1.5"></circle>
                               </svg>
                             </button>
-                            {isMenuOpen && (
-                              <div className={styles.moreDropdown}>
-                                <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => handleDeleteDevice(device.id)}>
-                                  Unpair & Delete
+                            {isMenuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
+                              <div 
+                                className={styles.moreDropdown}
+                                style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 1000 }}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => {
+                                  setOpenMenuId(null);
+                                  setMenuPosition(null);
+                                  setDeleteModalDevice(device);
+                                }}>
+                                  Delete
                                 </button>
-                              </div>
+                              </div>,
+                              document.body
                             )}
                           </div>
                         </div>
@@ -883,24 +1082,119 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
         )}
         
         {/* Render pagination footer below grid or table if we have screens */}
-        {filteredDevices.length > 0 && (
+        {devices.length > 0 && (
           <div className={styles.tableFooter}>
-            <div>Showing 1 to {filteredDevices.length || 0} of {filteredDevices.length || 0} screens</div>
-            <div className={styles.pagination}>
-              <button className={styles.pageBtn}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-              </button>
-              <button className={`${styles.pageBtn} ${styles.active}`}>1</button>
-              <button className={styles.pageBtn}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6"></polyline>
-                </svg>
-              </button>
+            <div>
+              {searchQuery 
+                ? `Showing ${filteredDevices.length} filtered screens` 
+                : `Showing ${startItem} to ${endItem} of ${totalScreens} screens`
+              }
             </div>
+            {!searchQuery && (
+              <div className={styles.pagination}>
+                <button 
+                  className={styles.pageBtn} 
+                  onClick={() => router.push(`?page=${currentPage - 1}`)}
+                  disabled={!hasPrevPage}
+                  style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                  </svg>
+                </button>
+                <button className={`${styles.pageBtn} ${styles.active}`}>{currentPage}</button>
+                <button 
+                  className={styles.pageBtn} 
+                  onClick={() => router.push(`?page=${currentPage + 1}`)}
+                  disabled={!hasNextPage}
+                  style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
         )}
+      </div>
+      </div>
+      
+      {/* Advanced Filter Sidebar */}
+      {isFilterSidebarOpen && (
+        <>
+          <div className={styles.sidebarOverlay} onClick={() => setIsFilterSidebarOpen(false)} />
+          <aside className={styles.filterSidebar}>
+            <div className={styles.sidebarHeader}>
+              <h3 className={styles.sidebarTitle}>Advanced Filters</h3>
+              <button className={styles.closeSidebarBtn} onClick={() => setIsFilterSidebarOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className={styles.sidebarBody}>
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Screen Status</label>
+                <select className={styles.filterSelect} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                  <option value="all">All Statuses</option>
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
+                  <option value="pairing">Pairing Mode</option>
+                </select>
+              </div>
+              
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Orientation</label>
+                <select className={styles.filterSelect} value={filterOrientation} onChange={e => setFilterOrientation(e.target.value)}>
+                  <option value="all">All Orientations</option>
+                  <option value="0">0° (Landscape)</option>
+                  <option value="90">90° (Portrait)</option>
+                  <option value="180">180° (Landscape Flipped)</option>
+                  <option value="270">270° (Portrait Flipped)</option>
+                </select>
+              </div>
+
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Date Added</label>
+                <select className={styles.filterSelect} value={filterDatePreset} onChange={e => setFilterDatePreset(e.target.value)}>
+                  <option value="all">Any time</option>
+                  <option value="today">Today</option>
+                  <option value="7days">Last 7 Days</option>
+                  <option value="30days">Last 30 Days</option>
+                  <option value="custom">Custom Date Range</option>
+                </select>
+              </div>
+
+              {filterDatePreset === 'custom' && (
+                <>
+                  <div className={styles.filterGroup}>
+                    <label className={styles.filterLabel}>Added After</label>
+                    <input type="date" className={styles.filterInput} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+                  </div>
+                  
+                  <div className={styles.filterGroup}>
+                    <label className={styles.filterLabel}>Added Before</label>
+                    <input type="date" className={styles.filterInput} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
+                  </div>
+                </>
+              )}
+            </div>
+            <div className={styles.sidebarFooter}>
+              <button 
+                className={styles.resetFiltersBtn} 
+                onClick={() => {
+                  setFilterStatus('all'); 
+                  setFilterOrientation('all'); 
+                  setFilterDatePreset('all');
+                  setFilterStartDate(''); 
+                  setFilterEndDate('');
+                }}
+              >
+                Reset All Filters
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
       </div>
 
       {showPairModal && (
@@ -918,6 +1212,16 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
           teamSlug={teamSlug}
           onClose={() => setAssignModalDevice(null)}
           onSuccess={handleAssignSuccess}
+        />
+      )}
+
+      {deleteModalDevice && (
+        <DeleteModal
+          deviceId={deleteModalDevice.id}
+          deviceName={deleteModalDevice.name || 'Unnamed Screen'}
+          teamSlug={teamSlug}
+          onClose={() => setDeleteModalDevice(null)}
+          onSuccess={handleDeleteSuccess}
         />
       )}
     </>

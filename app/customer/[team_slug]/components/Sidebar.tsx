@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { 
   LayoutDashboard, 
@@ -58,8 +59,15 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
         <div className={styles.sidebarHeader}>
           <div className={styles.logoContainer}>
             <Link href="/" className={styles.logoLink} title="NuExis">
-              <span className={styles.logoIcon}>Nu</span>
-              {!isCollapsed && <span className={styles.logoText}>Exis</span>}
+              <div className={styles.logoWrapper}>
+                <Image 
+                  src="/Nuexis-logo.png" 
+                  alt="NuExis Logo" 
+                  fill 
+                  className={styles.logoImage} 
+                  priority
+                />
+              </div>
             </Link>
             {!isCollapsed && <span className={styles.teamSlug}>{teamSlug}</span>}
           </div>

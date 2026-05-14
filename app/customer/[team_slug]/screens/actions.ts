@@ -48,19 +48,16 @@ export async function claimDevice(
     return { success: false, error: 'You must be logged in to add a screen.' }
   }
 
-  const headersList = await headers()
-  const clientIp = headersList.get('x-forwarded-for') || headersList.get('x-real-ip') || 'unknown'
-
   // 2. Rate-limit check — count failed attempts within the rolling window
   const windowStart = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString()
 
   const adminSupabase = createAdminClient()
 
-  // Rate limit by IP address OR specific pairing code to prevent brute force
-  const { count: ipCount, error: ipCountError } = await adminSupabase
+  // Rate limit by user_id OR specific pairing code to prevent brute force
+  const { count: userCount, error: userCountError } = await adminSupabase
     .from('claim_attempts')
     .select('id', { count: 'exact', head: true })
-    .eq('ip_address', clientIp)
+    .eq('user_id', user.id)
     .gte('attempted_at', windowStart)
 
   const { count: codeCount, error: codeCountError } = await adminSupabase
@@ -69,10 +66,10 @@ export async function claimDevice(
     .eq('pairing_code', trimmedCode)
     .gte('attempted_at', windowStart)
 
-  if (ipCountError || codeCountError) {
-    console.error('[claimDevice] rate-limit check error:', ipCountError || codeCountError)
-  } else if ((ipCount !== null && ipCount >= MAX_ATTEMPTS) || (codeCount !== null && codeCount >= MAX_ATTEMPTS)) {
-    console.warn('[claimDevice] rate limit exceeded for IP/code:', clientIp, trimmedCode)
+  if (userCountError || codeCountError) {
+    console.error('[claimDevice] rate-limit check error:', userCountError || codeCountError)
+  } else if ((userCount !== null && userCount >= MAX_ATTEMPTS) || (codeCount !== null && codeCount >= MAX_ATTEMPTS)) {
+    console.warn('[claimDevice] rate limit exceeded for user/code:', user.id, trimmedCode)
     return {
       success: false,
       error: `Too many failed attempts. Please wait ${WINDOW_MINUTES} minutes before trying again.`,
@@ -116,7 +113,7 @@ export async function claimDevice(
     // Record this as a failed attempt for rate-limiting
     const { error: insertError } = await adminSupabase
       .from('claim_attempts')
-      .insert({ user_id: user.id, ip_address: clientIp, pairing_code: trimmedCode })
+      .insert({ user_id: user.id, pairing_code: trimmedCode })
 
     if (insertError) {
       console.error('[claimDevice] insert claim_attempts error:', { message: insertError.message, details: insertError.details, hint: insertError.hint })
@@ -128,11 +125,11 @@ export async function claimDevice(
 
   console.log('[claimDevice] success! device', updated[0].id, 'claimed by team', teamId)
 
-  // Success — clear any recorded failed attempts for this user/IP/code
+  // Success — clear any recorded failed attempts for this user/code
   const { error: deleteError } = await adminSupabase
     .from('claim_attempts')
     .delete()
-    .or(`user_id.eq.${user.id},ip_address.eq.${clientIp},pairing_code.eq.${trimmedCode}`)
+    .or(`user_id.eq.${user.id},pairing_code.eq.${trimmedCode}`)
 
   if (deleteError) {
     console.error('[claimDevice] clear claim_attempts error:', { message: deleteError.message, details: deleteError.details, hint: deleteError.hint })
@@ -169,8 +166,7 @@ export async function updateDeviceAssignment(
     return { success: false, error: 'Could not determine your team.' }
   }
 
-  const adminSupabase = createAdminClient()
-  const { data: updated, error: updateError } = await adminSupabase
+  const { data: updated, error: updateError } = await supabase
     .from('devices')
     .update({
       content_type: data.content_type,
@@ -179,7 +175,6 @@ export async function updateDeviceAssignment(
       orientation: data.orientation,
     })
     .eq('id', deviceId)
-    .eq('team_id', teamId)
     .select('id')
 
   if (updateError || !updated || updated.length === 0) {
@@ -208,12 +203,10 @@ export async function deleteAndUnpairDevice(
     return { success: false, error: 'Could not determine your team.' }
   }
 
-  const adminSupabase = createAdminClient()
-  const { error: deleteError } = await adminSupabase
+  const { error: deleteError } = await supabase
     .from('devices')
     .delete()
     .eq('id', deviceId)
-    .eq('team_id', teamId)
 
   if (deleteError) {
     console.error('[deleteAndUnpairDevice] delete error:', { message: deleteError.message, details: deleteError.details, hint: deleteError.hint })
@@ -241,15 +234,13 @@ export async function updateDeviceLastSeen(
     return { success: false }
   }
 
-  const adminSupabase = createAdminClient()
-  const { error } = await adminSupabase
+  const { error } = await supabase
     .from('devices')
     .update({
       status: 'offline',
       last_seen_at: new Date().toISOString(),
     })
     .in('id', deviceIds)
-    .eq('team_id', teamId)
 
   if (error) {
     console.error('[updateDeviceLastSeen] error:', error)

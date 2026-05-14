@@ -9,6 +9,7 @@ import Sidebar from '../components/Sidebar'
 
 interface Props {
   params: Promise<{ team_slug: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -19,8 +20,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function ScreensPage({ params }: Props) {
+export default async function ScreensPage({ params, searchParams }: Props) {
   const { team_slug } = await params
+  const resolvedSearchParams = await searchParams
+  const pageStr = resolvedSearchParams.page
+  const currentPage = typeof pageStr === 'string' ? parseInt(pageStr, 10) || 1 : 1
+  const pageSize = 30
+  const from = (currentPage - 1) * pageSize
+  const to = from + pageSize - 1
 
   if (!/^[a-z0-9-]+$/.test(team_slug)) notFound()
 
@@ -47,13 +54,17 @@ export default async function ScreensPage({ params }: Props) {
 
   const query = supabase
     .from('devices')
-    .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at, total_playtime_seconds')
+    .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at, total_playtime_seconds', { count: 'exact' })
     .eq('team_id', profile?.team_id as string)
     .order('created_at', { ascending: false })
+    .range(from, to)
 
-  const devicesData = profile?.team_id
-    ? ((await query).data ?? [])
-    : []
+  const response = profile?.team_id
+    ? await query
+    : { data: [], count: 0 }
+
+  const devicesData = response.data ?? []
+  const totalScreens = response.count ?? 0
 
   const devices = devicesData.map((d) => {
     return {
@@ -96,6 +107,9 @@ export default async function ScreensPage({ params }: Props) {
           assets={assets}
           teamSlug={team_slug}
           teamId={profile?.team_id as string}
+          totalScreens={totalScreens}
+          currentPage={currentPage}
+          pageSize={pageSize}
         />
       </main>
     </div>

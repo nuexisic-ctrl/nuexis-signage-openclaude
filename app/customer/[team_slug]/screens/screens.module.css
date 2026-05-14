@@ -153,6 +153,149 @@
   color: var(--on-surface-subtle);
 }
 
+.pageLayout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  position: relative;
+}
+
+.mainContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: width 0.3s ease;
+}
+
+.filterSidebar {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.sidebarOverlay {
+  display: none;
+}
+
+.sidebarHeader {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.sidebarTitle {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--on-surface);
+}
+
+.closeSidebarBtn {
+  background: var(--surface-low);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeSidebarBtn:hover {
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.sidebarBody {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterLabel {
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--on-surface-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.filterSelect, .filterInput {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.filterSelect:focus, .filterInput:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(9, 76, 178, 0.1);
+}
+
+.sidebarFooter {
+  padding: 16px 20px;
+  border-top: 1px solid var(--outline-variant);
+  margin-top: auto;
+}
+
+.resetFiltersBtn {
+  width: 100%;
+  height: 42px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  color: var(--on-surface);
+  font-family: var(--font-label);
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resetFiltersBtn:hover {
+  background: var(--surface-container);
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--outline-variant));
+}
+
+.filterDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  display: inline-block;
+  margin-left: 4px;
+}
+
 .mainBlockContainer {
   background: var(--surface-lowest);
   border: 1px solid var(--outline-variant);
@@ -828,6 +971,31 @@
     flex-direction: column;
     align-items: stretch;
     gap: 14px;
+  }
+
+  .filterSidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    z-index: 300;
+    border-radius: 0;
+    border: 0;
+    border-left: 1px solid var(--outline-variant);
+    box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .sidebarOverlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 17, 31, 0.64);
+    backdrop-filter: blur(4px);
+    z-index: 299;
   }
 
   .addBtn {
