@@ -21,10 +21,6 @@ interface Device {
   last_seen_at?: string | null
 }
 
-type DeviceWithHeartbeat = Device & {
-  device_heartbeats?: { last_seen_at?: string | null } | Array<{ last_seen_at?: string | null }> | null
-}
-
 export interface Asset {
   id: string
   file_name: string
@@ -532,15 +528,14 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     const intervalId = setInterval(async () => {
       const { data, error } = await supabase
         .from('devices')
-        .select('*, device_heartbeats(last_seen_at)')
+        .select('*')
         .eq('team_id', teamId)
       
       if (!error && data) {
         // We do a functional update to avoid race conditions with Realtime,
         // though Realtime is also updating this state. This ensures we have 
         // a reliable heartbeat check if Realtime drops.
-        const mapped = (data as DeviceWithHeartbeat[]).map((d) => {
-          const heartbeat = Array.isArray(d.device_heartbeats) ? d.device_heartbeats[0] : d.device_heartbeats
+        const mapped = (data as Device[]).map((d) => {
           return {
             id: d.id,
             name: d.name,
@@ -550,7 +545,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
             asset_id: d.asset_id,
             scale_mode: d.scale_mode,
             orientation: d.orientation,
-            last_seen_at: heartbeat?.last_seen_at || null,
+            last_seen_at: d.last_seen_at || null,
           }
         }) as Device[]
         setDevices(mapped)

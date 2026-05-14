@@ -4,16 +4,21 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { Database } from '@/types/supabase'
 
-async function getPlayerClient(hardwareId: string) {
+async function getPlayerClient(hardwareId: string, secret?: string) {
   const cookieStore = await cookies()
+  const headers: Record<string, string> = {
+    'x-hardware-id': hardwareId
+  }
+  if (secret) {
+    headers['x-device-secret'] = secret
+  }
+
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       global: {
-        headers: {
-          'x-hardware-id': hardwareId
-        }
+        headers
       },
       cookies: {
         getAll() { return cookieStore.getAll() },
@@ -28,16 +33,18 @@ async function getPlayerClient(hardwareId: string) {
 }
 
 export async function registerDevice(hardwareId: string, pairingCode: string, expiresAtMs: number) {
-  const supabase = await getPlayerClient(hardwareId)
+  const secret = crypto.randomUUID()
+  const supabase = await getPlayerClient(hardwareId, secret)
   const { data, error } = await supabase
     .from('devices')
     .insert({
       hardware_id: hardwareId,
       pairing_code: pairingCode,
       status: 'pairing',
-      expires_at: new Date(expiresAtMs).toISOString()
+      expires_at: new Date(expiresAtMs).toISOString(),
+      secret: secret
     })
-    .select('id, expires_at')
+    .select('id, expires_at, secret')
     .single()
 
   if (error) {
@@ -47,9 +54,8 @@ export async function registerDevice(hardwareId: string, pairingCode: string, ex
   return data
 }
 
-export async function refreshDeviceCode(deviceId: string, hardwareId: string, pairingCode: string, expiresAtMs: number) {
-  // We enforce that the hardware_id matches to prevent spoofing
-  const supabase = await getPlayerClient(hardwareId)
+export async function refreshDeviceCode(deviceId: string, hardwareId: string, secret: string, pairingCode: string, expiresAtMs: number) {
+  const supabase = await getPlayerClient(hardwareId, secret)
   const { data, error } = await supabase
     .from('devices')
     .update({
@@ -58,7 +64,6 @@ export async function refreshDeviceCode(deviceId: string, hardwareId: string, pa
       expires_at: new Date(expiresAtMs).toISOString()
     })
     .eq('id', deviceId)
-    .eq('hardware_id', hardwareId)
     .select('id, expires_at')
     .single()
 
@@ -69,28 +74,12 @@ export async function refreshDeviceCode(deviceId: string, hardwareId: string, pa
   return data
 }
 
-export async function heartbeatDevice(deviceId: string, hardwareId: string) {
-  const supabase = await getPlayerClient(hardwareId)
-  const { error } = await supabase
-    .from('device_heartbeats')
-    .upsert({
-      device_id: deviceId,
-      hardware_id: hardwareId,
-      last_seen_at: new Date().toISOString()
-    })
-
-  if (error) {
-    console.error('[heartbeatDevice] Error:', error)
-    throw new Error('Failed to send heartbeat')
-  }
-}
-
-export async function getDeviceState(hardwareId: string) {
-  const supabase = await getPlayerClient(hardwareId)
-  // Explicitly select only public fields, never return hardware_id to the client
+export async function getDeviceState(hardwareId: string, secret?: string) {
+  const supabase = await getPlayerClient(hardwareId, secret)
+  // Explicitly select only public fields, never return hardware_id or secret to the client state
   const query = supabase
     .from('devices')
-    .select('id, team_id, name, pairing_code, expires_at, status, content_type, asset_id, scale_mode, orientation, created_at, device_heartbeats(last_seen_at)')
+    .select('id, team_id, name, pairing_code, expires_at, status, content_type, asset_id, scale_mode, orientation, created_at, last_seen_at')
     .eq('hardware_id', hardwareId)
     .maybeSingle()
 
@@ -101,24 +90,15 @@ export async function getDeviceState(hardwareId: string) {
     throw new Error('Failed to get device state')
   }
   
-  if (data) {
-    const { device_heartbeats, ...rest } = data
-    const hb = Array.isArray(device_heartbeats) ? device_heartbeats[0] : device_heartbeats
-    return {
-      ...rest,
-      last_seen_at: hb?.last_seen_at || null
-    }
-  }
-  return null
+  return data || null
 }
 
-export async function unpairDevice(deviceId: string, hardwareId: string) {
-  const supabase = await getPlayerClient(hardwareId)
+export async function unpairDevice(deviceId: string, hardwareId: string, secret: string) {
+  const supabase = await getPlayerClient(hardwareId, secret)
   const { error } = await supabase
     .from('devices')
     .delete()
     .eq('id', deviceId)
-    .eq('hardware_id', hardwareId)
 
   if (error) {
     console.error('[unpairDevice] Error:', error)
@@ -126,13 +106,12 @@ export async function unpairDevice(deviceId: string, hardwareId: string) {
   }
 }
 
-export async function updateDeviceOrientation(deviceId: string, hardwareId: string, orientation: number) {
-  const supabase = await getPlayerClient(hardwareId)
+export async function updateDeviceOrientation(deviceId: string, hardwareId: string, secret: string, orientation: number) {
+  const supabase = await getPlayerClient(hardwareId, secret)
   const { error } = await supabase
     .from('devices')
     .update({ orientation })
     .eq('id', deviceId)
-    .eq('hardware_id', hardwareId)
 
   if (error) {
     console.error('[updateDeviceOrientation] Error:', error)

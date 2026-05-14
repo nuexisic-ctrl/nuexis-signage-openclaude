@@ -47,7 +47,7 @@ export default async function ScreensPage({ params }: Props) {
 
   const query = supabase
     .from('devices')
-    .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation, device_heartbeats(last_seen_at)')
+    .select('id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at')
     .eq('team_id', profile?.team_id as string)
     .order('created_at', { ascending: false })
 
@@ -56,7 +56,6 @@ export default async function ScreensPage({ params }: Props) {
     : []
 
   const devices = devicesData.map((d) => {
-    const hb = Array.isArray(d.device_heartbeats) ? d.device_heartbeats[0] : d.device_heartbeats
     return {
       id: d.id,
       name: d.name,
@@ -66,7 +65,7 @@ export default async function ScreensPage({ params }: Props) {
       scale_mode: d.scale_mode,
       orientation: d.orientation,
       status: d.status as 'online' | 'offline' | 'pairing',
-      last_seen_at: hb?.last_seen_at || null,
+      last_seen_at: d.last_seen_at || null,
     }
   })
 

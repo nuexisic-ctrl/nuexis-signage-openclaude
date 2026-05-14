@@ -1,7 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 
 export type PairDeviceResult =
   | { success: true }
@@ -38,20 +40,35 @@ export async function claimDevice(
     return { success: false, error: 'You must be logged in to add a screen.' }
   }
 
+  const headersList = await headers()
+  const clientIp = headersList.get('x-forwarded-for') || headersList.get('x-real-ip') || 'unknown'
+
   // 2. Rate-limit check — count failed attempts within the rolling window
   const windowStart = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString()
 
-  const { count, error: countError } = await supabase
-    .from('login_attempts')
+  const adminSupabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { cookies: { getAll() { return [] }, setAll() {} } }
+  )
+
+  // Rate limit by IP address OR specific pairing code to prevent brute force
+  const { count: ipCount, error: ipCountError } = await adminSupabase
+    .from('claim_attempts')
     .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
+    .eq('ip_address', clientIp)
     .gte('attempted_at', windowStart)
 
-  if (countError) {
-    console.error('[claimDevice] rate-limit check error:', { message: countError.message, details: countError.details, hint: countError.hint })
-    // Non-fatal — allow through if we can't read the count
-  } else if (count !== null && count >= MAX_ATTEMPTS) {
-    console.warn('[claimDevice] rate limit exceeded for user:', user.id)
+  const { count: codeCount, error: codeCountError } = await adminSupabase
+    .from('claim_attempts')
+    .select('id', { count: 'exact', head: true })
+    .eq('pairing_code', trimmedCode)
+    .gte('attempted_at', windowStart)
+
+  if (ipCountError || codeCountError) {
+    console.error('[claimDevice] rate-limit check error:', ipCountError || codeCountError)
+  } else if ((ipCount !== null && ipCount >= MAX_ATTEMPTS) || (codeCount !== null && codeCount >= MAX_ATTEMPTS)) {
+    console.warn('[claimDevice] rate limit exceeded for IP/code:', clientIp, trimmedCode)
     return {
       success: false,
       error: `Too many failed attempts. Please wait ${WINDOW_MINUTES} minutes before trying again.`,
@@ -98,13 +115,13 @@ export async function claimDevice(
   // If 0 rows were affected, the code was invalid, expired, or already claimed
   if (!updated || updated.length === 0) {
     // Record this as a failed attempt for rate-limiting
-    const { error: insertError } = await supabase
-      .from('login_attempts')
-      .insert({ user_id: user.id })
+    const { error: insertError } = await adminSupabase
+      .from('claim_attempts')
+      .insert({ user_id: user.id, ip_address: clientIp, pairing_code: trimmedCode })
 
     if (insertError) {
-      console.error('[claimDevice] insert login_attempts error:', { message: insertError.message, details: insertError.details, hint: insertError.hint })
-      return { success: false, error: 'Maximum login attempts exceeded or system error. Please try again later.' }
+      console.error('[claimDevice] insert claim_attempts error:', { message: insertError.message, details: insertError.details, hint: insertError.hint })
+      return { success: false, error: 'Maximum attempts exceeded or system error. Please try again later.' }
     }
 
     return { success: false, error: 'Invalid or expired pairing code. Please check the code on screen and try again.' }
@@ -112,14 +129,14 @@ export async function claimDevice(
 
   console.log('[claimDevice] success! device', updated[0].id, 'claimed by team', profile.team_id)
 
-  // Success — clear any recorded failed attempts for this user
-  const { error: deleteError } = await supabase
-    .from('login_attempts')
+  // Success — clear any recorded failed attempts for this user/IP/code
+  const { error: deleteError } = await adminSupabase
+    .from('claim_attempts')
     .delete()
-    .eq('user_id', user.id)
+    .or(`user_id.eq.${user.id},ip_address.eq.${clientIp},pairing_code.eq.${trimmedCode}`)
 
   if (deleteError) {
-    console.error('[claimDevice] clear login_attempts error:', { message: deleteError.message, details: deleteError.details, hint: deleteError.hint })
+    console.error('[claimDevice] clear claim_attempts error:', { message: deleteError.message, details: deleteError.details, hint: deleteError.hint })
   }
 
   // 5. Revalidate the screens page so the grid refreshes on next server render

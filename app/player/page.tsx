@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getHardwareId } from '@/lib/utils/fingerprint'
-import { registerDevice, refreshDeviceCode, heartbeatDevice, getDeviceState, unpairDevice, updateDeviceOrientation } from './actions'
+import { registerDevice, refreshDeviceCode, getDeviceState, unpairDevice, updateDeviceOrientation } from './actions'
 import styles from './player.module.css'
 
 type PlayerState = 'loading' | 'pairing' | 'paired' | 'expired'
@@ -50,6 +50,7 @@ export default function PlayerPage() {
 
   const deviceIdRef      = useRef<string | null>(null)
   const hardwareIdRef    = useRef<string | null>(null)
+  const secretRef        = useRef<string | null>(null)
   const isPairedRef      = useRef(false)
   const teamIdRef        = useRef<string | null>(null)
   const timerRef         = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -179,13 +180,11 @@ export default function PlayerPage() {
     async function sendHeartbeat(deviceId: string) {
       if (cancelled) return
       const hwId = hardwareIdRef.current
-      if (!hwId) return
-
-      // Update last_seen_at
-      await heartbeatDevice(deviceId, hwId).catch(err => console.error(err))
+      const secret = secretRef.current
+      if (!hwId || !secret) return
 
       // Resync: re-fetch device state to recover from Realtime drops
-      const fresh = await getDeviceState(hwId).catch(() => null)
+      const fresh = await getDeviceState(hwId, secret).catch(() => null)
 
       if (fresh && !cancelled) {
         // If the device has been unpaired from the CMS, reload ONLY if online
@@ -248,7 +247,9 @@ export default function PlayerPage() {
       hardwareIdRef.current = hardwareId
       console.log('[Player] Hardware ID:', hardwareId)
 
-      const existing = await getDeviceState(hardwareId)
+      let savedSecret = localStorage.getItem('nuexis_device_secret')
+      
+      const existing = await getDeviceState(hardwareId, savedSecret || undefined)
 
       if (cancelled) return
 
@@ -257,6 +258,7 @@ export default function PlayerPage() {
       let expiresAtMs = Date.now() + PAIRING_DURATION_MS
 
       if (existing) {
+        secretRef.current = savedSecret
         if (existing.team_id) {
           // ── Already paired — go straight to content ──────────────────
           console.log('[Player] Found persistent paired device')
@@ -283,7 +285,7 @@ export default function PlayerPage() {
             console.log('[Player] Session expired or no code, resetting')
             activeCode = generateCode()
             expiresAtMs = Date.now() + PAIRING_DURATION_MS
-            const updated = await refreshDeviceCode(existing.id, hardwareId, activeCode, expiresAtMs).catch(() => null)
+            const updated = await refreshDeviceCode(existing.id, hardwareId, savedSecret!, activeCode, expiresAtMs).catch(() => null)
 
             if (updated && !cancelled) {
               deviceIdRef.current = updated.id
@@ -307,6 +309,8 @@ export default function PlayerPage() {
         }
 
         if (!error && data && !cancelled) {
+          if (data.secret) localStorage.setItem('nuexis_device_secret', data.secret)
+          secretRef.current = data.secret
           deviceIdRef.current = data.id
           setCode(activeCode)
           setState('pairing')
@@ -400,8 +404,9 @@ export default function PlayerPage() {
           // to catch any UPDATE events that fired between init() and now.
           if (status === 'SUBSCRIBED') {
             const hwId = hardwareIdRef.current
+            const sec = secretRef.current
             if (hwId) {
-              getDeviceState(hwId)
+              getDeviceState(hwId, sec || undefined)
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
               .then((fresh: any) => {
                 if (!fresh || cancelled) return
@@ -461,8 +466,9 @@ export default function PlayerPage() {
 
   const handleUnpair = async () => {
     if (confirm('Are you sure you want to unpair this device?')) {
-      if (deviceIdRef.current && hardwareIdRef.current) {
-        await unpairDevice(deviceIdRef.current, hardwareIdRef.current).catch(err => console.error(err))
+      if (deviceIdRef.current && hardwareIdRef.current && secretRef.current) {
+        await unpairDevice(deviceIdRef.current, hardwareIdRef.current, secretRef.current).catch(err => console.error(err))
+        localStorage.removeItem('nuexis_device_secret')
       }
       window.location.reload()
     }
@@ -470,8 +476,8 @@ export default function PlayerPage() {
 
   const handleOrientationChange = async (val: number) => {
     setOrientation(val)
-    if (deviceIdRef.current && hardwareIdRef.current) {
-      await updateDeviceOrientation(deviceIdRef.current, hardwareIdRef.current, val).catch(err => console.error(err))
+    if (deviceIdRef.current && hardwareIdRef.current && secretRef.current) {
+      await updateDeviceOrientation(deviceIdRef.current, hardwareIdRef.current, secretRef.current, val).catch(err => console.error(err))
     }
   }
 
