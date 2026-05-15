@@ -81,6 +81,9 @@ export default function PlayerPage() {
           online_at: new Date().toISOString(),
         }).catch((err: unknown) => {
           console.error('[Player] Failed to re-track presence:', err)
+          if (reconnectPresenceRef.current) {
+            reconnectPresenceRef.current()
+          }
         })
         
         // Send heartbeat to Redis
@@ -105,6 +108,7 @@ export default function PlayerPage() {
   const intervalRef      = useRef<ReturnType<typeof setInterval> | null>(null)
   const channelRef       = useRef<RealtimeChannel>(null)
   const teamChannelRef   = useRef<RealtimeChannel>(null)
+  const reconnectPresenceRef = useRef<(() => void) | null>(null)
   const supabaseRef      = useRef(createClient())
 
   // Initialize presence key from localStorage or generate new one
@@ -141,14 +145,11 @@ export default function PlayerPage() {
     document.addEventListener('fullscreenchange', handleFullscreenChange)
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && teamChannelRef.current && deviceIdRef.current && teamIdRef.current) {
-        console.log('[Player] Tab became visible, re-tracking presence')
-        teamChannelRef.current.track({
-          device_id: deviceIdRef.current,
-          online_at: new Date().toISOString(),
-        }).catch((err: unknown) => {
-          console.error('[Player] Failed to re-track presence on visibility change:', err)
-        })
+      if (document.visibilityState === 'visible' && deviceIdRef.current && teamIdRef.current) {
+        console.log('[Player] Tab became visible, re-establishing presence channel')
+        if (reconnectPresenceRef.current) {
+          reconnectPresenceRef.current()
+        }
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -202,18 +203,21 @@ export default function PlayerPage() {
           return
         }
 
-        const { data } = client.storage.from('workspace-media').getPublicUrl(asset.file_path)
-        const publicUrl = data.publicUrl
+        let mediaUrl = asset.file_path
+        if (asset.mime_type !== 'application/x-widget-remote-url') {
+          const { data } = client.storage.from('workspace-media').getPublicUrl(asset.file_path)
+          mediaUrl = data.publicUrl
+        }
         
         try {
           const cache = await caches.open('nuexis-media-cache')
-          let response = await cache.match(publicUrl)
+          let response = await cache.match(mediaUrl)
           
           if (!response) {
             console.log('[Player] Downloading media for offline cache...')
-            response = await fetch(publicUrl)
+            response = await fetch(mediaUrl, { mode: 'cors' })
             if (response.ok) {
-              await cache.put(publicUrl, response.clone())
+              await cache.put(mediaUrl, response.clone())
             }
           } else {
             console.log('[Player] Playing media from offline cache!')
@@ -225,18 +229,36 @@ export default function PlayerPage() {
             
             setBlobUrl(localBlobUrl)
             setAssetUrl(localBlobUrl) // We use the blob URL for rendering
-            setMimeType(asset.mime_type)
+            
+            if (asset.mime_type === 'application/x-widget-remote-url') {
+              const urlLower = mediaUrl.toLowerCase()
+              if (urlLower.endsWith('.mp4')) setMimeType('video/mp4')
+              else if (urlLower.endsWith('.webm')) setMimeType('video/webm')
+              else if (urlLower.endsWith('.png')) setMimeType('image/png')
+              else setMimeType('image/jpeg')
+            } else {
+              setMimeType(asset.mime_type)
+            }
 
             // Clean up other cached videos so we don't run out of storage
-            cleanupOldCaches(publicUrl)
+            cleanupOldCaches(mediaUrl)
           } else {
             throw new Error('Failed to load media')
           }
         } catch (err) {
           console.error('[Player] Offline caching failed, falling back to network stream', err)
           setBlobUrl(null)
-          setAssetUrl(publicUrl)
-          setMimeType(asset.mime_type)
+          setAssetUrl(mediaUrl)
+          
+          if (asset.mime_type === 'application/x-widget-remote-url') {
+            const urlLower = mediaUrl.toLowerCase()
+            if (urlLower.endsWith('.mp4')) setMimeType('video/mp4')
+            else if (urlLower.endsWith('.webm')) setMimeType('video/webm')
+            else if (urlLower.endsWith('.png')) setMimeType('image/png')
+            else setMimeType('image/jpeg')
+          } else {
+            setMimeType(asset.mime_type)
+          }
         }
       } else {
         setAssetUrl(null)
@@ -282,6 +304,11 @@ export default function PlayerPage() {
         })
 
       teamChannelRef.current = teamChannel
+      reconnectPresenceRef.current = () => {
+        if (teamIdRef.current && deviceIdRef.current) {
+          startPresenceTracking(teamIdRef.current, deviceIdRef.current)
+        }
+      }
     }
 
     // ── Main init ────────────────────────────────────────────────────────
@@ -576,7 +603,7 @@ export default function PlayerPage() {
       overflow: 'hidden'
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const mediaStyle: React.CSSProperties = {
       width: '100%',
       height: '100%',

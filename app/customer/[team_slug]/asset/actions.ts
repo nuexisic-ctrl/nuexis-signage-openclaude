@@ -36,6 +36,21 @@ export async function insertAsset(
     return { success: false, error: 'Invalid file path.' }
   }
 
+  if (asset.mime_type === 'application/x-widget-remote-url') {
+    try {
+      const parsed = new URL(asset.file_path)
+      if (parsed.protocol !== 'https:') {
+        return { success: false, error: 'URL must use HTTPS protocol.' }
+      }
+      const pathname = parsed.pathname.toLowerCase()
+      if (!/\.(mp4|webm|jpg|jpeg|png)$/.test(pathname)) {
+        return { success: false, error: 'URL must end with .mp4, .webm, .jpg, .jpeg, or .png' }
+      }
+    } catch {
+      return { success: false, error: 'Invalid URL.' }
+    }
+  }
+
   const { data, error } = await supabase
     .from('assets')
     .insert({

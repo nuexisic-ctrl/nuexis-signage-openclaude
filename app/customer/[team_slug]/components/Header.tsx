@@ -21,7 +21,7 @@ export default function Header({ fullName, email }: HeaderProps) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
 
     const handleKeyDown = (e: KeyboardEvent) => {

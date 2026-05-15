@@ -137,6 +137,7 @@ function useStatusTransition(liveStatus: LiveStatus) {
 
   useEffect(() => {
     if (liveStatus !== displayStatus) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsTransitioning(true)
       const timer = setTimeout(() => {
         setDisplayStatus(liveStatus)
@@ -814,8 +815,10 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   useEffect(() => {
     const saved = localStorage.getItem('screensViewMode')
     if (saved === 'grid' || saved === 'table') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setViewMode(saved)
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true)
   }, [])
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
