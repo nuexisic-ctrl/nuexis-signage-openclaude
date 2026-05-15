@@ -61,7 +61,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
             <Link href="/" className={styles.logoLink} title="NuExis">
               <div className={styles.logoWrapper}>
                 <Image 
-                  src="/Nuexis-logo.png" 
+                  src={isCollapsed ? "/Nuexis-logo-small.png" : "/Nuexis-logo.png"} 
                   alt="NuExis Logo" 
                   fill 
                   className={styles.logoImage} 
@@ -69,7 +69,6 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
                 />
               </div>
             </Link>
-            {!isCollapsed && <span className={styles.teamSlug}>{teamSlug}</span>}
           </div>
           <button 
             className={styles.toggleBtn} 

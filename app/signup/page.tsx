@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import styles from './signup.module.css'
@@ -82,8 +83,8 @@ export default function SignupPage() {
     <div className="auth-shell">
       <div className={styles.wrapper}>
         {/* Logo */}
-        <Link href="/" className="navbar-logo" style={{ fontSize: '1.5rem' }}>
-          Nu<span>Exis</span>
+        <Link href="/" className="navbar-logo" style={{ display: 'block', textAlign: 'center', marginBottom: '16px' }}>
+          <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto' }} />
         </Link>
 
         {/* Header */}

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import sanitize from 'sanitize-filename'
 
 export type InsertAssetResult =
   | { success: true; id: string }
@@ -77,7 +78,12 @@ export async function getUploadUrl(
     return { success: false, error: 'Could not determine your team.' }
   }
 
-  const path = `${teamId}/${Date.now()}-${fileName}`
+  const safeFileName = sanitize(fileName)
+  if (!safeFileName.match(/\.(png|jpg|jpeg|mp4|webm|pdf)$/i)) {
+    return { success: false, error: 'Invalid file type. Only PNG, JPG, MP4, WEBM, and PDF are allowed.' }
+  }
+
+  const path = `${teamId}/${Date.now()}-${safeFileName}`
 
   const { data, error } = await supabase.storage
     .from('workspace-media')
@@ -170,4 +176,38 @@ export async function deleteAsset(
 
   revalidatePath(`/customer/${teamSlug}/asset`)
   return { success: true }
+}
+
+export async function updateAssetName(
+  teamSlug: string,
+  assetId: string,
+  newName: string
+): Promise<InsertAssetResult> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to rename an asset.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team.' }
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from('assets')
+    .update({ file_name: newName.trim() })
+    .eq('id', assetId)
+    .eq('team_id', teamId)
+    .select('id')
+
+  if (updateError || !updated || updated.length === 0) {
+    console.error('[updateAssetName] update error:', updateError ? { message: updateError.message, details: updateError.details, hint: updateError.hint } : 'No rows updated')
+    return { success: false, error: 'Failed to rename asset. Please try again later.' }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/asset`)
+  return { success: true, id: assetId }
 }

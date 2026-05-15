@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Plus, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { claimDevice, updateDeviceAssignment, deleteAndUnpairDevice, updateDeviceLastSeen, AssignmentData } from './actions'
+import { claimDevice, updateDeviceAssignment, deleteAndUnpairDevice, updateDeviceLastSeen, updateDeviceName, AssignmentData, getDeviceHeartbeats } from './actions'
 import styles from './screens.module.css'
 
 type LiveStatus = 'online' | 'offline' | 'pairing'
@@ -14,7 +14,7 @@ const OFFLINE_TIMEOUT_MS = 45 * 1000
 const FALLBACK_REFRESH_MS = 120 * 1000
 const RELATIVE_TIME_TICK_MS = 15 * 1000
 const DEVICE_SELECT_FIELDS =
-  'id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at'
+  'id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at, total_playtime_seconds'
 
 interface Device {
   id: string
@@ -131,11 +131,30 @@ function formatPlaytime(seconds: number): string {
   return `${m}m`
 }
 
+function useStatusTransition(liveStatus: LiveStatus) {
+  const [displayStatus, setDisplayStatus] = useState(liveStatus)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  useEffect(() => {
+    if (liveStatus !== displayStatus) {
+      setIsTransitioning(true)
+      const timer = setTimeout(() => {
+        setDisplayStatus(liveStatus)
+        setIsTransitioning(false)
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [liveStatus, displayStatus])
+
+  return { displayStatus, isTransitioning }
+}
+
 function DeviceCard({
   device,
   liveStatus,
   onEdit,
   onDelete,
+  onRename,
   menuOpen,
   onToggleMenu,
   isCheckingStatus
@@ -144,14 +163,16 @@ function DeviceCard({
   liveStatus: LiveStatus
   onEdit: () => void
   onDelete: () => void
+  onRename: () => void
   menuOpen: boolean
   onToggleMenu: (e: React.MouseEvent) => void
   isCheckingStatus?: boolean
 }) {
+  const { displayStatus, isTransitioning } = useStatusTransition(liveStatus)
   const createdAt = new Date(device.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   })
-  const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online')
+  const lastSeen = formatLastSeen(device.last_seen_at, displayStatus === 'online')
 
   return (
     <div className={styles.deviceCard}>
@@ -163,10 +184,10 @@ function DeviceCard({
           <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
         </div>
         <div className={styles.statusAndMenu}>
-          {isCheckingStatus ? (
+          {isCheckingStatus || isTransitioning ? (
             <div style={{ width: '70px', height: '22px', borderRadius: '12px', background: 'var(--surface-low)' }} />
           ) : (
-            <StatusBadge status={liveStatus} />
+            <StatusBadge status={displayStatus} />
           )}
           <div className={styles.moreMenuWrapper}>
             <button 
@@ -184,6 +205,9 @@ function DeviceCard({
                 <button className={styles.dropdownItem} onClick={onEdit}>
                   Edit Content
                 </button>
+                <button className={styles.dropdownItem} onClick={onRename}>
+                  Rename
+                </button>
                 <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={onDelete}>
                   Delete
                 </button>
@@ -199,7 +223,7 @@ function DeviceCard({
         </div>
         <div className={styles.deviceMetaRow}>
           <span className={styles.deviceMetaLabel}>LAST SEEN</span>
-          {isCheckingStatus ? (
+          {isCheckingStatus || isTransitioning ? (
             <div style={{ width: '80px', height: '14px', borderRadius: '4px', background: 'var(--surface-low)' }} />
           ) : (
             <span className={styles.deviceMetaValue}>{lastSeen}</span>
@@ -207,6 +231,159 @@ function DeviceCard({
         </div>
       </div>
     </div>
+  )
+}
+
+function DeviceTableRow({
+  device,
+  liveStatus,
+  assets,
+  openMenuId,
+  menuPosition,
+  setOpenMenuId,
+  setMenuPosition,
+  isCheckingStatus,
+  onEdit,
+  onRename,
+  onDelete
+}: {
+  device: Device
+  liveStatus: LiveStatus
+  assets: Asset[]
+  openMenuId: string | null
+  menuPosition: { top: number, right: number } | null
+  setOpenMenuId: (id: string | null) => void
+  setMenuPosition: (pos: { top: number, right: number } | null) => void
+  isCheckingStatus: boolean
+  onEdit: () => void
+  onRename: () => void
+  onDelete: () => void
+}) {
+  const { displayStatus, isTransitioning } = useStatusTransition(liveStatus)
+  const lastSeen = formatLastSeen(device.last_seen_at, displayStatus === 'online')
+  const isMenuOpen = openMenuId === device.id
+  const isOnline = displayStatus === 'online'
+
+  return (
+    <tr key={device.id} className={styles.tableRow}>
+      <td className={styles.tableCell}>
+        <div className={styles.nameCellContent}>
+          <div className={styles.deviceIconWrapper}>
+            <DeviceIcon name={device.name || ''} orientation={device.orientation} />
+          </div>
+          <div>
+            <div className={styles.cellName}>{device.name || 'Unnamed Screen'}</div>
+            <div className={styles.cellId}>ID: NX-{device.id.slice(0, 4).toUpperCase()}-{device.id.slice(4, 5).toUpperCase()}</div>
+          </div>
+        </div>
+      </td>
+      <td className={styles.tableCell}>
+        {isCheckingStatus || isTransitioning ? (
+          <div style={{ width: '70px', height: '22px', borderRadius: '12px', background: 'var(--surface-low)' }} />
+        ) : (
+          <StatusBadge status={displayStatus} />
+        )}
+      </td>
+      <td className={styles.tableCell}>
+        <div className={styles.cellLastSeen}>
+          {isCheckingStatus || isTransitioning ? (
+            <div style={{ width: '100px', height: '14px', borderRadius: '4px', background: 'var(--surface-low)' }} />
+          ) : (
+            <>
+              <span className={`${styles.statusDot} ${isOnline ? styles.statusDotOnline : styles.statusDotOffline}`} style={{ marginRight: '8px' }} />
+              {lastSeen}
+            </>
+          )}
+        </div>
+      </td>
+      <td className={styles.tableCell}>
+        <div className={styles.playlistCell}>
+          <svg className={styles.playlistIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {device.asset_id ? (
+              <>
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </>
+            ) : (
+              <>
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.44l5.36-1.36"></path>
+              </>
+            )}
+          </svg>
+          <span style={!device.asset_id ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}>
+            {device.asset_id 
+              ? (assets.find(a => a.id === device.asset_id)?.file_name || 'Assigned Asset') 
+              : 'No content'}
+          </span>
+        </div>
+      </td>
+      <td className={styles.tableCell}>
+        <div className={styles.actionsGroup}>
+          <button className={styles.actionBtnBox} onClick={onEdit} aria-label="Edit">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+            </svg>
+          </button>
+          <div className={styles.moreMenuWrapper}>
+            <button 
+              className={`${styles.actionBtnBox} ${isMenuOpen ? styles.active : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isMenuOpen) {
+                  setOpenMenuId(null);
+                  setMenuPosition(null);
+                } else {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setMenuPosition({ top: rect.bottom + window.scrollY + 6, right: window.innerWidth - rect.right });
+                  setOpenMenuId(device.id);
+                }
+              }}
+              aria-label="More Actions"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                <circle cx="12" cy="12" r="1.5"></circle>
+                <circle cx="12" cy="5" r="1.5"></circle>
+                <circle cx="12" cy="19" r="1.5"></circle>
+              </svg>
+            </button>
+            {isMenuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
+              <div 
+                className={styles.moreDropdown}
+                style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 1000 }}
+                onClick={e => e.stopPropagation()}
+              >
+                <button className={styles.dropdownItem} onClick={() => {
+                  setOpenMenuId(null);
+                  setMenuPosition(null);
+                  onEdit();
+                }}>
+                  Edit Content
+                </button>
+                <button className={styles.dropdownItem} onClick={() => {
+                  setOpenMenuId(null);
+                  setMenuPosition(null);
+                  onRename();
+                }}>
+                  Rename
+                </button>
+                <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => {
+                  setOpenMenuId(null);
+                  setMenuPosition(null);
+                  onDelete();
+                }}>
+                  Delete
+                </button>
+              </div>,
+              document.body
+            )}
+          </div>
+        </div>
+      </td>
+    </tr>
   )
 }
 
@@ -512,11 +689,113 @@ function DeleteModal({
   )
 }
 
+function RenameModal({
+  currentName,
+  onClose,
+  onSuccess,
+  teamSlug,
+  deviceId,
+}: {
+  currentName: string
+  onClose: () => void
+  onSuccess: (newName: string) => void
+  teamSlug: string
+  deviceId: string
+}) {
+  const [name, setName] = useState(currentName)
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose()
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = name.trim()
+    if (!trimmed) {
+      setError('Name cannot be empty.')
+      return
+    }
+    if (trimmed === currentName) {
+      onClose()
+      return
+    }
+    setError(null)
+    startTransition(async () => {
+      const result = await updateDeviceName(teamSlug, deviceId, trimmed)
+      if (result.success) {
+        onSuccess(trimmed)
+      } else {
+        setError(result.error)
+      }
+    })
+  }
+
+  return (
+    <div className={styles.overlay} ref={overlayRef} onClick={handleOverlayClick}>
+      <div className={styles.modal} role="dialog" style={{ maxWidth: '400px' }}>
+        <div className={styles.modalHeader} style={{ marginBottom: '16px' }}>
+          <div>
+            <h2 className={styles.modalTitle}>Rename Screen</h2>
+            <p className={styles.modalSubtitle}>Enter a new name for this screen.</p>
+          </div>
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close modal"><X size={18} /></button>
+        </div>
+
+        <form className={styles.form} onSubmit={handleSubmit}>
+          <div className={styles.fieldGroup}>
+            <label htmlFor="rename-input" className={styles.label}>Screen Name</label>
+            <input
+              id="rename-input"
+              className={styles.input}
+              type="text"
+              placeholder="e.g. Lobby Display, Reception TV"
+              maxLength={80}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          {error && (
+            <div className={styles.errorMsg} role="alert">
+              <AlertTriangle size={16} />
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className={styles.submitBtn}
+              style={{ background: 'var(--surface-low)', color: 'var(--on-surface)', border: '1px solid var(--outline-variant)' }}
+              onClick={onClose}
+              disabled={isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={styles.submitBtn}
+              disabled={isPending || !name.trim() || name.trim() === currentName}
+            >
+              {isPending ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function ScreensClient({ devices: initialDevices, assets, teamSlug, teamId, totalScreens = 0, currentPage = 1, pageSize = 30 }: Props) {
   const [devices, setDevices] = useState<Device[]>(initialDevices)
   const [showPairModal, setShowPairModal] = useState(false)
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
   const [deleteModalDevice, setDeleteModalDevice] = useState<Device | null>(null)
+  const [renameModalDevice, setRenameModalDevice] = useState<Device | null>(null)
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [isCheckingStatus, setIsCheckingStatus] = useState(true)
@@ -662,13 +941,18 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   useEffect(() => {
     if (!teamId) return
 
-    // Presence and Postgres changes drive the live UI. This slower fetch is
-    // only a recovery path if Realtime drops or a tab wakes from suspension.
+    // We fetch Postgres for other metadata (e.g. playtime, content_type)
+    // but without the high-frequency writes since we disabled DB heartbeats.
     const intervalId = setInterval(async () => {
+      const from = (currentPage - 1) * pageSize;
+      const to = from + pageSize - 1;
+
       const { data, error } = await supabase
         .from('devices')
         .select(DEVICE_SELECT_FIELDS)
         .eq('team_id', teamId)
+        .order('created_at', { ascending: false })
+        .range(from, to)
       
       if (!error && data) {
         // We do a functional update to avoid race conditions with Realtime,
@@ -685,6 +969,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
             scale_mode: d.scale_mode,
             orientation: d.orientation,
             last_seen_at: d.last_seen_at || null,
+            total_playtime_seconds: Number(d.total_playtime_seconds) || 0,
           }
         }) as Device[]
         setDevices(mapped)
@@ -717,6 +1002,11 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   function handleDeleteSuccess() {
     setDeleteModalDevice(null)
     router.refresh()
+  }
+
+  function handleRenameSuccess(newName: string) {
+    setDevices(prev => prev.map(d => d.id === renameModalDevice?.id ? { ...d, name: newName } : d))
+    setRenameModalDevice(null)
   }
 
   // ── Derive live status for each device ────────────────────────────────
@@ -772,7 +1062,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
 
   const onlineCount = devices.filter(d => getLiveStatus(d) === 'online').length;
   const offlineCount = devices.length - onlineCount;
-  const totalPlaytimeSeconds = devices.reduce((acc, d) => acc + (d.total_playtime_seconds || 0), 0);
+  const totalPlaytimeSeconds = devices.reduce((acc, d) => acc + (Number(d.total_playtime_seconds) || 0), 0);
 
   const totalPages = Math.ceil(totalScreens / pageSize)
   const hasNextPage = currentPage < totalPages
@@ -940,6 +1230,10 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                   setOpenMenuId(null);
                   setDeleteModalDevice(device);
                 }}
+                onRename={() => {
+                  setOpenMenuId(null);
+                  setRenameModalDevice(device);
+                }}
                 menuOpen={openMenuId === device.id}
                 onToggleMenu={(e) => {
                   e.stopPropagation();
@@ -962,120 +1256,22 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                 </tr>
               </thead>
               <tbody>
-                {filteredDevices.map(device => {
-                  const status = getLiveStatus(device)
-                  const lastSeen = formatLastSeen(device.last_seen_at, status === 'online')
-                  const isMenuOpen = openMenuId === device.id
-                  const isOnline = status === 'online'
-
-                  return (
-                    <tr key={device.id} className={styles.tableRow}>
-                      <td className={styles.tableCell}>
-                        <div className={styles.nameCellContent}>
-                          <div className={styles.deviceIconWrapper}>
-                            <DeviceIcon name={device.name || ''} orientation={device.orientation} />
-                          </div>
-                          <div>
-                            <div className={styles.cellName}>{device.name || 'Unnamed Screen'}</div>
-                            <div className={styles.cellId}>ID: NX-{device.id.slice(0, 4).toUpperCase()}-{device.id.slice(4, 5).toUpperCase()}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className={styles.tableCell}>
-                        {isCheckingStatus ? (
-                          <div style={{ width: '70px', height: '22px', borderRadius: '12px', background: 'var(--surface-low)' }} />
-                        ) : (
-                          <StatusBadge status={status} />
-                        )}
-                      </td>
-                      <td className={styles.tableCell}>
-                        <div className={styles.cellLastSeen}>
-                          {isCheckingStatus ? (
-                            <div style={{ width: '100px', height: '14px', borderRadius: '4px', background: 'var(--surface-low)' }} />
-                          ) : (
-                            <>
-                              <span className={`${styles.statusDot} ${isOnline ? styles.statusDotOnline : styles.statusDotOffline}`} style={{ marginRight: '8px' }} />
-                              {lastSeen}
-                            </>
-                          )}
-                        </div>
-                      </td>
-                      <td className={styles.tableCell}>
-                        <div className={styles.playlistCell}>
-                          <svg className={styles.playlistIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            {device.asset_id ? (
-                              <>
-                                <line x1="8" y1="6" x2="21" y2="6"></line>
-                                <line x1="8" y1="12" x2="21" y2="12"></line>
-                                <line x1="8" y1="18" x2="21" y2="18"></line>
-                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                              </>
-                            ) : (
-                              <>
-                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.44l5.36-1.36"></path>
-                              </>
-                            )}
-                          </svg>
-                          <span style={!device.asset_id ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}>
-                            {device.asset_id 
-                              ? (assets.find(a => a.id === device.asset_id)?.file_name || 'Assigned Asset') 
-                              : 'No content'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className={styles.tableCell}>
-                        <div className={styles.actionsGroup}>
-                          <button className={styles.actionBtnBox} onClick={() => setAssignModalDevice(device)} aria-label="Edit">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                            </svg>
-                          </button>
-                          <div className={styles.moreMenuWrapper}>
-                            <button 
-                              className={`${styles.actionBtnBox} ${isMenuOpen ? styles.active : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isMenuOpen) {
-                                  setOpenMenuId(null);
-                                  setMenuPosition(null);
-                                } else {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  setMenuPosition({ top: rect.bottom + window.scrollY + 6, right: window.innerWidth - rect.right });
-                                  setOpenMenuId(device.id);
-                                }
-                              }}
-                              aria-label="More Actions"
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                                <circle cx="12" cy="12" r="1.5"></circle>
-                                <circle cx="12" cy="5" r="1.5"></circle>
-                                <circle cx="12" cy="19" r="1.5"></circle>
-                              </svg>
-                            </button>
-                            {isMenuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
-                              <div 
-                                className={styles.moreDropdown}
-                                style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 1000 }}
-                                onClick={e => e.stopPropagation()}
-                              >
-                                <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => {
-                                  setOpenMenuId(null);
-                                  setMenuPosition(null);
-                                  setDeleteModalDevice(device);
-                                }}>
-                                  Delete
-                                </button>
-                              </div>,
-                              document.body
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {filteredDevices.map(device => (
+                  <DeviceTableRow
+                    key={device.id}
+                    device={device}
+                    liveStatus={getLiveStatus(device)}
+                    assets={assets}
+                    openMenuId={openMenuId}
+                    menuPosition={menuPosition}
+                    setOpenMenuId={setOpenMenuId}
+                    setMenuPosition={setMenuPosition}
+                    isCheckingStatus={isCheckingStatus}
+                    onEdit={() => setAssignModalDevice(device)}
+                    onRename={() => setRenameModalDevice(device)}
+                    onDelete={() => setDeleteModalDevice(device)}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
@@ -1222,6 +1418,16 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
           teamSlug={teamSlug}
           onClose={() => setDeleteModalDevice(null)}
           onSuccess={handleDeleteSuccess}
+        />
+      )}
+
+      {renameModalDevice && (
+        <RenameModal
+          currentName={renameModalDevice.name || 'Unnamed Screen'}
+          teamSlug={teamSlug}
+          deviceId={renameModalDevice.id}
+          onClose={() => setRenameModalDevice(null)}
+          onSuccess={handleRenameSuccess}
         />
       )}
     </>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import styles from './login.module.css'
@@ -72,8 +73,8 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
       <div className={styles.loginWrapper}>
         {/* Header */}
         <div className={styles.loginHeader}>
-          <Link href="/" className="navbar-logo" style={{ fontSize: '1.375rem' }}>
-            Nu<span>Exis</span>
+          <Link href="/" className="navbar-logo" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>
+            <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={140} height={40} priority style={{ margin: '0 auto' }} />
           </Link>
 
           <div className={styles.teamBadge}>

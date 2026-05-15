@@ -49,50 +49,51 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
-    // 2. Cross-tenant check — check cache first to avoid DB load
-    const cachedCookie = request.cookies.get('cached_team_slug')?.value
-    let cachedTeamSlug: string | undefined
-    
-    if (cachedCookie && cachedCookie.startsWith(`${user.id}:`)) {
-      cachedTeamSlug = cachedCookie.substring(user.id.length + 1)
-    }
+    // 2. Cross-tenant check
+    let userTeamSlug = user.app_metadata?.team_slug as string | undefined
 
-    if (cachedTeamSlug) {
-      if (cachedTeamSlug === teamSlug) {
-        return supabaseResponse
-      } else {
-        const correctDashboard = request.nextUrl.clone()
-        correctDashboard.pathname = `/customer/${cachedTeamSlug}/dashboard`
-        return NextResponse.redirect(correctDashboard)
+    // Fallback: If JWT doesn't have team_slug (e.g. users created before the update)
+    if (!userTeamSlug) {
+      // Check cache first
+      const cachedCookie = request.cookies.get('cached_team_slug')?.value
+      if (cachedCookie && cachedCookie.startsWith(`${user.id}:`)) {
+        userTeamSlug = cachedCookie.substring(user.id.length + 1)
+      }
+
+      if (!userTeamSlug) {
+        // Fetch securely from DB
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('teams(slug)')
+          .eq('id', user.id)
+          .single()
+        
+        userTeamSlug = profile?.teams && !Array.isArray(profile.teams) 
+          ? profile.teams.slug 
+          : undefined
+      }
+
+      // If we found it, cache it in a cookie
+      if (userTeamSlug) {
+        supabaseResponse.cookies.set('cached_team_slug', `${user.id}:${userTeamSlug}`, { 
+          httpOnly: true, 
+          secure: process.env.NODE_ENV === 'production', 
+          sameSite: 'lax', 
+          maxAge: 60 * 60 * 24 * 7 
+        })
       }
     }
 
-    // Cache miss — fetch securely from DB
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('teams(slug)')
-      .eq('id', user.id)
-      .single()
-    
-    // Type casting because Postgrest might return an array or object for joined tables
-    const dbTeamSlug = profile?.teams && !Array.isArray(profile.teams) 
-      ? profile.teams.slug 
-      : undefined
-
-    if (!dbTeamSlug) {
+    if (!userTeamSlug) {
       const homeUrl = request.nextUrl.clone()
       homeUrl.pathname = '/'
       return NextResponse.redirect(homeUrl)
     }
 
-    if (dbTeamSlug !== teamSlug) {
+    if (userTeamSlug !== teamSlug) {
       const correctDashboard = request.nextUrl.clone()
-      correctDashboard.pathname = `/customer/${dbTeamSlug}/dashboard`
-      const response = NextResponse.redirect(correctDashboard)
-      response.cookies.set('cached_team_slug', `${user.id}:${dbTeamSlug}`, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 7 })
-      return response
-    } else {
-      supabaseResponse.cookies.set('cached_team_slug', `${user.id}:${dbTeamSlug}`, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 7 })
+      correctDashboard.pathname = `/customer/${userTeamSlug}/dashboard`
+      return NextResponse.redirect(correctDashboard)
     }
   }
 
@@ -103,22 +104,25 @@ export async function updateSession(request: NextRequest) {
     (teamSlug && pathname === `/customer/${teamSlug}/login`)
 
   if (isAuthPage && user) {
-    const cachedCookie = request.cookies.get('cached_team_slug')?.value
-    let userTeamSlug: string | undefined
-    
-    if (cachedCookie && cachedCookie.startsWith(`${user.id}:`)) {
-      userTeamSlug = cachedCookie.substring(user.id.length + 1)
-    }
+    let userTeamSlug = user.app_metadata?.team_slug as string | undefined
 
     if (!userTeamSlug) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('teams(slug)')
-        .eq('id', user.id)
-        .single()
-      userTeamSlug = profile?.teams && !Array.isArray(profile.teams) 
-        ? profile.teams.slug 
-        : undefined
+      const cachedCookie = request.cookies.get('cached_team_slug')?.value
+      if (cachedCookie && cachedCookie.startsWith(`${user.id}:`)) {
+        userTeamSlug = cachedCookie.substring(user.id.length + 1)
+      }
+
+      if (!userTeamSlug) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('teams(slug)')
+          .eq('id', user.id)
+          .single()
+        
+        userTeamSlug = profile?.teams && !Array.isArray(profile.teams) 
+          ? profile.teams.slug 
+          : undefined
+      }
     }
 
     const dashboardUrl = request.nextUrl.clone()
@@ -127,8 +131,13 @@ export async function updateSession(request: NextRequest) {
       : '/'
       
     const response = NextResponse.redirect(dashboardUrl)
-    if (userTeamSlug) {
-      response.cookies.set('cached_team_slug', `${user.id}:${userTeamSlug}`, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 7 })
+    if (userTeamSlug && !user.app_metadata?.team_slug) {
+      response.cookies.set('cached_team_slug', `${user.id}:${userTeamSlug}`, { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production', 
+        sameSite: 'lax', 
+        maxAge: 60 * 60 * 24 * 7 
+      })
     }
     return response
   }

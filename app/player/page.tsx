@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getHardwareId } from '@/lib/utils/fingerprint'
-import { registerDevice, refreshDeviceCode, getDeviceState, unpairDevice, updateDeviceOrientation, incrementPlaytime } from './actions'
+import { registerDevice, refreshDeviceCode, getDeviceState, unpairDevice, updateDeviceOrientation, incrementPlaytime, sendHeartbeat } from './actions'
 import styles from './player.module.css'
 
 type PlayerState = 'loading' | 'pairing' | 'paired' | 'expired'
@@ -60,7 +60,7 @@ export default function PlayerPage() {
   }, [assetUrl])
 
   useEffect(() => {
-    // Playtime tracking interval
+    // Playtime and presence tracking interval
     const playtimeInterval = setInterval(() => {
       const hwId = hardwareIdRef.current
       const devId = deviceIdRef.current
@@ -72,6 +72,24 @@ export default function PlayerPage() {
           console.error('[Player] Failed to track playtime', err)
         })
       }
+
+      // Also re-track presence to ensure CMS always knows we're online
+      if (stateRef.current === 'paired' && teamChannelRef.current && devId) {
+        const tId = teamIdRef.current
+        teamChannelRef.current.track({
+          device_id: devId,
+          online_at: new Date().toISOString(),
+        }).catch((err: unknown) => {
+          console.error('[Player] Failed to re-track presence:', err)
+        })
+        
+        // Send heartbeat to Redis
+        if (tId) {
+          sendHeartbeat(devId, tId).catch(err => {
+            console.error('[Player] Failed to send Redis heartbeat:', err)
+          })
+        }
+      }
     }, 60000) // every 60 seconds
 
     return () => clearInterval(playtimeInterval)
@@ -82,12 +100,24 @@ export default function PlayerPage() {
   const secretRef        = useRef<string | null>(null)
   const isPairedRef      = useRef(false)
   const teamIdRef        = useRef<string | null>(null)
-  const presenceKeyRef   = useRef<string>(crypto.randomUUID())
+  const presenceKeyRef   = useRef<string>('')
   const timerRef         = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef      = useRef<ReturnType<typeof setInterval> | null>(null)
   const channelRef       = useRef<RealtimeChannel>(null)
   const teamChannelRef   = useRef<RealtimeChannel>(null)
   const supabaseRef      = useRef(createClient())
+
+  // Initialize presence key from localStorage or generate new one
+  useEffect(() => {
+    const saved = localStorage.getItem('nuexis_presence_key')
+    if (saved) {
+      presenceKeyRef.current = saved
+    } else {
+      const newKey = crypto.randomUUID()
+      localStorage.setItem('nuexis_presence_key', newKey)
+      presenceKeyRef.current = newKey
+    }
+  }, [])
 
   useEffect(() => {
     // Cleanup previous blob URL when it changes or unmounts
@@ -110,8 +140,22 @@ export default function PlayerPage() {
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange)
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && teamChannelRef.current && deviceIdRef.current && teamIdRef.current) {
+        console.log('[Player] Tab became visible, re-tracking presence')
+        teamChannelRef.current.track({
+          device_id: deviceIdRef.current,
+          online_at: new Date().toISOString(),
+        }).catch((err: unknown) => {
+          console.error('[Player] Failed to re-track presence on visibility change:', err)
+        })
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 

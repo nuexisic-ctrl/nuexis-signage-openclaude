@@ -607,3 +607,69 @@
 .assetThumbInteractive:hover::after {
   background: rgba(255, 255, 255, 0.1);
 }
+/* --- Appended from Screens UI --- */
+.pageLayout { display: flex; gap: 20px; align-items: flex-start; position: relative; }
+.mainContent { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px; transition: width 0.3s ease; }
+
+.filterSidebar { width: 320px; flex-shrink: 0; background: var(--surface-lowest); border: 1px solid var(--outline-variant); border-radius: 16px; display: flex; flex-direction: column; position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
+.sidebarOverlay { display: none; }
+.sidebarHeader { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--outline-variant); }
+.sidebarTitle { font-family: var(--font-serif); font-size: 1.1rem; font-weight: 800; margin: 0; color: var(--on-surface); }
+.closeSidebarBtn { background: var(--surface-low); width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--outline-variant); color: var(--on-surface-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.closeSidebarBtn:hover { background: var(--surface-container); color: var(--on-surface); }
+.sidebarBody { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+.filterGroup { display: flex; flex-direction: column; gap: 8px; }
+.filterLabel { font-family: var(--font-label); font-size: 0.75rem; font-weight: 800; color: var(--on-surface-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.filterSelect, .filterInput { width: 100%; height: 42px; padding: 0 14px; background: var(--surface-low); border: 1px solid var(--outline-variant); border-radius: 10px; color: var(--on-surface); font-family: var(--font-body); font-size: 0.9rem; outline: none; box-sizing: border-box; }
+.filterSelect:focus, .filterInput:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(9, 76, 178, 0.1); }
+.sidebarFooter { padding: 16px 20px; border-top: 1px solid var(--outline-variant); margin-top: auto; }
+.resetFiltersBtn { width: 100%; height: 42px; background: var(--surface-low); border: 1px solid var(--outline-variant); border-radius: 10px; color: var(--on-surface); font-family: var(--font-label); font-size: 0.85rem; font-weight: 800; cursor: pointer; transition: all 0.2s ease; }
+.resetFiltersBtn:hover { background: var(--surface-container); border-color: color-mix(in srgb, var(--primary) 30%, var(--outline-variant)); }
+.filterDot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); display: inline-block; margin-left: 4px; }
+
+.mainBlockContainer { background: var(--surface-lowest); border: 1px solid var(--outline-variant); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+.controlsBar { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px; border-bottom: 1px solid var(--outline-variant); }
+.searchBox { position: relative; width: min(420px, 100%); }
+.searchIcon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--on-surface-subtle); width: 18px; height: 18px; pointer-events: none; }
+.searchInput { width: 100%; height: 42px; padding: 0 14px 0 42px; background: var(--surface-low); border: 1px solid var(--outline-variant); border-radius: 10px; color: var(--on-surface); font-family: var(--font-body); font-size: 0.875rem; outline: none; }
+.searchInput:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(9, 76, 178, 0.1); }
+.controlsRight { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.viewToggleGroup { display: flex; height: 42px; background: var(--surface-low); border: 1px solid var(--outline-variant); border-radius: 10px; overflow: hidden; }
+.viewToggleBtn { width: 42px; display: flex; align-items: center; justify-content: center; background: transparent; border: 0; border-right: 1px solid var(--outline-variant); color: var(--on-surface-muted); cursor: pointer; }
+.viewToggleBtn:last-child { border-right: 0; }
+.viewToggleBtn svg { width: 18px; height: 18px; }
+.viewToggleBtn:hover, .viewToggleBtn.active { background: var(--surface-lowest); color: var(--primary); }
+.filterBtn { height: 42px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; background: var(--surface-low); border: 1px solid var(--outline-variant); border-radius: 10px; color: var(--on-surface); font-family: var(--font-label); font-size: 0.84rem; font-weight: 800; cursor: pointer; }
+
+.tableContainer { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.screensTable { min-width: 860px; width: 100%; border-collapse: collapse; text-align: left; }
+.tableHeader { border-bottom: 1px solid var(--outline-variant); }
+.tableHeader th { padding: 14px 16px; font-family: var(--font-label); font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--on-surface-subtle); }
+.tableRow { border-bottom: 1px solid var(--outline-variant); }
+.tableRow:last-child { border-bottom: 0; }
+.tableRow:hover { background: var(--surface-low); }
+.tableCell { padding: 14px 16px; vertical-align: middle; }
+.nameCellContent { display: flex; align-items: center; gap: 12px; }
+.cellName { max-width: 320px; font-size: 0.94rem; font-weight: 800; color: var(--on-surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cellLastSeen { font-size: 0.88rem; color: var(--on-surface-subtle); }
+
+.actionsGroup { display: flex; align-items: center; gap: 8px; justify-content: flex-start; }
+.moreMenuWrapper { position: relative; }
+.actionBtnBox { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--outline-variant); background: var(--surface-low); color: var(--on-surface-muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.actionBtnBox:hover, .actionBtnBox.active { background: var(--surface-container); color: var(--on-surface); }
+.moreDropdown { position: absolute; top: calc(100% + 6px); right: 0; min-width: 170px; z-index: 20; background: var(--surface-lowest); border: 1px solid var(--outline-variant); border-radius: 10px; box-shadow: var(--shadow-modal); padding: 6px; }
+.dropdownItem { display: flex; align-items: center; width: 100%; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--on-surface); cursor: pointer; text-align: left; font-family: var(--font-label); font-size: 0.84rem; font-weight: 700; }
+.dropdownItem:hover { background: var(--surface-low); }
+.dropdownItem.danger { color: var(--error); }
+.dropdownItem.danger:hover { background: var(--error-container); }
+
+.deviceIconWrapper { width: 42px; height: 42px; border-radius: 12px; background: var(--surface-low); border: 1px solid var(--outline-variant); color: var(--on-surface-muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  .filterSidebar { position: fixed; top: 0; right: 0; bottom: 0; height: 100dvh; max-height: 100dvh; z-index: 300; border-radius: 0; border: 0; border-left: 1px solid var(--outline-variant); box-shadow: -4px 0 15px rgba(0,0,0,0.1); transform: translateX(0); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  .sidebarOverlay { display: block; position: fixed; inset: 0; background: rgba(7, 17, 31, 0.64); backdrop-filter: blur(4px); z-index: 299; }
+  .controlsBar { flex-direction: column; align-items: stretch; }
+  .searchBox { width: 100%; }
+  .controlsRight { justify-content: space-between; }
+  .filterBtn { flex: 1; justify-content: center; }
+}

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServerClient } from '@supabase/ssr'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
+import { redis } from '@/lib/redis'
 
 export type PairDeviceResult =
   | { success: true }
@@ -175,6 +176,7 @@ export async function updateDeviceAssignment(
       orientation: data.orientation,
     })
     .eq('id', deviceId)
+    .eq('team_id', teamId)
     .select('id')
 
   if (updateError || !updated || updated.length === 0) {
@@ -207,6 +209,7 @@ export async function deleteAndUnpairDevice(
     .from('devices')
     .delete()
     .eq('id', deviceId)
+    .eq('team_id', teamId)
 
   if (deleteError) {
     console.error('[deleteAndUnpairDevice] delete error:', { message: deleteError.message, details: deleteError.details, hint: deleteError.hint })
@@ -215,6 +218,28 @@ export async function deleteAndUnpairDevice(
 
   revalidatePath(`/customer/${teamSlug}/screens`)
   return { success: true }
+}
+
+export async function getDeviceHeartbeats(teamId: string): Promise<Record<string, string>> {
+  try {
+    const keys = await redis.keys(`heartbeat:${teamId}:*`)
+    if (keys.length === 0) return {}
+
+    const values = await redis.mget(...keys)
+    const result: Record<string, string> = {}
+    
+    keys.forEach((key, index) => {
+      const deviceId = key.split(':').pop()
+      if (deviceId && values[index]) {
+        result[deviceId] = values[index] as string
+      }
+    })
+    
+    return result
+  } catch (error) {
+    console.error('[getDeviceHeartbeats] error:', error)
+    return {}
+  }
 }
 
 export async function updateDeviceLastSeen(
@@ -247,5 +272,39 @@ export async function updateDeviceLastSeen(
     return { success: false }
   }
 
+  return { success: true }
+}
+
+export async function updateDeviceName(
+  teamSlug: string,
+  deviceId: string,
+  newName: string
+): Promise<PairDeviceResult> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to rename a screen.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team.' }
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from('devices')
+    .update({ name: newName.trim() })
+    .eq('id', deviceId)
+    .eq('team_id', teamId)
+    .select('id')
+
+  if (updateError || !updated || updated.length === 0) {
+    console.error('[updateDeviceName] update error:', updateError ? { message: updateError.message, details: updateError.details, hint: updateError.hint } : 'No rows updated')
+    return { success: false, error: 'Failed to rename screen. Please try again later.' }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/screens`)
   return { success: true }
 }

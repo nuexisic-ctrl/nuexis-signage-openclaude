@@ -3,6 +3,8 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 
+import { redis } from '@/lib/redis'
+
 const DEVICE_PUBLIC_FIELDS =
   'id, team_id, name, pairing_code, expires_at, status, content_type, asset_id, scale_mode, orientation, created_at, last_seen_at'
 
@@ -127,5 +129,15 @@ export async function incrementPlaytime(deviceId: string, hardwareId: string, se
 
   if (error) {
     console.error('[incrementPlaytime] Error:', error)
+  }
+}
+
+export async function sendHeartbeat(deviceId: string, teamId: string) {
+  try {
+    // Store heartbeat in Redis with a 120s TTL
+    // The key format allows us to scan for online devices by team, or just check a specific device
+    await redis.setex(`heartbeat:${teamId}:${deviceId}`, 120, new Date().toISOString())
+  } catch (error) {
+    console.error('[sendHeartbeat] Error:', error)
   }
 }
