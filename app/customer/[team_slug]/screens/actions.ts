@@ -145,7 +145,6 @@ export async function claimDevice(
 export interface AssignmentData {
   content_type: 'Asset' | 'Playlist' | 'Schedule'
   asset_id: string | null
-  scale_mode: 'None' | 'Fit' | 'Stretch' | 'Zoom'
   orientation: 0 | 90 | 180 | 270
 }
 
@@ -172,7 +171,6 @@ export async function updateDeviceAssignment(
     .update({
       content_type: data.content_type,
       asset_id: data.asset_id,
-      scale_mode: data.scale_mode,
       orientation: data.orientation,
     })
     .eq('id', deviceId)

@@ -14,7 +14,7 @@ const OFFLINE_TIMEOUT_MS = 45 * 1000
 const FALLBACK_REFRESH_MS = 120 * 1000
 const RELATIVE_TIME_TICK_MS = 15 * 1000
 const DEVICE_SELECT_FIELDS =
-  'id, name, status, created_at, content_type, asset_id, scale_mode, orientation, last_seen_at, total_playtime_seconds'
+  'id, name, status, created_at, content_type, asset_id, orientation, last_seen_at, total_playtime_seconds'
 
 interface Device {
   id: string
@@ -23,7 +23,6 @@ interface Device {
   created_at: string
   content_type?: string | null
   asset_id?: string | null
-  scale_mode?: string | null
   orientation?: number | null
   last_seen_at?: string | null
   total_playtime_seconds?: number | null
@@ -45,6 +44,16 @@ interface Props {
   totalScreens?: number
   currentPage?: number
   pageSize?: number
+}
+
+function getAssetLabel(assetId?: string | null, assets: Asset[] = []) {
+  if (!assetId) return 'No content';
+  const asset = assets.find(a => a.id === assetId);
+  if (!asset) return 'Assigned Asset';
+  if (asset.mime_type === 'application/x-widget-youtube') return 'YouTube (Widget)';
+  if (asset.mime_type === 'application/x-widget-remote-url') return 'Remote URL (Widget)';
+  if (asset.mime_type.startsWith('application/x-widget')) return `${asset.file_name} (Widget)`;
+  return asset.file_name;
 }
 
 function DeviceIcon({ name, orientation }: { name: string, orientation?: number | null }) {
@@ -158,7 +167,8 @@ function DeviceCard({
   onRename,
   menuOpen,
   onToggleMenu,
-  isCheckingStatus
+  isCheckingStatus,
+  assets
 }: {
   device: Device
   liveStatus: LiveStatus
@@ -168,6 +178,7 @@ function DeviceCard({
   menuOpen: boolean
   onToggleMenu: (e: React.MouseEvent) => void
   isCheckingStatus?: boolean
+  assets: Asset[]
 }) {
   const { displayStatus, isTransitioning } = useStatusTransition(liveStatus)
   const createdAt = new Date(device.created_at).toLocaleDateString('en-US', {
@@ -186,7 +197,7 @@ function DeviceCard({
         </div>
         <div className={styles.statusAndMenu}>
           {isCheckingStatus || isTransitioning ? (
-            <div style={{ width: '70px', height: '22px', borderRadius: '12px', background: 'var(--surface-low)' }} />
+            <div className={styles.skeleton} style={{ width: '70px', height: '22px', borderRadius: '12px' }} />
           ) : (
             <StatusBadge status={displayStatus} />
           )}
@@ -223,9 +234,15 @@ function DeviceCard({
           <span className={styles.deviceMetaValue}>{createdAt}</span>
         </div>
         <div className={styles.deviceMetaRow}>
+          <span className={styles.deviceMetaLabel}>CURRENT PLAYLIST</span>
+          <span className={styles.deviceMetaValue} style={!device.asset_id ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}>
+            {getAssetLabel(device.asset_id, assets)}
+          </span>
+        </div>
+        <div className={styles.deviceMetaRow}>
           <span className={styles.deviceMetaLabel}>LAST SEEN</span>
           {isCheckingStatus || isTransitioning ? (
-            <div style={{ width: '80px', height: '14px', borderRadius: '4px', background: 'var(--surface-low)' }} />
+            <div className={styles.skeleton} style={{ width: '80px', height: '14px', borderRadius: '4px' }} />
           ) : (
             <span className={styles.deviceMetaValue}>{lastSeen}</span>
           )}
@@ -288,7 +305,7 @@ function DeviceTableRow({
       <td className={styles.tableCell}>
         <div className={styles.cellLastSeen}>
           {isCheckingStatus || isTransitioning ? (
-            <div style={{ width: '100px', height: '14px', borderRadius: '4px', background: 'var(--surface-low)' }} />
+            <div className={styles.skeleton} style={{ width: '100px', height: '14px', borderRadius: '4px' }} />
           ) : (
             <>
               <span className={`${styles.statusDot} ${isOnline ? styles.statusDotOnline : styles.statusDotOffline}`} style={{ marginRight: '8px' }} />
@@ -316,9 +333,7 @@ function DeviceTableRow({
             )}
           </svg>
           <span style={!device.asset_id ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}>
-            {device.asset_id 
-              ? (assets.find(a => a.id === device.asset_id)?.file_name || 'Assigned Asset') 
-              : 'No content'}
+            {getAssetLabel(device.asset_id, assets)}
           </span>
         </div>
       </td>
@@ -453,8 +468,8 @@ function PairModal({
               className={styles.codeInput}
               type="text"
               inputMode="text"
-              placeholder="A1B 2C3"
-              maxLength={7}
+              placeholder="A1B2C3"
+              maxLength={6}
               value={code}
               onChange={(e) => {
                 const val = e.target.value.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6)
@@ -519,9 +534,12 @@ function AssignModal({
     (device.content_type as 'Asset' | 'Playlist' | 'Schedule') || 'Asset'
   )
   const [assetId, setAssetId] = useState<string>(device.asset_id || '')
-  const [scaleMode, setScaleMode] = useState<'None' | 'Fit' | 'Stretch' | 'Zoom'>(
-    (device.scale_mode as 'None' | 'Fit' | 'Stretch' | 'Zoom') || 'Fit'
-  )
+  const [scaleMode, setScaleMode] = useState<'None' | 'Fit' | 'Stretch' | 'Zoom'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem(`scale_mode_${device.id}`) as 'None' | 'Fit' | 'Stretch' | 'Zoom') || 'Fit'
+    }
+    return 'Fit'
+  })
   const [orientation, setOrientation] = useState<0 | 90 | 180 | 270>(
     (device.orientation as 0 | 90 | 180 | 270) || 0
   )
@@ -536,11 +554,13 @@ function AssignModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`scale_mode_${device.id}`, scaleMode)
+    }
     startTransition(async () => {
       const data: AssignmentData = {
         content_type: contentType,
         asset_id: contentType === 'Asset' ? (assetId || null) : null,
-        scale_mode: scaleMode,
         orientation,
       }
       const result = await updateDeviceAssignment(teamSlug, device.id, data)
@@ -881,11 +901,19 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
       })
       .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: Array<{ device_id: string }> }) => {
         const left = leftPresences.map((p) => p.device_id).filter(Boolean)
+        const now = new Date().toISOString()
+
         setOnlineDeviceIds((prev) => {
           const next = new Set(prev)
           left.forEach((id) => next.delete(id))
           return next
         })
+        
+        setDevices((prevDevices) => 
+          prevDevices.map((d) => 
+            left.includes(d.id) ? { ...d, last_seen_at: now } : d
+          )
+        )
         
         if (left.length > 0) {
           updateDeviceLastSeen(teamSlug, left).catch(err => console.error('[Dashboard] Error updating last seen:', err))
@@ -945,41 +973,44 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
     if (!teamId) return
 
     // We fetch Postgres for other metadata (e.g. playtime, content_type)
-    // but without the high-frequency writes since we disabled DB heartbeats.
-    const intervalId = setInterval(async () => {
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
+    // only when the tab becomes visible, instead of using aggressive setInterval polling.
+    // This prevents massive scaling issues when users leave tabs open in the background.
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        const from = (currentPage - 1) * pageSize;
+        const to = from + pageSize - 1;
 
-      const { data, error } = await supabase
-        .from('devices')
-        .select(DEVICE_SELECT_FIELDS)
-        .eq('team_id', teamId)
-        .order('created_at', { ascending: false })
-        .range(from, to)
-      
-      if (!error && data) {
-        // We do a functional update to avoid race conditions with Realtime,
-        // though Realtime is also updating this state. This ensures we have 
-        // a reliable heartbeat check if Realtime drops.
-        const mapped = (data as Device[]).map((d) => {
-          return {
-            id: d.id,
-            name: d.name,
-            status: d.status,
-            created_at: d.created_at,
-            content_type: d.content_type,
-            asset_id: d.asset_id,
-            scale_mode: d.scale_mode,
-            orientation: d.orientation,
-            last_seen_at: d.last_seen_at || null,
-            total_playtime_seconds: Number(d.total_playtime_seconds) || 0,
-          }
-        }) as Device[]
-        setDevices(mapped)
+        const { data, error } = await supabase
+          .from('devices')
+          .select(DEVICE_SELECT_FIELDS)
+          .eq('team_id', teamId)
+          .order('created_at', { ascending: false })
+          .range(from, to)
+        
+        if (!error && data) {
+          const mapped = (data as Device[]).map((d) => {
+            return {
+              id: d.id,
+              name: d.name,
+              status: d.status,
+              created_at: d.created_at,
+              content_type: d.content_type,
+              asset_id: d.asset_id,
+              orientation: d.orientation,
+              last_seen_at: d.last_seen_at || null,
+              total_playtime_seconds: Number(d.total_playtime_seconds) || 0,
+            }
+          }) as Device[]
+          setDevices(mapped)
+        }
       }
-    }, FALLBACK_REFRESH_MS)
+    }
 
-    return () => clearInterval(intervalId)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId])
 
@@ -1243,6 +1274,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                   setOpenMenuId(openMenuId === device.id ? null : device.id);
                 }}
                 isCheckingStatus={isCheckingStatus}
+                assets={assets}
               />
             ))}
           </div>

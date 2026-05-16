@@ -6,7 +6,7 @@ import type { Database } from '@/types/supabase'
 import { redis } from '@/lib/redis'
 
 const DEVICE_PUBLIC_FIELDS =
-  'id, team_id, name, pairing_code, expires_at, status, content_type, asset_id, scale_mode, orientation, created_at, last_seen_at'
+  'id, team_id, name, pairing_code, expires_at, status, content_type, asset_id, orientation, created_at, last_seen_at'
 
 function getPlayerAdminClient() {
   return createSupabaseClient<Database>(

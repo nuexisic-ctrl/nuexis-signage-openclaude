@@ -9,6 +9,7 @@ import Sidebar from '../components/Sidebar'
 
 interface Props {
   params: Promise<{ team_slug: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -19,8 +20,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function AssetPage({ params }: Props) {
+export default async function AssetPage({ params, searchParams }: Props) {
   const { team_slug } = await params
+  const resolvedSearchParams = await searchParams
+  const pageStr = resolvedSearchParams.page
+  const currentPage = typeof pageStr === 'string' ? parseInt(pageStr, 10) || 1 : 1
+  const pageSize = 30
+  const from = (currentPage - 1) * pageSize
+  const to = from + pageSize - 1
 
   if (!/^[a-z0-9-]+$/.test(team_slug)) notFound()
 
@@ -45,15 +52,19 @@ export default async function AssetPage({ params }: Props) {
 
   const userRole = profile?.role || 'Owner'
 
-  // Fetch all assets for this team
-  const assets = profile?.team_id
-    ? (await supabase
-        .from('assets')
-        .select('id, file_name, file_path, mime_type, size_bytes, created_at')
-        .eq('team_id', profile.team_id)
-        .order('created_at', { ascending: false })
-      ).data ?? []
-    : []
+  const query = supabase
+    .from('assets')
+    .select('id, file_name, file_path, mime_type, size_bytes, created_at', { count: 'exact' })
+    .eq('team_id', profile?.team_id as string)
+    .order('created_at', { ascending: false })
+    .range(from, to)
+
+  const response = profile?.team_id
+    ? await query
+    : { data: [], count: 0 }
+
+  const assets = response.data ?? []
+  const totalAssets = response.count ?? 0
 
   const cookieStore = await cookies();
   const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
@@ -69,8 +80,8 @@ export default async function AssetPage({ params }: Props) {
           <div>
             <h1 className={styles.pageTitle}>Asset Library</h1>
             <p className={styles.pageSubtitle}>
-              {assets.length > 0
-                ? `${assets.length} asset${assets.length === 1 ? '' : 's'} in your library.`
+              {totalAssets > 0
+                ? `${totalAssets} asset${totalAssets === 1 ? '' : 's'} in your library.`
                 : 'Upload images and videos to get started.'}
             </p>
           </div>
@@ -80,6 +91,9 @@ export default async function AssetPage({ params }: Props) {
           initialAssets={assets as Parameters<typeof AssetClient>[0]['initialAssets']}
           teamId={profile?.team_id ?? ''}
           teamSlug={team_slug}
+          totalAssets={totalAssets}
+          currentPage={currentPage}
+          pageSize={pageSize}
         />
       </main>
     </div>

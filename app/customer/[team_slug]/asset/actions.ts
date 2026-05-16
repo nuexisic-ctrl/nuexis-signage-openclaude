@@ -39,12 +39,8 @@ export async function insertAsset(
   if (asset.mime_type === 'application/x-widget-remote-url') {
     try {
       const parsed = new URL(asset.file_path)
-      if (parsed.protocol !== 'https:') {
-        return { success: false, error: 'URL must use HTTPS protocol.' }
-      }
-      const pathname = parsed.pathname.toLowerCase()
-      if (!/\.(mp4|webm|jpg|jpeg|png)$/.test(pathname)) {
-        return { success: false, error: 'URL must end with .mp4, .webm, .jpg, .jpeg, or .png' }
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        return { success: false, error: 'URL must use HTTP or HTTPS protocol.' }
       }
     } catch {
       return { success: false, error: 'Invalid URL.' }

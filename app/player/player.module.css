@@ -72,6 +72,21 @@
   margin-bottom: 48px;
 }
 
+.codeDigitSingle {
+  padding: 16px 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  font-family: 'Noto Serif', Georgia, serif;
+  font-size: 3.5rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: #ffffff;
+  border: none;
+  backdrop-filter: blur(8px);
+  user-select: all;
+  text-align: center;
+}
+
 .codeDigit {
   width: 72px;
   height: 88px;
@@ -493,4 +508,55 @@
 .menuSelect option {
   background: #0f172a;
   color: white;
+}
+
+@media (max-width: 768px) {
+  .codeDigitSingle {
+    font-size: 2.25rem;
+    padding: 14px 24px;
+    letter-spacing: 0.15em;
+    max-width: calc(100vw - 48px);
+  }
+
+  .brand {
+    margin-bottom: 40px;
+  }
+
+  .codeDisplay {
+    margin-bottom: 32px;
+  }
+
+  .progressBar {
+    width: calc(100vw - 48px);
+    max-width: 360px;
+    margin-bottom: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .codeDigitSingle {
+    font-size: 1.75rem;
+    padding: 12px 20px;
+    letter-spacing: 0.1em;
+  }
+
+  .brand {
+    margin-bottom: 32px;
+  }
+
+  .codeDisplay {
+    margin-bottom: 24px;
+  }
+
+  .countdownRow {
+    margin-bottom: 32px;
+  }
+  
+  .progressBar {
+    margin-bottom: 32px;
+  }
+
+  .howTo {
+    padding: 0 24px;
+  }
 }

@@ -22,6 +22,9 @@ interface Props {
   initialAssets: Asset[]
   teamId: string
   teamSlug: string
+  totalAssets?: number
+  currentPage?: number
+  pageSize?: number
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -252,13 +255,19 @@ function AssetCard({
   onPreview,
   onRename,
   isDeleting,
+  menuOpen,
+  onToggleMenu,
+  menuPosition,
 }: {
   asset: Asset
   previewUrl: string | null
-  onDelete: (id: string, path: string) => void
+  onDelete: () => void
   onPreview: (asset: Asset) => void
-  onRename: (asset: Asset) => void
+  onRename: () => void
   isDeleting: boolean
+  menuOpen: boolean
+  onToggleMenu: (e: React.MouseEvent) => void
+  menuPosition?: { top: number, right: number } | null
 }) {
   const date = new Date(asset.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
@@ -308,34 +317,47 @@ function AssetCard({
             <File className={styles.genericIcon} size={30} />
           </div>
         )}
-        <button
-          className={styles.deleteBtn}
-          onClick={(e) => { e.stopPropagation(); onDelete(asset.id, asset.file_path); }}
-          disabled={isDeleting}
-          aria-label={`Delete ${asset.file_name}`}
-          title="Delete asset"
-        >
-          <X size={15} />
-        </button>
+        
         <div className={styles.mimeChip}>
           {isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
-        </div>
-        <div className={styles.moreMenuWrapper} style={{ position: 'absolute', top: '8px', left: '40px' }}>
-          <button
-            className={styles.actionBtnBox}
-            onClick={(e) => { e.stopPropagation(); onRename(asset); }}
-            aria-label={`Rename ${asset.file_name}`}
-            title="Rename asset"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
-              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-            </svg>
-          </button>
         </div>
       </div>
 
       <div className={styles.assetInfo}>
-        <p className={styles.assetName} title={asset.file_name}>{asset.file_name}</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+          <p className={styles.assetName} title={asset.file_name}>{asset.file_name}</p>
+          <div className={styles.moreMenuWrapper}>
+            <button 
+              className={`${styles.actionBtnBox} ${menuOpen ? styles.active : ''}`}
+              onClick={onToggleMenu}
+              aria-label="More Actions"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <circle cx="12" cy="12" r="1.5"></circle>
+                <circle cx="12" cy="5" r="1.5"></circle>
+                <circle cx="12" cy="19" r="1.5"></circle>
+              </svg>
+            </button>
+            {menuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
+              <div 
+                className={styles.moreDropdown}
+                style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 100000 }}
+                onClick={e => e.stopPropagation()}
+              >
+                <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
+                  Preview
+                </button>
+                <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onRename(); }}>
+                  Rename
+                </button>
+                <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+                  Delete
+                </button>
+              </div>,
+              document.body
+            )}
+          </div>
+        </div>
         <div className={styles.assetMeta}>
           <span>{formatBytes(asset.size_bytes)}</span>
           <span className={styles.metaDot}>·</span>
@@ -444,9 +466,76 @@ function UploadZone({
   )
 }
 
+function DeleteAssetModal({
+  assetId,
+  assetName,
+  filePath,
+  teamSlug,
+  onClose,
+  onSuccess,
+}: {
+  assetId: string
+  assetName: string
+  filePath: string
+  teamSlug: string
+  onClose: () => void
+  onSuccess: (id: string) => void
+}) {
+  const [isPending, startTransition] = useTransition()
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose()
+  }
+
+  function handleConfirm() {
+    startTransition(async () => {
+      await deleteAsset(teamSlug, assetId, filePath)
+      onSuccess(assetId)
+    })
+  }
+
+  return (
+    <div className={styles.modalOverlay} ref={overlayRef} onClick={handleOverlayClick}>
+      <div className={styles.modalContainer} role="dialog" style={{ maxWidth: '400px', width: '100%', padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--error)' }}>Delete Asset</h2>
+            <p style={{ margin: '6px 0 0', fontSize: '0.9rem', color: 'var(--on-surface-subtle)' }}>
+              Are you sure you want to delete <strong>{assetName}</strong>?
+            </p>
+          </div>
+          <button onClick={onClose} className={styles.modalCloseBtn} aria-label="Close modal"><X size={18} /></button>
+        </div>
+        
+        <p style={{ fontSize: '0.88rem', color: 'var(--on-surface)', marginBottom: '24px', lineHeight: '1.5' }}>
+          This action will permanently remove the asset from your library. Any screens currently displaying this asset will stop showing it.
+        </p>
+
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <button 
+            style={{ padding: '10px 16px', background: 'var(--surface-low)', color: 'var(--on-surface)', border: '1px solid var(--outline-variant)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-label)' }} 
+            onClick={onClose} 
+            disabled={isPending}
+          >
+            Cancel
+          </button>
+          <button 
+            style={{ padding: '10px 16px', background: 'var(--error)', color: 'var(--on-primary)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-label)' }} 
+            onClick={handleConfirm} 
+            disabled={isPending}
+          >
+            {isPending ? 'Deleting…' : 'Delete Asset'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Client Component ────────────────────────────────────────────────────
 
-export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) {
+export default function AssetClient({ initialAssets, teamId, teamSlug, totalAssets = 0, currentPage = 1, pageSize = 30 }: Props) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets)
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -459,6 +548,7 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
   const [showRemoteUrlConfig, setShowRemoteUrlConfig] = useState(false)
   const [isSubmittingWidget, setIsSubmittingWidget] = useState(false)
   const [renameModalAsset, setRenameModalAsset] = useState<Asset | null>(null)
+  const [deleteModalAsset, setDeleteModalAsset] = useState<Asset | null>(null)
   
   // UX Features States
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
@@ -682,6 +772,16 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
     setIsSubmittingWidget(false)
   }
 
+  const handleDeleteSuccess = (assetId: string) => {
+    setAssets(prev => prev.filter(a => a.id !== assetId))
+    setDeleteModalAsset(null)
+    setDeletingIds(prev => {
+      const next = new Set(prev)
+      next.delete(assetId)
+      return next
+    })
+  }
+
   const handleRenameAssetSuccess = (newName: string) => {
     setAssets(prev => prev.map(a => a.id === renameModalAsset?.id ? { ...a, file_name: newName } : a))
     setRenameModalAsset(null)
@@ -727,6 +827,12 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
     const q = searchQuery.toLowerCase()
     return a.file_name.toLowerCase().includes(q)
   })
+
+  const totalPages = Math.ceil(totalAssets / pageSize)
+  const hasNextPage = currentPage < totalPages
+  const hasPrevPage = currentPage > 1
+  const startItem = totalAssets === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const endItem = Math.min(currentPage * pageSize, totalAssets)
 
   return (
     <div className={styles.assetArea}>
@@ -843,28 +949,40 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
                 </p>
               </div>
             ) : viewMode === 'grid' ? (
-              <>
-                <div className={styles.gridHeader} style={{ padding: '16px 16px 0' }}>
-                  <p className={styles.gridCount}>
-                    {filteredAssets.length} {filteredAssets.length === 1 ? 'asset' : 'assets'}
-                  </p>
-                </div>
-                <div className={styles.grid}>
-                  {filteredAssets.map((asset) => {
-                    return (
-                      <AssetCard
+              <div className={styles.grid}>
+                {filteredAssets.map((asset) => {
+                  return (
+                    <AssetCard
                         key={asset.id}
                         asset={asset}
                         previewUrl={isImage(asset.mime_type) || isVideo(asset.mime_type) ? getPreviewUrl(asset.file_path) : null}
-                        onDelete={handleDelete}
+                        onDelete={() => {
+                          setOpenMenuId(null);
+                          setDeleteModalAsset(asset);
+                        }}
                         onPreview={setPreviewAsset}
-                        onRename={setRenameModalAsset}
+                        onRename={() => {
+                          setOpenMenuId(null);
+                          setRenameModalAsset(asset);
+                        }}
                         isDeleting={deletingIds.has(asset.id)}
+                        menuOpen={openMenuId === asset.id}
+                        menuPosition={menuPosition}
+                        onToggleMenu={(e) => {
+                          e.stopPropagation();
+                          if (openMenuId === asset.id) {
+                            setOpenMenuId(null);
+                            setMenuPosition(null);
+                          } else {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setMenuPosition({ top: rect.bottom + window.scrollY + 6, right: window.innerWidth - rect.right });
+                            setOpenMenuId(asset.id);
+                          }
+                        }}
                       />
                     )
                   })}
                 </div>
-              </>
             ) : (
               <div className={styles.tableContainer}>
                 <table className={styles.screensTable}>
@@ -932,12 +1050,12 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
                                     <circle cx="12" cy="19" r="1.5"></circle>
                                   </svg>
                                 </button>
-                                {isMenuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
-                                  <div 
-                                    className={styles.moreDropdown}
-                                    style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 1000 }}
-                                    onClick={e => e.stopPropagation()}
-                                  >
+                                  {isMenuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
+                                    <div 
+                                      className={styles.moreDropdown}
+                                      style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 100000 }}
+                                      onClick={e => e.stopPropagation()}
+                                    >
                                     <button className={styles.dropdownItem} onClick={() => {
                                       setOpenMenuId(null);
                                       setRenameModalAsset(asset);
@@ -946,7 +1064,7 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
                                     </button>
                                     <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => {
                                       setOpenMenuId(null);
-                                      handleDelete(asset.id, asset.file_path);
+                                      setDeleteModalAsset(asset);
                                     }}>
                                       Delete Asset
                                     </button>
@@ -961,6 +1079,43 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+            
+            {/* Render pagination footer below grid or table if we have assets */}
+            {assets.length > 0 && (
+              <div className={styles.tableFooter}>
+                <div>
+                  {searchQuery 
+                    ? `Showing ${filteredAssets.length} filtered assets` 
+                    : `Showing ${startItem} to ${endItem} of ${totalAssets} assets`
+                  }
+                </div>
+                {!searchQuery && (
+                  <div className={styles.pagination}>
+                    <button 
+                      className={styles.pageBtn} 
+                      onClick={() => router.push(`?page=${currentPage - 1}`)}
+                      disabled={!hasPrevPage}
+                      style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                      </svg>
+                    </button>
+                    <button className={`${styles.pageBtn} ${styles.active}`}>{currentPage}</button>
+                    <button 
+                      className={styles.pageBtn} 
+                      onClick={() => router.push(`?page=${currentPage + 1}`)}
+                      disabled={!hasNextPage}
+                      style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1072,6 +1227,17 @@ export default function AssetClient({ initialAssets, teamId, teamSlug }: Props) 
           assetId={renameModalAsset.id}
           onClose={() => setRenameModalAsset(null)}
           onSuccess={handleRenameAssetSuccess}
+        />
+      )}
+
+      {deleteModalAsset && (
+        <DeleteAssetModal
+          assetId={deleteModalAsset.id}
+          assetName={deleteModalAsset.file_name}
+          filePath={deleteModalAsset.file_path}
+          teamSlug={teamSlug}
+          onClose={() => setDeleteModalAsset(null)}
+          onSuccess={handleDeleteSuccess}
         />
       )}
     </div>

@@ -196,7 +196,7 @@ export default function PlayerPage() {
         .single()
 
       if (asset) {
-        if (asset.mime_type === 'application/x-widget-youtube') {
+        if (asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-remote-url') {
           setBlobUrl(null)
           setAssetUrl(asset.file_path)
           setMimeType(asset.mime_type)
@@ -204,10 +204,8 @@ export default function PlayerPage() {
         }
 
         let mediaUrl = asset.file_path
-        if (asset.mime_type !== 'application/x-widget-remote-url') {
-          const { data } = client.storage.from('workspace-media').getPublicUrl(asset.file_path)
-          mediaUrl = data.publicUrl
-        }
+        const { data } = client.storage.from('workspace-media').getPublicUrl(asset.file_path)
+        mediaUrl = data.publicUrl
         
         try {
           const cache = await caches.open('nuexis-media-cache')
@@ -230,15 +228,7 @@ export default function PlayerPage() {
             setBlobUrl(localBlobUrl)
             setAssetUrl(localBlobUrl) // We use the blob URL for rendering
             
-            if (asset.mime_type === 'application/x-widget-remote-url') {
-              const urlLower = mediaUrl.toLowerCase()
-              if (urlLower.endsWith('.mp4')) setMimeType('video/mp4')
-              else if (urlLower.endsWith('.webm')) setMimeType('video/webm')
-              else if (urlLower.endsWith('.png')) setMimeType('image/png')
-              else setMimeType('image/jpeg')
-            } else {
-              setMimeType(asset.mime_type)
-            }
+            setMimeType(asset.mime_type)
 
             // Clean up other cached videos so we don't run out of storage
             cleanupOldCaches(mediaUrl)
@@ -249,16 +239,7 @@ export default function PlayerPage() {
           console.error('[Player] Offline caching failed, falling back to network stream', err)
           setBlobUrl(null)
           setAssetUrl(mediaUrl)
-          
-          if (asset.mime_type === 'application/x-widget-remote-url') {
-            const urlLower = mediaUrl.toLowerCase()
-            if (urlLower.endsWith('.mp4')) setMimeType('video/mp4')
-            else if (urlLower.endsWith('.webm')) setMimeType('video/webm')
-            else if (urlLower.endsWith('.png')) setMimeType('image/png')
-            else setMimeType('image/jpeg')
-          } else {
-            setMimeType(asset.mime_type)
-          }
+          setMimeType(asset.mime_type)
         }
       } else {
         setAssetUrl(null)
@@ -271,7 +252,7 @@ export default function PlayerPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function applyDeviceState(device: any) {
       setContentType(device.content_type)
-      setScaleMode(device.scale_mode || 'Fit')
+      setScaleMode(localStorage.getItem(`scale_mode_${device.id}`) || 'Fit')
       setOrientation(device.orientation || 0)
       if (device.content_type === 'Asset') {
         resolveAsset(supabase, device.asset_id)
@@ -401,28 +382,6 @@ export default function PlayerPage() {
         intervalRef.current = setInterval(() => {
           const timeLeft = expiresAtMs - Date.now()
           setRemainingMs(timeLeft)
-          
-          if (timeLeft % 3000 < 1000) {
-             const hwId = hardwareIdRef.current
-             const sec = secretRef.current
-             if (hwId && !isPairedRef.current) {
-               getDeviceState(hwId, sec || undefined)
-                 .then((fresh) => {
-                   if (!fresh || cancelled) return
-                   if (fresh.team_id && !isPairedRef.current) {
-                     console.log('[Player] Polling caught — device claimed.')
-                     isPairedRef.current = true
-                     teamIdRef.current = fresh.team_id
-                     setState('paired')
-                     clearTimeout(timerRef.current!)
-                     clearInterval(intervalRef.current!)
-                     startPresenceTracking(fresh.team_id, fresh.id)
-                     applyDeviceState(fresh)
-                   }
-                 })
-                 .catch(console.error)
-             }
-          }
 
           if (timeLeft <= 0) clearInterval(intervalRef.current!)
         }, 1000)
@@ -573,6 +532,24 @@ export default function PlayerPage() {
   const progressPct = (remainingMs / PAIRING_DURATION_MS) * 100
   const isUrgent = remainingMs < 2 * 60 * 1000 // < 2 mins
 
+  const isRotated = orientation === 90 || orientation === 270
+
+  const rootStyle: React.CSSProperties = {
+    width: isRotated ? '100vh' : '100vw',
+    height: isRotated ? '100vw' : '100vh',
+    transform: `rotate(${orientation}deg)`,
+    transformOrigin: 'center center',
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    marginLeft: isRotated ? '-50vh' : '-50vw',
+    marginTop: isRotated ? '-50vw' : '-50vh',
+    overflow: 'hidden',
+    backgroundColor: '#07111f' // match shell background
+  }
+
+  let currentView = null
+
   // ── Paired ──────────────────────────────────────────────────────────────────
   if (state === 'paired') {
     const objectFitMap: Record<string, 'none' | 'contain' | 'fill' | 'cover'> = {
@@ -584,25 +561,15 @@ export default function PlayerPage() {
 
     const fit = objectFitMap[scaleMode] || 'contain'
 
-    const isRotated = orientation === 90 || orientation === 270
-
     const containerStyle: React.CSSProperties = {
-      width: isRotated ? '100vh' : '100vw',
-      height: isRotated ? '100vw' : '100vh',
-      transform: `rotate(${orientation}deg)`,
-      transformOrigin: 'center center',
+      width: '100%',
+      height: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      marginLeft: isRotated ? '-50vh' : '-50vw',
-      marginTop: isRotated ? '-50vw' : '-50vh',
       backgroundColor: '#000',
       overflow: 'hidden'
     }
-
      
     const mediaStyle: React.CSSProperties = {
       width: '100%',
@@ -621,6 +588,15 @@ export default function PlayerPage() {
             style={{ ...mediaStyle, border: 'none', pointerEvents: 'none' }}
             allow="autoplay; encrypted-media"
             allowFullScreen
+          />
+        )
+      } else if (mimeType === 'application/x-widget-remote-url') {
+        content = (
+          <iframe
+            key={assetUrl}
+            src={assetUrl}
+            style={{ ...mediaStyle, border: 'none' }}
+            allow="autoplay; encrypted-media; fullscreen"
           />
         )
       } else if (mimeType?.startsWith('video/')) {
@@ -657,8 +633,8 @@ export default function PlayerPage() {
       )
     }
 
-    return (
-      <div className={styles.pairedView} style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#000' }}>
+    currentView = (
+      <div className={styles.pairedView} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#000' }}>
         <div style={containerStyle}>
           {content}
         </div>
@@ -752,9 +728,9 @@ export default function PlayerPage() {
   }
 
   // ── Expired ─────────────────────────────────────────────────────────────────
-  if (state === 'expired') {
-    return (
-      <div className={styles.shell}>
+  else if (state === 'expired') {
+    currentView = (
+      <div className={styles.shell} style={{ width: '100%', height: '100%' }}>
         <div className={styles.expiredView}>
           <svg className={styles.expiredIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path strokeLinecap="round" strokeLinejoin="round"
@@ -773,9 +749,9 @@ export default function PlayerPage() {
   }
 
   // ── Loading ─────────────────────────────────────────────────────────────────
-  if (state === 'loading') {
-    return (
-      <div className={styles.shell}>
+  else if (state === 'loading') {
+    currentView = (
+      <div className={styles.shell} style={{ width: '100%', height: '100%' }}>
         <div className={styles.loadingView}>
           <div className={styles.spinner} />
         </div>
@@ -784,56 +760,58 @@ export default function PlayerPage() {
   }
 
   // ── Pairing ─────────────────────────────────────────────────────────────────
-  const digits = code.split('')
+  else {
+    const digits = code.split('')
 
-  return (
-    <div className={styles.shell}>
-      <div className={styles.pairingView}>
-        <div className={styles.brand}>
-          Nu<span>Exis</span>
-        </div>
+    currentView = (
+      <div className={styles.shell} style={{ width: '100%', height: '100%' }}>
+        <div className={styles.pairingView}>
+          <div className={styles.brand}>
+            Nu<span>Exis</span>
+          </div>
 
-        <p className={styles.instructionLabel}>Pairing Code</p>
+          <p className={styles.instructionLabel}>Pairing Code</p>
 
         <div className={styles.codeDisplay}>
-          {digits.slice(0, 3).map((d, i) => (
-            <div key={i} className={styles.codeDigit}>{d}</div>
-          ))}
-          <div className={styles.codeSep} />
-          {digits.slice(3, 6).map((d, i) => (
-            <div key={i + 3} className={styles.codeDigit}>{d}</div>
-          ))}
+          <div className={styles.codeDigitSingle}>{code}</div>
         </div>
 
-        <div className={styles.countdownRow}>
-          <svg className={styles.countdownIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path strokeLinecap="round" strokeLinejoin="round"
-              d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span className={styles.countdownText}>
-            Code expires in{' '}
-            <span className={`${styles.countdownTime} ${isUrgent ? styles.countdownUrgent : ''}`}>
-              {formatTime(remainingMs)}
+          <div className={styles.countdownRow}>
+            <svg className={styles.countdownIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className={styles.countdownText}>
+              Code expires in{' '}
+              <span className={`${styles.countdownTime} ${isUrgent ? styles.countdownUrgent : ''}`}>
+                {formatTime(remainingMs)}
+              </span>
             </span>
-          </span>
-        </div>
+          </div>
 
-        <div className={styles.progressBar}>
-          <div
-            className={`${styles.progressFill} ${isUrgent ? styles.progressFillUrgent : ''}`}
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
+          <div className={styles.progressBar}>
+            <div
+              className={`${styles.progressFill} ${isUrgent ? styles.progressFillUrgent : ''}`}
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
 
-        <div className={styles.howTo}>
-          <p className={styles.howToTitle}>
-            Enter this code in your NuExis dashboard to pair this screen.
-          </p>
-          <span className={styles.howToPath}>
-            Dashboard → Screens → Add Screen
-          </span>
+          <div className={styles.howTo}>
+            <p className={styles.howToTitle}>
+              Enter this code in your NuExis dashboard to pair this screen.
+            </p>
+            <span className={styles.howToPath}>
+              Dashboard → Screens → Add Screen
+            </span>
+          </div>
         </div>
       </div>
+    )
+  }
+
+  return (
+    <div style={rootStyle}>
+      {currentView}
     </div>
   )
 }

@@ -3,12 +3,15 @@ import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const supabaseResponse = await updateSession(request)
 
-  // Player is always public — no auth needed for pairing code display
+  // Player is always public and uses device_secret for auth — no user session needed.
+  // We completely bypass Supabase Auth for /player routes to prevent massive API scaling issues
+  // where thousands of screens would constantly ping /auth/v1/user unnecessarily.
   if (pathname.startsWith('/player')) {
-    return supabaseResponse
+    return NextResponse.next()
   }
+
+  const supabaseResponse = await updateSession(request)
 
   return supabaseResponse
 }
