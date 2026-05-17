@@ -68,15 +68,22 @@ export default function PlaylistEngine({
     setIsLoading(true)
     fetchItems(true)
 
-    // Realtime listener for playlist changes
+    // Realtime listener for broadcast refresh signals
     const channel = supabase
-      .channel(`playlist-updates-${playlistId}`)
+      .channel(`playlist-broadcast-${playlistId}`)
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'playlist_items', filter: `playlist_id=eq.${playlistId}` },
+        'broadcast',
+        { event: 'refresh' },
         () => {
-          console.log('[PlaylistEngine] Playlist items changed, fetching updates...')
-          fetchItems(false)
+          console.log('[PlaylistEngine] Broadcast refresh received. Performing professional refresh...')
+          
+          // Professional hard-refresh: fade out the screen before reloading to prevent jarring cuts
+          document.body.style.transition = 'opacity 0.5s ease-out'
+          document.body.style.opacity = '0'
+          
+          setTimeout(() => {
+            window.location.reload()
+          }, 500)
         }
       )
       .subscribe()

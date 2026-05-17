@@ -81,8 +81,8 @@ export async function getDeviceState(hardwareId: string, secret?: string) {
   const { data, error } = await finalQuery
 
   if (error) {
-    console.error('[getDeviceState] Error:', error)
-    throw new Error('Failed to get device state')
+    console.error('[getDeviceState] Transient Error:', error)
+    throw new Error('Failed to fetch device state due to network or database error')
   }
   
   return data || null

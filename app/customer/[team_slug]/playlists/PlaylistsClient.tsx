@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { Plus, ListVideo, Trash2, X, Image as ImageIcon, Video, Clock } from 'lucide-react'
 import styles from './playlists.module.css'
-import { createPlaylist, deletePlaylist } from './actions'
+import { createPlaylist, deletePlaylist, updatePlaylist, getPlaylistItems } from './actions'
+import { createClient } from '@/lib/supabase/client'
 
 interface PlaylistsClientProps {
   initialPlaylists: any[]
@@ -18,23 +19,64 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
   const [newPlaylistName, setNewPlaylistName] = useState('')
   const [items, setItems] = useState<any[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null)
+  const [isLoadingItems, setIsLoadingItems] = useState(false)
 
-  const handleCreate = async () => {
+  const handleSave = async () => {
     if (!newPlaylistName.trim()) return
     setIsSaving(true)
     try {
-      const created = await createPlaylist(teamId, newPlaylistName, teamSlug, items)
-      // Optimistic update
-      setPlaylists([{ id: created.id, name: newPlaylistName, created_at: new Date().toISOString() }, ...playlists])
-      setIsModalOpen(false)
-      setNewPlaylistName('')
-      setItems([])
+      if (editingPlaylistId) {
+        await updatePlaylist(editingPlaylistId, newPlaylistName, teamSlug, items)
+        setPlaylists(playlists.map(p => p.id === editingPlaylistId ? { ...p, name: newPlaylistName } : p))
+        
+        // Broadcast refresh command to players using this playlist
+        const supabase = createClient()
+        const channel = supabase.channel(`playlist-broadcast-${editingPlaylistId}`)
+        channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            channel.send({
+              type: 'broadcast',
+              event: 'refresh',
+              payload: { timestamp: Date.now() }
+            })
+            setTimeout(() => supabase.removeChannel(channel), 1000)
+          }
+        })
+      } else {
+        const created = await createPlaylist(teamId, newPlaylistName, teamSlug, items)
+        setPlaylists([{ id: created.id, name: newPlaylistName, created_at: new Date().toISOString() }, ...playlists])
+      }
+      handleCloseModal()
     } catch (err) {
       console.error(err)
-      alert('Failed to create playlist')
+      alert(editingPlaylistId ? 'Failed to update playlist' : 'Failed to create playlist')
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleEdit = async (playlist: any) => {
+    setNewPlaylistName(playlist.name)
+    setEditingPlaylistId(playlist.id)
+    setIsModalOpen(true)
+    setIsLoadingItems(true)
+    try {
+      const fetchedItems = await getPlaylistItems(playlist.id)
+      setItems(fetchedItems)
+    } catch (err) {
+      console.error(err)
+      alert('Failed to load playlist items')
+    } finally {
+      setIsLoadingItems(false)
+    }
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setNewPlaylistName('')
+    setEditingPlaylistId(null)
+    setItems([])
   }
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
@@ -83,7 +125,12 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
           <p className={styles.pageSubtitle}>Create and schedule dynamic playback loops</p>
         </div>
         <div className={styles.topbarActions}>
-          <button className={styles.addBtn} onClick={() => setIsModalOpen(true)}>
+          <button className={styles.addBtn} onClick={() => {
+            setEditingPlaylistId(null)
+            setNewPlaylistName('')
+            setItems([])
+            setIsModalOpen(true)
+          }}>
             <Plus size={18} className={styles.addBtnIcon} />
             New Playlist
           </button>
@@ -101,7 +148,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
       ) : (
         <div className={styles.grid}>
           {playlists.map((playlist) => (
-            <div key={playlist.id} className={styles.playlistCard}>
+            <div key={playlist.id} className={styles.playlistCard} onClick={() => handleEdit(playlist)} style={{ cursor: 'pointer' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ 
@@ -114,7 +161,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                   <div>
                     <h3 className={styles.playlistName}>{playlist.name}</h3>
                     <div className={styles.playlistMeta}>
-                      Created {new Date(playlist.created_at).toLocaleDateString()}
+                      Created {new Date(playlist.created_at).toISOString().split('T')[0]}
                     </div>
                   </div>
                 </div>
@@ -134,8 +181,8 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>Create Playlist</h2>
-              <button className={styles.closeBtn} onClick={() => setIsModalOpen(false)}>
+              <h2 className={styles.modalTitle}>{editingPlaylistId ? 'Edit Playlist' : 'Create Playlist'}</h2>
+              <button className={styles.closeBtn} onClick={handleCloseModal}>
                 <X size={20} />
               </button>
             </div>
@@ -156,7 +203,11 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
               <div className={styles.formGroup} style={{ marginTop: '12px' }}>
                 <label className={styles.label}>Playlist Items</label>
                 
-                {items.length === 0 ? (
+                {isLoadingItems ? (
+                  <div style={{ textAlign: 'center', padding: '24px' }}>
+                    <p style={{ color: 'var(--on-surface-muted)', fontSize: '0.9rem' }}>Loading items...</p>
+                  </div>
+                ) : items.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px', border: '1px dashed var(--outline-variant)', borderRadius: '10px' }}>
                     <p style={{ color: 'var(--on-surface-muted)', fontSize: '0.9rem', margin: '0 0 12px 0' }}>No items in this playlist yet.</p>
                   </div>
@@ -170,7 +221,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                         <div className={styles.itemEditorControls}>
                           <select 
                             className={styles.itemSelect}
-                            value={item.asset_id}
+                            value={item.asset_id || ''}
                             onChange={(e) => handleUpdateItem(idx, 'asset_id', e.target.value)}
                           >
                             <option value="">Select Asset...</option>
@@ -206,9 +257,9 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
             </div>
 
             <div className={styles.modalFooter}>
-              <button className={styles.cancelBtn} onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button className={styles.saveBtn} onClick={handleCreate} disabled={!newPlaylistName.trim() || isSaving}>
-                {isSaving ? 'Creating...' : 'Create Playlist'}
+              <button className={styles.cancelBtn} onClick={handleCloseModal}>Cancel</button>
+              <button className={styles.saveBtn} onClick={handleSave} disabled={!newPlaylistName.trim() || isSaving || isLoadingItems}>
+                {isSaving ? 'Saving...' : (editingPlaylistId ? 'Save Changes' : 'Create Playlist')}
               </button>
             </div>
           </div>
