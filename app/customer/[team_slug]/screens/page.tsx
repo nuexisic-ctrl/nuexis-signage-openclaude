@@ -90,6 +90,16 @@ export default async function ScreensPage({ params, searchParams }: Props) {
       ).data ?? []
     : []
 
+  // Fetch all playlists for this team
+  const playlists = profile?.team_id
+    ? (await supabase
+        .from('playlists')
+        .select('id, name')
+        .eq('team_id', profile.team_id)
+        .order('created_at', { ascending: false })
+      ).data ?? []
+    : []
+
   const cookieStore = await cookies();
   const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
 
@@ -104,6 +114,7 @@ export default async function ScreensPage({ params, searchParams }: Props) {
         <ScreensClient
           devices={devices}
           assets={assets}
+          playlists={playlists}
           teamSlug={team_slug}
           teamId={profile?.team_id as string}
           totalScreens={totalScreens}

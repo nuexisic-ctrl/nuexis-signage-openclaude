@@ -6,7 +6,7 @@ import type { Database } from '@/types/supabase'
 import { redis } from '@/lib/redis'
 
 const DEVICE_PUBLIC_FIELDS =
-  'id, team_id, name, pairing_code, expires_at, status, content_type, asset_id, orientation, created_at, last_seen_at'
+  'id, team_id, name, pairing_code, expires_at, status, content_type, asset_id, playlist_id, orientation, created_at, last_seen_at'
 
 function getPlayerAdminClient() {
   return createSupabaseClient<Database>(
@@ -140,4 +140,30 @@ export async function sendHeartbeat(deviceId: string, teamId: string) {
   } catch (error) {
     console.error('[sendHeartbeat] Error:', error)
   }
+}
+
+export async function getPlaylistItems(playlistId: string) {
+  const supabase = getPlayerAdminClient()
+  const { data, error } = await supabase
+    .from('playlist_items')
+    .select(`
+      id,
+      playlist_id,
+      type,
+      asset_id,
+      widget_type,
+      widget_config,
+      duration_seconds,
+      sort_order,
+      assets ( file_path, mime_type )
+    `)
+    .eq('playlist_id', playlistId)
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    console.error('[getPlaylistItems] Error:', error)
+    return []
+  }
+  
+  return data || []
 }

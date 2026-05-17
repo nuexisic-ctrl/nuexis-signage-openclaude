@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getHardwareId } from '@/lib/utils/fingerprint'
 import { registerDevice, refreshDeviceCode, getDeviceState, unpairDevice, updateDeviceOrientation, incrementPlaytime, sendHeartbeat } from './actions'
+import PlaylistEngine from './PlaylistEngine'
 import styles from './player.module.css'
 
 type PlayerState = 'loading' | 'pairing' | 'paired' | 'expired'
@@ -31,6 +32,17 @@ function generateCode(): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RealtimeChannel = any
 
+declare global {
+  interface Window {
+    Android?: {
+      getNativeHardwareId: () => string;
+      getNativeSecret: () => string | null;
+      setNativeSecret: (secret: string) => void;
+      clearNativeSecret: () => void;
+    };
+  }
+}
+
 export default function PlayerPage() {
   const [state, setState] = useState<PlayerState>('loading')
   const [code, setCode] = useState<string>('')
@@ -40,6 +52,7 @@ export default function PlayerPage() {
   const [assetUrl, setAssetUrl] = useState<string | null>(null)
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [mimeType, setMimeType] = useState<string | null>(null)
+  const [playlistId, setPlaylistId] = useState<string | null>(null)
   const [scaleMode, setScaleMode] = useState<string>('Fit')
   const [orientation, setOrientation] = useState<number>(0)
 
@@ -110,6 +123,7 @@ export default function PlayerPage() {
   const teamChannelRef   = useRef<RealtimeChannel>(null)
   const reconnectPresenceRef = useRef<(() => void) | null>(null)
   const supabaseRef      = useRef(createClient())
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Initialize presence key from localStorage or generate new one
   useEffect(() => {
@@ -117,7 +131,10 @@ export default function PlayerPage() {
     if (saved) {
       presenceKeyRef.current = saved
     } else {
-      const newKey = crypto.randomUUID()
+      const newKey = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      
       localStorage.setItem('nuexis_presence_key', newKey)
       presenceKeyRef.current = newKey
     }
@@ -157,6 +174,7 @@ export default function PlayerPage() {
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
     }
   }, [])
 
@@ -249,13 +267,23 @@ export default function PlayerPage() {
     }
 
     // ── Apply device state to local React state ─────────────────────────
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     function applyDeviceState(device: any) {
       setContentType(device.content_type)
       setScaleMode(localStorage.getItem(`scale_mode_${device.id}`) || 'Fit')
       setOrientation(device.orientation || 0)
       if (device.content_type === 'Asset') {
+        setPlaylistId(null)
         resolveAsset(supabase, device.asset_id)
+      } else if (device.content_type === 'Playlist') {
+        setAssetUrl(null)
+        setBlobUrl(null)
+        setMimeType(null)
+        setPlaylistId(device.playlist_id)
+      } else {
+        setAssetUrl(null)
+        setBlobUrl(null)
+        setMimeType(null)
+        setPlaylistId(null)
       }
     }
 
@@ -292,13 +320,54 @@ export default function PlayerPage() {
       }
     }
 
+    // ── Polling Fallback for State Sync ─────────────────────────────────────
+    // Bypasses Realtime RLS limitations by securely fetching state via Next.js
+    function startStatePolling() {
+      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
+      
+      pollingIntervalRef.current = setInterval(async () => {
+        const hwId = hardwareIdRef.current
+        const sec = secretRef.current
+        if (!hwId) return
+        
+        try {
+          const fresh = await getDeviceState(hwId, sec || undefined)
+          if (!fresh) return
+          
+          // Handle pairing transition
+          if (fresh.team_id && !isPairedRef.current) {
+            console.log('[Player] Polling detected claim! Transitioning to paired.')
+            isPairedRef.current = true
+            teamIdRef.current = fresh.team_id
+            setState('paired')
+            if (timerRef.current) clearTimeout(timerRef.current)
+            if (intervalRef.current) clearInterval(intervalRef.current)
+            startPresenceTracking(fresh.team_id, fresh.id)
+          }
+          
+          // Handle unpairing
+          if (!fresh.team_id && isPairedRef.current) {
+            console.log('[Player] Polling detected unpair! Reloading.')
+            window.location.reload()
+            return
+          }
+
+          // Handle assignment changes
+          applyDeviceState(fresh)
+          
+        } catch (err) {
+          console.error('[Player] Polling error:', err)
+        }
+      }, 5000) // Poll every 5 seconds
+    }
+
     // ── Main init ────────────────────────────────────────────────────────
     async function init() {
-      const hardwareId = await getHardwareId()
+      const hardwareId = window.Android ? window.Android.getNativeHardwareId() : await getHardwareId()
       hardwareIdRef.current = hardwareId
       console.log('[Player] Hardware ID:', hardwareId)
 
-      const savedSecret = localStorage.getItem('nuexis_device_secret')
+      const savedSecret = window.Android ? window.Android.getNativeSecret() : localStorage.getItem('nuexis_device_secret')
       
       const existing = await getDeviceState(hardwareId, savedSecret || undefined)
 
@@ -320,6 +389,7 @@ export default function PlayerPage() {
           activeDevice = existing
           applyDeviceState(existing)
           startPresenceTracking(existing.team_id, existing.id)
+          startStatePolling()
         } else {
           // ── Unpaired — check expiry ──────────────────────────────────
           const existingExpiry = new Date(existing.expires_at).getTime()
@@ -342,6 +412,7 @@ export default function PlayerPage() {
               setCode(activeCode)
               setState('pairing')
               activeDevice = updated
+              startStatePolling()
             }
           }
         }
@@ -359,7 +430,10 @@ export default function PlayerPage() {
         }
 
         if (!error && data && !cancelled) {
-          if (data.secret) localStorage.setItem('nuexis_device_secret', data.secret)
+          if (data.secret) {
+            if (window.Android) window.Android.setNativeSecret(data.secret)
+            else localStorage.setItem('nuexis_device_secret', data.secret)
+          }
           secretRef.current = data.secret
           deviceIdRef.current = data.id
           setCode(activeCode)
@@ -373,6 +447,10 @@ export default function PlayerPage() {
       }
 
       if (cancelled || !activeDevice) return
+      
+      if (!existing && activeDevice) {
+        startStatePolling()
+      }
 
       // ── Countdown timers (only while pairing) ──────────────────────────
       if (!isPairedRef.current) {
@@ -516,7 +594,8 @@ export default function PlayerPage() {
     if (confirm('Are you sure you want to unpair this device?')) {
       if (deviceIdRef.current && hardwareIdRef.current && secretRef.current) {
         await unpairDevice(deviceIdRef.current, hardwareIdRef.current, secretRef.current).catch(err => console.error(err))
-        localStorage.removeItem('nuexis_device_secret')
+        if (window.Android) window.Android.clearNativeSecret()
+        else localStorage.removeItem('nuexis_device_secret')
       }
       window.location.reload()
     }
@@ -621,6 +700,8 @@ export default function PlayerPage() {
           />
         )
       }
+    } else if (contentType === 'Playlist' && playlistId) {
+      content = <PlaylistEngine playlistId={playlistId} supabase={supabaseRef.current} scaleMode={scaleMode} isMuted={isMuted} />
     } else {
       content = (
         <div className={styles.pairedFlash}>

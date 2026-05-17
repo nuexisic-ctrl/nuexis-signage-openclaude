@@ -18,7 +18,7 @@ export default function GenericLoginPage({
       <div className={styles.wrapper}>
         {/* Logo */}
         <Link href="/" className="navbar-logo" style={{ display: 'block', marginBottom: '32px', textAlign: 'center' }}>
-          <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto' }} />
+          <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto' }} sizes="(max-width: 768px) 100vw, 160px" />
         </Link>
 
         {/* Main Card */}

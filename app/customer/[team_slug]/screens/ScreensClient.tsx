@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Plus, X } from 'lucide-react'
+import { AlertTriangle, Plus, X, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { claimDevice, updateDeviceAssignment, deleteAndUnpairDevice, updateDeviceLastSeen, updateDeviceName, AssignmentData, getDeviceHeartbeats } from './actions'
 import styles from './screens.module.css'
@@ -23,6 +23,7 @@ interface Device {
   created_at: string
   content_type?: string | null
   asset_id?: string | null
+  playlist_id?: string | null
   orientation?: number | null
   last_seen_at?: string | null
   total_playtime_seconds?: number | null
@@ -36,9 +37,15 @@ export interface Asset {
   size_bytes: number
 }
 
+export interface Playlist {
+  id: string
+  name: string
+}
+
 interface Props {
   devices: Device[]
   assets: Asset[]
+  playlists?: Playlist[]
   teamSlug: string
   teamId: string
   totalScreens?: number
@@ -46,9 +53,15 @@ interface Props {
   pageSize?: number
 }
 
-function getAssetLabel(assetId?: string | null, assets: Asset[] = []) {
-  if (!assetId) return 'No content';
-  const asset = assets.find(a => a.id === assetId);
+function getContentLabel(device: Device, assets: Asset[] = [], playlists: Playlist[] = []) {
+  if (device.content_type === 'Playlist') {
+    if (!device.playlist_id) return 'No playlist selected';
+    const pl = playlists.find(p => p.id === device.playlist_id);
+    return pl ? `Playlist: ${pl.name}` : 'Unknown Playlist';
+  }
+
+  if (!device.asset_id) return 'No content';
+  const asset = assets.find(a => a.id === device.asset_id);
   if (!asset) return 'Assigned Asset';
   if (asset.mime_type === 'application/x-widget-youtube') return 'YouTube (Widget)';
   if (asset.mime_type === 'application/x-widget-remote-url') return 'Remote URL (Widget)';
@@ -168,7 +181,8 @@ function DeviceCard({
   menuOpen,
   onToggleMenu,
   isCheckingStatus,
-  assets
+  assets,
+  playlists
 }: {
   device: Device
   liveStatus: LiveStatus
@@ -179,6 +193,7 @@ function DeviceCard({
   onToggleMenu: (e: React.MouseEvent) => void
   isCheckingStatus?: boolean
   assets: Asset[]
+  playlists: Playlist[]
 }) {
   const { displayStatus, isTransitioning } = useStatusTransition(liveStatus)
   const createdAt = new Date(device.created_at).toLocaleDateString('en-US', {
@@ -234,9 +249,9 @@ function DeviceCard({
           <span className={styles.deviceMetaValue}>{createdAt}</span>
         </div>
         <div className={styles.deviceMetaRow}>
-          <span className={styles.deviceMetaLabel}>CURRENT PLAYLIST</span>
-          <span className={styles.deviceMetaValue} style={!device.asset_id ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}>
-            {getAssetLabel(device.asset_id, assets)}
+          <span className={styles.deviceMetaLabel}>CURRENT CONTENT</span>
+          <span className={styles.deviceMetaValue} style={(!device.asset_id && !device.playlist_id) ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}>
+            {getContentLabel(device, assets, playlists)}
           </span>
         </div>
         <div className={styles.deviceMetaRow}>
@@ -256,6 +271,7 @@ function DeviceTableRow({
   device,
   liveStatus,
   assets,
+  playlists,
   openMenuId,
   menuPosition,
   setOpenMenuId,
@@ -268,6 +284,7 @@ function DeviceTableRow({
   device: Device
   liveStatus: LiveStatus
   assets: Asset[]
+  playlists: Playlist[]
   openMenuId: string | null
   menuPosition: { top: number, right: number } | null
   setOpenMenuId: (id: string | null) => void
@@ -317,7 +334,7 @@ function DeviceTableRow({
       <td className={styles.tableCell}>
         <div className={styles.playlistCell}>
           <svg className={styles.playlistIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {device.asset_id ? (
+            {device.asset_id || device.playlist_id ? (
               <>
                 <line x1="8" y1="6" x2="21" y2="6"></line>
                 <line x1="8" y1="12" x2="21" y2="12"></line>
@@ -332,8 +349,8 @@ function DeviceTableRow({
               </>
             )}
           </svg>
-          <span style={!device.asset_id ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}>
-            {getAssetLabel(device.asset_id, assets)}
+          <span style={(!device.asset_id && !device.playlist_id) ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}>
+            {getContentLabel(device, assets, playlists)}
           </span>
         </div>
       </td>
@@ -520,12 +537,14 @@ function PairModal({
 function AssignModal({
   device,
   assets,
+  playlists,
   teamSlug,
   onClose,
   onSuccess,
 }: {
   device: Device
   assets: Asset[]
+  playlists: Playlist[]
   teamSlug: string
   onClose: () => void
   onSuccess: () => void
@@ -534,6 +553,7 @@ function AssignModal({
     (device.content_type as 'Asset' | 'Playlist' | 'Schedule') || 'Asset'
   )
   const [assetId, setAssetId] = useState<string>(device.asset_id || '')
+  const [playlistId, setPlaylistId] = useState<string>(device.playlist_id || '')
   const [scaleMode, setScaleMode] = useState<'None' | 'Fit' | 'Stretch' | 'Zoom'>(() => {
     if (typeof window !== 'undefined') {
       return (localStorage.getItem(`scale_mode_${device.id}`) as 'None' | 'Fit' | 'Stretch' | 'Zoom') || 'Fit'
@@ -561,6 +581,7 @@ function AssignModal({
       const data: AssignmentData = {
         content_type: contentType,
         asset_id: contentType === 'Asset' ? (assetId || null) : null,
+        playlist_id: contentType === 'Playlist' ? (playlistId || null) : null,
         orientation,
       }
       const result = await updateDeviceAssignment(teamSlug, device.id, data)
@@ -588,14 +609,14 @@ function AssignModal({
             <label className={styles.label}>Content Type</label>
             <select className={styles.input} value={contentType} onChange={(e) => setContentType(e.target.value as 'Asset' | 'Playlist' | 'Schedule')}>
               <option value="Asset">Asset</option>
-              <option value="Playlist" disabled>Playlist (Coming Soon)</option>
+              <option value="Playlist">Playlist</option>
               <option value="Schedule" disabled>Schedule (Coming Soon)</option>
             </select>
           </div>
 
           {contentType === 'Asset' && (
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>Selected Content</label>
+              <label className={styles.label}>Selected Asset</label>
               <select className={styles.input} value={assetId} onChange={(e) => setAssetId(e.target.value)}>
                 <option value="">-- Select an item --</option>
                 <optgroup label="Widgets">
@@ -608,6 +629,18 @@ function AssignModal({
                     <option key={asset.id} value={asset.id}>{asset.file_name}</option>
                   ))}
                 </optgroup>
+              </select>
+            </div>
+          )}
+
+          {contentType === 'Playlist' && (
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Selected Playlist</label>
+              <select className={styles.input} value={playlistId} onChange={(e) => setPlaylistId(e.target.value)}>
+                <option value="">-- Select a playlist --</option>
+                {playlists.map(playlist => (
+                  <option key={playlist.id} value={playlist.id}>{playlist.name}</option>
+                ))}
               </select>
             </div>
           )}
@@ -634,7 +667,7 @@ function AssignModal({
 
           {error && <div className={styles.errorMsg}><AlertTriangle size={16} />{error}</div>}
 
-          <button className={styles.submitBtn} type="submit" disabled={isPending || (contentType === 'Asset' && !assetId)}>
+          <button className={styles.submitBtn} type="submit" disabled={isPending || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}>
             {isPending ? 'Saving…' : 'Save Assignment'}
           </button>
         </form>
@@ -811,13 +844,14 @@ function RenameModal({
   )
 }
 
-export default function ScreensClient({ devices: initialDevices, assets, teamSlug, teamId, totalScreens = 0, currentPage = 1, pageSize = 30 }: Props) {
+export default function ScreensClient({ devices: initialDevices, assets, playlists = [], teamSlug, teamId, totalScreens = 0, currentPage = 1, pageSize = 30 }: Props) {
   const [devices, setDevices] = useState<Device[]>(initialDevices)
   const [showPairModal, setShowPairModal] = useState(false)
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
   const [deleteModalDevice, setDeleteModalDevice] = useState<Device | null>(null)
   const [renameModalDevice, setRenameModalDevice] = useState<Device | null>(null)
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
+  const [presenceRefreshKey, setPresenceRefreshKey] = useState(0)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [isCheckingStatus, setIsCheckingStatus] = useState(true)
   const [isMounted, setIsMounted] = useState(false)
@@ -838,7 +872,6 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setViewMode(saved)
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true)
   }, [])
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -862,6 +895,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
 
   // Persistent presence channel ref
   const teamChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const lastRefreshRef = useRef<number>(0)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -877,6 +911,11 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
   useEffect(() => {
     if (!teamId) return
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsCheckingStatus(true)
+    let isActive = true
+    let debounceTimer: NodeJS.Timeout | null = null
+
     const channel = supabase
       .channel(`team-status:${teamId}`)
       .on('presence', { event: 'sync' }, () => {
@@ -888,6 +927,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
             .filter(Boolean)
         )
         setOnlineDeviceIds(ids)
+        setIsCheckingStatus(false)
         console.log('[Dashboard] Presence sync — online devices:', [...ids])
       })
       .on('presence', { event: 'join' }, ({ newPresences }: { newPresences: Array<{ device_id: string }> }) => {
@@ -922,17 +962,39 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
         console.log('[Dashboard] Presence leave:', left)
       })
       .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setIsCheckingStatus(false)
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+          if (!isActive) return
+          if (status === 'CLOSED') {
+            setIsCheckingStatus(false)
+            return
+          }
+          
+          console.warn(`[Dashboard] Presence channel ${status}, auto-reconnecting in 3s...`)
+          if (debounceTimer) clearTimeout(debounceTimer)
+          debounceTimer = setTimeout(() => {
+            if (isActive) {
+              setPresenceRefreshKey(prev => prev + 1)
+            }
+          }, 3000)
+        }
         console.log('[Dashboard] Presence channel status:', status)
       })
 
     teamChannelRef.current = channel
 
     return () => {
+      isActive = false
+      if (debounceTimer) clearTimeout(debounceTimer)
       supabase.removeChannel(channel)
-      teamChannelRef.current = null
+      if (teamChannelRef.current === channel) {
+        teamChannelRef.current = null
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId])
+  }, [teamId, presenceRefreshKey])
 
   // ── Postgres Changes for device list (INSERT/UPDATE/DELETE) ───────────
   useEffect(() => {
@@ -1115,6 +1177,21 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
         </div>
         <div className={styles.topbarActions}>
           <button
+            className={styles.refreshBtn}
+            onClick={() => {
+              if (isCheckingStatus) return;
+              const now = Date.now();
+              if (now - lastRefreshRef.current < 2000) return; // 2s rate limit
+              lastRefreshRef.current = now;
+              setPresenceRefreshKey(prev => prev + 1);
+            }}
+            disabled={isCheckingStatus}
+            aria-label="Refresh Status"
+            title="Refresh Status"
+          >
+            <RefreshCw size={20} className={isCheckingStatus ? styles.spin : ''} />
+          </button>
+          <button
             id="add-screen-btn"
             className={styles.addBtn}
             onClick={() => setShowPairModal(true)}
@@ -1275,6 +1352,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                 }}
                 isCheckingStatus={isCheckingStatus}
                 assets={assets}
+                playlists={playlists}
               />
             ))}
           </div>
@@ -1297,6 +1375,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
                     device={device}
                     liveStatus={getLiveStatus(device)}
                     assets={assets}
+                    playlists={playlists}
                     openMenuId={openMenuId}
                     menuPosition={menuPosition}
                     setOpenMenuId={setOpenMenuId}
@@ -1440,6 +1519,7 @@ export default function ScreensClient({ devices: initialDevices, assets, teamSlu
         <AssignModal
           device={assignModalDevice}
           assets={assets}
+          playlists={playlists}
           teamSlug={teamSlug}
           onClose={() => setAssignModalDevice(null)}
           onSuccess={handleAssignSuccess}

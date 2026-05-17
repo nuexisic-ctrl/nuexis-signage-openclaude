@@ -44,6 +44,40 @@
 .topbarActions {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background: var(--surface-low);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color var(--transition-base), color var(--transition-base);
+}
+
+.refreshBtn:hover {
+  background: var(--surface-medium);
+  color: var(--on-surface-high);
+}
+
+.refreshBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .addBtn {

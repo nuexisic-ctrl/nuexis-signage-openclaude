@@ -74,7 +74,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
         {/* Header */}
         <div className={styles.loginHeader}>
           <Link href="/" className="navbar-logo" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>
-            <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={140} height={40} priority style={{ margin: '0 auto' }} />
+            <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={140} height={40} priority style={{ margin: '0 auto' }} sizes="(max-width: 768px) 100vw, 140px" />
           </Link>
 
           <div className={styles.teamBadge}>

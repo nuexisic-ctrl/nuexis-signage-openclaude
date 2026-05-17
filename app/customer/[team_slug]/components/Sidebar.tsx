@@ -11,6 +11,7 @@ import {
   CalendarClock, 
   LineChart, 
   Settings, 
+  ListVideo,
   ChevronLeft,
   ChevronRight,
   User
@@ -46,6 +47,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
     { icon: LayoutDashboard, label: 'Dashboard', href: `/customer/${teamSlug}/dashboard` },
     { icon: Monitor,         label: 'Screens',   href: `/customer/${teamSlug}/screens` },
     { icon: ImageIcon,       label: 'Assets',    href: `/customer/${teamSlug}/asset` },
+    { icon: ListVideo,       label: 'Playlists', href: `/customer/${teamSlug}/playlists` },
     { icon: CalendarClock,   label: 'Schedules', href: '#' },
     { icon: LineChart,       label: 'Analytics', href: '#' },
     { icon: Settings,        label: 'Settings',  href: '#' },
