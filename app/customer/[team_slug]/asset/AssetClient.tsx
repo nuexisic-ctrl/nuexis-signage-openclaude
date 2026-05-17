@@ -590,13 +590,31 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
     localStorage.setItem('assetsViewMode', mode)
   }
 
-  // Generate public URLs for image previews
+  // Generate signed URLs for image previews (bucket is now private)
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    // Generate signed URLs for all visible assets
+    const generateUrls = async () => {
+      const urls: Record<string, string> = {}
+      for (const asset of assets) {
+        if ((isImage(asset.mime_type) || isVideo(asset.mime_type)) && !asset.mime_type.startsWith('application/x-widget')) {
+          const { data } = await supabase.storage
+            .from('workspace-media')
+            .createSignedUrl(asset.file_path, 3600) // 1 hour TTL
+          if (data?.signedUrl) {
+            urls[asset.file_path] = data.signedUrl
+          }
+        }
+      }
+      setPreviewUrls(urls)
+    }
+    generateUrls()
+  }, [assets, supabase])
+
   const getPreviewUrl = useCallback((filePath: string) => {
-    const { data } = supabase.storage
-      .from('workspace-media')
-      .getPublicUrl(filePath)
-    return data.publicUrl
-  }, [supabase])
+    return previewUrls[filePath] || null
+  }, [previewUrls])
 
   const handleFiles = useCallback(async (files: File[]) => {
     if (!teamId) {

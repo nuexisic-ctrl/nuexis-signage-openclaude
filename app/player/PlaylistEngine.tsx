@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { getPlaylistItems } from './actions'
+import { getPlaylistItems, getSignedMediaUrl } from './actions'
 
 interface PlaylistItem {
   id: string
@@ -82,7 +82,8 @@ export default function PlaylistEngine({
           document.body.style.opacity = '0'
           
           setTimeout(() => {
-            window.location.reload()
+            fetchItems(true)
+            document.body.style.opacity = '1'
           }, 500)
         }
       )
@@ -91,6 +92,12 @@ export default function PlaylistEngine({
     return () => {
       mounted = false
       supabase.removeChannel(channel)
+      
+      // Cleanup object URLs to prevent memory leaks
+      Object.values(cacheMap.current).forEach((url) => {
+        URL.revokeObjectURL(url)
+      })
+      cacheMap.current = {}
     }
   }, [playlistId, supabase])
 
@@ -99,8 +106,11 @@ export default function PlaylistEngine({
       const cache = await caches.open('nuexis-playlist-cache')
       for (const item of playlistItems) {
         if ((item.type === 'image' || item.type === 'video') && item.assets) {
-          const { data } = supabase.storage.from('workspace-media').getPublicUrl(item.assets.file_path)
-          const url = data.publicUrl
+          // Skip widget types
+          if (item.assets.mime_type.startsWith('application/x-widget')) continue
+          
+          // Get a signed URL from the private bucket
+          const url = await getSignedMediaUrl(item.assets.file_path)
           
           let response = await cache.match(url)
           if (!response) {
@@ -110,9 +120,9 @@ export default function PlaylistEngine({
             }
           }
           
-          if (response && response.ok && !cacheMap.current[url]) {
+          if (response && response.ok && !cacheMap.current[item.assets.file_path]) {
             const blob = await response.blob()
-            cacheMap.current[url] = URL.createObjectURL(blob)
+            cacheMap.current[item.assets.file_path] = URL.createObjectURL(blob)
           }
         }
       }
@@ -183,11 +193,15 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, onComplete
       if (item.assets.mime_type === 'application/x-widget-youtube' || item.assets.mime_type === 'application/x-widget-remote-url') {
         if (mounted) setMediaUrl(item.assets.file_path)
       } else if (item.type === 'image' || item.type === 'video') {
-        const { data } = supabase.storage.from('workspace-media').getPublicUrl(item.assets.file_path)
-        const publicUrl = data.publicUrl
-        // Use cached blob if available, otherwise fallback to publicUrl
-        const finalUrl = cacheMap[publicUrl] || publicUrl
-        if (mounted) setMediaUrl(finalUrl)
+        // Use cached blob if available, otherwise get a signed URL
+        const cached = cacheMap[item.assets.file_path]
+        if (cached) {
+          if (mounted) setMediaUrl(cached)
+        } else {
+          getSignedMediaUrl(item.assets.file_path).then(url => {
+            if (mounted) setMediaUrl(url)
+          }).catch(console.error)
+        }
       }
     }
 

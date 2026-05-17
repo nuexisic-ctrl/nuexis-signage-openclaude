@@ -37,7 +37,7 @@ export default function GenericLoginPage({
 
           {/* URL Format Display */}
           <div className={styles.urlDisplay}>
-            <span className={styles.urlBase}>localhost:3000/customer/</span>
+            <span className={styles.urlBase}>app.nuexis.com/customer/</span>
             <span className={styles.urlSlug}>your&#8209;team</span>
             <span className={styles.urlBase}>/login</span>
           </div>
@@ -46,7 +46,7 @@ export default function GenericLoginPage({
           <div className={styles.exampleBlock}>
             <p className={styles.exampleLabel}>Example</p>
             <code className={styles.exampleCode}>
-              localhost:3000/customer/acme&#8209;corp/login
+              app.nuexis.com/customer/acme&#8209;corp/login
             </code>
           </div>
 

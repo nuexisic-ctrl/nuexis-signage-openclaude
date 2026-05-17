@@ -164,7 +164,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
 
         {/* Team URL hint */}
         <div className={styles.teamUrlHint}>
-          <span className={styles.urlDomain}>localhost:3000/customer/</span>
+          <span className={styles.urlDomain}>{typeof window !== 'undefined' ? window.location.host : 'app.nuexis.com'}/customer/</span>
           <span className={styles.urlSlug}>{teamSlug}</span>
           <span className={styles.urlDomain}>/login</span>
         </div>

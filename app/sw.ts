@@ -18,6 +18,14 @@ const serwist = new Serwist({
   runtimeCaching: [
     {
       matcher: ({ request, url }) => {
+        // Do not cache API endpoints, customer dashboard, or login pages
+        if (
+          url.pathname.startsWith('/api') ||
+          url.pathname.startsWith('/customer') ||
+          url.pathname.startsWith('/login')
+        ) {
+          return false;
+        }
         // Cache the player HTML and JS chunks
         return (
           request.destination === "document" ||

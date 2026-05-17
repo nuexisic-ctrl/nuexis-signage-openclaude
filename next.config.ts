@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   turbopack: {},
   experimental: {
     serverActions: {
-      allowedOrigins: ['10.0.2.2:3000', 'localhost:3000']
+      allowedOrigins: process.env.NODE_ENV === 'development' ? ['10.0.2.2:3000', 'localhost:3000'] : []
     }
   }
 };

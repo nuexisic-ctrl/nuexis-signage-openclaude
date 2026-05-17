@@ -51,6 +51,7 @@ export default async function PlaylistsPage({ params, searchParams }: Props) {
     .select('id, name, created_at, updated_at')
     .eq('team_id', profile?.team_id as string)
     .order('created_at', { ascending: false })
+    .limit(100)
     
   const playlists = playlistsData || []
 
@@ -60,6 +61,7 @@ export default async function PlaylistsPage({ params, searchParams }: Props) {
     .select('id, file_name, file_path, mime_type, size_bytes')
     .eq('team_id', profile?.team_id as string)
     .order('created_at', { ascending: false })
+    .limit(100)
     
   const assets = assetsData || []
 
