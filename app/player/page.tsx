@@ -158,7 +158,7 @@ export default function PlayerPage() {
         return
       }
 
-      const mediaUrl = await getSignedMediaUrl(asset.file_path)
+      const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareIdRef.current!, secretRef.current!)
 
       try {
         const cache = await caches.open('nuexis-media-cache')
@@ -205,6 +205,8 @@ export default function PlayerPage() {
         supabase.removeChannel(teamChannelRef.current)
       }
 
+      let isUnmounting = false;
+
       const teamChannel = supabase
         .channel(`team-status:${teamId}`, {
           config: { presence: { key: `${deviceId}:${presenceKeyRef.current}` } },
@@ -216,11 +218,18 @@ export default function PlayerPage() {
               online_at: new Date().toISOString(),
             })
           }
+          if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+            if (!isUnmounting && !cancelled) {
+              console.warn('[Player] Presence channel closed, reconnecting...')
+              setTimeout(() => reconnectPresenceRef.current?.(), 3000)
+            }
+          }
         })
 
       teamChannelRef.current = teamChannel
       reconnectPresenceRef.current = () => {
         if (teamIdRef.current && deviceIdRef.current) {
+          isUnmounting = true;
           startPresenceTracking(teamIdRef.current, deviceIdRef.current)
         }
       }
@@ -473,6 +482,8 @@ export default function PlayerPage() {
         scaleMode={scaleMode}
         isMuted={isMuted}
         orientation={orientation}
+        hardwareId={hardwareIdRef.current!}
+        secret={secretRef.current!}
         supabase={supabaseRef.current}
         onUnpair={handleUnpair}
         onOrientationChange={handleOrientationChange}

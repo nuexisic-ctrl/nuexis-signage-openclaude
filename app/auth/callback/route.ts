@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
 
   const code = searchParams.get('code')
+  const next = searchParams.get('next')
 
   if (code) {
     const supabase = await createClient()
@@ -26,6 +27,9 @@ export async function GET(request: NextRequest) {
         : null
 
       if (teamSlug) {
+        if (next && next.startsWith(`/customer/${teamSlug}/`)) {
+          return NextResponse.redirect(`${origin}${next}`)
+        }
         return NextResponse.redirect(`${origin}/customer/${teamSlug}/dashboard`)
       }
 

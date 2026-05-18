@@ -1,8 +1,9 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requireOwner } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import sanitize from 'sanitize-filename'
+import { redis } from '@/lib/redis'
 
 export type InsertAssetResult =
   | { success: true; id: string }
@@ -30,6 +31,12 @@ export async function insertAsset(
 
   if (!teamId) {
     return { success: false, error: 'Could not determine your team. Please try again.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
   }
 
   if (!asset.mime_type.startsWith('application/x-widget') && !asset.file_path.startsWith(`${teamId}/`)) {
@@ -74,7 +81,8 @@ export type GetUploadUrlResult =
 
 export async function getUploadUrl(
   teamSlug: string,
-  fileName: string
+  fileName: string,
+  sizeBytes: number
 ): Promise<GetUploadUrlResult> {
   const supabase = await createClient()
 
@@ -89,9 +97,36 @@ export async function getUploadUrl(
     return { success: false, error: 'Could not determine your team.' }
   }
 
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  // 1. Validate file size (max 50MB)
+  const MAX_FILE_SIZE = 50 * 1024 * 1024
+  if (sizeBytes > MAX_FILE_SIZE) {
+    return { success: false, error: 'File size exceeds the 50MB limit.' }
+  }
+
+  // 2. Validate file type
   const safeFileName = sanitize(fileName)
   if (!safeFileName.match(/\.(png|jpg|jpeg|mp4|webm|pdf)$/i)) {
     return { success: false, error: 'Invalid file type. Only PNG, JPG, MP4, WEBM, and PDF are allowed.' }
+  }
+
+  // 3. Rate Limit & Storage Quota
+  try {
+    const uploadCountKey = `upload_count:${teamId}`
+    const uploadsCount = await redis.incr(uploadCountKey)
+    if (uploadsCount === 1) {
+      await redis.expire(uploadCountKey, 3600) // 1 hour window
+    }
+    if (uploadsCount > 100) { // Max 100 uploads per hour
+      return { success: false, error: 'Upload rate limit exceeded. Try again later.' }
+    }
+  } catch (err) {
+    console.error('[getUploadUrl] Rate limiting error:', err)
   }
 
   const path = `${teamId}/${Date.now()}-${safeFileName}`
@@ -134,6 +169,12 @@ export async function deleteAsset(
 
   if (!teamId) {
     return { success: false, error: 'Could not determine your team. Please try again.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
   }
 
   // ── Verify ownership before touching anything ──────────────────────────────
@@ -205,6 +246,12 @@ export async function updateAssetName(
 
   if (!teamId) {
     return { success: false, error: 'Could not determine your team.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
   }
 
   const { data: updated, error: updateError } = await supabase

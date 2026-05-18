@@ -14,7 +14,7 @@ const OFFLINE_TIMEOUT_MS = 45 * 1000
 const FALLBACK_REFRESH_MS = 120 * 1000
 const RELATIVE_TIME_TICK_MS = 15 * 1000
 const DEVICE_SELECT_FIELDS =
-  'id, name, status, created_at, content_type, asset_id, orientation, last_seen_at, total_playtime_seconds'
+  'id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds'
 
 interface Device {
   id: string
@@ -154,22 +154,7 @@ function formatPlaytime(seconds: number): string {
 }
 
 function useStatusTransition(liveStatus: LiveStatus) {
-  const [displayStatus, setDisplayStatus] = useState(liveStatus)
-  const [isTransitioning, setIsTransitioning] = useState(false)
-
-  useEffect(() => {
-    if (liveStatus !== displayStatus) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsTransitioning(true)
-      const timer = setTimeout(() => {
-        setDisplayStatus(liveStatus)
-        setIsTransitioning(false)
-      }, 300)
-      return () => clearTimeout(timer)
-    }
-  }, [liveStatus, displayStatus])
-
-  return { displayStatus, isTransitioning }
+  return { displayStatus: liveStatus, isTransitioning: false }
 }
 
 function DeviceCard({
@@ -180,7 +165,6 @@ function DeviceCard({
   onRename,
   menuOpen,
   onToggleMenu,
-  isCheckingStatus,
   assets,
   playlists
 }: {
@@ -191,7 +175,6 @@ function DeviceCard({
   onRename: () => void
   menuOpen: boolean
   onToggleMenu: (e: React.MouseEvent) => void
-  isCheckingStatus?: boolean
   assets: Asset[]
   playlists: Playlist[]
 }) {
@@ -211,11 +194,7 @@ function DeviceCard({
           <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
         </div>
         <div className={styles.statusAndMenu}>
-          {isCheckingStatus || isTransitioning ? (
-            <div className={styles.skeleton} style={{ width: '70px', height: '22px', borderRadius: '12px' }} />
-          ) : (
-            <StatusBadge status={displayStatus} />
-          )}
+          <StatusBadge status={displayStatus} />
           <div className={styles.moreMenuWrapper}>
             <button 
               className={`${styles.moreBtn} ${menuOpen ? styles.active : ''}`}
@@ -256,11 +235,7 @@ function DeviceCard({
         </div>
         <div className={styles.deviceMetaRow}>
           <span className={styles.deviceMetaLabel}>LAST SEEN</span>
-          {isCheckingStatus || isTransitioning ? (
-            <div className={styles.skeleton} style={{ width: '80px', height: '14px', borderRadius: '4px' }} />
-          ) : (
-            <span className={styles.deviceMetaValue}>{lastSeen}</span>
-          )}
+          <span className={styles.deviceMetaValue}>{lastSeen}</span>
         </div>
       </div>
     </div>
@@ -276,7 +251,6 @@ function DeviceTableRow({
   menuPosition,
   setOpenMenuId,
   setMenuPosition,
-  isCheckingStatus,
   onEdit,
   onRename,
   onDelete
@@ -289,7 +263,6 @@ function DeviceTableRow({
   menuPosition: { top: number, right: number } | null
   setOpenMenuId: (id: string | null) => void
   setMenuPosition: (pos: { top: number, right: number } | null) => void
-  isCheckingStatus: boolean
   onEdit: () => void
   onRename: () => void
   onDelete: () => void
@@ -313,22 +286,12 @@ function DeviceTableRow({
         </div>
       </td>
       <td className={styles.tableCell}>
-        {isCheckingStatus || isTransitioning ? (
-          <div style={{ width: '70px', height: '22px', borderRadius: '12px', background: 'var(--surface-low)' }} />
-        ) : (
-          <StatusBadge status={displayStatus} />
-        )}
+        <StatusBadge status={displayStatus} />
       </td>
       <td className={styles.tableCell}>
         <div className={styles.cellLastSeen}>
-          {isCheckingStatus || isTransitioning ? (
-            <div className={styles.skeleton} style={{ width: '100px', height: '14px', borderRadius: '4px' }} />
-          ) : (
-            <>
-              <span className={`${styles.statusDot} ${isOnline ? styles.statusDotOnline : styles.statusDotOffline}`} style={{ marginRight: '8px' }} />
-              {lastSeen}
-            </>
-          )}
+          <span className={`${styles.statusDot} ${isOnline ? styles.statusDotOnline : styles.statusDotOffline}`} style={{ marginRight: '8px' }} />
+          {lastSeen}
         </div>
       </td>
       <td className={styles.tableCell}>
@@ -853,18 +816,10 @@ export default function ScreensClient({ devices: initialDevices, assets, playlis
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
   const [presenceRefreshKey, setPresenceRefreshKey] = useState(0)
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const [isCheckingStatus, setIsCheckingStatus] = useState(true)
   const [isMounted, setIsMounted] = useState(false)
   
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsCheckingStatus(false)
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [])
 
   useEffect(() => {
     const saved = localStorage.getItem('screensViewMode')
@@ -911,9 +866,7 @@ export default function ScreensClient({ devices: initialDevices, assets, playlis
   useEffect(() => {
     if (!teamId) return
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsCheckingStatus(true)
-    let isActive = true
+    let isUnmounting = false
     let debounceTimer: NodeJS.Timeout | null = null
 
     const channel = supabase
@@ -926,56 +879,33 @@ export default function ScreensClient({ devices: initialDevices, assets, playlis
             .map((p) => p.device_id)
             .filter(Boolean)
         )
-        setOnlineDeviceIds(ids)
-        setIsCheckingStatus(false)
+        
+        setOnlineDeviceIds(prev => {
+          const leftIds = [...prev].filter(id => !ids.has(id));
+          if (leftIds.length > 0) {
+            // Defer side effects outside the state updater to prevent React render cycle conflicts
+            setTimeout(() => {
+              const now = new Date().toISOString()
+              setDevices(prevDevices => 
+                prevDevices.map(d => 
+                  leftIds.includes(d.id) ? { ...d, last_seen_at: now } : d
+                )
+              )
+              updateDeviceLastSeen(teamSlug, leftIds).catch(err => console.error('[Dashboard] Error updating last seen:', err))
+            }, 0)
+          }
+          return ids;
+        })
+        
         console.log('[Dashboard] Presence sync — online devices:', [...ids])
       })
-      .on('presence', { event: 'join' }, ({ newPresences }: { newPresences: Array<{ device_id: string }> }) => {
-        const joined = newPresences.map((p) => p.device_id).filter(Boolean)
-        setOnlineDeviceIds((prev) => {
-          const next = new Set(prev)
-          joined.forEach((id) => next.add(id))
-          return next
-        })
-        console.log('[Dashboard] Presence join:', joined)
-      })
-      .on('presence', { event: 'leave' }, ({ leftPresences }: { leftPresences: Array<{ device_id: string }> }) => {
-        const left = leftPresences.map((p) => p.device_id).filter(Boolean)
-        const now = new Date().toISOString()
-
-        setOnlineDeviceIds((prev) => {
-          const next = new Set(prev)
-          left.forEach((id) => next.delete(id))
-          return next
-        })
-        
-        setDevices((prevDevices) => 
-          prevDevices.map((d) => 
-            left.includes(d.id) ? { ...d, last_seen_at: now } : d
-          )
-        )
-        
-        if (left.length > 0) {
-          updateDeviceLastSeen(teamSlug, left).catch(err => console.error('[Dashboard] Error updating last seen:', err))
-        }
-        
-        console.log('[Dashboard] Presence leave:', left)
-      })
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          setIsCheckingStatus(false)
-        }
         if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-          if (!isActive) return
-          if (status === 'CLOSED') {
-            setIsCheckingStatus(false)
-            return
-          }
-          
+          if (isUnmounting) return
           console.warn(`[Dashboard] Presence channel ${status}, auto-reconnecting in 3s...`)
           if (debounceTimer) clearTimeout(debounceTimer)
           debounceTimer = setTimeout(() => {
-            if (isActive) {
+            if (!isUnmounting) {
               setPresenceRefreshKey(prev => prev + 1)
             }
           }, 3000)
@@ -986,7 +916,7 @@ export default function ScreensClient({ devices: initialDevices, assets, playlis
     teamChannelRef.current = channel
 
     return () => {
-      isActive = false
+      isUnmounting = true
       if (debounceTimer) clearTimeout(debounceTimer)
       supabase.removeChannel(channel)
       if (teamChannelRef.current === channel) {
@@ -1058,6 +988,7 @@ export default function ScreensClient({ devices: initialDevices, assets, playlis
               created_at: d.created_at,
               content_type: d.content_type,
               asset_id: d.asset_id,
+              playlist_id: d.playlist_id,
               orientation: d.orientation,
               last_seen_at: d.last_seen_at || null,
               total_playtime_seconds: Number(d.total_playtime_seconds) || 0,
@@ -1179,17 +1110,16 @@ export default function ScreensClient({ devices: initialDevices, assets, playlis
           <button
             className={styles.refreshBtn}
             onClick={() => {
-              if (isCheckingStatus) return;
               const now = Date.now();
               if (now - lastRefreshRef.current < 2000) return; // 2s rate limit
               lastRefreshRef.current = now;
-              setPresenceRefreshKey(prev => prev + 1);
+              // To make refresh behave exactly like Ctrl+R, we can use window.location.reload()
+              window.location.reload();
             }}
-            disabled={isCheckingStatus}
             aria-label="Refresh Status"
             title="Refresh Status"
           >
-            <RefreshCw size={20} className={isCheckingStatus ? styles.spin : ''} />
+            <RefreshCw size={20} />
           </button>
           <button
             id="add-screen-btn"
@@ -1350,7 +1280,6 @@ export default function ScreensClient({ devices: initialDevices, assets, playlis
                   e.stopPropagation();
                   setOpenMenuId(openMenuId === device.id ? null : device.id);
                 }}
-                isCheckingStatus={isCheckingStatus}
                 assets={assets}
                 playlists={playlists}
               />
@@ -1380,10 +1309,15 @@ export default function ScreensClient({ devices: initialDevices, assets, playlis
                     menuPosition={menuPosition}
                     setOpenMenuId={setOpenMenuId}
                     setMenuPosition={setMenuPosition}
-                    isCheckingStatus={isCheckingStatus}
                     onEdit={() => setAssignModalDevice(device)}
-                    onRename={() => setRenameModalDevice(device)}
-                    onDelete={() => setDeleteModalDevice(device)}
+                    onRename={() => {
+                      setOpenMenuId(null);
+                      setRenameModalDevice(device);
+                    }}
+                    onDelete={() => {
+                      setOpenMenuId(null);
+                      setDeleteModalDevice(device);
+                    }}
                   />
                 ))}
               </tbody>

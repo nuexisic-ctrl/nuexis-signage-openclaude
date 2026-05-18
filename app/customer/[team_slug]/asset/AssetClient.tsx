@@ -631,7 +631,7 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
 
     for (const file of files) {
       try {
-        const uploadUrlResult = await getUploadUrl(teamSlug, file.name)
+        const uploadUrlResult = await getUploadUrl(teamSlug, file.name, file.size)
         
         if (!uploadUrlResult.success) {
           setUploadError(`Failed to get upload URL for "${file.name}": ${uploadUrlResult.error}`)

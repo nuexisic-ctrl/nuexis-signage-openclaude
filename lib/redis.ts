@@ -14,3 +14,17 @@ export const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 })
+
+export async function rateLimitAction(userId: string, actionName: string, maxRequests: number = 30, windowSeconds: number = 60): Promise<boolean> {
+  try {
+    const key = `rate_limit:${actionName}:${userId}`
+    const requests = await redis.incr(key)
+    if (requests === 1) {
+      await redis.expire(key, windowSeconds)
+    }
+    return requests <= maxRequests
+  } catch (err) {
+    console.error('[rateLimitAction] Error:', err)
+    return true // Fail open so users aren't locked out if Redis drops
+  }
+}

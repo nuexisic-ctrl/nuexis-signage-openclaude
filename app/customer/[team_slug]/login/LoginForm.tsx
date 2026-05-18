@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { loginWithRateLimit } from './actions'
 import styles from './login.module.css'
 
 interface LoginFormProps {
@@ -13,7 +13,6 @@ interface LoginFormProps {
 
 export default function LoginForm({ teamSlug }: LoginFormProps) {
   const router = useRouter()
-  const supabase = createClient()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -31,34 +30,13 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
 
     setStatus('loading')
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (authError) {
-      setError(authError.message)
-      setStatus('idle')
-      return
-    }
-
-    // Verify the signed-in user actually belongs to this team securely via the database
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('teams(slug)')
-      .eq('id', data.user.id)
-      .single()
+    // Generate a simple client-side fingerprint for basic rate limiting if real IP isn't available easily in client components
+    const clientIpFallback = 'client-' + navigator.userAgent.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '')
     
-    const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) 
-      ? profile.teams.slug 
-      : undefined
+    const result = await loginWithRateLimit(teamSlug, email, password, clientIpFallback)
 
-    if (userTeamSlug && userTeamSlug !== teamSlug) {
-      await supabase.auth.signOut()
-      setError(
-        `This account does not belong to the "${teamSlug}" workspace. ` +
-        `Please use your correct team URL.`
-      )
+    if (!result.success) {
+      setError(result.error!)
       setStatus('idle')
       return
     }

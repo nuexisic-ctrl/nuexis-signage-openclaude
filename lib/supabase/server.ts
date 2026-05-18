@@ -28,3 +28,16 @@ export async function createClient() {
     }
   )
 }
+
+export async function requireOwner(supabase: any, userId: string) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single()
+  
+  if (profile?.role !== 'owner') {
+    throw new Error('Only workspace owners can perform this action.')
+  }
+  return true
+}

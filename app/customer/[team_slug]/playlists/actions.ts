@@ -1,7 +1,8 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requireOwner } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { rateLimitAction } from '@/lib/redis'
 
 // ── Auth helper ─────────────────────────────────────────────────────────
 // Verifies the caller is authenticated and returns their verified team_id
@@ -37,7 +38,12 @@ export async function createPlaylist(
   items: PlaylistItemInput[]
 ) {
   const supabase = await createClient()
-  const { teamId } = await getAuthenticatedTeamId(supabase)
+  const { user, teamId } = await getAuthenticatedTeamId(supabase)
+  await requireOwner(supabase, user.id)
+
+  if (!(await rateLimitAction(user.id, 'createPlaylist', 20, 60))) {
+    throw new Error('Too many requests. Please try again later.')
+  }
 
   // Input validation
   const trimmedName = name.trim()
@@ -75,7 +81,12 @@ export async function createPlaylist(
 
 export async function deletePlaylist(playlistId: string, teamSlug: string) {
   const supabase = await createClient()
-  await getAuthenticatedTeamId(supabase) // verifies auth — RLS enforces team scope
+  const { user } = await getAuthenticatedTeamId(supabase) // verifies auth — RLS enforces team scope
+  await requireOwner(supabase, user.id)
+
+  if (!(await rateLimitAction(user.id, 'deletePlaylist', 20, 60))) {
+    throw new Error('Too many requests. Please try again later.')
+  }
 
   const { error } = await supabase
     .from('playlists')
@@ -108,7 +119,12 @@ export async function updatePlaylist(
   items: PlaylistItemInput[]
 ) {
   const supabase = await createClient()
-  const { teamId } = await getAuthenticatedTeamId(supabase)
+  const { user, teamId } = await getAuthenticatedTeamId(supabase)
+  await requireOwner(supabase, user.id)
+
+  if (!(await rateLimitAction(user.id, 'updatePlaylist', 30, 60))) {
+    throw new Error('Too many requests. Please try again later.')
+  }
 
   const trimmedName = name.trim()
   if (!trimmedName) throw new Error('Playlist name is required.')

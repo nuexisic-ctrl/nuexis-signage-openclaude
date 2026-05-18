@@ -1,8 +1,8 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requireOwner } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { redis } from '@/lib/redis'
+import { redis, rateLimitAction } from '@/lib/redis'
 
 export type PairDeviceResult =
   | { success: true }
@@ -40,6 +40,16 @@ export async function claimDevice(
 
   if (!teamId) {
     return { success: false, error: 'Could not determine your team. Please try again.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  if (!(await rateLimitAction(user.id, 'claimDevice', 20, 60))) {
+    return { success: false, error: 'Too many requests. Please try again later.' }
   }
 
   // 3. Call the SECURITY DEFINER RPC — handles rate-limiting, atomic claim,
@@ -97,6 +107,12 @@ export async function updateDeviceAssignment(
     return { success: false, error: 'Could not determine your team.' }
   }
 
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
   const { data: updated, error: updateError } = await supabase
     .from('devices')
     .update({
@@ -133,6 +149,16 @@ export async function deleteAndUnpairDevice(
 
   if (!teamId) {
     return { success: false, error: 'Could not determine your team.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  if (!(await rateLimitAction(user.id, 'deleteAndUnpairDevice', 10, 60))) {
+    return { success: false, error: 'Too many requests. Please try again later.' }
   }
 
   const { error: deleteError } = await supabase
@@ -222,6 +248,16 @@ export async function updateDeviceName(
 
   if (!teamId) {
     return { success: false, error: 'Could not determine your team.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  if (!(await rateLimitAction(user.id, 'updateDeviceName', 30, 60))) {
+    return { success: false, error: 'Too many requests. Please try again later.' }
   }
 
   const { data: updated, error: updateError } = await supabase

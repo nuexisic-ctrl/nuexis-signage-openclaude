@@ -188,10 +188,31 @@ export async function getPlaylistItems(playlistId: string) {
  * This is the ONLY use of the service-role key — scoped exclusively
  * to storage URL signing. No database access is performed.
  */
-export async function getSignedMediaUrl(filePath: string, expiresIn: number = 3600) {
+export async function getSignedMediaUrl(
+  filePath: string,
+  hardwareId: string,
+  secret: string,
+  expiresIn: number = 3600
+) {
   // Skip signing for widget types (YouTube URLs, remote URLs)
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
     return filePath
+  }
+
+  const supabasePlayer = getPlayerClient()
+  const { data, error: devError } = await supabasePlayer.rpc('get_player_device_state', {
+    p_hardware_id: hardwareId,
+    p_secret: secret,
+  })
+
+  const device = data as { team_id?: string } | null
+
+  if (devError || !device || !device.team_id) {
+    throw new Error('Unauthorized device')
+  }
+
+  if (!filePath.startsWith(`${device.team_id}/`)) {
+    throw new Error('Unauthorized file path')
   }
 
   const supabase = createSupabaseClient(
@@ -200,15 +221,15 @@ export async function getSignedMediaUrl(filePath: string, expiresIn: number = 36
     { auth: { persistSession: false, autoRefreshToken: false } }
   )
 
-  const { data, error } = await supabase.storage
+  const { data: signedUrlData, error } = await supabase.storage
     .from('workspace-media')
     .createSignedUrl(filePath, expiresIn)
 
-  if (error || !data?.signedUrl) {
+  if (error || !signedUrlData?.signedUrl) {
     console.error('[getSignedMediaUrl] Error:', error)
     throw new Error('Failed to generate media URL')
   }
 
-  return data.signedUrl
+  return signedUrlData.signedUrl
 }
 

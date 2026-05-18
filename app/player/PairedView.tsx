@@ -13,6 +13,8 @@ interface PairedViewProps {
   scaleMode: string
   isMuted: boolean
   orientation: number
+  hardwareId: string
+  secret: string
   supabase: ReturnType<typeof import('@/lib/supabase/client').createClient>
   onUnpair: () => void
   onOrientationChange: (val: number) => void
@@ -22,6 +24,7 @@ interface PairedViewProps {
 export default function PairedView({
   contentType, assetUrl, mimeType, playlistId,
   scaleMode, isMuted, orientation,
+  hardwareId, secret,
   supabase, onUnpair, onOrientationChange, onMuteToggle,
 }: PairedViewProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -92,7 +95,7 @@ export default function PairedView({
       )
     }
   } else if (contentType === 'Playlist' && playlistId) {
-    content = <PlaylistEngine playlistId={playlistId} supabase={supabase} scaleMode={scaleMode} isMuted={isMuted} />
+    content = <PlaylistEngine playlistId={playlistId} supabase={supabase} scaleMode={scaleMode} isMuted={isMuted} hardwareId={hardwareId} secret={secret} />
   } else {
     content = (
       <div className={styles.pairedFlash}>

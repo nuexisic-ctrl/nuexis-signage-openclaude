@@ -22,12 +22,16 @@ export default function PlaylistEngine({
   playlistId, 
   supabase, 
   scaleMode, 
-  isMuted 
+  isMuted,
+  hardwareId,
+  secret
 }: { 
   playlistId: string
   supabase: any
   scaleMode: string
   isMuted: boolean
+  hardwareId: string
+  secret: string
 }) {
   const [items, setItems] = useState<PlaylistItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -110,7 +114,7 @@ export default function PlaylistEngine({
           if (item.assets.mime_type.startsWith('application/x-widget')) continue
           
           // Get a signed URL from the private bucket
-          const url = await getSignedMediaUrl(item.assets.file_path)
+          const url = await getSignedMediaUrl(item.assets.file_path, hardwareId, secret)
           
           let response = await cache.match(url)
           if (!response) {
@@ -158,6 +162,8 @@ export default function PlaylistEngine({
              supabase={supabase} 
              scaleMode={scaleMode} 
              isMuted={isMuted} 
+             hardwareId={hardwareId}
+             secret={secret}
              cacheMap={cacheMap.current}
              onComplete={() => {}} // Preload doesn't trigger advance
              isActive={false}
@@ -174,6 +180,8 @@ export default function PlaylistEngine({
           scaleMode={scaleMode} 
           isMuted={isMuted} 
           cacheMap={cacheMap.current}
+          hardwareId={hardwareId}
+          secret={secret}
           onComplete={handleNext}
           isActive={true}
         />
@@ -182,7 +190,7 @@ export default function PlaylistEngine({
   )
 }
 
-function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, onComplete, isActive }: any) {
+function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId, secret, onComplete, isActive }: any) {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null)
   
   useEffect(() => {
@@ -198,7 +206,7 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, onComplete
         if (cached) {
           if (mounted) setMediaUrl(cached)
         } else {
-          getSignedMediaUrl(item.assets.file_path).then(url => {
+          getSignedMediaUrl(item.assets.file_path, hardwareId, secret).then(url => {
             if (mounted) setMediaUrl(url)
           }).catch(console.error)
         }
