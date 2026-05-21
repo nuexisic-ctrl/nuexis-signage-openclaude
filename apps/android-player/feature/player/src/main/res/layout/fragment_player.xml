@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- Background Player (For preloading) -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerViewBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="invisible" />
+
+    <!-- Active Player -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerViewActive"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Image View for Image Assets -->
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
+</FrameLayout>

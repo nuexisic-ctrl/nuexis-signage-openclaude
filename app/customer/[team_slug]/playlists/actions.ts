@@ -137,14 +137,14 @@ export async function updatePlaylist(
     duration_seconds: item.duration_seconds,
     sort_order: index,
     widget_type: item.widget_type || null,
-    widget_config: item.widget_config || null
+    widget_config: (item.widget_config || null) as import('@/types/supabase').Json
   }))
 
   const { data, error: rpcError } = await supabase.rpc('update_playlist_atomic', {
     p_playlist_id: playlistId,
     p_name: trimmedName,
     p_team_id: teamId,
-    p_items: JSON.stringify(itemsJson), // jsonb parameter
+    p_items: itemsJson, // pass object directly for jsonb
   })
 
   if (rpcError) {

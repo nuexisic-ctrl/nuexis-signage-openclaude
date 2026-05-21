@@ -1,15 +1,9 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Build outputs (regenerate locally; avoids Windows file-lock churn in VCS)
+**/build/
+.gradle/
 local.properties
+
+# IDE
+.idea/caches/
+.idea/libraries/
+*.iml

@@ -10,8 +10,17 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
-rootProject.name = "NuExis Player"
+rootProject.name = "NuExisPlayer"
+
 include(":app")
+include(":core:network")
+include(":core:database")
+include(":core:domain")
+include(":core:media")
+include(":feature:player")
+include(":feature:pairing")
+include(":feature:sync")

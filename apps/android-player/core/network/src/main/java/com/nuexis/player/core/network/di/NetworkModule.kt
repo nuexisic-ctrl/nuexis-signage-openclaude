@@ -1,0 +1,57 @@
+package com.nuexis.player.core.network.di
+
+import com.nuexis.player.core.network.SupabaseAuthInterceptor
+import com.nuexis.player.core.network.api.SupabaseApi
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+object NetworkModule {
+
+    @Provides
+    @Singleton
+    fun provideSupabaseConfig(): SupabaseConfig = SupabaseConfig.fromBuildConfig()
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(config: SupabaseConfig): OkHttpClient {
+        val logger = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+        return OkHttpClient.Builder()
+            .addInterceptor(SupabaseAuthInterceptor(config.anonKey))
+            .addInterceptor(logger)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient, config: SupabaseConfig): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(config.baseUrl)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSupabaseApi(retrofit: Retrofit): SupabaseApi {
+        return retrofit.create(SupabaseApi::class.java)
+    }
+
+    /** Plain client for downloading from time-limited signed URLs (no Supabase headers). */
+    @Provides
+    @Singleton
+    @DownloadClient
+    fun provideDownloadOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder().build()
+}
