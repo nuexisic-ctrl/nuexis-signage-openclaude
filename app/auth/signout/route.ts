@@ -7,8 +7,21 @@ export async function POST(request: NextRequest) {
   // triggers a POST to /auth/signout without user consent.
   const origin = new URL(request.url).origin
   const requestOrigin = request.headers.get('origin')
+  const requestReferer = request.headers.get('referer')
 
-  if (requestOrigin && requestOrigin !== origin) {
+  let isVerified = false
+  if (requestOrigin) {
+    isVerified = requestOrigin === origin
+  } else if (requestReferer) {
+    try {
+      const refererOrigin = new URL(requestReferer).origin
+      isVerified = refererOrigin === origin
+    } catch {
+      isVerified = false
+    }
+  }
+
+  if (!isVerified) {
     return NextResponse.json(
       { error: 'CSRF validation failed' },
       { status: 403 }
@@ -20,3 +33,4 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.redirect(`${origin}/login`, { status: 302 })
 }
+

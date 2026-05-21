@@ -18,13 +18,21 @@ export const redis = new Redis({
 export async function rateLimitAction(userId: string, actionName: string, maxRequests: number = 30, windowSeconds: number = 60): Promise<boolean> {
   try {
     const key = `rate_limit:${actionName}:${userId}`
-    const requests = await redis.incr(key)
-    if (requests === 1) {
-      await redis.expire(key, windowSeconds)
-    }
-    return requests <= maxRequests
+    const script = `
+      local current = redis.call('get', KEYS[1])
+      if not current then
+        redis.call('set', KEYS[1], 1, 'EX', tonumber(ARGV[2]))
+        return 1
+      else
+        return redis.call('incr', KEYS[1])
+      end
+    `
+    const count = (await redis.eval(script, [key], [maxRequests, windowSeconds])) as number
+    return count <= maxRequests
   } catch (err) {
     console.error('[rateLimitAction] Error:', err)
-    return true // Fail open so users aren't locked out if Redis drops
+    // Fail closed for sensitive operations (login, signup, etc.) to prevent brute force
+    const isSensitive = ['login', 'signup', 'registerDevice', 'claimDevice', 'createPlaylist'].includes(actionName)
+    return !isSensitive
   }
 }

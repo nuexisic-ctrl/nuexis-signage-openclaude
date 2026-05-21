@@ -1,5 +1,4 @@
-package com.nuexis.player.core.network.di
-
+import com.nuexis.player.core.network.BuildConfig
 import com.nuexis.player.core.network.SupabaseAuthInterceptor
 import com.nuexis.player.core.network.api.SupabaseApi
 import dagger.Module
@@ -24,7 +23,11 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(config: SupabaseConfig): OkHttpClient {
         val logger = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BODY
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
         return OkHttpClient.Builder()
             .addInterceptor(SupabaseAuthInterceptor(config.anonKey))

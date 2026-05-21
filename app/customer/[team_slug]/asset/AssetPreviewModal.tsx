@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { X, File } from 'lucide-react'
-import styles from './asset.module.css'
+import styles from './Modal.module.css'
 
 interface Asset {
   id: string

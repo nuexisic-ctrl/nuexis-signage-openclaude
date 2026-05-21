@@ -2,8 +2,7 @@
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
-
-import { redis } from '@/lib/redis'
+import { redis, rateLimitAction } from '@/lib/redis'
 
 /**
  * Creates a Supabase client using the ANON key (not the service-role key).
@@ -24,6 +23,10 @@ function getPlayerClient() {
 }
 
 export async function registerDevice(hardwareId: string, pairingCode: string, expiresAtMs: number) {
+  if (!(await rateLimitAction(hardwareId, 'registerDevice', 5, 60))) {
+    throw new Error('Too many registration attempts. Please try again later.')
+  }
+
   const supabase = getPlayerClient()
   const { data, error } = await supabase.rpc('register_player_device', {
     p_hardware_id: hardwareId,
@@ -36,7 +39,6 @@ export async function registerDevice(hardwareId: string, pairingCode: string, ex
     throw new Error('Failed to register device')
   }
 
-  // RPC returns jsonb: { id, expires_at, secret }
   const result = data as unknown as { id: string; expires_at: string; secret: string }
   return result
 }
@@ -48,6 +50,10 @@ export async function refreshDeviceCode(
   pairingCode: string,
   expiresAtMs: number
 ) {
+  if (!(await rateLimitAction(hardwareId, 'refreshDeviceCode', 10, 60))) {
+    throw new Error('Rate limit exceeded')
+  }
+
   const supabase = getPlayerClient()
   const { data, error } = await supabase.rpc('refresh_player_device_code', {
     p_device_id: deviceId,
@@ -67,6 +73,10 @@ export async function refreshDeviceCode(
 }
 
 export async function getDeviceState(hardwareId: string, secret?: string) {
+  if (!(await rateLimitAction(hardwareId, 'getDeviceState', 40, 60))) {
+    throw new Error('Rate limit exceeded')
+  }
+
   const supabase = getPlayerClient()
   const { data, error } = await supabase.rpc('get_player_device_state', {
     p_hardware_id: hardwareId,
@@ -78,7 +88,6 @@ export async function getDeviceState(hardwareId: string, secret?: string) {
     throw new Error('Failed to fetch device state due to network or database error')
   }
 
-  // RPC returns jsonb (device object or null)
   return (data as unknown as {
     id: string
     team_id: string | null
@@ -96,6 +105,10 @@ export async function getDeviceState(hardwareId: string, secret?: string) {
 }
 
 export async function unpairDevice(deviceId: string, hardwareId: string, secret: string) {
+  if (!(await rateLimitAction(hardwareId, 'unpairDevice', 10, 60))) {
+    throw new Error('Rate limit exceeded')
+  }
+
   const supabase = getPlayerClient()
   const { error } = await supabase.rpc('unpair_player_device', {
     p_device_id: deviceId,
@@ -115,6 +128,10 @@ export async function updateDeviceOrientation(
   secret: string,
   orientation: number
 ) {
+  if (!(await rateLimitAction(hardwareId, 'updateDeviceOrientation', 20, 60))) {
+    throw new Error('Rate limit exceeded')
+  }
+
   const supabase = getPlayerClient()
   const { error } = await supabase.rpc('update_player_device_orientation', {
     p_device_id: deviceId,
@@ -135,6 +152,10 @@ export async function incrementPlaytime(
   secret: string,
   seconds: number
 ) {
+  if (!(await rateLimitAction(hardwareId, 'incrementPlaytime', 20, 60))) {
+    throw new Error('Rate limit exceeded')
+  }
+
   const supabase = getPlayerClient()
   const { error } = await supabase.rpc('increment_device_playtime', {
     p_device_id: deviceId,
@@ -148,20 +169,38 @@ export async function incrementPlaytime(
   }
 }
 
-export async function sendHeartbeat(deviceId: string, teamId: string) {
+export async function sendHeartbeat(deviceId: string, teamId: string, hardwareId: string, secret: string) {
+  if (!(await rateLimitAction(hardwareId, 'sendHeartbeat', 20, 60))) {
+    throw new Error('Rate limit exceeded')
+  }
+
+  const supabase = getPlayerClient()
+  const { data: device, error } = await supabase.rpc('get_player_device_state', {
+    p_hardware_id: hardwareId,
+    p_secret: secret,
+  })
+
+  if (error || !device || (device as any).id !== deviceId || (device as any).team_id !== teamId) {
+    throw new Error('Unauthorized heartbeat attempt')
+  }
+
   try {
-    // Store heartbeat in Redis with a 120s TTL
-    // The key format allows us to scan for online devices by team, or just check a specific device
     await redis.setex(`heartbeat:${teamId}:${deviceId}`, 120, new Date().toISOString())
   } catch (error) {
     console.error('[sendHeartbeat] Error:', error)
   }
 }
 
-export async function getPlaylistItems(playlistId: string) {
+export async function getPlaylistItems(playlistId: string, hardwareId: string, secret: string) {
+  if (!(await rateLimitAction(hardwareId, 'getPlaylistItems', 30, 60))) {
+    throw new Error('Rate limit exceeded')
+  }
+
   const supabase = getPlayerClient()
   const { data, error } = await supabase.rpc('get_player_playlist_items', {
     p_playlist_id: playlistId,
+    p_hardware_id: hardwareId,
+    p_secret: secret,
   })
 
   if (error) {
@@ -169,7 +208,6 @@ export async function getPlaylistItems(playlistId: string) {
     return []
   }
 
-  // RPC returns jsonb array
   return (data as unknown as Array<{
     id: string
     playlist_id: string | null
@@ -194,18 +232,21 @@ export async function getSignedMediaUrl(
   secret: string,
   expiresIn: number = 3600
 ) {
-  // Skip signing for widget types (YouTube URLs, remote URLs)
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
     return filePath
   }
 
+  if (!(await rateLimitAction(hardwareId, 'getSignedMediaUrl', 60, 60))) {
+    throw new Error('Rate limit exceeded')
+  }
+
   const supabasePlayer = getPlayerClient()
-  const { data, error: devError } = await supabasePlayer.rpc('get_player_device_state', {
+  const { data: deviceData, error: devError } = await supabasePlayer.rpc('get_player_device_state', {
     p_hardware_id: hardwareId,
     p_secret: secret,
   })
 
-  const device = data as { team_id?: string } | null
+  const device = deviceData as { team_id?: string } | null
 
   if (devError || !device || !device.team_id) {
     throw new Error('Unauthorized device')
@@ -232,4 +273,3 @@ export async function getSignedMediaUrl(
 
   return signedUrlData.signedUrl
 }
-

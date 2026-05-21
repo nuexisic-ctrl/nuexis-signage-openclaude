@@ -36,6 +36,7 @@ export default function PlaylistEngine({
   const [items, setItems] = useState<PlaylistItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [fadeOpacity, setFadeOpacity] = useState(1)
 
   // Use a map to store cached blob URLs
   const cacheMap = useRef<Record<string, string>>({})
@@ -45,7 +46,7 @@ export default function PlaylistEngine({
 
     const fetchItems = async (showLoading = true) => {
       if (showLoading && mounted) setIsLoading(true)
-      const data = await getPlaylistItems(playlistId)
+      const data = await getPlaylistItems(playlistId, hardwareId, secret)
       if (!mounted) return
       
       setItems((currentItems) => {
@@ -81,13 +82,12 @@ export default function PlaylistEngine({
         () => {
           console.log('[PlaylistEngine] Broadcast refresh received. Performing professional refresh...')
           
-          // Professional hard-refresh: fade out the screen before reloading to prevent jarring cuts
-          document.body.style.transition = 'opacity 0.5s ease-out'
-          document.body.style.opacity = '0'
+          // Professional hard-refresh: fade out the screen before reloading to prevent jarring cuts (M-17)
+          setFadeOpacity(0)
           
           setTimeout(() => {
             fetchItems(true)
-            document.body.style.opacity = '1'
+            setFadeOpacity(1)
           }, 500)
         }
       )
@@ -103,7 +103,7 @@ export default function PlaylistEngine({
       })
       cacheMap.current = {}
     }
-  }, [playlistId, supabase])
+  }, [playlistId, supabase, hardwareId, secret])
 
   const cacheAssets = async (playlistItems: PlaylistItem[]) => {
     try {
@@ -113,14 +113,16 @@ export default function PlaylistEngine({
           // Skip widget types
           if (item.assets.mime_type.startsWith('application/x-widget')) continue
           
-          // Get a signed URL from the private bucket
-          const url = await getSignedMediaUrl(item.assets.file_path, hardwareId, secret)
+          // Use a consistent filepath cache key instead of the expiring signed URL (H-03)
+          const cacheKey = `https://local-media-cache/${item.assets.file_path}`
           
-          let response = await cache.match(url)
+          let response = await cache.match(cacheKey)
           if (!response) {
+            // Get a signed URL from the private bucket
+            const url = await getSignedMediaUrl(item.assets.file_path, hardwareId, secret)
             response = await fetch(url, { mode: 'cors' })
             if (response.ok) {
-              await cache.put(url, response.clone())
+              await cache.put(cacheKey, response.clone())
             }
           }
           
@@ -130,6 +132,32 @@ export default function PlaylistEngine({
           }
         }
       }
+
+      // Evict stale assets from Cache Storage (H-19)
+      const keys = await cache.keys()
+      const activeCacheKeys = new Set(
+        playlistItems
+          .filter((item) => (item.type === 'image' || item.type === 'video') && item.assets && !item.assets.mime_type.startsWith('application/x-widget'))
+          .map((item) => `https://local-media-cache/${item.assets!.file_path}`)
+      )
+      for (const request of keys) {
+        if (!activeCacheKeys.has(request.url)) {
+          await cache.delete(request)
+        }
+      }
+
+      // Evict stale blob URLs from memory (H-14)
+      const activeFilePaths = new Set(
+        playlistItems
+          .filter((item) => (item.type === 'image' || item.type === 'video') && item.assets)
+          .map((item) => item.assets!.file_path)
+      )
+      Object.keys(cacheMap.current).forEach((filePath) => {
+        if (!activeFilePaths.has(filePath)) {
+          URL.revokeObjectURL(cacheMap.current[filePath])
+          delete cacheMap.current[filePath]
+        }
+      })
     } catch (err) {
       console.error('[PlaylistEngine] Failed to cache assets:', err)
     }
@@ -152,7 +180,7 @@ export default function PlaylistEngine({
   const nextItem = items[nextIndex]
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%', opacity: fadeOpacity, transition: 'opacity 0.5s ease-out' }}>
       {/* Background/Next item (Preloading) */}
       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1, opacity: 0 }}>
         {items.length > 1 && (
@@ -192,14 +220,18 @@ export default function PlaylistEngine({
 
 function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId, secret, onComplete, isActive }: any) {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
   
   useEffect(() => {
     let mounted = true
-    let timeoutId: NodeJS.Timeout
+    let safetyTimeout: NodeJS.Timeout
 
     if (item.assets) {
       if (item.assets.mime_type === 'application/x-widget-youtube' || item.assets.mime_type === 'application/x-widget-remote-url') {
-        if (mounted) setMediaUrl(item.assets.file_path)
+        if (mounted) {
+          setMediaUrl(item.assets.file_path)
+        }
       } else if (item.type === 'image' || item.type === 'video') {
         // Use cached blob if available, otherwise get a signed URL
         const cached = cacheMap[item.assets.file_path]
@@ -211,20 +243,37 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
           }).catch(console.error)
         }
       }
-    }
 
-    if (isActive) {
-      // Set a timer for duration_seconds
-      timeoutId = setTimeout(() => {
-        onComplete()
-      }, item.duration_seconds * 1000)
+      // Safety timeout: if media takes too long to load, force start the timer (H-16)
+      safetyTimeout = setTimeout(() => {
+        if (mounted) setIsLoaded(true)
+      }, 5000)
+    } else if (item.type === 'widget') {
+      if (mounted) setIsLoaded(true)
     }
 
     return () => {
       mounted = false
-      if (timeoutId) clearTimeout(timeoutId)
+      if (safetyTimeout) clearTimeout(safetyTimeout)
     }
-  }, [item, supabase, onComplete, isActive, cacheMap])
+  }, [item, cacheMap, hardwareId, secret])
+
+  useEffect(() => {
+    if (isActive && isLoaded) {
+      // Set a timer for duration_seconds only after media is loaded/can play (H-16)
+      const timeoutId = setTimeout(() => {
+        onComplete()
+      }, item.duration_seconds * 1000)
+      timerRef.current = timeoutId
+
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current)
+          timerRef.current = null
+        }
+      }
+    }
+  }, [isActive, isLoaded, item.duration_seconds, onComplete])
 
   const objectFitMap: Record<string, 'none' | 'contain' | 'fill' | 'cover'> = {
     'None': 'none',
@@ -258,6 +307,8 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
         style={{ ...mediaStyle, border: 'none', pointerEvents: 'none' }}
         allow="autoplay; encrypted-media"
         allowFullScreen
+        onLoad={() => setIsLoaded(true)}
+        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
       />
     )
   }
@@ -268,6 +319,8 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
         src={mediaUrl}
         style={{ ...mediaStyle, border: 'none' }}
         allow="autoplay; encrypted-media; fullscreen"
+        onLoad={() => setIsLoaded(true)}
+        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
       />
     )
   }
@@ -282,6 +335,8 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
         playsInline
         loop
         preload="auto"
+        onCanPlay={() => setIsLoaded(true)}
+        onError={() => setIsLoaded(true)}
       />
     )
   }
@@ -291,6 +346,8 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
       src={mediaUrl}
       style={mediaStyle}
       alt="Playlist Item"
+      onLoad={() => setIsLoaded(true)}
+      onError={() => setIsLoaded(true)}
     />
   )
 }

@@ -177,6 +177,17 @@ export async function deleteAndUnpairDevice(
 }
 
 export async function getDeviceHeartbeats(teamId: string): Promise<Record<string, string>> {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    throw new Error('Unauthorized access')
+  }
+
+  const userTeamId = user.app_metadata?.team_id as string | undefined
+  if (!userTeamId || userTeamId !== teamId) {
+    throw new Error('Unauthorized team access')
+  }
+
   try {
     const keys = await redis.keys(`heartbeat:${teamId}:*`)
     if (keys.length === 0) return {}

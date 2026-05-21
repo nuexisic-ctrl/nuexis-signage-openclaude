@@ -1,23 +1,26 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { redis } from '@/lib/redis'
+import { rateLimitAction } from '@/lib/redis'
+import { headers } from 'next/headers'
 
 export async function loginWithRateLimit(
   teamSlug: string,
   email: string,
   password: string,
-  ip: string
+  clientIpFallback?: string
 ) {
-  // Rate limit by IP
-  const rateLimitKey = `login_attempts:${ip}`
-  const attempts = await redis.incr(rateLimitKey)
-  if (attempts === 1) {
-    await redis.expire(rateLimitKey, 60 * 15) // 15 minutes window
-  }
+  // Retrieve secure client IP from headers to prevent client IP spoofing (C-08)
+  const headersList = await headers()
+  const forwardedFor = headersList.get('x-forwarded-for')
+  const secureIp = forwardedFor ? forwardedFor.split(',')[0].trim() : (clientIpFallback || '127.0.0.1')
 
-  if (attempts > 5) {
-    return { success: false, error: 'Too many login attempts. Please try again later.' }
+  // Scope the rate limit to both the client's IP and email to limit brute force attacks
+  const rateLimitKey = `${secureIp}:${email}`
+  const allowed = await rateLimitAction(rateLimitKey, 'login', 5, 900)
+
+  if (!allowed) {
+    return { success: false, error: 'Too many login attempts. Please try again in 15 minutes.' }
   }
 
   const supabase = await createClient()
@@ -45,9 +48,6 @@ export async function loginWithRateLimit(
     await supabase.auth.signOut()
     return { success: false, error: `This account does not belong to the "${teamSlug}" workspace. Please use your correct team URL.` }
   }
-
-  // Reset rate limit on success
-  await redis.del(rateLimitKey)
 
   return { success: true }
 }

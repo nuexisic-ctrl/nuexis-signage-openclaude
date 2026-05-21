@@ -69,6 +69,7 @@ export default function PairedView({
           style={{ ...mediaStyle, border: 'none', pointerEvents: 'none' }}
           allow="autoplay; encrypted-media"
           allowFullScreen
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
         />
       )
     } else if (mimeType === 'application/x-widget-remote-url') {
@@ -78,6 +79,7 @@ export default function PairedView({
           src={assetUrl}
           style={{ ...mediaStyle, border: 'none' }}
           allow="autoplay; encrypted-media; fullscreen"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
         />
       )
     } else if (mimeType?.startsWith('video/')) {

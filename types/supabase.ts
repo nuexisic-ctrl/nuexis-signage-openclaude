@@ -327,12 +327,19 @@ export type Database = {
         }
         Returns: Json
       }
+      device_secret_matches: {
+        Args: {
+          p_device: Database["public"]["Tables"]["devices"]["Row"]
+          p_secret: string
+        }
+        Returns: boolean
+      }
       get_player_device_state: {
         Args: { p_hardware_id: string; p_secret?: string }
         Returns: Json
       }
       get_player_playlist_items: {
-        Args: { p_playlist_id: string }
+        Args: { p_hardware_id: string; p_playlist_id: string; p_secret: string }
         Returns: Json
       }
       get_player_signed_media_url: {
@@ -342,10 +349,6 @@ export type Database = {
           p_hardware_id: string
           p_secret: string
         }
-        Returns: string
-      }
-      get_signed_media_url: {
-        Args: { p_expires_in?: number; p_file_path: string }
         Returns: string
       }
       increment_device_playtime: {

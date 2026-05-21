@@ -1,5 +1,5 @@
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist, StaleWhileRevalidate } from "serwist";
+import { Serwist, StaleWhileRevalidate, ExpirationPlugin } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -37,6 +37,11 @@ const serwist = new Serwist({
       handler: new StaleWhileRevalidate({
         cacheName: "nuexis-app-shell",
         plugins: [
+          new ExpirationPlugin({
+            maxEntries: 100, // Limit cache to 100 entries max
+            maxAgeSeconds: 24 * 60 * 60, // Cache TTL of 24 hours
+            purgeOnQuotaError: true,
+          }),
           {
             cacheWillUpdate: async ({ response }) => {
               return response;

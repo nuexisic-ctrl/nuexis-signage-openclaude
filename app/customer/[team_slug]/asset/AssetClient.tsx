@@ -1,22 +1,20 @@
 'use client'
 
-import { useState, useCallback, useTransition, useRef, useEffect } from 'react'
+import { useState, useCallback, useTransition, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, File, Play, X, LayoutTemplate, Plus, MonitorPlay, Image as ImageIcon, Link } from 'lucide-react'
+import { AlertTriangle, Check, File, Play, Plus, Image as ImageIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { getUploadUrl, insertAsset, deleteAsset, updateAssetName } from './actions'
+import { getUploadUrl, insertAsset } from './actions'
 import { AssetPreviewModal } from './AssetPreviewModal'
+import { UploadZone } from './UploadZone'
+import { AssetCard } from './AssetCard'
+import { FilterSidebar } from './FilterSidebar'
+import { RenameAssetModal, DeleteAssetModal } from './ActionModals'
+import { WidgetSelectionModal, YouTubeWidgetModal, RemoteUrlWidgetModal } from './WidgetModals'
+import { AssetTableView } from './AssetTableView'
+import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 import styles from './asset.module.css'
-
-interface Asset {
-  id: string
-  file_name: string
-  file_path: string
-  mime_type: string
-  size_bytes: number
-  created_at: string
-}
 
 interface Props {
   initialAssets: Asset[]
@@ -27,515 +25,14 @@ interface Props {
   pageSize?: number
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
-}
-
-function isImage(mimeType: string) {
-  return mimeType.startsWith('image/')
-}
-
-function isVideo(mimeType: string) {
-  return mimeType.startsWith('video/')
-}
-
-function isWidget(mimeType: string) {
-  return mimeType.startsWith('application/x-widget')
-}
-
-// ─── Modals ───────────────────────────────────────────────────────────────────
-
-function WidgetSelectionModal({
-  onClose,
-  onSelectYouTube,
-  onSelectRemoteUrl
-}: {
-  onClose: () => void
-  onSelectYouTube: () => void
-  onSelectRemoteUrl: () => void
-}) {
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>Select Widget</h2>
-          <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-          <button 
-            onClick={() => { onClose(); onSelectYouTube(); }}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '16px',
-              background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
-              borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s',
-              color: 'var(--on-surface)', fontSize: '1rem', fontWeight: 600,
-              fontFamily: 'var(--font-label)'
-            }}
-            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
-            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--outline-variant)'}
-          >
-            <MonitorPlay color="#ff0000" size={28} />
-            YouTube Player
-          </button>
-          <button 
-            onClick={() => { onClose(); onSelectRemoteUrl(); }}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '16px',
-              background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
-              borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s',
-              color: 'var(--on-surface)', fontSize: '1rem', fontWeight: 600,
-              fontFamily: 'var(--font-label)'
-            }}
-            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
-            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--outline-variant)'}
-          >
-            <Link color="#4dabf7" size={28} />
-            Remote URL
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function YouTubeWidgetModal({
-  onClose,
-  onSubmit,
-  isSubmitting
-}: {
-  onClose: () => void
-  onSubmit: (name: string, url: string) => void
-  isSubmitting: boolean
-}) {
-  const [name, setName] = useState('')
-  const [url, setUrl] = useState('')
-
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>Configure YouTube Widget</h2>
-          <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
-        </div>
-        <form onSubmit={e => { e.preventDefault(); onSubmit(name, url); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>Widget Name</label>
-            <input 
-              required
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Lobby YouTube Video"
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>YouTube URL</label>
-            <input 
-              required
-              type="url"
-              value={url}
-              onChange={e => setUrl(e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
-            />
-          </div>
-          <button 
-            type="submit" 
-            disabled={isSubmitting || !name || !url}
-            style={{ 
-              marginTop: '8px', padding: '12px', background: 'var(--primary)', color: 'var(--on-primary)', 
-              border: 'none', borderRadius: '8px', fontWeight: 600, cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              opacity: isSubmitting ? 0.7 : 1
-            }}
-          >
-            {isSubmitting ? 'Saving...' : 'Save Widget'}
-          </button>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-function RemoteUrlWidgetModal({
-  onClose,
-  onSubmit,
-  isSubmitting
-}: {
-  onClose: () => void
-  onSubmit: (name: string, url: string) => void
-  isSubmitting: boolean
-}) {
-  const [name, setName] = useState('')
-  const [url, setUrl] = useState('')
-  const [error, setError] = useState<string | null>(null)
-
-  function validateAndSubmit() {
-    try {
-      const parsed = new URL(url)
-      if (parsed.protocol !== 'https:') {
-        setError('URL must use HTTPS protocol')
-        return
-      }
-      const pathname = parsed.pathname.toLowerCase()
-      if (!/\.(mp4|webm|jpg|jpeg|png)$/.test(pathname)) {
-        setError('URL must end with .mp4, .webm, .jpg, .jpeg, or .png')
-        return
-      }
-      setError(null)
-      onSubmit(name, url)
-    } catch {
-      setError('Invalid URL')
-    }
-  }
-
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>Configure Remote URL</h2>
-          <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
-        </div>
-        <form onSubmit={e => { e.preventDefault(); validateAndSubmit(); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {error && (
-            <div className={styles.errorBanner} role="alert" style={{ marginBottom: '0' }}>
-              <AlertTriangle className={styles.errorIcon} size={17} />
-              {error}
-            </div>
-          )}
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>Widget Name</label>
-            <input 
-              required
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Remote Lobby Image"
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>Media URL (HTTPS only)</label>
-            <input 
-              required
-              type="url"
-              value={url}
-              onChange={e => { setUrl(e.target.value); setError(null); }}
-              placeholder="https://example.com/image.jpg"
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
-            />
-          </div>
-          <button 
-            type="submit" 
-            disabled={isSubmitting || !name || !url}
-            style={{ 
-              marginTop: '8px', padding: '12px', background: 'var(--primary)', color: 'var(--on-primary)', 
-              border: 'none', borderRadius: '8px', fontWeight: 600, cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              opacity: isSubmitting ? 0.7 : 1
-            }}
-          >
-            {isSubmitting ? 'Saving...' : 'Save Widget'}
-          </button>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-// ─── Asset Card ───────────────────────────────────────────────────────────────
-
-function AssetCard({
-  asset,
-  previewUrl,
-  onDelete,
-  onPreview,
-  onRename,
-  isDeleting,
-  menuOpen,
-  onToggleMenu,
-  menuPosition,
-}: {
-  asset: Asset
-  previewUrl: string | null
-  onDelete: () => void
-  onPreview: (asset: Asset) => void
-  onRename: () => void
-  isDeleting: boolean
-  menuOpen: boolean
-  onToggleMenu: (e: React.MouseEvent) => void
-  menuPosition?: { top: number, right: number } | null
-}) {
-  const date = new Date(asset.created_at).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-  })
-
-  return (
-    <div className={`${styles.assetCard} ${isDeleting ? styles.assetCardDeleting : ''}`}>
-      <div 
-        className={`${styles.assetThumb} ${styles.assetThumbInteractive}`}
-        onClick={() => onPreview(asset)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onPreview(asset) }}
-        aria-label={`Preview ${asset.file_name}`}
-      >
-        {isImage(asset.mime_type) && previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={previewUrl} alt={asset.file_name} className={styles.assetImg} />
-        ) : isVideo(asset.mime_type) && previewUrl ? (
-          <div className={styles.videoThumbWrapper} style={{ position: 'relative', width: '100%', height: '100%' }}>
-            <video 
-              src={`${previewUrl}#t=0.001`} 
-              className={styles.assetImg} 
-              preload="metadata" 
-              muted 
-              playsInline 
-              style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-            />
-            <div className={styles.videoOverlay}>
-              <Play className={styles.videoIcon} size={28} />
-            </div>
-          </div>
-        ) : isWidget(asset.mime_type) ? (
-          <div className={styles.videoThumbWrapper} style={{ position: 'relative', width: '100%', height: '100%' }}>
-             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #3f0a0a, #0f172a)' }}>
-               {asset.mime_type === 'application/x-widget-youtube' ? (
-                 <MonitorPlay color="#ff0000" size={48} />
-               ) : asset.mime_type === 'application/x-widget-remote-url' ? (
-                 <Link color="#4dabf7" size={48} />
-               ) : (
-                 <LayoutTemplate color="#ffffff" size={48} />
-               )}
-             </div>
-          </div>
-        ) : (
-          <div className={styles.genericThumb}>
-            <File className={styles.genericIcon} size={30} />
-          </div>
-        )}
-        
-        <div className={styles.mimeChip}>
-          {isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
-        </div>
-      </div>
-
-      <div className={styles.assetInfo}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-          <p className={styles.assetName} title={asset.file_name}>{asset.file_name}</p>
-          <div className={styles.moreMenuWrapper}>
-            <button 
-              className={`${styles.actionBtnBox} ${menuOpen ? styles.active : ''}`}
-              onClick={onToggleMenu}
-              aria-label="More Actions"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <circle cx="12" cy="12" r="1.5"></circle>
-                <circle cx="12" cy="5" r="1.5"></circle>
-                <circle cx="12" cy="19" r="1.5"></circle>
-              </svg>
-            </button>
-            {menuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
-              <div 
-                className={styles.moreDropdown}
-                style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 100000 }}
-                onClick={e => e.stopPropagation()}
-              >
-                <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
-                  Preview
-                </button>
-                <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onRename(); }}>
-                  Rename
-                </button>
-                <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={(e) => { e.stopPropagation(); onDelete(); }}>
-                  Delete
-                </button>
-              </div>,
-              document.body
-            )}
-          </div>
-        </div>
-        <div className={styles.assetMeta}>
-          <span>{formatBytes(asset.size_bytes)}</span>
-          <span className={styles.metaDot}>·</span>
-          <span>{date}</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Upload Zone ──────────────────────────────────────────────────────────────
-
-function UploadZone({
-  onFiles,
-  isUploading,
-  progress,
-}: {
-  onFiles: (files: File[]) => void
-  isUploading: boolean
-  progress: number
-}) {
-  const [isDragging, setIsDragging] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const files = Array.from(e.dataTransfer.files)
-    if (files.length) onFiles(files)
-  }, [onFiles])
-
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }, [])
-
-  const handleDragLeave = useCallback(() => {
-    setIsDragging(false)
-  }, [])
-
-  const handleClick = () => {
-    inputRef.current?.click()
-  }
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    if (files.length) onFiles(files)
-    // Reset input so same file can be re-uploaded
-    e.target.value = ''
-  }
-
-  return (
-    <div
-      className={`${styles.dropzone} ${isDragging ? styles.dropzoneDragging : ''} ${isUploading ? styles.dropzoneUploading : ''}`}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onClick={!isUploading ? handleClick : undefined}
-      role="button"
-      tabIndex={0}
-      aria-label="Upload media files"
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick() }}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml,video/mp4,video/webm,video/quicktime"
-        multiple
-        className={styles.hiddenInput}
-        onChange={handleChange}
-        id="media-file-input"
-      />
-
-      <div className={styles.dropzoneInner}>
-        {isUploading ? (
-          <>
-            <div className={styles.uploadingIcon}>
-              <div className={styles.uploadSpinner} />
-            </div>
-            <p className={styles.dropzoneTitle}>Uploading…</p>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: `${progress}%` }} />
-            </div>
-            <p className={styles.dropzoneHint}>{progress}% complete</p>
-          </>
-        ) : (
-          <>
-            <div className={styles.dropzoneIcon} aria-hidden="true">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-            </div>
-            <p className={styles.dropzoneTitle}>
-              {isDragging ? 'Drop files here' : 'Drag & drop files here'}
-            </p>
-            <p className={styles.dropzoneSubtitle}>or click to browse</p>
-            <p className={styles.dropzoneHint}>
-              Supports JPEG, PNG, GIF, WebP, SVG, MP4, WebM · Max 100 MB per file
-            </p>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function DeleteAssetModal({
-  assetId,
-  assetName,
-  filePath,
+export default function AssetClient({
+  initialAssets,
+  teamId,
   teamSlug,
-  onClose,
-  onSuccess,
-}: {
-  assetId: string
-  assetName: string
-  filePath: string
-  teamSlug: string
-  onClose: () => void
-  onSuccess: (id: string) => void
-}) {
-  const [isPending, startTransition] = useTransition()
-  const overlayRef = useRef<HTMLDivElement>(null)
-
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) onClose()
-  }
-
-  function handleConfirm() {
-    startTransition(async () => {
-      await deleteAsset(teamSlug, assetId, filePath)
-      onSuccess(assetId)
-    })
-  }
-
-  return (
-    <div className={styles.modalOverlay} ref={overlayRef} onClick={handleOverlayClick}>
-      <div className={styles.modalContainer} role="dialog" style={{ maxWidth: '400px', width: '100%', padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--error)' }}>Delete Asset</h2>
-            <p style={{ margin: '6px 0 0', fontSize: '0.9rem', color: 'var(--on-surface-subtle)' }}>
-              Are you sure you want to delete <strong>{assetName}</strong>?
-            </p>
-          </div>
-          <button onClick={onClose} className={styles.modalCloseBtn} aria-label="Close modal"><X size={18} /></button>
-        </div>
-        
-        <p style={{ fontSize: '0.88rem', color: 'var(--on-surface)', marginBottom: '24px', lineHeight: '1.5' }}>
-          This action will permanently remove the asset from your library. Any screens currently displaying this asset will stop showing it.
-        </p>
-
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-          <button 
-            style={{ padding: '10px 16px', background: 'var(--surface-low)', color: 'var(--on-surface)', border: '1px solid var(--outline-variant)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-label)' }} 
-            onClick={onClose} 
-            disabled={isPending}
-          >
-            Cancel
-          </button>
-          <button 
-            style={{ padding: '10px 16px', background: 'var(--error)', color: 'var(--on-primary)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-label)' }} 
-            onClick={handleConfirm} 
-            disabled={isPending}
-          >
-            {isPending ? 'Deleting…' : 'Delete Asset'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Main Client Component ────────────────────────────────────────────────────
-
-export default function AssetClient({ initialAssets, teamId, teamSlug, totalAssets = 0, currentPage = 1, pageSize = 30 }: Props) {
+  totalAssets = 0,
+  currentPage = 1,
+  pageSize = 30
+}: Props) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets)
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
   const [isUploading, setIsUploading] = useState(false)
@@ -550,7 +47,6 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
   const [renameModalAsset, setRenameModalAsset] = useState<Asset | null>(null)
   const [deleteModalAsset, setDeleteModalAsset] = useState<Asset | null>(null)
   
-  // UX Features States
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false)
@@ -569,10 +65,8 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
   useEffect(() => {
     const saved = localStorage.getItem('assetsViewMode')
     if (saved === 'grid' || saved === 'table') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setViewMode(saved)
     }
-     
     setIsMounted(true)
   }, [])
 
@@ -590,21 +84,24 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
     localStorage.setItem('assetsViewMode', mode)
   }
 
-  // Generate signed URLs for image previews (bucket is now private)
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    // Generate signed URLs for all visible assets
     const generateUrls = async () => {
+      const targetAssets = assets.filter(
+        asset => (isImage(asset.mime_type) || isVideo(asset.mime_type)) && !asset.mime_type.startsWith('application/x-widget')
+      )
+      const promises = targetAssets.map(async (asset) => {
+        const { data } = await supabase.storage
+          .from('workspace-media')
+          .createSignedUrl(asset.file_path, 3600)
+        return { path: asset.file_path, url: data?.signedUrl || null }
+      })
+      const results = await Promise.all(promises)
       const urls: Record<string, string> = {}
-      for (const asset of assets) {
-        if ((isImage(asset.mime_type) || isVideo(asset.mime_type)) && !asset.mime_type.startsWith('application/x-widget')) {
-          const { data } = await supabase.storage
-            .from('workspace-media')
-            .createSignedUrl(asset.file_path, 3600) // 1 hour TTL
-          if (data?.signedUrl) {
-            urls[asset.file_path] = data.signedUrl
-          }
+      for (const res of results) {
+        if (res.url) {
+          urls[res.path] = res.url
         }
       }
       setPreviewUrls(urls)
@@ -653,7 +150,6 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
           continue
         }
 
-        // Sync metadata to the DB via server action
         const result = await insertAsset(teamSlug, {
           file_name: file.name,
           file_path: filePath,
@@ -673,8 +169,6 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
             created_at: new Date().toISOString(),
           }
           newAssets.push(newAsset)
-
-          // We no longer need to pre-fetch preview URL since it's synchronous now
         }
       } catch (err) {
         console.error('[upload] unexpected error:', err)
@@ -685,7 +179,6 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
       setUploadProgress(Math.round((completed / total) * 100))
     }
 
-    // Prepend new assets to the list (newest first)
     setAssets(prev => [...newAssets.reverse(), ...prev])
     setIsUploading(false)
     setUploadProgress(0)
@@ -695,34 +188,10 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
       setTimeout(() => setShowSuccess(false), 5000)
     }
 
-    // Trigger a server-side revalidation
     startTransition(() => {
       router.refresh()
     })
   }, [teamId, teamSlug, supabase, router])
-
-  const handleDelete = useCallback(async (assetId: string, filePath: string) => {
-    setDeletingIds(prev => new Set(prev).add(assetId))
-    setUploadError(null)
-
-    const result = await deleteAsset(teamSlug, assetId, filePath)
-
-    if (!result.success) {
-      setUploadError(result.error)
-      setDeletingIds(prev => {
-        const next = new Set(prev)
-        next.delete(assetId)
-        return next
-      })
-    } else {
-      setAssets(prev => prev.filter(a => a.id !== assetId))
-      setDeletingIds(prev => {
-        const next = new Set(prev)
-        next.delete(assetId)
-        return next
-      })
-    }
-  }, [teamSlug])
 
   const handleCreateYouTubeWidget = async (name: string, url: string) => {
     setIsSubmittingWidget(true)
@@ -806,14 +275,12 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
   }
 
   const filteredAssets = assets.filter(a => {
-    // 1. Type Filter
     if (filterType !== 'all') {
       if (filterType === 'image' && !isImage(a.mime_type)) return false
       if (filterType === 'video' && !isVideo(a.mime_type)) return false
       if (filterType === 'widget' && !isWidget(a.mime_type)) return false
     }
 
-    // 2. Date Filter
     if (filterDatePreset !== 'all') {
       const now = new Date()
       const dDate = new Date(a.created_at).getTime()
@@ -840,7 +307,6 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
       }
     }
 
-    // 3. Search Query
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
     return a.file_name.toLowerCase().includes(q)
@@ -873,6 +339,7 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
         onFiles={handleFiles}
         isUploading={isUploading}
         progress={uploadProgress}
+        onError={setUploadError}
       />
 
       {uploadError && (
@@ -925,28 +392,28 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
                       onClick={() => handleSetViewMode('grid')}
                       title="Grid View"
                     >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
-                      <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
-                      <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
-                      <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
-                    </svg>
-                  </button>
-                  <button 
-                    className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
-                    onClick={() => handleSetViewMode('table')}
-                    title="Table View"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="8" y1="6" x2="21" y2="6"></line>
-                      <line x1="8" y1="12" x2="21" y2="12"></line>
-                      <line x1="8" y1="18" x2="21" y2="18"></line>
-                      <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                      <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                      <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                    </svg>
-                  </button>
-                </div>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                      </svg>
+                    </button>
+                    <button 
+                      className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
+                      onClick={() => handleSetViewMode('table')}
+                      title="Table View"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -968,139 +435,51 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
               </div>
             ) : viewMode === 'grid' ? (
               <div className={styles.grid}>
-                {filteredAssets.map((asset) => {
-                  return (
-                    <AssetCard
-                        key={asset.id}
-                        asset={asset}
-                        previewUrl={isImage(asset.mime_type) || isVideo(asset.mime_type) ? getPreviewUrl(asset.file_path) : null}
-                        onDelete={() => {
-                          setOpenMenuId(null);
-                          setDeleteModalAsset(asset);
-                        }}
-                        onPreview={setPreviewAsset}
-                        onRename={() => {
-                          setOpenMenuId(null);
-                          setRenameModalAsset(asset);
-                        }}
-                        isDeleting={deletingIds.has(asset.id)}
-                        menuOpen={openMenuId === asset.id}
-                        menuPosition={menuPosition}
-                        onToggleMenu={(e) => {
-                          e.stopPropagation();
-                          if (openMenuId === asset.id) {
-                            setOpenMenuId(null);
-                            setMenuPosition(null);
-                          } else {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setMenuPosition({ top: rect.bottom + window.scrollY + 6, right: window.innerWidth - rect.right });
-                            setOpenMenuId(asset.id);
-                          }
-                        }}
-                      />
-                    )
-                  })}
-                </div>
-            ) : (
-              <div className={styles.tableContainer}>
-                <table className={styles.screensTable}>
-                  <thead className={styles.tableHeader}>
-                    <tr>
-                      <th>File Name</th>
-                      <th>Type</th>
-                      <th>Size</th>
-                      <th>Date Added</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAssets.map(asset => {
-                      const isMenuOpen = openMenuId === asset.id
-                      const date = new Date(asset.created_at).toLocaleDateString('en-US', {
-                        month: 'short', day: 'numeric', year: 'numeric',
-                      })
-
-                    return (
-                        <tr key={asset.id} className={styles.tableRow}>
-                          <td className={styles.tableCell} onClick={() => setPreviewAsset(asset)} style={{ cursor: 'pointer' }}>
-                            <div className={styles.nameCellContent}>
-                              <div className={styles.deviceIconWrapper}>
-                                {isImage(asset.mime_type) ? <ImageIcon size={20} /> : isVideo(asset.mime_type) ? <Play size={20} /> : <File size={20} />}
-                              </div>
-                              <div className={styles.cellName}>{asset.file_name}</div>
-                            </div>
-                          </td>
-                          <td className={styles.tableCell}>
-                            <div className={styles.mimeChip} style={{ position: 'relative', bottom: 'auto', left: 'auto', display: 'inline-block' }}>
-                              {isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
-                            </div>
-                          </td>
-                          <td className={styles.tableCell} style={{ fontSize: '0.88rem', color: 'var(--on-surface)' }}>
-                            {formatBytes(asset.size_bytes)}
-                          </td>
-                          <td className={styles.tableCell}>
-                            <div className={styles.cellLastSeen}>
-                              {date}
-                            </div>
-                          </td>
-                          <td className={styles.tableCell}>
-                            <div className={styles.actionsGroup}>
-                              <div className={styles.moreMenuWrapper}>
-                                <button 
-                                  className={`${styles.actionBtnBox} ${isMenuOpen ? styles.active : ''}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (isMenuOpen) {
-                                      setOpenMenuId(null);
-                                      setMenuPosition(null);
-                                    } else {
-                                      const rect = e.currentTarget.getBoundingClientRect();
-                                      setMenuPosition({ top: rect.bottom + window.scrollY + 6, right: window.innerWidth - rect.right });
-                                      setOpenMenuId(asset.id);
-                                    }
-                                  }}
-                                  disabled={deletingIds.has(asset.id)}
-                                  aria-label="More Actions"
-                                >
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-                                    <circle cx="12" cy="12" r="1.5"></circle>
-                                    <circle cx="12" cy="5" r="1.5"></circle>
-                                    <circle cx="12" cy="19" r="1.5"></circle>
-                                  </svg>
-                                </button>
-                                  {isMenuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
-                                    <div 
-                                      className={styles.moreDropdown}
-                                      style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 100000 }}
-                                      onClick={e => e.stopPropagation()}
-                                    >
-                                    <button className={styles.dropdownItem} onClick={() => {
-                                      setOpenMenuId(null);
-                                      setRenameModalAsset(asset);
-                                    }}>
-                                      Rename
-                                    </button>
-                                    <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => {
-                                      setOpenMenuId(null);
-                                      setDeleteModalAsset(asset);
-                                    }}>
-                                      Delete Asset
-                                    </button>
-                                  </div>,
-                                  document.body
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                {filteredAssets.map((asset) => (
+                  <AssetCard
+                    key={asset.id}
+                    asset={asset}
+                    previewUrl={isImage(asset.mime_type) || isVideo(asset.mime_type) ? getPreviewUrl(asset.file_path) : null}
+                    onDelete={() => {
+                      setOpenMenuId(null)
+                      setDeleteModalAsset(asset)
+                    }}
+                    onPreview={setPreviewAsset}
+                    onRename={() => {
+                      setOpenMenuId(null)
+                      setRenameModalAsset(asset)
+                    }}
+                    isDeleting={deletingIds.has(asset.id)}
+                    menuOpen={openMenuId === asset.id}
+                    menuPosition={menuPosition}
+                    onToggleMenu={(e) => {
+                      e.stopPropagation()
+                      if (openMenuId === asset.id) {
+                        setOpenMenuId(null)
+                        setMenuPosition(null)
+                      } else {
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        setMenuPosition({ top: rect.bottom + window.scrollY + 6, right: window.innerWidth - rect.right })
+                        setOpenMenuId(asset.id)
+                      }
+                    }}
+                  />
+                ))}
               </div>
+            ) : (
+              <AssetTableView
+                filteredAssets={filteredAssets}
+                openMenuId={openMenuId}
+                menuPosition={menuPosition}
+                setOpenMenuId={setOpenMenuId}
+                setMenuPosition={setMenuPosition}
+                setPreviewAsset={setPreviewAsset}
+                setRenameModalAsset={setRenameModalAsset}
+                setDeleteModalAsset={setDeleteModalAsset}
+                deletingIds={deletingIds}
+              />
             )}
             
-            {/* Render pagination footer below grid or table if we have assets */}
             {assets.length > 0 && (
               <div className={styles.tableFooter}>
                 <div>
@@ -1139,72 +518,20 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
           </div>
         </div>
 
-        {/* Advanced Filter Sidebar */}
         {isFilterSidebarOpen && (
-          <>
-            <div className={styles.sidebarOverlay} onClick={() => setIsFilterSidebarOpen(false)} />
-            <aside className={styles.filterSidebar}>
-              <div className={styles.sidebarHeader}>
-                <h3 className={styles.sidebarTitle}>Advanced Filters</h3>
-                <button className={styles.closeSidebarBtn} onClick={() => setIsFilterSidebarOpen(false)}>
-                  <X size={20} />
-                </button>
-              </div>
-              <div className={styles.sidebarBody}>
-                <div className={styles.filterGroup}>
-                  <label className={styles.filterLabel}>File Type</label>
-                  <select className={styles.filterSelect} value={filterType} onChange={e => setFilterType(e.target.value)}>
-                    <option value="all">All Types</option>
-                    <option value="image">Images</option>
-                    <option value="video">Videos</option>
-                    <option value="widget">Widgets</option>
-                  </select>
-                </div>
-                
-                <div className={styles.filterGroup}>
-                  <label className={styles.filterLabel}>Date Added</label>
-                  <select className={styles.filterSelect} value={filterDatePreset} onChange={e => setFilterDatePreset(e.target.value)}>
-                    <option value="all">Any time</option>
-                    <option value="today">Today</option>
-                    <option value="7days">Last 7 Days</option>
-                    <option value="30days">Last 30 Days</option>
-                    <option value="custom">Custom Date Range</option>
-                  </select>
-                </div>
-
-                {filterDatePreset === 'custom' && (
-                  <>
-                    <div className={styles.filterGroup}>
-                      <label className={styles.filterLabel}>Added After</label>
-                      <input type="date" className={styles.filterInput} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
-                    </div>
-                    
-                    <div className={styles.filterGroup}>
-                      <label className={styles.filterLabel}>Added Before</label>
-                      <input type="date" className={styles.filterInput} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className={styles.sidebarFooter}>
-                <button 
-                  className={styles.resetFiltersBtn} 
-                  onClick={() => {
-                    setFilterType('all'); 
-                    setFilterDatePreset('all');
-                    setFilterStartDate(''); 
-                    setFilterEndDate('');
-                  }}
-                >
-                  Reset All Filters
-                </button>
-              </div>
-            </aside>
-          </>
+          <FilterSidebar
+            filterType={filterType}
+            setFilterType={setFilterType}
+            filterDatePreset={filterDatePreset}
+            setFilterDatePreset={setFilterDatePreset}
+            filterStartDate={filterStartDate}
+            setFilterStartDate={setFilterStartDate}
+            filterEndDate={filterEndDate}
+            setFilterEndDate={setFilterEndDate}
+            onClose={() => setIsFilterSidebarOpen(false)}
+          />
         )}
       </div>
-
-
 
       {previewAsset && (
         <AssetPreviewModal
@@ -1258,101 +585,6 @@ export default function AssetClient({ initialAssets, teamId, teamSlug, totalAsse
           onSuccess={handleDeleteSuccess}
         />
       )}
-    </div>
-  )
-}
-
-function RenameAssetModal({
-  currentName,
-  teamSlug,
-  assetId,
-  onClose,
-  onSuccess,
-}: {
-  currentName: string
-  teamSlug: string
-  assetId: string
-  onClose: () => void
-  onSuccess: (newName: string) => void
-}) {
-  const [name, setName] = useState(currentName)
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const trimmed = name.trim()
-    if (!trimmed) {
-      setError('Name cannot be empty.')
-      return
-    }
-    if (trimmed === currentName) {
-      onClose()
-      return
-    }
-    setError(null)
-    startTransition(async () => {
-      const result = await updateAssetName(teamSlug, assetId, trimmed)
-      if (result.success) {
-        onSuccess(trimmed)
-      } else {
-        setError(result.error)
-      }
-    })
-  }
-
-  return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>Rename Asset</h2>
-          <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
-        </div>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>Asset Name</label>
-            <input
-              required
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Lobby Image, Promo Video"
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
-              autoFocus
-            />
-          </div>
-          {error && (
-            <div className={styles.errorBanner} role="alert">
-              <AlertTriangle className={styles.errorIcon} size={17} />
-              {error}
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isPending}
-              style={{
-                padding: '10px 16px', background: 'var(--surface-low)', color: 'var(--on-surface)',
-                border: '1px solid var(--outline-variant)', borderRadius: '8px', cursor: 'pointer',
-                fontWeight: 600, fontFamily: 'var(--font-label)', opacity: isPending ? 0.7 : 1
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isPending || !name.trim() || name.trim() === currentName}
-              style={{
-                padding: '10px 16px', background: 'var(--primary)', color: 'var(--on-primary)',
-                border: 'none', borderRadius: '8px', cursor: isPending ? 'not-allowed' : 'pointer',
-                fontWeight: 600, fontFamily: 'var(--font-label)', opacity: isPending ? 0.7 : 1
-              }}
-            >
-              {isPending ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   )
 }

@@ -1,0 +1,255 @@
+.assetCard {
+  min-width: 0;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: transform var(--transition-base), box-shadow var(--transition-base), opacity var(--transition-base), border-color var(--transition-base);
+  position: relative;
+}
+
+.assetCard:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary) 20%, var(--outline-variant));
+  box-shadow: var(--shadow-card);
+  z-index: 10;
+}
+
+.assetCardDeleting {
+  opacity: 0.45;
+  pointer-events: none;
+  transform: scale(0.98);
+}
+
+.assetThumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: var(--surface-container);
+  overflow: hidden;
+  border-top-left-radius: 13px;
+  border-top-right-radius: 13px;
+}
+
+.assetImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 260ms ease;
+}
+
+.assetCard:hover .assetImg {
+  transform: scale(1.03);
+}
+
+.videoThumb,
+.genericThumb {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.videoThumb {
+  background: linear-gradient(135deg, #172554, #0f172a);
+}
+
+.videoIcon {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.videoOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  transition: background 200ms ease;
+}
+
+.assetCard:hover .videoOverlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.genericThumb {
+  background: var(--surface-low);
+}
+
+.genericIcon {
+  color: var(--on-surface-subtle);
+}
+
+.deleteBtn {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 32px;
+  height: 32px;
+  background: rgba(7, 17, 31, 0.72);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity var(--transition-base), transform var(--transition-base), background var(--transition-base);
+}
+
+.assetCard:hover .deleteBtn,
+.deleteBtn:focus-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.deleteBtn:hover {
+  background: rgba(186, 26, 26, 0.92);
+}
+
+.mimeChip {
+  position: absolute;
+  bottom: 9px;
+  left: 9px;
+  max-width: calc(100% - 18px);
+  padding: 4px 9px;
+  background: rgba(7, 17, 31, 0.66);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.92);
+  border-radius: var(--radius-full);
+  font-family: var(--font-label);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assetInfo {
+  padding: 13px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assetName {
+  font-family: var(--font-label);
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assetMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-label);
+  font-size: 0.74rem;
+  color: var(--on-surface-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metaDot {
+  opacity: 0.45;
+}
+
+.assetThumbInteractive {
+  cursor: pointer;
+}
+
+.assetThumbInteractive::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0);
+  transition: background 200ms ease;
+  pointer-events: none;
+}
+
+.assetThumbInteractive:hover::after {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.moreMenuWrapper {
+  position: relative;
+}
+
+.actionBtnBox {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
+  color: var(--on-surface-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.actionBtnBox:hover,
+.actionBtnBox.active {
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.moreDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 170px;
+  z-index: 20;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  box-shadow: var(--shadow-modal);
+  padding: 6px;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--on-surface);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-label);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.dropdownItem:hover {
+  background: var(--surface-low);
+}
+
+.dropdownItem.danger {
+  color: var(--error);
+}
+
+.dropdownItem.danger:hover {
+  background: var(--error-container);
+}
+
+@media (max-width: 768px) {
+  .deleteBtn {
+    opacity: 1;
+    transform: none;
+  }
+}

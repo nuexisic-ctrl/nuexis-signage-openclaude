@@ -81,7 +81,7 @@ export async function createPlaylist(
 
 export async function deletePlaylist(playlistId: string, teamSlug: string) {
   const supabase = await createClient()
-  const { user } = await getAuthenticatedTeamId(supabase) // verifies auth — RLS enforces team scope
+  const { user, teamId } = await getAuthenticatedTeamId(supabase) // verifies auth
   await requireOwner(supabase, user.id)
 
   if (!(await rateLimitAction(user.id, 'deletePlaylist', 20, 60))) {
@@ -92,6 +92,7 @@ export async function deletePlaylist(playlistId: string, teamSlug: string) {
     .from('playlists')
     .delete()
     .eq('id', playlistId)
+    .eq('team_id', teamId)
 
   if (error) throw new Error(error.message)
 
@@ -100,7 +101,19 @@ export async function deletePlaylist(playlistId: string, teamSlug: string) {
 
 export async function getPlaylistItems(playlistId: string) {
   const supabase = await createClient()
-  await getAuthenticatedTeamId(supabase) // verifies auth — RLS enforces team scope
+  const { teamId } = await getAuthenticatedTeamId(supabase) // verifies auth
+
+  // Verify playlist belongs to the caller's team
+  const { data: playlist, error: playlistError } = await supabase
+    .from('playlists')
+    .select('id')
+    .eq('id', playlistId)
+    .eq('team_id', teamId)
+    .single()
+
+  if (playlistError || !playlist) {
+    throw new Error('Playlist not found or access denied.')
+  }
 
   const { data, error } = await supabase
     .from('playlist_items')

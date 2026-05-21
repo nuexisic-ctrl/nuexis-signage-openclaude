@@ -4,12 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { signupWithRateLimit } from './actions'
 import styles from './signup.module.css'
 
 export default function SignupPage() {
   const router = useRouter()
-  const supabase = createClient()
 
   const [form, setForm] = useState({
     fullName: '',
@@ -57,20 +56,16 @@ export default function SignupPage() {
 
     setStatus('loading')
 
-    const { error: authError } = await supabase.auth.signUp({
+    const result = await signupWithRateLimit({
+      fullName: form.fullName,
+      teamName: form.teamName,
       email: form.email,
+      teamSlug: form.teamSlug,
       password: form.password,
-      options: {
-        data: {
-          full_name: form.fullName,
-          team_name: form.teamName,
-          team_slug: form.teamSlug,
-        },
-      },
     })
 
-    if (authError) {
-      setError(authError.message)
+    if (!result.success) {
+      setError(result.error || 'Failed to sign up.')
       setStatus('idle')
       return
     }

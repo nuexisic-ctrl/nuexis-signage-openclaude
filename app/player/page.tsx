@@ -70,8 +70,8 @@ export default function PlayerPage() {
           reconnectPresenceRef.current?.()
         })
 
-        if (tId) {
-          sendHeartbeat(devId, tId).catch(console.error)
+        if (tId && hwId && secret) {
+          sendHeartbeat(devId, tId, hwId, secret).catch(console.error)
         }
       }
     }, 60000)
@@ -122,6 +122,7 @@ export default function PlayerPage() {
   useEffect(() => {
     const supabase = supabaseRef.current
     let cancelled = false
+    let currentAssetId: string | null = null
 
     async function cleanupOldCaches(currentUrlToKeep: string) {
       try {
@@ -138,8 +139,14 @@ export default function PlayerPage() {
     }
 
     async function resolveAsset(client: typeof supabase, assetId: string | null) {
+      currentAssetId = assetId
       if (!assetId) {
-        setAssetUrl(null); setBlobUrl(null); setMimeType(null)
+        setAssetUrl(null)
+        setBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+        setMimeType(null)
         return
       }
       const { data: asset } = await client
@@ -148,39 +155,73 @@ export default function PlayerPage() {
         .eq('id', assetId)
         .single()
 
+      if (currentAssetId !== assetId || cancelled) return
+
       if (!asset) {
-        setAssetUrl(null); setBlobUrl(null); setMimeType(null)
+        setAssetUrl(null)
+        setBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+        setMimeType(null)
         return
       }
 
       if (asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-remote-url') {
-        setBlobUrl(null); setAssetUrl(asset.file_path); setMimeType(asset.mime_type)
+        setBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+        setAssetUrl(asset.file_path)
+        setMimeType(asset.mime_type)
         return
       }
 
-      const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareIdRef.current!, secretRef.current!)
+      const cacheKey = `https://local-media-cache/${asset.file_path}`
 
       try {
         const cache = await caches.open('nuexis-media-cache')
-        let response = await cache.match(mediaUrl)
+        let response = await cache.match(cacheKey)
+
+        if (currentAssetId !== assetId || cancelled) return
 
         if (!response) {
+          const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareIdRef.current!, secretRef.current!)
+          if (currentAssetId !== assetId || cancelled) return
           response = await fetch(mediaUrl, { mode: 'cors' })
-          if (response.ok) await cache.put(mediaUrl, response.clone())
+          if (response.ok) {
+            await cache.put(cacheKey, response.clone())
+          }
         }
+
+        if (currentAssetId !== assetId || cancelled) return
 
         if (response?.ok) {
           const blob = await response.blob()
+          if (currentAssetId !== assetId || cancelled) return
           const localBlobUrl = URL.createObjectURL(blob)
-          setBlobUrl(localBlobUrl)
+          setBlobUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev)
+            return localBlobUrl
+          })
           setAssetUrl(localBlobUrl)
           setMimeType(asset.mime_type)
-          cleanupOldCaches(mediaUrl)
+          cleanupOldCaches(cacheKey)
         } else {
           throw new Error('Failed to load media')
         }
       } catch {
-        setBlobUrl(null); setAssetUrl(mediaUrl); setMimeType(asset.mime_type)
+        if (currentAssetId !== assetId || cancelled) return
+        const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareIdRef.current!, secretRef.current!).catch(() => null)
+        if (currentAssetId !== assetId || cancelled) return
+        if (mediaUrl) {
+          setBlobUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev)
+            return null
+          })
+          setAssetUrl(mediaUrl)
+          setMimeType(asset.mime_type)
+        }
       }
     }
 
@@ -192,10 +233,21 @@ export default function PlayerPage() {
         setPlaylistId(null)
         resolveAsset(supabase, device.asset_id)
       } else if (device.content_type === 'Playlist') {
-        setAssetUrl(null); setBlobUrl(null); setMimeType(null)
+        setAssetUrl(null)
+        setBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+        setMimeType(null)
         setPlaylistId(device.playlist_id)
       } else {
-        setAssetUrl(null); setBlobUrl(null); setMimeType(null); setPlaylistId(null)
+        setAssetUrl(null)
+        setBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return null
+        })
+        setMimeType(null)
+        setPlaylistId(null)
       }
     }
 
@@ -389,6 +441,12 @@ export default function PlayerPage() {
         )
         .subscribe((status: string) => {
           if (status === 'SUBSCRIBED') {
+            // Stop state polling once realtime is subscribed for paired devices (H-18)
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current)
+              pollingIntervalRef.current = null
+            }
+
             const hwId = hardwareIdRef.current
             const sec = secretRef.current
             if (hwId) {
@@ -409,6 +467,9 @@ export default function PlayerPage() {
                 })
                 .catch(console.error)
             }
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            // Resume state polling if realtime fails (H-18)
+            startStatePolling()
           }
         })
 

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 
 export async function createClient() {
@@ -29,7 +30,7 @@ export async function createClient() {
   )
 }
 
-export async function requireOwner(supabase: any, userId: string) {
+export async function requireOwner(supabase: SupabaseClient<Database>, userId: string) {
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
