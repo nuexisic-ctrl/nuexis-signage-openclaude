@@ -47,7 +47,7 @@ export default function AssetClient({
   const [renameModalAsset, setRenameModalAsset] = useState<Asset | null>(null)
   const [deleteModalAsset, setDeleteModalAsset] = useState<Asset | null>(null)
   
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false)
   const [filterType, setFilterType] = useState<string>('all')
@@ -388,18 +388,6 @@ export default function AssetClient({
                 {isMounted && (
                   <div className={styles.viewToggleGroup}>
                     <button 
-                      className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-                      onClick={() => handleSetViewMode('grid')}
-                      title="Grid View"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
-                        <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
-                        <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
-                        <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
-                      </svg>
-                    </button>
-                    <button 
                       className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
                       onClick={() => handleSetViewMode('table')}
                       title="Table View"
@@ -411,6 +399,18 @@ export default function AssetClient({
                         <line x1="3" y1="6" x2="3.01" y2="6"></line>
                         <line x1="3" y1="12" x2="3.01" y2="12"></line>
                         <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                      </svg>
+                    </button>
+                    <button 
+                      className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                      onClick={() => handleSetViewMode('grid')}
+                      title="Grid View"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
                       </svg>
                     </button>
                   </div>

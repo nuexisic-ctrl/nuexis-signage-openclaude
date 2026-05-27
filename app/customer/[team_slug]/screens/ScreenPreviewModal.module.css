@@ -1,0 +1,298 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 14, 24, 0.94);
+  backdrop-filter: blur(24px);
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+.header {
+  height: 72px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--outline-variant);
+  z-index: 10;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metaInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--outline-variant);
+  color: var(--on-surface-muted);
+}
+
+.badgeActive {
+  background: var(--primary-container);
+  color: var(--primary);
+}
+
+/* ─── Controls ───────────────────────────────────────────────────────────── */
+.controlsCenter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modeBtn {
+  font-family: var(--font-label);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modeBtn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.modeBtnActive {
+  color: #ffffff;
+  background: var(--primary);
+  box-shadow: 0 4px 12px rgba(9, 76, 178, 0.3);
+}
+
+.customInputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  margin-left: 4px;
+}
+
+.inputGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inputGroup label {
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+}
+
+.dimensionInput {
+  width: 72px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  text-align: center;
+  font-size: 0.82rem;
+  outline: none;
+  font-family: var(--font-label);
+  font-weight: 700;
+}
+
+.dimensionInput:focus {
+  border-color: var(--primary);
+}
+
+.aspectSelect {
+  height: 32px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  padding: 0 6px;
+  font-size: 0.82rem;
+  outline: none;
+  font-family: var(--font-label);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ─── Actions ────────────────────────────────────────────────────────────── */
+.actionsRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.iconBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.iconBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.closeBtn {
+  background: rgba(186, 26, 26, 0.1);
+  color: #ff9e9e;
+  border-color: rgba(186, 26, 26, 0.2);
+}
+
+.closeBtn:hover {
+  background: rgba(186, 26, 26, 0.2);
+  color: #ffffff;
+}
+
+/* ─── Simulator Area ─────────────────────────────────────────────────────── */
+.simulatorArea {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 40px;
+  overflow: auto;
+}
+
+.displayWrapper {
+  position: relative;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 100%;
+  max-height: 100%;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8);
+  background: #000000;
+  border-radius: var(--radius-lg);
+  overflow: visible; /* to show grab handle */
+}
+
+/* Skip transition during interactive resizing */
+.resizing {
+  transition: none !important;
+}
+
+.displayFrame {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+  background: #000000;
+}
+
+/* ─── Resize Handles ─────────────────────────────────────────────────────── */
+.resizeHandle {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
+  background: var(--primary);
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  cursor: nwse-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.resizeHandle:hover {
+  transform: scale(1.15);
+  background: var(--color-brand-light, #2563eb);
+}
+
+.resizeIcon {
+  color: #ffffff;
+  width: 12px;
+  height: 12px;
+}
+
+/* ─── Empty state & Loading ──────────────────────────────────────────────── */
+.emptyState {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #0d1527;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  padding: 32px;
+}
+
+.emptyText {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

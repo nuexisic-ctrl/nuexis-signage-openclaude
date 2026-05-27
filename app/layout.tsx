@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "NuExis | Multi-Tenant Digital Signage",
   description: "NuExis is a powerful multi-tenant digital signage platform. Manage, schedule, and deploy content to any screen.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico?v=1",
+    shortcut: "/favicon.ico?v=1",
+    apple: "/favicon.ico?v=1",
+  },
 };
 
 export default async function RootLayout({
@@ -20,9 +24,8 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <Script
+        <script
           id="theme-script"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               try {

@@ -86,7 +86,7 @@ export function PairModal({
           </div>
 
           <div className={styles.fieldGroup}>
-            <label htmlFor="screen-name" className={styles.label}>Screen Name</label>
+            <label htmlFor="screen-name" className={styles.label}>Screen Name (Optional)</label>
             <input
               id="screen-name"
               className={styles.input}
@@ -109,7 +109,7 @@ export function PairModal({
             id="pair-submit-btn"
             className={styles.submitBtn}
             type="submit"
-            disabled={isPending || code.length !== 6 || name.trim().length === 0}
+            disabled={isPending || code.length !== 6}
           >
             {isPending ? 'Pairing…' : 'Pair Screen'}
           </button>

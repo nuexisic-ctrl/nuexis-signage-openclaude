@@ -1,10 +1,67 @@
+/* ─── Light Mode Theme Token Overrides ────────────────────────────────────── */
+.lightThemeWrapper {
+  /* Force light theme variables locally to ensure it is ALWAYS strictly in premium light mode */
+  --primary:           #094cb2;
+  --primary-container: #dce8ff;
+  --primary-gradient:  linear-gradient(135deg, var(--primary) 0%, #2563eb 100%);
+  --on-primary:        #ffffff;
+  --secondary:           #535f70;
+  --secondary-container: #d7e3f7;
+  --tertiary:           #6d5e00;
+  --tertiary-container: #f9e44e33;
+  --surface-dim:             #d9dae0;
+  --surface:                 #f8f9fc;
+  --surface-bright:          #f8f9fc;
+  --surface-container-lowest:#ffffff;
+  --surface-lowest:          #ffffff;
+  --surface-low:             #f1f3f8;
+  --surface-container:       #eceef4;
+  --surface-container-high:  #e6e8ee;
+  --surface-high:            #e6e8ee;
+  --on-surface:        #1a1c20;
+  --on-surface-muted:  #44474f;
+  --on-surface-subtle: #74777f;
+  --outline:         #74777f;
+  --outline-variant: rgba(116, 119, 127, 0.15);
+  --error:           #ba1a1a;
+  --error-container: #ffdad6;
+  --on-error:        #ffffff;
+  --shadow-modal: 0 8px 40px rgba(9, 76, 178, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-card:  0 2px 12px rgba(0, 0, 0, 0.06);
+
+  /* Force background matching light theme */
+  background: var(--surface) !important;
+  color: var(--on-surface) !important;
+}
+
+/* Ensure background glow uses light mode theme */
+.lightThemeWrapper::before {
+  background: radial-gradient(ellipse, rgba(9, 76, 178, 0.07) 0%, transparent 70%) !important;
+}
+
+/* ─── Responsive Single Viewport Container ─────────────────────────────────── */
+.authShellContainer {
+  min-height: 100vh !important;
+  /* Allow vertical scrolling only when content overflows (e.g. error alerts or extremely short screens) */
+  overflow-y: auto !important; 
+  padding: 32px 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100%;
+}
+
+/* ─── Layout Wrapper ──────────────────────────────────────────────────────── */
 .loginWrapper {
   width: 100%;
   max-width: 440px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 28px;
+  gap: 20px;
+  animation: fadeIn 0.4s ease-out;
+  margin: auto 0; /* Align card vertically inside flex layout */
 }
 
 .loginHeader {
@@ -12,75 +69,693 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  width: 100%;
+  position: relative; /* Position context for guidePopover */
 }
 
 .loginTitle {
-  font-size: 1.875rem;
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--on-surface);
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .loginSubtitle {
-  font-size: 0.9375rem;
-  color: var(--on-surface-muted);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--on-surface-subtle);
   margin: 0;
 }
 
-/* Team badge */
-.teamBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--primary-container);
-  border-radius: var(--radius-full);
-  padding: 6px 16px;
+/* ─── Workspace Badge ─────────────────────────────────────────────────────── */
+.badgeWrapper {
+  margin-bottom: 4px;
 }
 
-.teamBadgeSlug {
-  font-family: var(--font-label);
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--primary);
-  letter-spacing: 0.02em;
+.teamBadgeInteractive {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.teamBadgeInteractive:hover {
+  background: var(--surface-container);
+  transform: translateY(-0.5px);
+}
+
+.teamBadgeInteractive:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .teamBadgeLabel {
   font-family: var(--font-label);
   font-size: 0.75rem;
-  color: var(--primary);
-  opacity: 0.7;
+  color: var(--on-surface-subtle);
+  margin-right: 4px;
 }
 
+.teamBadgeSlug {
+  font-family: var(--font-label);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.02em;
+}
+
+.badgeInfoIcon {
+  margin-left: 6px;
+  color: var(--on-surface-subtle);
+  opacity: 0.75;
+  transition: color var(--transition-base);
+}
+
+.teamBadgeInteractive:hover .badgeInfoIcon {
+  color: var(--primary);
+}
+
+/* ─── Compact Form Card ───────────────────────────────────────────────────── */
 .formCard {
   background: var(--surface-lowest);
   border-radius: var(--radius-xl);
-  padding: 40px;
+  padding: 28px 36px 20px 36px;
   box-shadow: var(--shadow-modal);
+  border: 1px solid var(--outline-variant);
   width: 100%;
 }
 
-/* URL hint at bottom */
-.teamUrlHint {
+/* ─── Input Container with Icons & Actions ────────────────────────────────── */
+.inputContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 14px;
+  color: var(--on-surface-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: color var(--transition-base);
+}
+
+.inputContainer:focus-within .inputIcon {
+  color: var(--primary);
+}
+
+.formInputWithIcon {
+  padding-left: 44px !important;
+}
+
+.formInputWithAction {
+  padding-right: 44px !important;
+}
+
+.passwordActionBtn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-surface-subtle);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+}
+
+.passwordActionBtn:hover {
+  color: var(--primary);
+  background: var(--surface-low);
+}
+
+.passwordActionBtn:focus-visible {
+  outline: 2px solid var(--primary);
+}
+
+.validIndicator {
+  position: absolute;
+  right: 14px;
+  color: #1a5c35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: scaleUp 0.15s ease-out;
+}
+
+/* ─── forgot password ─────────────────────────────────────────────────────── */
+.forgotPasswordLink {
   font-family: var(--font-label);
-  font-size: 0.75rem;
-  background: var(--surface-container);
-  padding: 8px 16px;
-  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  color: var(--on-surface-subtle);
+  transition: color var(--transition-base);
+}
+
+.forgotPasswordLink:hover {
+  color: var(--primary);
+  text-decoration: underline;
+  opacity: 1;
+}
+
+/* ─── Checkbox Row ───────────────────────────────────────────────────────── */
+.checkboxGroup {
   display: flex;
   align-items: center;
 }
 
-.urlDomain {
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.customCheckbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid rgba(116, 119, 127, 0.35);
+  border-radius: 4px;
+  background: var(--surface-lowest);
+  cursor: pointer;
+  margin-right: 8px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+}
+
+.customCheckbox:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.customCheckbox:checked::after {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 8px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-0.5px, -1px);
+}
+
+.customCheckbox:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.checkboxText {
+  font-family: var(--font-label);
+  font-size: 0.8125rem;
+  color: var(--on-surface-muted);
+}
+
+/* ─── Submit Button Premium transitions ───────────────────────────────────── */
+.submitButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.submitButton:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btnSuccess {
+  background: #1a5c35 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(26, 92, 53, 0.25) !important;
+  cursor: default !important;
+}
+
+/* ─── Trust / Security Badges ─────────────────────────────────────────────── */
+.trustGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  border-top: 1px solid var(--outline-variant);
+  margin-top: 20px;
+  padding-top: 14px;
+}
+
+.trustBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.trustIconContainer {
+  width: 28px;
+  height: 28px;
+  background: var(--surface-low);
+  color: var(--primary);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+}
+
+.trustBadge:hover .trustIconContainer {
+  background: var(--primary-container);
+  transform: translateY(-1px);
+}
+
+.trustTitle {
+  display: block;
+  font-family: var(--font-label);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.trustDesc {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  color: var(--on-surface-subtle);
+  line-height: 1.2;
+}
+
+/* ─── Minimal Footer ──────────────────────────────────────────────────────── */
+.minimalFooter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: auto; /* Push footer down if extra space is available */
+  padding-top: 12px;
+}
+
+.footerLinks {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.footerLinks a {
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  color: var(--on-surface-subtle);
+  transition: color var(--transition-base);
+}
+
+.footerLinks a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+  opacity: 1;
+}
+
+.footerCopyright {
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  color: var(--on-surface-subtle);
+  opacity: 0.8;
+}
+
+/* ─── Caps Lock & Animations ──────────────────────────────────────────────── */
+.capsLockWarning {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  color: var(--tertiary);
+  margin-top: 4px;
+  background: var(--tertiary-container);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  animation: slideDown 0.2s ease-out;
+  width: fit-content;
+}
+
+/* ─── Workspace Switcher Guide Popover (Dropdown card) ───────────────────── */
+.guidePopover {
+  position: absolute;
+  top: 40px; /* Perfectly aligned vertically below the workspace badge button */
+  left: 50%;
+  transform: translateX(-50%) scale(0.95);
+  background: var(--surface-lowest) !important;
+  border: 1px solid var(--outline-variant) !important;
+  border-radius: var(--radius-lg);
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02);
+  z-index: 100;
+  padding: 20px;
+
+  /* Zero-flicker pre-calculated absolute positioning animations */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform-origin: top center;
+  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s;
+}
+
+/* Active visible state with zero coordinate jumping */
+.popoverVisible {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateX(-50%) scale(1) !important;
+}
+
+/* Triangle Pointer pointing upwards at workspace button */
+.guidePopover::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: var(--surface-lowest);
+  border-left: 1px solid var(--outline-variant);
+  border-top: 1px solid var(--outline-variant);
+  z-index: 1;
+}
+
+.popoverCloseBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--on-surface-subtle);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+  z-index: 10;
+}
+
+.popoverCloseBtn:hover {
+  background: var(--surface-low);
+  color: var(--on-surface);
+}
+
+.popoverBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+  position: relative;
+  z-index: 2;
+}
+
+/* ─── Browser Mock Illustration inside Popover ───────────────────────────── */
+.browserMockContainer {
+  background: #f1f3f8 !important;
+  border: 1px solid rgba(116, 119, 127, 0.12) !important;
+  border-radius: var(--radius-md);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--shadow-card);
+}
+
+.browserHeaderBar {
+  display: flex;
+  gap: 4px;
+  padding-left: 4px;
+}
+
+.browserDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dotRed    { background: #ef4444; }
+.dotYellow { background: #eab308; }
+.dotGreen  { background: #22c55e; }
+
+.browserAddressBar {
+  background: var(--surface-lowest) !important;
+  border: 1px solid var(--outline-variant) !important;
+  border-radius: 4px;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.58rem;
+  color: var(--on-surface-subtle) !important;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.addressIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.addressText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--on-surface-subtle) !important;
+}
+
+.browserMockContent {
+  height: 24px;
+  background: var(--surface-lowest) !important;
+  border: 1px solid var(--outline-variant) !important;
+  border-radius: 4px;
+  opacity: 0.5;
+}
+
+/* ─── Help Explanatory Text inside Popover ─────────────────────────────────── */
+.helpTextContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.helpTitle {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.helpParagraph {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--on-surface-subtle);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.exampleUrlBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.exampleLabel {
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  font-weight: 600;
   color: var(--on-surface-subtle);
 }
 
-.urlSlug {
-  color: var(--primary);
+.exampleUrlField {
+  font-family: monospace;
+  font-size: 0.65rem;
+  background: var(--surface-low) !important;
+  border: 1px solid var(--outline-variant) !important;
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: var(--on-surface-muted) !important;
+  overflow-x: auto;
+}
+
+/* ─── WorkspaceNotFound Component elements ───────────────────────────────── */
+.errorIconContainer {
+  width: 56px;
+  height: 56px;
+  background: var(--tertiary-container);
+  color: var(--tertiary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(109, 94, 0, 0.1);
+  animation: glow 2s infinite ease-in-out;
+}
+
+.errorIcon {
+  width: 28px;
+  height: 28px;
+}
+
+.highlightSlug {
+  font-family: monospace;
   font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-container);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.errorDescription {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--on-surface-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ─── Keyframes & Transitions ─────────────────────────────────────────────── */
+/* Premium, subtle SaaS-style error nudge animation (low amplitude, high speed) */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-3px); }
+  40%, 80% { transform: translateX(3px); }
+}
+
+.shake {
+  animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(109, 94, 0, 0.1); }
+  50% { box-shadow: 0 0 25px rgba(109, 94, 0, 0.25); }
+}
+
+/* ─── Responsive Heights scaling for shorter laptop screens (< 800px) ───── */
+@media (max-height: 800px) {
+  .authShellContainer {
+    padding: 16px 16px !important;
+  }
+  .loginWrapper {
+    gap: 12px;
+  }
+  .loginHeader {
+    gap: 4px;
+  }
+  .loginTitle {
+    font-size: 1.45rem;
+  }
+  .formCard {
+    padding: 20px 28px 14px 28px;
+  }
+  .trustGrid {
+    margin-top: 12px;
+    padding-top: 10px;
+    gap: 8px;
+  }
+  .trustBadge {
+    gap: 4px;
+  }
+  .trustIconContainer {
+    width: 24px;
+    height: 24px;
+  }
+  .submitButton {
+    padding: 12px !important;
+  }
+  .guidePopover {
+    top: 36px;
+    padding: 16px;
+  }
+}
+
+/* ─── Extra compression for extra short viewports (< 720px) ──────────────── */
+@media (max-height: 720px) {
+  .authShellContainer {
+    padding: 8px 16px !important;
+  }
+  .loginWrapper {
+    gap: 8px;
+  }
+  .formCard {
+    padding: 14px 24px 10px 24px;
+  }
+  .trustGrid {
+    margin-top: 8px;
+    padding-top: 8px;
+    gap: 4px;
+  }
+  .trustTitle {
+    font-size: 0.65rem;
+  }
+  .trustDesc {
+    font-size: 0.58rem;
+  }
+  .submitButton {
+    padding: 10px !important;
+  }
+}
+
+/* ─── Mobile Optimizations ───────────────────────────────────────────────── */
+@media (max-width: 580px) {
+  .browserMockContainer {
+    display: none; /* Hide illustrative layout on tight mobile views */
+  }
+  .guidePopover {
+    width: 320px;
+  }
 }
 
 @media (max-width: 480px) {
   .formCard {
-    padding: 28px 20px;
+    padding: 24px 20px 20px 20px;
+  }
+  .trustGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding-top: 14px;
+    margin-top: 16px;
+  }
+  .trustBadge {
+    flex-direction: row;
+    text-align: left;
+    gap: 10px;
+  }
+  .trustIconContainer {
+    flex-shrink: 0;
   }
 }

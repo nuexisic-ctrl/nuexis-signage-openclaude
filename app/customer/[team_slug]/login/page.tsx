@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import LoginForm from './LoginForm'
+import WorkspaceNotFound from './WorkspaceNotFound'
+import { createAdminClient } from '@/lib/supabase/server'
 
 interface Props {
   params: Promise<{ team_slug: string }>
@@ -20,6 +22,17 @@ export default async function TeamLoginPage({ params }: Props) {
   // Basic slug validation — prevent XSS / weird URLs
   if (!/^[a-z0-9-]+$/.test(team_slug)) {
     notFound()
+  }
+
+  const supabase = createAdminClient()
+  const { data: team } = await supabase
+    .from('teams')
+    .select('slug')
+    .eq('slug', team_slug)
+    .maybeSingle()
+
+  if (!team) {
+    return <WorkspaceNotFound teamSlug={team_slug} />
   }
 
   return <LoginForm teamSlug={team_slug} />

@@ -110,19 +110,52 @@ export default function PlayerPage() {
         reconnectPresenceRef.current?.()
       }
     }
+
+    const handleFocusOrActivity = () => {
+      if (document.visibilityState === 'visible' && deviceIdRef.current && teamIdRef.current) {
+        reconnectPresenceRef.current?.()
+      }
+    }
+
+    const handleUnload = () => {
+      if (teamChannelRef.current) {
+        teamChannelRef.current.untrack()
+      }
+    }
+
     document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocusOrActivity)
+    window.addEventListener('click', handleFocusOrActivity)
+    window.addEventListener('mousedown', handleFocusOrActivity)
+    window.addEventListener('keydown', handleFocusOrActivity)
+    window.addEventListener('beforeunload', handleUnload)
+    window.addEventListener('unload', handleUnload)
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocusOrActivity)
+      window.removeEventListener('click', handleFocusOrActivity)
+      window.removeEventListener('mousedown', handleFocusOrActivity)
+      window.removeEventListener('keydown', handleFocusOrActivity)
+      window.removeEventListener('beforeunload', handleUnload)
+      window.removeEventListener('unload', handleUnload)
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
     }
   }, [])
 
-  // ── Main init effect ────────────────────────────────────────────────
   useEffect(() => {
     const supabase = supabaseRef.current
     let cancelled = false
     let currentAssetId: string | null = null
+
+    const clearAsset = () => {
+      setAssetUrl(null)
+      setBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return null
+      })
+      setMimeType(null)
+    }
 
     async function cleanupOldCaches(currentUrlToKeep: string) {
       try {
@@ -141,12 +174,7 @@ export default function PlayerPage() {
     async function resolveAsset(client: typeof supabase, assetId: string | null) {
       currentAssetId = assetId
       if (!assetId) {
-        setAssetUrl(null)
-        setBlobUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev)
-          return null
-        })
-        setMimeType(null)
+        clearAsset()
         return
       }
       const { data: asset } = await client
@@ -158,12 +186,7 @@ export default function PlayerPage() {
       if (currentAssetId !== assetId || cancelled) return
 
       if (!asset) {
-        setAssetUrl(null)
-        setBlobUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev)
-          return null
-        })
-        setMimeType(null)
+        clearAsset()
         return
       }
 
@@ -233,20 +256,10 @@ export default function PlayerPage() {
         setPlaylistId(null)
         resolveAsset(supabase, device.asset_id)
       } else if (device.content_type === 'Playlist') {
-        setAssetUrl(null)
-        setBlobUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev)
-          return null
-        })
-        setMimeType(null)
+        clearAsset()
         setPlaylistId(device.playlist_id)
       } else {
-        setAssetUrl(null)
-        setBlobUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev)
-          return null
-        })
-        setMimeType(null)
+        clearAsset()
         setPlaylistId(null)
       }
     }

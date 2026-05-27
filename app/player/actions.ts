@@ -84,8 +84,8 @@ export async function getDeviceState(hardwareId: string, secret?: string) {
   })
 
   if (error) {
-    console.error('[getDeviceState] Transient Error:', error)
-    throw new Error('Failed to fetch device state due to network or database error')
+    console.warn('[getDeviceState] Transient database or network warning:', error.message || error)
+    return null
   }
 
   return (data as unknown as {

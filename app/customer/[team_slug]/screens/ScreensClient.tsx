@@ -16,10 +16,24 @@ import { DeleteModal } from './DeleteModal'
 import { RenameModal } from './RenameModal'
 import { FilterSidebar } from './FilterSidebar'
 import { StatsGrid } from './StatsGrid'
+import { ScreenPreviewModal } from './ScreenPreviewModal'
 
 const RELATIVE_TIME_TICK_MS = 15 * 1000
 const DEVICE_SELECT_FIELDS =
   'id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds'
+
+const mapDevice = (d: any): Device => ({
+  id: d.id,
+  name: d.name,
+  status: d.status,
+  created_at: d.created_at,
+  content_type: d.content_type,
+  asset_id: d.asset_id,
+  playlist_id: d.playlist_id,
+  orientation: d.orientation,
+  last_seen_at: d.last_seen_at || null,
+  total_playtime_seconds: Number(d.total_playtime_seconds) || 0,
+})
 
 interface Props {
   devices: Device[]
@@ -49,10 +63,22 @@ export default function ScreensClient({
   const [renameModalDevice, setRenameModalDevice] = useState<Device | null>(null)
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
   const [presenceRefreshKey, setPresenceRefreshKey] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showSyncToast, setShowSyncToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [showSuccessPulse, setShowSuccessPulse] = useState(false)
   const [, setNowMs] = useState(() => Date.now())
   const [isMounted, setIsMounted] = useState(false)
+  const [previewState, setPreviewState] = useState<{
+    device: Device
+    contentType: 'Asset' | 'Playlist' | 'Schedule'
+    assetId: string | null
+    playlistId: string | null
+    scaleMode: string
+    orientation: number
+  } | null>(null)
   
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
@@ -112,22 +138,7 @@ export default function ScreensClient({
             .map((p) => p.device_id)
             .filter(Boolean)
         )
-        
-        setOnlineDeviceIds(prev => {
-          const leftIds = [...prev].filter(id => !ids.has(id));
-          if (leftIds.length > 0) {
-            setTimeout(() => {
-              const now = new Date().toISOString()
-              setDevices(prevDevices => 
-                prevDevices.map(d => 
-                  leftIds.includes(d.id) ? { ...d, last_seen_at: now } : d
-                )
-              )
-              updateDeviceLastSeen(teamSlug, leftIds).catch(err => console.error('[Dashboard] Error updating last seen:', err))
-            }, 0)
-          }
-          return ids;
-        })
+        setOnlineDeviceIds(ids)
       })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
@@ -154,6 +165,26 @@ export default function ScreensClient({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, presenceRefreshKey])
+
+  // Handle presence shifts (side-effects for online/offline transitions)
+  useEffect(() => {
+    if (!isMounted || devices.length === 0) return
+
+    const leftIds = devices
+      .filter(d => getLiveStatus(d) === 'online' && !onlineDeviceIds.has(d.id))
+      .map(d => d.id)
+
+    if (leftIds.length > 0) {
+      const now = new Date().toISOString()
+      setDevices(prev => 
+        prev.map(d => leftIds.includes(d.id) ? { ...d, status: 'offline', last_seen_at: now } : d)
+      )
+      updateDeviceLastSeen(teamSlug, leftIds).catch(err => 
+        console.error('[Dashboard] Error updating last seen:', err)
+      )
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlineDeviceIds, isMounted, teamSlug])
 
   // ── Postgres Changes for device list (INSERT/UPDATE/DELETE) ───────────
   useEffect(() => {
@@ -206,21 +237,7 @@ export default function ScreensClient({
           .range(from, to)
         
         if (!error && data) {
-          const mapped = (data as Device[]).map((d) => {
-            return {
-              id: d.id,
-              name: d.name,
-              status: d.status,
-              created_at: d.created_at,
-              content_type: d.content_type,
-              asset_id: d.asset_id,
-              playlist_id: d.playlist_id,
-              orientation: d.orientation,
-              last_seen_at: d.last_seen_at || null,
-              total_playtime_seconds: Number(d.total_playtime_seconds) || 0,
-            }
-          }) as Device[]
-          setDevices(mapped)
+          setDevices((data as any[]).map(mapDevice))
         }
       }
     }
@@ -234,6 +251,15 @@ export default function ScreensClient({
   }, [teamId])
 
   useEffect(() => {
+    if (showSyncToast) {
+      const timer = setTimeout(() => {
+        setShowSyncToast(false)
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [showSyncToast])
+
+  useEffect(() => {
     const handleClick = () => {
       setOpenMenuId(null)
       setMenuPosition(null)
@@ -242,22 +268,51 @@ export default function ScreensClient({
     return () => document.removeEventListener('click', handleClick)
   }, [openMenuId])
 
-  function handlePairSuccess() {
-    setShowPairModal(false)
-    router.refresh()
+  async function handleRefresh() {
+    if (isRefreshing) return
+    setIsRefreshing(true)
+
+    try {
+      setPresenceRefreshKey(prev => prev + 1)
+
+      const from = (currentPage - 1) * pageSize
+      const to = from + pageSize - 1
+
+      const { data, error } = await supabase
+        .from('devices')
+        .select(DEVICE_SELECT_FIELDS)
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
+      if (!error && data) {
+        await new Promise(resolve => setTimeout(resolve, 550))
+        setDevices((data as any[]).map(mapDevice))
+        
+        // Trigger subtle success pulse on grid/table
+        setShowSuccessPulse(true)
+        setTimeout(() => setShowSuccessPulse(false), 600)
+        
+        // Show elegant success toast
+        setToastMessage('Screens synchronized successfully')
+        setShowSyncToast(true)
+      } else {
+        setToastMessage('Failed to synchronize screens')
+        setShowSyncToast(true)
+      }
+    } catch (err) {
+      console.error('[Dashboard] Error during async refresh:', err)
+      setToastMessage('Failed to synchronize screens')
+      setShowSyncToast(true)
+    } finally {
+      setIsRefreshing(false)
+    }
   }
 
-  function handleAssignSuccess() {
-    setAssignModalDevice(null)
-    router.refresh()
-  }
-
-  function handleDeleteSuccess() {
-    setDeleteModalDevice(null)
-    router.refresh()
-  }
-
-  function handleRenameSuccess(newName: string) {
+  const handlePairSuccess = () => { setShowPairModal(false); router.refresh(); }
+  const handleAssignSuccess = () => { setAssignModalDevice(null); router.refresh(); }
+  const handleDeleteSuccess = () => { setDeleteModalDevice(null); router.refresh(); }
+  const handleRenameSuccess = (newName: string) => {
     setDevices(prev => prev.map(d => d.id === renameModalDevice?.id ? { ...d, name: newName } : d))
     setRenameModalDevice(null)
   }
@@ -269,43 +324,21 @@ export default function ScreensClient({
 
   const filteredDevices = devices.filter(d => {
     const liveStatus = getLiveStatus(d)
-    
     if (filterStatus !== 'all' && liveStatus !== filterStatus) return false
-    
-    if (filterOrientation !== 'all') {
-      const o = d.orientation === null || d.orientation === undefined ? '0' : d.orientation.toString()
-      if (o !== filterOrientation) return false
-    }
-    
+    if (filterOrientation !== 'all' && (d.orientation ?? 0).toString() !== filterOrientation) return false
     if (filterDatePreset !== 'all') {
-      const now = new Date();
-      const dDate = new Date(d.created_at).getTime();
-      
-      if (filterDatePreset === 'today') {
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        if (dDate < startOfToday) return false;
-      } else if (filterDatePreset === '7days') {
-        const startOf7DaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).getTime();
-        if (dDate < startOf7DaysAgo) return false;
-      } else if (filterDatePreset === '30days') {
-        const startOf30DaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).getTime();
-        if (dDate < startOf30DaysAgo) return false;
-      } else if (filterDatePreset === 'custom') {
-        if (filterStartDate) {
-          const start = new Date(filterStartDate).getTime()
-          if (dDate < start) return false
-        }
-        if (filterEndDate) {
-          const end = new Date(filterEndDate)
-          end.setDate(end.getDate() + 1)
-          if (dDate >= end.getTime()) return false
-        }
+      const dTime = new Date(d.created_at).getTime()
+      const now = Date.now()
+      if (filterDatePreset === 'today' && dTime < new Date().setHours(0,0,0,0)) return false
+      if (filterDatePreset === '7days' && dTime < now - 7 * 86400000) return false
+      if (filterDatePreset === '30days' && dTime < now - 30 * 86400000) return false
+      if (filterDatePreset === 'custom') {
+        if (filterStartDate && dTime < new Date(filterStartDate).getTime()) return false
+        if (filterEndDate && dTime >= new Date(filterEndDate).getTime() + 86400000) return false
       }
     }
-    
-    if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
-    return (d.name?.toLowerCase().includes(q) || liveStatus.includes(q) || d.status.includes(q))
+    return !searchQuery || d.name?.toLowerCase().includes(q) || liveStatus.includes(q) || d.status.includes(q)
   })
 
   const onlineCount = devices.filter(d => getLiveStatus(d) === 'online').length;
@@ -330,16 +363,12 @@ export default function ScreensClient({
         <div className={styles.topbarActions}>
           <button
             className={styles.refreshBtn}
-            onClick={() => {
-              const now = Date.now();
-              if (now - lastRefreshRef.current < 2000) return;
-              lastRefreshRef.current = now;
-              window.location.reload();
-            }}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
             aria-label="Refresh Status"
             title="Refresh Status"
           >
-            <RefreshCw size={20} />
+            <RefreshCw size={20} className={isRefreshing ? styles.spin : ''} />
           </button>
           <button
             id="add-screen-btn"
@@ -392,18 +421,6 @@ export default function ScreensClient({
                 {isMounted && (
                   <div className={styles.viewToggleGroup}>
                     <button 
-                      className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-                      onClick={() => handleSetViewMode('grid')}
-                      title="Grid View"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
-                        <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
-                        <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
-                        <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
-                      </svg>
-                    </button>
-                    <button 
                       className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
                       onClick={() => handleSetViewMode('table')}
                       title="Table View"
@@ -417,9 +434,25 @@ export default function ScreensClient({
                         <line x1="3" y1="18" x2="3.01" y2="18"></line>
                       </svg>
                     </button>
+                    <button 
+                      className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                      onClick={() => handleSetViewMode('grid')}
+                      title="Grid View"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                      </svg>
+                    </button>
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className={`${styles.progressBarWrapper} ${isRefreshing ? styles.active : ''}`}>
+              <div className={styles.progressBarLine} />
             </div>
 
             {!isMounted ? (
@@ -438,7 +471,7 @@ export default function ScreensClient({
                 </p>
               </div>
             ) : viewMode === 'grid' ? (
-              <div className={styles.grid}>
+              <div className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
                 {filteredDevices.map((device) => (
                   <DeviceCard
                     key={device.id}
@@ -464,7 +497,7 @@ export default function ScreensClient({
                 ))}
               </div>
             ) : (
-              <div className={styles.tableContainer}>
+              <div className={`${styles.tableContainer} ${showSuccessPulse ? styles.successPulse : ''}`}>
                 <table className={styles.screensTable}>
                   <thead className={styles.tableHeader}>
                     <tr>
@@ -542,25 +575,25 @@ export default function ScreensClient({
         </div>
         
         <FilterSidebar
-          isFilterSidebarOpen={isFilterSidebarOpen}
-          setIsFilterSidebarOpen={setIsFilterSidebarOpen}
-          filterStatus={filterStatus}
-          setFilterStatus={setFilterStatus}
-          filterOrientation={filterOrientation}
-          setFilterOrientation={setFilterOrientation}
-          filterDatePreset={filterDatePreset}
-          setFilterDatePreset={setFilterDatePreset}
-          filterStartDate={filterStartDate}
-          setFilterStartDate={setFilterStartDate}
-          filterEndDate={filterEndDate}
-          setFilterEndDate={setFilterEndDate}
+          isFilterSidebarOpen={isFilterSidebarOpen} setIsFilterSidebarOpen={setIsFilterSidebarOpen}
+          filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+          filterOrientation={filterOrientation} setFilterOrientation={setFilterOrientation}
+          filterDatePreset={filterDatePreset} setFilterDatePreset={setFilterDatePreset}
+          filterStartDate={filterStartDate} setFilterStartDate={setFilterStartDate}
+          filterEndDate={filterEndDate} setFilterEndDate={setFilterEndDate}
         />
       </div>
 
       {showPairModal && <PairModal teamSlug={teamSlug} onClose={() => setShowPairModal(false)} onSuccess={handlePairSuccess} />}
 
       {assignModalDevice && (
-        <AssignModal device={assignModalDevice} assets={assets} playlists={playlists} teamSlug={teamSlug} onClose={() => setAssignModalDevice(null)} onSuccess={handleAssignSuccess} />
+        <AssignModal
+          device={assignModalDevice} assets={assets} playlists={playlists} teamSlug={teamSlug}
+          onClose={() => setAssignModalDevice(null)} onSuccess={handleAssignSuccess}
+          onPreview={(device, contentType, assetId, playlistId, scaleMode, orientation) => 
+            setPreviewState({ device, contentType, assetId, playlistId, scaleMode, orientation })
+          }
+        />
       )}
 
       {deleteModalDevice && (
@@ -569,6 +602,25 @@ export default function ScreensClient({
 
       {renameModalDevice && (
         <RenameModal currentName={renameModalDevice.name || 'Unnamed Screen'} teamSlug={teamSlug} deviceId={renameModalDevice.id} onClose={() => setRenameModalDevice(null)} onSuccess={handleRenameSuccess} />
+      )}
+
+      {previewState && (
+        <ScreenPreviewModal
+          device={previewState.device} teamSlug={teamSlug} onClose={() => setPreviewState(null)}
+          contentType={previewState.contentType} assetId={previewState.assetId} playlistId={previewState.playlistId}
+          scaleMode={previewState.scaleMode} orientation={previewState.orientation} assets={assets} playlists={playlists}
+        />
+      )}
+
+      {showSyncToast && (
+        <div className={`${styles.toastContainer} ${showSyncToast ? styles.toastShow : ''}`}>
+          <div className={styles.toastContent}>
+            <svg className={styles.toastIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+            <span className={styles.toastMessage}>{toastMessage}</span>
+          </div>
+        </div>
       )}
     </>
   )

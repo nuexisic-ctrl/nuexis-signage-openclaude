@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Sun, Moon, Bell, LogOut } from 'lucide-react'
+import { Search, Sun, Moon, Bell, LogOut, ChevronDown } from 'lucide-react'
 import styles from './header.module.css'
 
 interface HeaderProps {
@@ -71,18 +71,23 @@ export default function Header({ fullName, email }: HeaderProps) {
       </div>
 
       <div className={styles.right}>
-        <button
-          className={`${styles.themeToggle} ${mounted && isDark ? styles.dark : ''}`}
+        <div 
+          className={styles.themeSwitcher}
           onClick={toggleTheme}
           title="Toggle theme"
-          aria-label="Toggle theme"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleTheme() }}
         >
-          <div className={styles.themeToggleThumb}>
-            {mounted && isDark ? <Moon size={14} /> : <Sun size={14} />}
+          <div className={`${styles.switcherOption} ${mounted && !isDark ? styles.active : ''}`}>
+            <Sun size={16} />
           </div>
-        </button>
+          <div className={`${styles.switcherOption} ${mounted && isDark ? styles.active : ''}`}>
+            <Moon size={16} />
+          </div>
+        </div>
 
-        <button className={styles.iconBtn} title="Notifications">
+        <button className={styles.notificationBtn} title="Notifications">
           <Bell size={20} />
         </button>
 
@@ -93,6 +98,8 @@ export default function Header({ fullName, email }: HeaderProps) {
             title="Profile menu"
           >
             <div className={styles.avatar}>{initial}</div>
+            <span className={styles.profileName}>{fullName || 'John Doe'}</span>
+            <ChevronDown size={14} className={styles.dropdownArrow} />
           </button>
 
           {isDropdownOpen && (

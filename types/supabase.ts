@@ -334,6 +334,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_player_asset_info: {
+        Args: { p_asset_id: string; p_hardware_id: string; p_secret: string }
+        Returns: Json
+      }
       get_player_device_state: {
         Args: { p_hardware_id: string; p_secret?: string }
         Returns: Json

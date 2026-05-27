@@ -157,3 +157,60 @@
     letter-spacing: 0.16em;
   }
 }
+
+.customSelectTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  padding: 0 13px;
+  cursor: pointer;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.customSelectTrigger:hover {
+  border-color: var(--on-surface-subtle);
+}
+
+.customSelectTrigger:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(9, 76, 178, 0.1);
+}
+
+.selectedText {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--on-surface);
+}
+
+.placeholderText {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--on-surface-muted);
+}
+
+.browseButton {
+  height: 28px;
+  padding: 0 12px;
+  background: var(--surface-medium);
+  border: 1px solid var(--outline-variant);
+  border-radius: 6px;
+  color: var(--on-surface);
+  font-family: var(--font-label);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.browseButton:hover {
+  background: var(--surface-lowest);
+  border-color: var(--primary);
+  color: var(--primary);
+}

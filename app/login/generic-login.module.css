@@ -1,142 +1,340 @@
-.wrapper {
-  width: 100%;
-  max-width: 520px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
+/* ─── Light Mode Theme Token Overrides ────────────────────────────────────── */
+.lightThemeWrapper {
+  /* Force light theme variables locally to ensure it is ALWAYS strictly in premium light mode */
+  --primary:           #094cb2;
+  --primary-container: #dce8ff;
+  --primary-gradient:  linear-gradient(135deg, var(--primary) 0%, #2563eb 100%);
+  --on-primary:        #ffffff;
+  --secondary:           #535f70;
+  --secondary-container: #d7e3f7;
+  --tertiary:           #6d5e00;
+  --tertiary-container: #f9e44e33;
+  --surface-dim:             #d9dae0;
+  --surface:                 #f8f9fc;
+  --surface-bright:          #f8f9fc;
+  --surface-container-lowest:#ffffff;
+  --surface-lowest:          #ffffff;
+  --surface-low:             #f1f3f8;
+  --surface-container:       #eceef4;
+  --surface-container-high:  #e6e8ee;
+  --surface-high:            #e6e8ee;
+  --on-surface:        #1a1c20;
+  --on-surface-muted:  #44474f;
+  --on-surface-subtle: #74777f;
+  --outline:         #74777f;
+  --outline-variant: rgba(116, 119, 127, 0.15);
+  --error:           #ba1a1a;
+  --error-container: #ffdad6;
+  --on-error:        #ffffff;
+  --shadow-modal: 0 8px 40px rgba(9, 76, 178, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-card:  0 2px 12px rgba(0, 0, 0, 0.06);
+
+  /* Force background matching light theme */
+  background: var(--surface) !important;
+  color: var(--on-surface) !important;
 }
 
-.card {
-  background: var(--surface-lowest);
-  border-radius: var(--radius-xl);
-  padding: 48px 44px;
-  box-shadow: var(--shadow-modal);
+/* Ensure background glow uses light mode theme */
+.lightThemeWrapper::before {
+  background: radial-gradient(ellipse, rgba(9, 76, 178, 0.07) 0%, transparent 70%) !important;
+}
+
+/* ─── Responsive Single Viewport Container ─────────────────────────────────── */
+.authShellContainer {
+  min-height: 100vh !important;
+  /* Allow vertical scrolling only when content overflows (e.g. error alerts or extremely short screens) */
+  overflow-y: auto !important; 
+  padding: 32px 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
   width: 100%;
+}
+
+/* ─── Layout Wrapper ──────────────────────────────────────────────────────── */
+.loginWrapper {
+  width: 100%;
+  max-width: 440px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 20px;
+  animation: fadeIn 0.4s ease-out;
+  margin: auto 0; /* Centered card inside the viewport height */
+}
+
+.loginHeader {
   text-align: center;
-  gap: 0;
-}
-
-/* Icon */
-.iconWrap {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: var(--primary-container);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 24px;
-}
-
-.icon {
-  font-size: 2rem;
-  color: var(--primary);
-}
-
-.title {
-  font-size: 1.625rem;
-  line-height: 1.2;
-  margin: 0 0 16px;
-}
-
-.body {
-  font-size: 0.9375rem;
-  color: var(--on-surface-muted);
-  line-height: 1.7;
-  max-width: 400px;
-  margin: 0 0 28px;
-}
-
-/* URL Format */
-.urlDisplay {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0;
-  background: var(--surface-low);
-  border-radius: var(--radius-md);
-  padding: 16px 24px;
-  margin-bottom: 20px;
-  width: 100%;
-  font-family: var(--font-label);
-  font-size: 0.9375rem;
-}
-
-.urlBase {
-  color: var(--on-surface-subtle);
-}
-
-.urlSlug {
-  color: var(--primary);
-  font-weight: 700;
-}
-
-/* Example */
-.exampleBlock {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  margin-bottom: 24px;
+  width: 100%;
 }
 
-.exampleLabel {
-  font-family: var(--font-label);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--tertiary);
-  background: var(--tertiary-container);
-  padding: 2px 10px;
-  border-radius: var(--radius-full);
+.loginTitle {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--on-surface);
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
-.exampleCode {
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  color: var(--primary);
-  background: var(--primary-container);
-  padding: 8px 20px;
-  border-radius: var(--radius-md);
-}
-
-.hint {
+.loginSubtitle {
+  font-family: var(--font-body);
   font-size: 0.875rem;
   color: var(--on-surface-subtle);
-  line-height: 1.65;
-  margin: 0 0 28px;
-  max-width: 380px;
-}
-
-.divider {
-  width: 100%;
-  height: 1px;
-  background: var(--outline-variant);
-  margin-bottom: 24px;
-}
-
-.actions {
-  display: flex;
-  gap: 12px;
-  width: 100%;
-}
-
-.helpText {
-  font-family: var(--font-label);
-  font-size: 0.8125rem;
-  color: var(--on-surface-subtle);
-  text-align: center;
   margin: 0;
 }
 
-@media (max-width: 540px) {
-  .card { padding: 36px 24px; }
-  .actions { flex-direction: column; }
-  .urlDisplay { font-size: 0.8125rem; }
+/* ─── Compact Form Card ───────────────────────────────────────────────────── */
+.formCard {
+  background: var(--surface-lowest);
+  border-radius: var(--radius-xl);
+  padding: 28px 36px 20px 36px;
+  box-shadow: var(--shadow-modal);
+  border: 1px solid var(--outline-variant);
+  width: 100%;
+}
+
+/* ─── Input Container with Icons ────────────────────────────────────────── */
+.inputContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 14px;
+  color: var(--on-surface-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: color var(--transition-base);
+}
+
+.inputContainer:focus-within .inputIcon {
+  color: var(--primary);
+}
+
+.formInputWithIcon {
+  padding-left: 44px !important;
+}
+
+/* ─── Dynamic URL Preview Block ───────────────────────────────────────────── */
+.urlPreviewBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.previewLabel {
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--on-surface-subtle);
+}
+
+.previewUrlField {
+  font-family: monospace;
+  font-size: 0.65rem;
+  background: var(--surface-low) !important;
+  border: 1px solid var(--outline-variant) !important;
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: var(--on-surface-muted) !important;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+/* ─── Trust / Security Badges ─────────────────────────────────────────────── */
+.trustGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  border-top: 1px solid var(--outline-variant);
+  margin-top: 20px;
+  padding-top: 14px;
+}
+
+.trustBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.trustIconContainer {
+  width: 28px;
+  height: 28px;
+  background: var(--surface-low);
+  color: var(--primary);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+}
+
+.trustBadge:hover .trustIconContainer {
+  background: var(--primary-container);
+  transform: translateY(-1px);
+}
+
+.trustTitle {
+  display: block;
+  font-family: var(--font-label);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.trustDesc {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  color: var(--on-surface-subtle);
+  line-height: 1.2;
+}
+
+/* ─── Minimal Footer ──────────────────────────────────────────────────────── */
+.minimalFooter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.footerLinks {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.footerLinks a {
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  color: var(--on-surface-subtle);
+  transition: color var(--transition-base);
+}
+
+.footerLinks a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+  opacity: 1;
+}
+
+.footerCopyright {
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  color: var(--on-surface-subtle);
+  opacity: 0.8;
+}
+
+/* ─── Animations & Keyframes ──────────────────────────────────────────────── */
+/* Premium, subtle SaaS-style error nudge animation (low amplitude, high speed) */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-3px); }
+  40%, 80% { transform: translateX(3px); }
+}
+
+.shake {
+  animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Responsive Heights scaling for shorter laptop screens (< 800px) ───── */
+@media (max-height: 800px) {
+  .authShellContainer {
+    padding: 16px 16px !important;
+  }
+  .loginWrapper {
+    gap: 12px;
+  }
+  .loginHeader {
+    gap: 4px;
+  }
+  .loginTitle {
+    font-size: 1.45rem;
+  }
+  .formCard {
+    padding: 20px 28px 14px 28px;
+  }
+  .trustGrid {
+    margin-top: 12px;
+    padding-top: 10px;
+    gap: 8px;
+  }
+  .trustBadge {
+    gap: 4px;
+  }
+  .trustIconContainer {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* ─── Extra compression for extra short viewports (< 720px) ──────────────── */
+@media (max-height: 720px) {
+  .authShellContainer {
+    padding: 8px 16px !important;
+  }
+  .loginWrapper {
+    gap: 8px;
+  }
+  .formCard {
+    padding: 14px 24px 10px 24px;
+  }
+  .trustGrid {
+    margin-top: 8px;
+    padding-top: 8px;
+    gap: 4px;
+  }
+  .trustTitle {
+    font-size: 0.65rem;
+  }
+  .trustDesc {
+    font-size: 0.58rem;
+  }
+}
+
+/* ─── Mobile Optimizations ───────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .formCard {
+    padding: 24px 20px 20px 20px;
+  }
+  .trustGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding-top: 14px;
+    margin-top: 16px;
+  }
+  .trustBadge {
+    flex-direction: row;
+    text-align: left;
+    gap: 10px;
+  }
+  .trustIconContainer {
+    flex-shrink: 0;
+  }
 }

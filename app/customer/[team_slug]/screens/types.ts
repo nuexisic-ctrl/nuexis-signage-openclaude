@@ -19,6 +19,7 @@ export interface Asset {
   file_path: string
   mime_type: string
   size_bytes: number
+  created_at?: string
 }
 
 export interface Playlist {

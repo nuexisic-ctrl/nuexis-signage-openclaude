@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { File, Play, Image as ImageIcon } from 'lucide-react'
 import styles from './AssetTableView.module.css'
 
+import { createClient } from '@/lib/supabase/client'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 
 interface AssetTableViewProps {
@@ -29,6 +30,23 @@ export function AssetTableView({
   setDeleteModalAsset,
   deletingIds,
 }: AssetTableViewProps) {
+  const supabase = createClient()
+
+  const handleDownload = async (asset: Asset) => {
+    try {
+      const { data } = await supabase.storage
+        .from('workspace-media')
+        .createSignedUrl(asset.file_path, 60, {
+          download: asset.file_name,
+        })
+      if (data?.signedUrl) {
+        window.location.href = data.signedUrl
+      }
+    } catch (err) {
+      console.error('Failed to download asset:', err)
+    }
+  }
+
   return (
     <div className={styles.tableContainer}>
       <table className={styles.screensTable}>
@@ -154,6 +172,17 @@ export function AssetTableView({
                             >
                               Rename
                             </button>
+                            {!isWidget(asset.mime_type) && (
+                              <button
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                  setOpenMenuId(null)
+                                  handleDownload(asset)
+                                }}
+                              >
+                                Download
+                              </button>
+                            )}
                             <button
                               className={`${styles.dropdownItem} ${styles.danger}`}
                               onClick={() => {

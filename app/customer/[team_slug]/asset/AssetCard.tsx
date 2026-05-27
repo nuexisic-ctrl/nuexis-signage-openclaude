@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { File, Play, LayoutTemplate, MonitorPlay, Link } from 'lucide-react'
 import styles from './AssetCard.module.css'
 
+import { createClient } from '@/lib/supabase/client'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 
 export function AssetCard({
@@ -30,6 +31,23 @@ export function AssetCard({
   const date = new Date(asset.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   })
+
+  const supabase = createClient()
+
+  const handleDownload = async () => {
+    try {
+      const { data } = await supabase.storage
+        .from('workspace-media')
+        .createSignedUrl(asset.file_path, 60, {
+          download: asset.file_name,
+        })
+      if (data?.signedUrl) {
+        window.location.href = data.signedUrl
+      }
+    } catch (err) {
+      console.error('Failed to download asset:', err)
+    }
+  }
 
   return (
     <div className={`${styles.assetCard} ${isDeleting ? styles.assetCardDeleting : ''}`}>
@@ -105,6 +123,11 @@ export function AssetCard({
                 <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
                   Preview
                 </button>
+                {!isWidget(asset.mime_type) && (
+                  <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
+                    Download
+                  </button>
+                )}
                 <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onRename(); }}>
                   Rename
                 </button>

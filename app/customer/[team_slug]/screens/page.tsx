@@ -85,7 +85,7 @@ export default async function ScreensPage({ params, searchParams }: Props) {
   const assets = profile?.team_id
     ? (await supabase
         .from('assets')
-        .select('id, file_name, file_path, mime_type, size_bytes')
+        .select('id, file_name, file_path, mime_type, size_bytes, created_at')
         .eq('team_id', profile.team_id)
         .order('created_at', { ascending: false })
       ).data ?? []

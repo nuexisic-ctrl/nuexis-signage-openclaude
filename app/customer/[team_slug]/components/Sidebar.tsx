@@ -13,8 +13,7 @@ import {
   Settings, 
   ListVideo,
   ChevronLeft,
-  ChevronRight,
-  User
+  ChevronRight
 } from 'lucide-react'
 import styles from './sidebar.module.css'
 
@@ -53,7 +52,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
     { icon: Settings,        label: 'Settings',  href: '#' },
   ]
 
-  const userInitial = fullName ? fullName.charAt(0).toUpperCase() : (email ? email.charAt(0).toUpperCase() : <User size={18} />)
+
 
   return (
     <>
@@ -98,20 +97,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
           })}
         </nav>
 
-        <div className={styles.sidebarFooter}>
-          <div className={styles.userInfo} title={isCollapsed ? (fullName || email) : undefined}>
-            <div className={styles.userAvatar}>
-              {userInitial}
-            </div>
-            {!isCollapsed && (
-              <div className={styles.userDetails}>
-                <span className={styles.userName}>{fullName || 'User'}</span>
-                <span className={styles.userEmail}>{email}</span>
-                <span className={styles.userRoleBadge}>{role.charAt(0).toUpperCase() + role.slice(1)}</span>
-              </div>
-            )}
-          </div>
-        </div>
+
       </aside>
 
       {/* Mobile Bottom Navigation */}

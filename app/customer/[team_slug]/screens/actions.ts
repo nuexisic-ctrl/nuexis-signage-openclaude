@@ -15,14 +15,12 @@ export async function claimDevice(
 ): Promise<PairDeviceResult> {
   const trimmedCode = pairingCode.trim().replace(/\s/g, '').toUpperCase()
   const trimmedName = screenName.trim()
+  const finalName = trimmedName || `Screen ${trimmedCode}`
 
   console.log('[claimDevice] called with code:', trimmedCode, 'name:', trimmedName, 'team:', teamSlug)
 
   if (!/^[A-Z0-9]{6}$/.test(trimmedCode)) {
     return { success: false, error: 'Please enter a valid 6-character pairing code.' }
-  }
-  if (!trimmedName) {
-    return { success: false, error: 'Please provide a name for this screen.' }
   }
 
   const supabase = await createClient()
@@ -58,7 +56,7 @@ export async function claimDevice(
   const { data, error: rpcError } = await supabase.rpc('claim_device', {
     p_pairing_code: trimmedCode,
     p_team_id: teamId,
-    p_name: trimmedName,
+    p_name: finalName,
     p_user_id: user.id,
   })
 

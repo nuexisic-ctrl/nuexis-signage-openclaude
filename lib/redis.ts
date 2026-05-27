@@ -16,6 +16,12 @@ export const redis = new Redis({
 })
 
 export async function rateLimitAction(userId: string, actionName: string, maxRequests: number = 30, windowSeconds: number = 60): Promise<boolean> {
+  // If Redis credentials are not configured, allow the operation to proceed (fail-open for local/dev envs)
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    console.warn(`[rateLimitAction] Redis credentials missing. Gracefully bypassing rate limit for: ${actionName}`)
+    return true
+  }
+
   try {
     const key = `rate_limit:${actionName}:${userId}`
     const script = `
