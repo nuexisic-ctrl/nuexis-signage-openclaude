@@ -269,3 +269,48 @@ export async function updateAssetName(
   revalidatePath(`/customer/${teamSlug}/asset`)
   return { success: true, id: assetId }
 }
+
+export async function pushWidgetToScreen(
+  teamSlug: string,
+  deviceId: string,
+  assetId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to assign to a screen.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  const { error: updateError } = await supabase
+    .from('devices')
+    .update({
+      content_type: 'Asset',
+      asset_id: assetId,
+      playlist_id: null,
+    })
+    .eq('id', deviceId)
+    .eq('team_id', teamId)
+
+  if (updateError) {
+    console.error('[pushWidgetToScreen] error:', updateError)
+    return { success: false, error: 'Failed to assign widget to screen.' }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/screens`)
+  revalidatePath(`/customer/${teamSlug}/asset`)
+  return { success: true }
+}
+

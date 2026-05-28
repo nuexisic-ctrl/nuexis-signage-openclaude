@@ -5,6 +5,7 @@ import { X, Maximize, Minimize, Move, Tv } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import styles from './ScreenPreviewModal.module.css'
 import { Device, Asset, Playlist } from './types'
+import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 
 interface Props {
   device: Device
@@ -305,6 +306,53 @@ export function ScreenPreviewModal({
           sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
         />
       )
+    }
+
+    if (itemMime === 'application/x-widget-html') {
+      try {
+        const { html = '', css = '' } = JSON.parse(itemPath)
+        const iframeSrcDoc = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <style>
+                body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
+                ${css}
+              </style>
+            </head>
+            <body>
+              ${html}
+            </body>
+          </html>
+        `
+        return (
+          <iframe
+            title="widget-html-simulator"
+            srcDoc={iframeSrcDoc}
+            style={{ ...mediaStyle, border: 'none' }}
+            sandbox="allow-same-origin"
+          />
+        )
+      } catch (err) {
+        console.error('Failed to render custom html widget in simulator:', err)
+        return <div style={{ color: 'red', padding: '10px' }}>Error rendering custom HTML widget</div>
+      }
+    }
+
+    if (itemMime === 'application/x-widget-flow') {
+      try {
+        const config = JSON.parse(itemPath)
+        return (
+          <FlowClockRenderer
+            style={config.style}
+            showSeconds={config.showSeconds}
+            dateFormat={config.dateFormat}
+          />
+        )
+      } catch (err) {
+        console.error('Failed to render Cloak widget in simulator:', err)
+        return <div style={{ color: 'red', padding: '10px' }}>Error rendering Cloak</div>
+      }
     }
 
     if (isVideoAsset || itemMime?.startsWith('video/')) {

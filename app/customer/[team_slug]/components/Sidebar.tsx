@@ -49,7 +49,6 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
     { icon: ListVideo,       label: 'Playlists', href: `/customer/${teamSlug}/playlists` },
     { icon: CalendarClock,   label: 'Schedules', href: '#' },
     { icon: LineChart,       label: 'Analytics', href: '#' },
-    { icon: Settings,        label: 'Settings',  href: '#' },
   ]
 
 
@@ -96,6 +95,23 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
             )
           })}
         </nav>
+
+        <div className={styles.sidebarFooter}>
+          <Link
+            href="#"
+            className={`${styles.navItem} ${pathname.includes('/settings') ? styles.active : ''}`}
+            title={isCollapsed ? "Settings" : undefined}
+            style={{ 
+              width: isCollapsed ? '44px' : 'auto', 
+              margin: isCollapsed ? '0 auto' : '0',
+              display: 'flex',
+              justifyContent: isCollapsed ? 'center' : 'flex-start'
+            }}
+          >
+            <Settings size={20} className={styles.navIcon} />
+            {!isCollapsed && <span className={styles.navLabel}>Settings</span>}
+          </Link>
+        </div>
 
 
       </aside>

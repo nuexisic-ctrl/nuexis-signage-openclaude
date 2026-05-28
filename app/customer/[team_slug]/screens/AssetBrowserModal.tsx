@@ -3,6 +3,13 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { X, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, FileText, Video, Image as ImageIcon, Play, MoreVertical, Monitor, Link2 } from 'lucide-react'
 import styles from './AssetBrowserModal.module.css'
+
+const YoutubeIcon = ({ size = 20, ...props }: { size?: number } & React.SVGProps<SVGSVGElement>) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
+  </svg>
+)
 import { createClient } from '@/lib/supabase/client'
 import { Asset } from './types'
 
@@ -19,21 +26,19 @@ export function AssetBrowserModal({
 }: AssetBrowserModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<string>('all')
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('assetBrowserViewMode')
+      if (saved === 'grid' || saved === 'table') return saved
+    }
+    return 'table'
+  })
   const [showFilters, setShowFilters] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 4
+  const pageSize = 10
 
   const supabase = useMemo(() => createClient(), [])
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
-
-  // View Mode Persistence
-  useEffect(() => {
-    const saved = localStorage.getItem('assetBrowserViewMode')
-    if (saved === 'grid' || saved === 'table') {
-      setViewMode(saved)
-    }
-  }, [])
 
   const handleSetViewMode = (mode: 'grid' | 'table') => {
     setViewMode(mode)
@@ -150,16 +155,16 @@ export function AssetBrowserModal({
     const previewUrl = previewUrls[asset.file_path]
 
     if (isWidget) {
-      if (asset.file_name.toLowerCase().includes('kilo') || asset.file_name.toLowerCase().includes('link')) {
+      if (asset.file_name.toLowerCase().includes('kilo') || asset.file_name.toLowerCase().includes('link') || asset.mime_type === 'application/x-widget-remote-url') {
         return (
-          <div className={styles.cardPreviewBox} style={{ background: 'linear-gradient(135deg, #091e3a, #051020)' }}>
-            <Link2 size={36} className={styles.cardPreviewIcon} style={{ color: '#4dabf7' }} />
+          <div className={styles.cardPreviewBox} style={{ background: 'var(--surface-low)' }}>
+            <Link2 size={36} className={styles.cardPreviewIcon} style={{ color: 'var(--on-surface-muted)' }} />
           </div>
         )
       }
       return (
-        <div className={styles.cardPreviewBox} style={{ background: 'linear-gradient(135deg, #3f0a0a, #0f172a)' }}>
-          <Monitor size={36} className={styles.cardPreviewIcon} style={{ color: '#ff0000' }} />
+        <div className={styles.cardPreviewBox} style={{ background: 'var(--surface-low)' }}>
+          <YoutubeIcon size={36} className={styles.cardPreviewIcon} style={{ color: 'var(--on-surface-muted)' }} />
         </div>
       )
     }
@@ -210,7 +215,12 @@ export function AssetBrowserModal({
     const isVideo = asset.mime_type.startsWith('video/')
     const isImage = asset.mime_type.startsWith('image/')
 
-    if (isWidget) return <FileText size={18} />
+    if (isWidget) {
+      if (asset.file_name.toLowerCase().includes('kilo') || asset.file_name.toLowerCase().includes('link') || asset.mime_type === 'application/x-widget-remote-url') {
+        return <Link2 size={18} />
+      }
+      return <YoutubeIcon size={18} />
+    }
     if (isVideo) return <Video size={18} />
     if (isImage) return <ImageIcon size={18} />
     return <FileText size={18} />

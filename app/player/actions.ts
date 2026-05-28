@@ -180,7 +180,13 @@ export async function sendHeartbeat(deviceId: string, teamId: string, hardwareId
     p_secret: secret,
   })
 
-  if (error || !device || (device as any).id !== deviceId || (device as any).team_id !== teamId) {
+  if (error) {
+    console.warn('[sendHeartbeat] Transient database or network warning:', error.message || error)
+    // Accept transient DB dropouts rather than throwing hard unauthorized exceptions
+    return
+  }
+
+  if (!device || (device as any).id !== deviceId || (device as any).team_id !== teamId) {
     throw new Error('Unauthorized heartbeat attempt')
   }
 
@@ -273,3 +279,53 @@ export async function getSignedMediaUrl(
 
   return signedUrlData.signedUrl
 }
+
+export async function getPlayerAsset(
+  assetId: string,
+  hardwareId: string,
+  secret: string
+) {
+  if (!(await rateLimitAction(hardwareId, 'getPlayerAsset', 60, 60))) {
+    throw new Error('Rate limit exceeded')
+  }
+
+  const supabasePlayer = getPlayerClient()
+  const { data: deviceData, error: devError } = await supabasePlayer.rpc('get_player_device_state', {
+    p_hardware_id: hardwareId,
+    p_secret: secret,
+  })
+
+  const device = deviceData as { team_id?: string } | null
+
+  if (devError || !device || !device.team_id) {
+    throw new Error('Unauthorized device')
+  }
+
+  // Create service-role client to securely query the assets table
+  const supabase = createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  )
+
+  const { data: asset, error: assetError } = await supabase
+    .from('assets')
+    .select('file_path, mime_type, team_id')
+    .eq('id', assetId)
+    .single()
+
+  if (assetError || !asset) {
+    throw new Error('Asset not found')
+  }
+
+  // Verify that the asset belongs to the same team as the device
+  if (asset.team_id !== device.team_id) {
+    throw new Error('Unauthorized asset access')
+  }
+
+  return {
+    file_path: asset.file_path,
+    mime_type: asset.mime_type,
+  }
+}
+

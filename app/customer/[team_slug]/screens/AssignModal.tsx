@@ -111,7 +111,7 @@ export function AssignModal({
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowAssetBrowser(true); } }}
                 >
                   <span className={selectedAsset ? styles.selectedText : styles.placeholderText}>
-                    {selectedAsset ? `📺 ${selectedAsset.file_name}` : 'No asset selected'}
+                    {selectedAsset ? selectedAsset.file_name : 'No asset selected'}
                   </span>
                   <button 
                     type="button" 

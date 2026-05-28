@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { X, File } from 'lucide-react'
 import styles from './Modal.module.css'
+import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 
 interface Asset {
   id: string
@@ -49,6 +50,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
   const isVid = isVideo(asset.mime_type)
   const isYouTube = asset.mime_type === 'application/x-widget-youtube'
   const isRemoteUrl = asset.mime_type === 'application/x-widget-remote-url'
+  const isHtml = asset.mime_type === 'application/x-widget-html'
 
   let youtubeVideoId = ''
   if (isYouTube) {
@@ -61,7 +63,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
         <div className={styles.modalHeader}>
           <div className={styles.modalMeta}>
             <span className={styles.modalTitle} title={asset.file_name}>{asset.file_name}</span>
-            <span className={styles.modalMime}>{isYouTube ? 'YouTube Widget' : isRemoteUrl ? 'Remote URL Widget' : asset.mime_type}</span>
+            <span className={styles.modalMime}>{isYouTube ? 'YouTube Widget' : isRemoteUrl ? 'Remote URL Widget' : isHtml ? 'Text/HTML Widget' : asset.mime_type === 'application/x-widget-flow' ? 'Cloak' : asset.mime_type}</span>
           </div>
           <button className={styles.modalCloseBtn} onClick={onClose} aria-label="Close preview">
             <X size={24} />
@@ -88,7 +90,52 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={asset.file_path} alt={asset.file_name} className={styles.modalMedia} style={{ maxHeight: '70vh', objectFit: 'contain' }} />
             )
-          ) : (
+          ) : isHtml ? (() => {
+            try {
+              const { html = '', css = '' } = JSON.parse(asset.file_path)
+              const iframeSrcDoc = `
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <style>
+                      body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
+                      ${css}
+                    </style>
+                  </head>
+                  <body>
+                    ${html}
+                  </body>
+                </html>
+              `
+              return (
+                <iframe
+                  title="widget-html-preview"
+                  srcDoc={iframeSrcDoc}
+                  style={{ width: '100%', aspectRatio: '16/9', border: 'none', maxHeight: '70vh', background: 'transparent' }}
+                  sandbox="allow-same-origin"
+                />
+              )
+            } catch (err) {
+              console.error('Failed to parse HTML widget contents in preview:', err)
+              return <div style={{ color: 'red', padding: '20px' }}>Error rendering custom HTML widget</div>
+            }
+          })() : asset.mime_type === 'application/x-widget-flow' ? (() => {
+            try {
+              const config = JSON.parse(asset.file_path)
+              return (
+                <div style={{ width: '100%', height: '100%', minHeight: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FlowClockRenderer
+                    style={config.style}
+                    showSeconds={config.showSeconds}
+                    dateFormat={config.dateFormat}
+                  />
+                </div>
+              )
+            } catch (err) {
+              console.error('Failed to parse Cloak widget config in preview:', err)
+              return <div style={{ color: 'red', padding: '20px' }}>Error rendering Cloak</div>
+            }
+          })() : (
             <div className={styles.modalUnsupported} style={{ padding: '40px', textAlign: 'center', color: '#fff' }}>
               <File size={48} className={styles.unsupportedIcon} style={{ opacity: 0.5, marginBottom: '16px' }} />
               <p>Preview not available for this type.</p>

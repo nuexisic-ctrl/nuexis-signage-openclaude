@@ -292,18 +292,9 @@ export default function ScreensClient({
         // Trigger subtle success pulse on grid/table
         setShowSuccessPulse(true)
         setTimeout(() => setShowSuccessPulse(false), 600)
-        
-        // Show elegant success toast
-        setToastMessage('Screens synchronized successfully')
-        setShowSyncToast(true)
-      } else {
-        setToastMessage('Failed to synchronize screens')
-        setShowSyncToast(true)
       }
     } catch (err) {
       console.error('[Dashboard] Error during async refresh:', err)
-      setToastMessage('Failed to synchronize screens')
-      setShowSyncToast(true)
     } finally {
       setIsRefreshing(false)
     }

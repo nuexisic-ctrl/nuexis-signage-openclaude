@@ -6,7 +6,7 @@ import { getHardwareId } from '@/lib/utils/fingerprint'
 import {
   registerDevice, refreshDeviceCode, getDeviceState,
   unpairDevice, updateDeviceOrientation, incrementPlaytime,
-  sendHeartbeat, getSignedMediaUrl,
+  sendHeartbeat, getSignedMediaUrl, getPlayerAsset,
 } from './actions'
 import PairingView from './PairingView'
 import PairedView from './PairedView'
@@ -57,7 +57,9 @@ export default function PlayerPage() {
       const secret = secretRef.current
 
       if (stateRef.current === 'paired' && assetUrlRef.current && hwId && devId && secret) {
-        incrementPlaytime(devId, hwId, secret, 60).catch(console.error)
+        incrementPlaytime(devId, hwId, secret, 60).catch((err: any) => {
+          console.warn('[Player] Playtime increment deferred (transient network or extension override):', err.message || err)
+        })
       }
 
       if (stateRef.current === 'paired' && teamChannelRef.current && devId) {
@@ -66,12 +68,14 @@ export default function PlayerPage() {
           device_id: devId,
           online_at: new Date().toISOString(),
         }).catch((err: unknown) => {
-          console.error('[Player] Failed to re-track presence:', err)
+          console.warn('[Player] Failed to re-track presence:', err)
           reconnectPresenceRef.current?.()
         })
 
         if (tId && hwId && secret) {
-          sendHeartbeat(devId, tId, hwId, secret).catch(console.error)
+          sendHeartbeat(devId, tId, hwId, secret).catch((err: any) => {
+            console.warn('[Player] Heartbeat deferred (transient network or extension override):', err.message || err)
+          })
         }
       }
     }, 60000)
@@ -177,74 +181,80 @@ export default function PlayerPage() {
         clearAsset()
         return
       }
-      const { data: asset } = await client
-        .from('assets')
-        .select('file_path, mime_type')
-        .eq('id', assetId)
-        .single()
-
-      if (currentAssetId !== assetId || cancelled) return
-
-      if (!asset) {
-        clearAsset()
-        return
-      }
-
-      if (asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-remote-url') {
-        setBlobUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev)
-          return null
-        })
-        setAssetUrl(asset.file_path)
-        setMimeType(asset.mime_type)
-        return
-      }
-
-      const cacheKey = `https://local-media-cache/${asset.file_path}`
 
       try {
-        const cache = await caches.open('nuexis-media-cache')
-        let response = await cache.match(cacheKey)
-
+        const asset = await getPlayerAsset(assetId, hardwareIdRef.current!, secretRef.current!)
         if (currentAssetId !== assetId || cancelled) return
 
-        if (!response) {
-          const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareIdRef.current!, secretRef.current!)
-          if (currentAssetId !== assetId || cancelled) return
-          response = await fetch(mediaUrl, { mode: 'cors' })
-          if (response.ok) {
-            await cache.put(cacheKey, response.clone())
-          }
+        if (!asset) {
+          clearAsset()
+          return
         }
 
-        if (currentAssetId !== assetId || cancelled) return
-
-        if (response?.ok) {
-          const blob = await response.blob()
-          if (currentAssetId !== assetId || cancelled) return
-          const localBlobUrl = URL.createObjectURL(blob)
-          setBlobUrl((prev) => {
-            if (prev) URL.revokeObjectURL(prev)
-            return localBlobUrl
-          })
-          setAssetUrl(localBlobUrl)
-          setMimeType(asset.mime_type)
-          cleanupOldCaches(cacheKey)
-        } else {
-          throw new Error('Failed to load media')
-        }
-      } catch {
-        if (currentAssetId !== assetId || cancelled) return
-        const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareIdRef.current!, secretRef.current!).catch(() => null)
-        if (currentAssetId !== assetId || cancelled) return
-        if (mediaUrl) {
+        if (
+          asset.mime_type === 'application/x-widget-youtube' || 
+          asset.mime_type === 'application/x-widget-remote-url' ||
+          asset.mime_type === 'application/x-widget-html' ||
+          asset.mime_type === 'application/x-widget-flow'
+        ) {
           setBlobUrl((prev) => {
             if (prev) URL.revokeObjectURL(prev)
             return null
           })
-          setAssetUrl(mediaUrl)
+          setAssetUrl(asset.file_path)
           setMimeType(asset.mime_type)
+          return
         }
+
+        const cacheKey = `https://local-media-cache/${asset.file_path}`
+
+        try {
+          const cache = await caches.open('nuexis-media-cache')
+          let response = await cache.match(cacheKey)
+
+          if (currentAssetId !== assetId || cancelled) return
+
+          if (!response) {
+            const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareIdRef.current!, secretRef.current!)
+            if (currentAssetId !== assetId || cancelled) return
+            response = await fetch(mediaUrl, { mode: 'cors' })
+            if (response.ok) {
+              await cache.put(cacheKey, response.clone())
+            }
+          }
+
+          if (currentAssetId !== assetId || cancelled) return
+
+          if (response?.ok) {
+            const blob = await response.blob()
+            if (currentAssetId !== assetId || cancelled) return
+            const localBlobUrl = URL.createObjectURL(blob)
+            setBlobUrl((prev) => {
+              if (prev) URL.revokeObjectURL(prev)
+              return localBlobUrl
+            })
+            setAssetUrl(localBlobUrl)
+            setMimeType(asset.mime_type)
+            cleanupOldCaches(cacheKey)
+          } else {
+            throw new Error('Failed to load media')
+          }
+        } catch {
+          if (currentAssetId !== assetId || cancelled) return
+          const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareIdRef.current!, secretRef.current!).catch(() => null)
+          if (currentAssetId !== assetId || cancelled) return
+          if (mediaUrl) {
+            setBlobUrl((prev) => {
+              if (prev) URL.revokeObjectURL(prev)
+              return null
+            })
+            setAssetUrl(mediaUrl)
+            setMimeType(asset.mime_type)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to resolve asset in player:', err)
+        clearAsset()
       }
     }
 

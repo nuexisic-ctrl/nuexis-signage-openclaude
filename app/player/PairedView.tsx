@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import PlaylistEngine from './PlaylistEngine'
 import styles from './player.module.css'
+import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import type { RealtimeChannel } from './types'
 
 interface PairedViewProps {
@@ -82,6 +83,50 @@ export default function PairedView({
           sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
         />
       )
+    } else if (mimeType === 'application/x-widget-html') {
+      try {
+        const { html = '', css = '' } = JSON.parse(assetUrl)
+        const iframeSrcDoc = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <style>
+                body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
+                ${css}
+              </style>
+            </head>
+            <body>
+              ${html}
+            </body>
+          </html>
+        `
+        content = (
+          <iframe
+            key={assetUrl}
+            title="widget-html-paired"
+            srcDoc={iframeSrcDoc}
+            style={{ ...mediaStyle, border: 'none' }}
+            sandbox="allow-same-origin"
+          />
+        )
+      } catch (err) {
+        console.error('Failed to parse custom html widget in PairedView:', err)
+        content = <div style={{ color: 'red', padding: '10px' }}>Error rendering custom HTML widget</div>
+      }
+    } else if (mimeType === 'application/x-widget-flow') {
+      try {
+        const config = JSON.parse(assetUrl)
+        content = (
+          <FlowClockRenderer
+            style={config.style}
+            showSeconds={config.showSeconds}
+            dateFormat={config.dateFormat}
+          />
+        )
+      } catch (err) {
+        console.error('Failed to parse Cloak widget config in PairedView:', err)
+        content = <div style={{ color: 'red', padding: '10px' }}>Error rendering Cloak widget</div>
+      }
     } else if (mimeType?.startsWith('video/')) {
       content = (
         <video

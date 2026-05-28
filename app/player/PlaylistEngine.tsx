@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { getPlaylistItems, getSignedMediaUrl } from './actions'
+import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 
 interface PlaylistItem {
   id: string
@@ -228,7 +229,12 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
     let safetyTimeout: NodeJS.Timeout
 
     if (item.assets) {
-      if (item.assets.mime_type === 'application/x-widget-youtube' || item.assets.mime_type === 'application/x-widget-remote-url') {
+      if (
+        item.assets.mime_type === 'application/x-widget-youtube' || 
+        item.assets.mime_type === 'application/x-widget-remote-url' ||
+        item.assets.mime_type === 'application/x-widget-html' ||
+        item.assets.mime_type === 'application/x-widget-flow'
+      ) {
         if (mounted) {
           setMediaUrl(item.assets.file_path)
         }
@@ -323,6 +329,64 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
         sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
       />
     )
+  }
+
+  if (item.assets?.mime_type === 'application/x-widget-html') {
+    try {
+      const { html = '', css = '' } = JSON.parse(mediaUrl)
+      const iframeSrcDoc = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
+              ${css}
+            </style>
+          </head>
+          <body>
+            ${html}
+          </body>
+        </html>
+      `
+      return (
+        <iframe
+          title="widget-html-playlist"
+          srcDoc={iframeSrcDoc}
+          style={{ ...mediaStyle, border: 'none' }}
+          onLoad={() => setIsLoaded(true)}
+          sandbox="allow-same-origin"
+        />
+      )
+    } catch (err) {
+      console.error('Failed to parse custom html widget in playlist engine:', err)
+      return (
+        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+          Error rendering custom HTML widget
+        </div>
+      )
+    }
+  }
+
+  if (item.assets?.mime_type === 'application/x-widget-flow') {
+    try {
+      const config = JSON.parse(mediaUrl)
+      return (
+        <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+          <FlowClockRenderer
+            style={config.style}
+            showSeconds={config.showSeconds}
+            dateFormat={config.dateFormat}
+          />
+        </div>
+      )
+    } catch (err) {
+      console.error('Failed to render Cloak widget in playlist engine:', err)
+      return (
+        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+          Error rendering Cloak widget
+        </div>
+      )
+    }
   }
 
   if (item.type === 'video' || item.assets?.mime_type?.startsWith('video/')) {

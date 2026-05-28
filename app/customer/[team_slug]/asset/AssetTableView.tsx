@@ -1,8 +1,15 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, Image as ImageIcon } from 'lucide-react'
+import { File, Play, Image as ImageIcon, Link, Code, Clock } from 'lucide-react'
 import styles from './AssetTableView.module.css'
+
+const YoutubeIcon = ({ size = 20, ...props }: { size?: number } & React.SVGProps<SVGSVGElement>) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
+  </svg>
+)
 
 import { createClient } from '@/lib/supabase/client'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
@@ -81,6 +88,14 @@ export function AssetTableView({
                         <ImageIcon size={20} />
                       ) : isVideo(asset.mime_type) ? (
                         <Play size={20} />
+                      ) : asset.mime_type === 'application/x-widget-youtube' ? (
+                        <YoutubeIcon size={20} />
+                      ) : asset.mime_type === 'application/x-widget-remote-url' ? (
+                        <Link size={20} />
+                      ) : asset.mime_type === 'application/x-widget-html' ? (
+                        <Code size={20} />
+                      ) : asset.mime_type === 'application/x-widget-flow' ? (
+                        <Clock size={20} />
                       ) : (
                         <File size={20} />
                       )}
@@ -98,7 +113,9 @@ export function AssetTableView({
                       display: 'inline-block',
                     }}
                   >
-                    {isWidget(asset.mime_type)
+                    {asset.mime_type === 'application/x-widget-flow'
+                      ? 'CLOAK'
+                      : isWidget(asset.mime_type)
                       ? 'WIDGET'
                       : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
                   </div>

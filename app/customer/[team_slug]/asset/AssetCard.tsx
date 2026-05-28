@@ -1,8 +1,15 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, LayoutTemplate, MonitorPlay, Link } from 'lucide-react'
+import { File, Play, LayoutTemplate, MonitorPlay, Link, Code, Clock } from 'lucide-react'
 import styles from './AssetCard.module.css'
+
+const YoutubeIcon = ({ size = 20, ...props }: { size?: number } & React.SVGProps<SVGSVGElement>) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
+  </svg>
+)
 
 import { createClient } from '@/lib/supabase/client'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
@@ -78,13 +85,17 @@ export function AssetCard({
           </div>
         ) : isWidget(asset.mime_type) ? (
           <div className={styles.videoThumbWrapper} style={{ position: 'relative', width: '100%', height: '100%' }}>
-             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #3f0a0a, #0f172a)' }}>
+             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-low)' }}>
                {asset.mime_type === 'application/x-widget-youtube' ? (
-                 <MonitorPlay color="#ff0000" size={48} />
+                 <YoutubeIcon color="var(--on-surface-muted)" size={48} />
                ) : asset.mime_type === 'application/x-widget-remote-url' ? (
-                 <Link color="#4dabf7" size={48} />
+                 <Link color="var(--on-surface-muted)" size={48} />
+               ) : asset.mime_type === 'application/x-widget-html' ? (
+                 <Code color="var(--on-surface-muted)" size={48} />
+               ) : asset.mime_type === 'application/x-widget-flow' ? (
+                 <Clock color="var(--on-surface-muted)" size={48} />
                ) : (
-                 <LayoutTemplate color="#ffffff" size={48} />
+                 <LayoutTemplate color="var(--on-surface-muted)" size={48} />
                )}
              </div>
           </div>
@@ -95,7 +106,7 @@ export function AssetCard({
         )}
         
         <div className={styles.mimeChip}>
-          {isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+          {asset.mime_type === 'application/x-widget-flow' ? 'CLOAK' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
         </div>
       </div>
 
