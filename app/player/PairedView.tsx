@@ -4,7 +4,7 @@ import { useState } from 'react'
 import PlaylistEngine from './PlaylistEngine'
 import styles from './player.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
-import type { RealtimeChannel } from './types'
+import { X, Monitor, RefreshCw, Volume2, VolumeX, Unlink } from 'lucide-react'
 
 interface PairedViewProps {
   contentType: string | null
@@ -29,13 +29,16 @@ export default function PairedView({
   supabase, onUnpair, onOrientationChange, onMuteToggle,
 }: PairedViewProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [showOrientationModal, setShowOrientationModal] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
       await document.documentElement.requestFullscreen().catch(console.error)
+      setIsFullscreen(true)
     } else {
       await document.exitFullscreen().catch(console.error)
+      setIsFullscreen(false)
     }
   }
 
@@ -56,6 +59,22 @@ export default function PairedView({
 
   const mediaStyle: React.CSSProperties = {
     width: '100%', height: '100%', objectFit: fit,
+  }
+
+  // ── Rotation transform only for the signage media viewport (upright controls) ──
+  const isRotated = orientation === 90 || orientation === 270
+
+  const contentWrapperStyle: React.CSSProperties = {
+    width: isRotated ? '100vh' : '100vw',
+    height: isRotated ? '100vw' : '100vh',
+    transform: `rotate(${orientation}deg)`,
+    transformOrigin: 'center center',
+    position: 'absolute',
+    top: '50%', left: '50%',
+    marginLeft: isRotated ? '-50vh' : '-50vw',
+    marginTop: isRotated ? '-50vw' : '-50vh',
+    overflow: 'hidden',
+    backgroundColor: '#000000',
   }
 
   // ── Content renderer ─────────────────────────────────────────────
@@ -157,11 +176,15 @@ export default function PairedView({
 
   return (
     <div className={styles.pairedView} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#000' }}>
-      <div style={containerStyle}>
-        {content}
+      
+      {/* ── Signage Screen Output (Rotated according to display configuration) ── */}
+      <div style={contentWrapperStyle}>
+        <div style={containerStyle}>
+          {content}
+        </div>
       </div>
 
-      {/* ── Controls overlay ─────────────────────────────────────── */}
+      {/* ── Upright Controls Overlay (Outside rotated viewport) ── */}
       <div className={styles.controlsOverlay}>
         <button className={styles.iconButton} onClick={toggleFullscreen} title="Toggle Fullscreen">
           {isFullscreen ? (
@@ -181,32 +204,33 @@ export default function PairedView({
         </button>
       </div>
 
-      {/* ── Sidebar ─────────────────────────────────────────────── */}
+      {/* ── Upright Sidebar Navigation Menu ── */}
       {isSidebarOpen && (
         <>
           <div className={styles.sidebarBackdrop} onClick={() => setIsSidebarOpen(false)} />
           <div className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
-              <h2>Nu<span>Exis</span></h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src="/Nuexis-logo.png" 
+                  alt="NuExis Logo" 
+                  style={{ width: '180px', height: '50px', objectFit: 'contain', objectPosition: 'left center' }} 
+                />
+              </div>
               <button className={styles.closeButton} onClick={() => setIsSidebarOpen(false)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X size={20} />
               </button>
             </div>
             <div className={styles.sidebarContent}>
               <div className={styles.menuItem}>
                 <span className={styles.menuItemLabel}>Device Actions</span>
                 <button className={styles.menuButton} onClick={() => window.location.assign(window.location.pathname)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                  </svg>
+                  <RefreshCw size={18} style={{ marginRight: '4px' }} />
                   Refresh
                 </button>
                 <button className={`${styles.menuButton} ${styles.danger}`} onClick={onUnpair}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <Unlink size={18} style={{ marginRight: '4px' }} />
                   Unpair Device
                 </button>
               </div>
@@ -216,16 +240,12 @@ export default function PairedView({
                 <button className={styles.menuButton} onClick={onMuteToggle}>
                   {isMuted ? (
                     <>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6L5.25 9v6h3.53l3.97 3.97v-13.94l-3.97 3.97z" />
-                      </svg>
+                      <VolumeX size={18} style={{ marginRight: '4px' }} />
                       Unmute
                     </>
                   ) : (
                     <>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
-                      </svg>
+                      <Volume2 size={18} style={{ marginRight: '4px' }} />
                       Mute
                     </>
                   )}
@@ -234,16 +254,60 @@ export default function PairedView({
 
               <div className={styles.menuItem}>
                 <span className={styles.menuItemLabel}>Orientation</span>
-                <select className={styles.menuSelect} value={orientation} onChange={(e) => onOrientationChange(Number(e.target.value))}>
-                  <option value={0}>0° (Landscape)</option>
-                  <option value={90}>90° (Portrait CW)</option>
-                  <option value={180}>180° (Landscape Flipped)</option>
-                  <option value={270}>270° (Portrait CCW)</option>
-                </select>
+                <button 
+                  className={styles.menuButton} 
+                  onClick={() => setShowOrientationModal(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
+                >
+                  <Monitor size={18} />
+                  {orientation === 0 && '0° — Landscape'}
+                  {orientation === 90 && '90° — Portrait CW'}
+                  {orientation === 180 && '180° — Landscape Flipped'}
+                  {orientation === 270 && '270° — Portrait CCW'}
+                </button>
               </div>
             </div>
           </div>
         </>
+      )}
+
+      {/* ── Remote Friendly Landscape Orientation List Popup Modal ── */}
+      {showOrientationModal && (
+        <div className={styles.popupOverlay} onClick={() => setShowOrientationModal(false)}>
+          <div className={styles.popupContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.popupHeader}>
+              <h3 className={styles.popupTitle}>Select Screen Orientation</h3>
+              <button className={styles.popupCloseBtn} onClick={() => setShowOrientationModal(false)} aria-label="Close selector">
+                <X size={18} />
+              </button>
+            </div>
+            <div className={styles.popupList}>
+              {[
+                { val: 0, label: '0° — Landscape' },
+                { val: 90, label: '90° — Portrait CW' },
+                { val: 180, label: '180° — Landscape Flipped' },
+                { val: 270, label: '270° — Portrait CCW' }
+              ].map((opt) => (
+                <button 
+                  key={opt.val} 
+                  className={`${styles.orientationRowBtn} ${orientation === opt.val ? styles.activeRowBtn : ''}`}
+                  onClick={() => {
+                    onOrientationChange(opt.val)
+                    setShowOrientationModal(false)
+                  }}
+                  tabIndex={0}
+                >
+                  <span className={styles.orientationRowLabel}>{opt.label}</span>
+                  {orientation === opt.val && (
+                    <svg className={styles.checkmarkIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ width: '18px', height: '18px', color: '#3b82f6' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

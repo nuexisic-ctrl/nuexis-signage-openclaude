@@ -22,9 +22,15 @@ export interface Asset {
   created_at?: string
 }
 
+export interface PlaylistItem {
+  duration_seconds: number
+  widget_type?: string | null
+  assets?: { mime_type: string } | null
+}
+
 export interface Playlist {
   id: string
   name: string
   created_at?: string | null
-  playlist_items?: { duration_seconds: number }[]
+  playlist_items?: PlaylistItem[]
 }

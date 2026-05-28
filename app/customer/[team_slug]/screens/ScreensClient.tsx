@@ -495,7 +495,7 @@ export default function ScreensClient({
                       <th>Screen Name</th>
                       <th>Status</th>
                       <th>Last Seen</th>
-                      <th>Current Playlist</th>
+                      <th>Playing Now</th>
                       <th>Actions</th>
                     </tr>
                   </thead>

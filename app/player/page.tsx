@@ -539,17 +539,11 @@ export default function PlayerPage() {
   }
 
   // ── Render ──────────────────────────────────────────────────────────
-  const isRotated = orientation === 90 || orientation === 270
-
   const rootStyle: React.CSSProperties = {
-    width: isRotated ? '100vh' : '100vw',
-    height: isRotated ? '100vw' : '100vh',
-    transform: `rotate(${orientation}deg)`,
-    transformOrigin: 'center center',
+    width: '100vw',
+    height: '100vh',
     position: 'fixed',
-    top: '50%', left: '50%',
-    marginLeft: isRotated ? '-50vh' : '-50vw',
-    marginTop: isRotated ? '-50vw' : '-50vh',
+    top: 0, left: 0,
     overflow: 'hidden',
     backgroundColor: '#07111f',
   }
