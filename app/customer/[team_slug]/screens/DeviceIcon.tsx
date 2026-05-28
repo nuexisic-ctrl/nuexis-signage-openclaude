@@ -118,9 +118,9 @@ export function getClockStyleName(filePathOrConfig: string): string {
 // ── Human-readable label (column text) ────────────────────────────────────────
 export function getContentLabel(device: Device, assets: Asset[] = [], playlists: Playlist[] = []) {
   if (device.content_type === 'Playlist') {
-    if (!device.playlist_id) return 'No Content Loop selected'
+    if (!device.playlist_id) return 'No Playlist selected'
     const pl = playlists.find(p => p.id === device.playlist_id)
-    return pl ? pl.name : 'Unknown Content Loop'
+    return pl ? pl.name : 'Unknown Playlist'
   }
   if (!device.asset_id) return 'No content assigned'
   const asset = assets.find(a => a.id === device.asset_id)
@@ -191,13 +191,13 @@ export function buildTooltipInfo(
     const itemCount = items.length
 
     return {
-      headline: 'Playing Content Loop',
+      headline: 'Playing Playlist',
       meta: [
-        { label: 'Name', value: pl?.name ?? 'Unknown Content Loop' },
+        { label: 'Name', value: pl?.name ?? 'Unknown Playlist' },
         { label: 'Loop Stats', value: `${itemCount} item${itemCount !== 1 ? 's' : ''} / ${formatDuration(totalSec)}` },
         { label: 'Content Type', value: describePrimaryPlaylistContent(items) },
       ],
-      note: 'This content loop plays continuously on the player device.',
+      note: 'This playlist plays continuously on the player device.',
     }
   }
 

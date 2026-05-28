@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X, Monitor, Smartphone, Maximize, Clock } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { X, Monitor, Smartphone, Maximize, Clock, ChevronDown } from 'lucide-react'
 import styles from './Modal.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 
@@ -10,6 +10,8 @@ interface FlowWidgetModalProps {
   onSubmit: (name: string, config: {
     style: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist'
     showSeconds: boolean
+    showDate: boolean
+    use24Hour: boolean
     dateFormat: string
   }) => void
   isSubmitting: boolean
@@ -33,6 +35,123 @@ const DATE_FORMATS_WHITELIST = [
   '2024-01-31'
 ] as const
 
+// ── Reusable custom dropdown with hover preview ─────────────────────────
+function HoverPreviewSelect<T extends string>({
+  value,
+  options,
+  onChange,
+  onHoverChange,
+}: {
+  value: T
+  options: readonly { value: T; label: string }[]
+  onChange: (value: T) => void
+  onHoverChange: (value: T | null) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        onHoverChange(null)
+        setOpen(false)
+      }
+    }
+    setTimeout(() => document.addEventListener('mousedown', handler))
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open, onHoverChange])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onHoverChange(null)
+        setOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open, onHoverChange])
+
+  const debouncedHover = useCallback((val: T | null) => {
+    clearTimeout(hoverTimeoutRef.current)
+    hoverTimeoutRef.current = setTimeout(() => onHoverChange(val), 120)
+  }, [onHoverChange])
+
+  const selectedLabel = options.find(o => o.value === value)?.label ?? value
+  const triggerStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '10px 14px',
+    borderRadius: '8px',
+    border: '1.5px solid var(--outline-variant)',
+    background: 'var(--surface-container-lowest)',
+    color: 'var(--on-surface)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.92rem',
+    outline: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+  }
+  const menuStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: 'calc(100% + 4px)',
+    left: 0,
+    right: 0,
+    background: 'var(--surface-lowest)',
+    border: '1px solid var(--outline-variant)',
+    borderRadius: '10px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+    zIndex: 50,
+    overflow: 'hidden',
+  }
+  const itemStyle = (isSelected: boolean): React.CSSProperties => ({
+    width: '100%',
+    padding: '10px 14px',
+    border: 'none',
+    background: isSelected ? 'var(--surface-container)' : 'transparent',
+    color: 'var(--on-surface)',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.92rem',
+    cursor: 'pointer',
+    textAlign: 'left' as const,
+    display: 'block',
+  })
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button type="button" onClick={() => setOpen(v => !v)} style={triggerStyle}>
+        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedLabel}</span>
+        <ChevronDown size={14} style={{ opacity: 0.6, flexShrink: 0 }} />
+      </button>
+      {open && (
+        <div style={menuStyle}>
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); onHoverChange(null); setOpen(false) }}
+              onMouseEnter={() => debouncedHover(opt.value)}
+              onMouseLeave={() => debouncedHover(null)}
+              style={itemStyle(opt.value === value)}
+              onMouseOver={e => { if (opt.value !== value) e.currentTarget.style.background = 'var(--surface-low)' }}
+              onMouseOut={e => { if (opt.value !== value) e.currentTarget.style.background = 'transparent' }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Modal component ────────────────────────────────────────────────────
 export default function FlowWidgetModal({
   onClose,
   onSubmit,
@@ -41,11 +160,22 @@ export default function FlowWidgetModal({
   const [name, setName] = useState('')
   const [style, setStyle] = useState<typeof STYLES_WHITELIST[number]['id']>('classic-digital')
   const [showSeconds, setShowSeconds] = useState(true)
+  const [showDate, setShowDate] = useState(true)
+  const [use24Hour, setUse24Hour] = useState(false)
   const [dateFormat, setDateFormat] = useState<typeof DATE_FORMATS_WHITELIST[number]>('January 01, 2024')
+
+  // Hover preview overrides — applied to live preview while hovering, cleared on revert
+  const [previewOverride, setPreviewOverride] = useState<{ style?: string; dateFormat?: string }>({})
 
   // Preview Mode: 'landscape' | 'portrait'
   const [previewMode, setPreviewMode] = useState<'landscape' | 'portrait'>('landscape')
   const [showFullscreenPreview, setShowFullscreenPreview] = useState(false)
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
 
   // Listen for Escape key to exit fullscreen preview
   useEffect(() => {
@@ -72,6 +202,8 @@ export default function FlowWidgetModal({
     onSubmit(name.trim(), {
       style: validatedStyle,
       showSeconds: !!showSeconds,
+      showDate: !!showDate,
+      use24Hour: !!use24Hour,
       dateFormat: validatedDateFormat
     })
   }
@@ -153,50 +285,22 @@ export default function FlowWidgetModal({
 
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Clock Style</label>
-                <select
+                <HoverPreviewSelect
                   value={style}
-                  onChange={e => setStyle(e.target.value as any)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1.5px solid var(--outline-variant)',
-                    background: 'var(--surface-container-lowest)',
-                    color: 'var(--on-surface)',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.92rem',
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {STYLES_WHITELIST.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                  options={STYLES_WHITELIST.map(s => ({ value: s.id, label: s.name }))}
+                  onChange={val => { setStyle(val as any); setPreviewOverride(p => ({ ...p, style: undefined })) }}
+                  onHoverChange={val => setPreviewOverride(p => ({ ...p, style: val ?? undefined }))}
+                />
               </div>
 
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Date Format</label>
-                <select
+                <HoverPreviewSelect
                   value={dateFormat}
-                  onChange={e => setDateFormat(e.target.value as any)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1.5px solid var(--outline-variant)',
-                    background: 'var(--surface-container-lowest)',
-                    color: 'var(--on-surface)',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: '0.92rem',
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {DATE_FORMATS_WHITELIST.map(f => (
-                    <option key={f} value={f}>{f}</option>
-                  ))}
-                </select>
+                  options={DATE_FORMATS_WHITELIST.map(f => ({ value: f, label: f }))}
+                  onChange={val => { setDateFormat(val as any); setPreviewOverride(p => ({ ...p, dateFormat: undefined })) }}
+                  onHoverChange={val => setPreviewOverride(p => ({ ...p, dateFormat: val ?? undefined }))}
+                />
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '6px 0' }}>
@@ -209,6 +313,32 @@ export default function FlowWidgetModal({
                 />
                 <label htmlFor="showSecondsCheckbox" style={{ fontSize: '0.9rem', color: 'var(--on-surface)', fontFamily: 'var(--font-body)', fontWeight: 500, cursor: 'pointer' }}>
                   Show Seconds
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '6px 0' }}>
+                <input
+                  type="checkbox"
+                  id="showDateCheckbox"
+                  checked={showDate}
+                  onChange={e => setShowDate(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                />
+                <label htmlFor="showDateCheckbox" style={{ fontSize: '0.9rem', color: 'var(--on-surface)', fontFamily: 'var(--font-body)', fontWeight: 500, cursor: 'pointer' }}>
+                  Show Date
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '6px 0' }}>
+                <input
+                  type="checkbox"
+                  id="use24HourCheckbox"
+                  checked={use24Hour}
+                  onChange={e => setUse24Hour(e.target.checked)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                />
+                <label htmlFor="use24HourCheckbox" style={{ fontSize: '0.9rem', color: 'var(--on-surface)', fontFamily: 'var(--font-body)', fontWeight: 500, cursor: 'pointer' }}>
+                  24-hour Format
                 </label>
               </div>
             </form>
@@ -266,7 +396,7 @@ export default function FlowWidgetModal({
                 </button>
               </div>
 
-              {/* Viewport Frame */}
+              {/* Viewport */}
               <div style={{
                 width: '100%',
                 display: 'flex',
@@ -276,59 +406,25 @@ export default function FlowWidgetModal({
                 minHeight: '420px',
                 position: 'relative'
               }}>
-                {previewMode === 'landscape' ? (
-                  /* 16:9 Smart TV Frame Simulator */
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{
-                      width: '480px',
-                      height: '270px',
-                      background: '#000000',
-                      borderRadius: '8px',
-                      border: '8px solid #222222',
-                      boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
-                      overflow: 'hidden',
-                      position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <FlowClockRenderer
-                        style={style}
-                        showSeconds={showSeconds}
-                        dateFormat={dateFormat}
-                      />
-                    </div>
-                    {/* Stand base */}
-                    <div style={{ width: '80px', height: '15px', background: '#333333', borderTop: '2px solid #555555' }} />
-                    <div style={{ width: '160px', height: '8px', background: '#222222', borderRadius: '4px' }} />
-                  </div>
-                ) : (
-                  /* 9:16 Standing Kiosk Terminal Simulator */
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{
-                      width: '225px',
-                      height: '400px',
-                      background: '#000000',
-                      borderRadius: '16px',
-                      border: '6px solid #2d2d2d',
-                      boxShadow: '0 20px 40px rgba(0,0,0,0.25)',
-                      overflow: 'hidden',
-                      position: 'relative',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <FlowClockRenderer
-                        style={style}
-                        showSeconds={showSeconds}
-                        dateFormat={dateFormat}
-                      />
-                    </div>
-                    {/* Standing support footer base */}
-                    <div style={{ width: '10px', height: '8px', background: '#333333' }} />
-                    <div style={{ width: '120px', height: '8px', background: '#1c1c1c', borderRadius: '4px 4px 0 0' }} />
-                  </div>
-                )}
+                <div style={{
+                  width: previewMode === 'landscape' ? '480px' : '225px',
+                  height: previewMode === 'landscape' ? '270px' : '400px',
+                  background: '#000000',
+                  borderRadius: '8px',
+                  border: '1px solid var(--outline-variant)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <FlowClockRenderer
+                    style={(previewOverride.style ?? style) as any}
+                    showSeconds={showSeconds}
+                    showDate={showDate}
+                    use24Hour={use24Hour}
+                    dateFormat={previewOverride.dateFormat ?? dateFormat}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -395,24 +491,21 @@ export default function FlowWidgetModal({
           justifyContent: 'center',
           animation: 'fadeIn 200ms ease-out'
         }}>
-          {/* Locked Aspect Ratio frame aligned precisely with active display mode */}
           <div style={{
-            position: 'relative',
             width: previewMode === 'landscape' ? 'min(90vw, calc((90vh * 16) / 9))' : 'min(90vw, calc((90vh * 9) / 16))',
             height: previewMode === 'landscape' ? 'min(90vh, calc((90vw * 9) / 16))' : 'min(90vh, calc((90vw * 16) / 9))',
             background: '#000000',
-            boxShadow: '0 25px 60px rgba(0,0,0,0.8)',
-            border: '2px solid rgba(255,255,255,0.05)',
-            borderRadius: '12px',
             overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}>
             <FlowClockRenderer
-              style={style}
+              style={(previewOverride.style ?? style) as any}
               showSeconds={showSeconds}
-              dateFormat={dateFormat}
+              showDate={showDate}
+              use24Hour={use24Hour}
+              dateFormat={previewOverride.dateFormat ?? dateFormat}
             />
           </div>
 

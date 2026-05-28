@@ -18,7 +18,9 @@ import { FilterSidebar } from './FilterSidebar'
 import { StatsGrid } from './StatsGrid'
 import { ScreenPreviewModal } from './ScreenPreviewModal'
 
-const RELATIVE_TIME_TICK_MS = 15 * 1000
+// Tick relative timestamps every 60s — "5 mins ago" accuracy doesn't need faster updates
+// (was 15s which caused 4 full re-renders/min of the device list for no user-visible benefit)
+const RELATIVE_TIME_TICK_MS = 60 * 1000
 const DEVICE_SELECT_FIELDS =
   'id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds'
 

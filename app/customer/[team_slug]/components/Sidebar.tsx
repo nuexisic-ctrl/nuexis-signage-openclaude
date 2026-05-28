@@ -48,7 +48,6 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
     { icon: ImageIcon,       label: 'Assets',    href: `/customer/${teamSlug}/asset` },
     { icon: ListVideo,       label: 'Playlists', href: `/customer/${teamSlug}/playlists` },
     { icon: CalendarClock,   label: 'Schedules', href: '#' },
-    { icon: LineChart,       label: 'Analytics', href: '#' },
   ]
 
 

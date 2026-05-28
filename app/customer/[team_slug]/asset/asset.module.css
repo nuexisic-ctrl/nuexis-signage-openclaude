@@ -306,6 +306,15 @@
   cursor: pointer;
 }
 
+.filterDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  display: inline-block;
+  margin-left: 4px;
+}
+
 .tableFooter {
   display: flex;
   align-items: center;

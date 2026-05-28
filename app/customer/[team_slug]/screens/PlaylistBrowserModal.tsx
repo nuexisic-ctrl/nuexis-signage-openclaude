@@ -100,7 +100,7 @@ export function PlaylistBrowserModal({
         
         <div className={styles.header}>
           <div className={styles.titleRow}>
-            <h3 className={styles.title}>Content Loop Library</h3>
+            <h3 className={styles.title}>Playlist</h3>
             <button className={styles.closeBtn} onClick={onClose} aria-label="Close browser">
               <X size={16} />
             </button>
@@ -150,7 +150,7 @@ export function PlaylistBrowserModal({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>Content Loop Name</th>
+                    <th>Playlist Name</th>
                     <th>Total Items</th>
                     <th>Total Playtime</th>
                     <th>Date Created</th>

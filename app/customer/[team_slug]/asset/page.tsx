@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getCachedUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import AssetClient from './AssetClient'
 import styles from './asset.module.css'
@@ -32,7 +32,8 @@ export default async function AssetPage({ params, searchParams }: Props) {
   if (!/^[a-z0-9-]+$/.test(team_slug)) notFound()
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // Use getCachedUser() — deduplicates the auth/v1/user call shared with middleware
+  const user = await getCachedUser()
 
   if (!user) redirect(`/customer/${team_slug}/login`)
 

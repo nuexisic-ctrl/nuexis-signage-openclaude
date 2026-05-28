@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { SupabaseClient, createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { cache } from 'react'
 import type { Database } from '@/types/supabase'
 
 export function createAdminClient() {
@@ -36,6 +37,20 @@ export async function createClient() {
     }
   )
 }
+
+/**
+ * Returns the authenticated user for the current request, deduplicating the
+ * auth/v1/user HTTP call via React's request-scoped cache().
+ *
+ * Without this, Next.js middleware + layout + page each call supabase.auth.getUser()
+ * independently, resulting in 2-3 identical round-trips to Supabase auth per navigation.
+ * With cache(), all callers within the same server render share a single result.
+ */
+export const getCachedUser = cache(async () => {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
+})
 
 export async function requireOwner(supabase: SupabaseClient<Database>, userId: string) {
   const { data: profile } = await supabase

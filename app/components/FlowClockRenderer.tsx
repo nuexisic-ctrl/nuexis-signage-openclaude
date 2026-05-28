@@ -122,6 +122,8 @@ function formatDate(date: Date, format: string): string {
 interface FlowClockRendererProps {
   style?: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist'
   showSeconds?: boolean
+  showDate?: boolean
+  use24Hour?: boolean
   dateFormat?: string
 }
 
@@ -131,6 +133,8 @@ interface FlowClockRendererProps {
 export default function FlowClockRenderer({
   style = 'classic-digital',
   showSeconds = true,
+  showDate = true,
+  use24Hour = false,
   dateFormat  = 'January 01, 2024',
 }: FlowClockRendererProps) {
 
@@ -208,11 +212,13 @@ export default function FlowClockRenderer({
   const minAngle = min * 6
   const hrAngle  = hr  * 30
 
-  const hoursRaw = time.getHours()
-  const ampm     = hoursRaw >= 12 ? 'PM' : 'AM'
-  const hours12  = hoursRaw % 12 || 12
-  const minsStr  = String(time.getMinutes()).padStart(2, '0')
-  const secsStr  = String(time.getSeconds()).padStart(2, '0')
+  const hoursRaw  = time.getHours()
+  const ampm      = hoursRaw >= 12 ? 'PM' : 'AM'
+  const hours12   = hoursRaw % 12 || 12
+  const hours24   = hoursRaw
+  const hoursStr  = use24Hour ? String(hours24).padStart(2, '0') : String(hours12)
+  const minsStr   = String(time.getMinutes()).padStart(2, '0')
+  const secsStr   = String(time.getSeconds()).padStart(2, '0')
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -228,14 +234,16 @@ export default function FlowClockRenderer({
         <div className="fck-classic-root">
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
             <h1 className="fck-classic-time">
-              {hours12}:{minsStr}
+              {hoursStr}:{minsStr}
               {showSeconds && <span className="fck-classic-secs">:{secsStr}</span>}
             </h1>
-            <span className="fck-classic-ampm">{ampm}</span>
+            {!use24Hour && <span className="fck-classic-ampm">{ampm}</span>}
           </div>
-          <p className="fck-classic-date">
-            {formatDate(time, dateFormat === 'January 01, 2024' ? 'CLASSIC_CAPS' : dateFormat)}
-          </p>
+          {showDate && (
+            <p className="fck-classic-date">
+              {formatDate(time, dateFormat === 'January 01, 2024' ? 'CLASSIC_CAPS' : dateFormat)}
+            </p>
+          )}
         </div>
       )}
 
@@ -243,12 +251,11 @@ export default function FlowClockRenderer({
       {style === 'modern-digital' && (
         <div className="fck-modern-root">
           <h1 className="fck-modern-time">
-            {hours12}:{minsStr}
+            {hoursStr}:{minsStr}
             {showSeconds && <span style={{ fontSize: '0.6em', color: '#38bdf8' }}>:{secsStr}</span>}
-            {' '}
-            <span style={{ fontSize: '0.7em', color: '#38bdf8' }}>{ampm}</span>
+            {!use24Hour && <> <span style={{ fontSize: '0.7em', color: '#38bdf8' }}>{ampm}</span></>}
           </h1>
-          <p className="fck-modern-date">{formatDate(time, dateFormat)}</p>
+          {showDate && <p className="fck-modern-date">{formatDate(time, dateFormat)}</p>}
         </div>
       )}
 
@@ -285,9 +292,11 @@ export default function FlowClockRenderer({
               <circle cx="100" cy="100" r="2.5" fill="#111" />
             </svg>
           </div>
-          <p style={{ fontSize: 'min(32px, 4.5cqmin)', fontWeight: 500, color: '#666', marginTop: '2.5cqmin', marginBottom: 0, letterSpacing: '0.04em' }}>
-            {formatDate(time, dateFormat)}
-          </p>
+          {showDate && (
+            <p style={{ fontSize: 'min(32px, 4.5cqmin)', fontWeight: 500, color: '#666', marginTop: '2.5cqmin', marginBottom: 0, letterSpacing: '0.04em' }}>
+              {formatDate(time, dateFormat)}
+            </p>
+          )}
         </div>
       )}
 
@@ -350,10 +359,15 @@ export default function FlowClockRenderer({
             alignItems: 'center', justifyContent: 'center',
             fontFamily: "'Public Sans', sans-serif",
           }}>
-            <div className="fck-mini-root">
+            <div className={showDate ? 'fck-mini-root' : ''} style={!showDate ? { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' } : {}}>
 
               {/* Clock card */}
-              <div className="fck-mini-left">
+              <div className={showDate ? 'fck-mini-left' : ''} style={!showDate ? {
+                background: '#fff', borderRadius: 'min(24px, 5cqmin)',
+                width: 'min(400px, 70cqw)', height: 'min(400px, 70cqw)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative', boxShadow: '0 10px 25px rgba(0,0,0,0.03)',
+              } : {}}>
                 <svg viewBox="0 0 200 200" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
                   {Array.from({ length: 60 }).map((_, i) => {
                     const a          = (i * 6 * Math.PI) / 180
@@ -373,7 +387,7 @@ export default function FlowClockRenderer({
                 </svg>
                 <div style={{ textAlign: 'center', zIndex: 5 }}>
                   <h1 style={{ fontSize: 'min(96px, 12cqmin)', fontWeight: 750, margin: 0, color: '#111', lineHeight: 1, fontFamily: "'Public Sans',sans-serif", letterSpacing: '-0.04em' }}>
-                    {String(hours12).padStart(2, '0')}:{minsStr}
+                    {hoursStr}:{minsStr}
                   </h1>
                   {showSeconds && (
                     <div style={{ fontSize: 'min(32px, 3.5cqmin)', fontWeight: 600, color: '#666', marginTop: '1.5cqmin', letterSpacing: '0.05em' }}>
@@ -384,43 +398,45 @@ export default function FlowClockRenderer({
               </div>
 
               {/* Calendar card */}
-              <div className="fck-mini-right">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2 style={{ margin: 0, fontSize: 'min(48px, 4.5cqmin)', fontWeight: 700, color: '#094cb2', fontFamily: "'Public Sans',sans-serif" }}>
-                    {monthNames[currentMonth]}
-                  </h2>
-                  <span style={{ fontSize: 'min(32px, 3cqmin)', fontWeight: 600, color: '#999' }}>{currentYear}</span>
+              {showDate && (
+                <div className="fck-mini-right">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ margin: 0, fontSize: 'min(48px, 4.5cqmin)', fontWeight: 700, color: '#094cb2', fontFamily: "'Public Sans',sans-serif" }}>
+                      {monthNames[currentMonth]}
+                    </h2>
+                    <span style={{ fontSize: 'min(32px, 3cqmin)', fontWeight: 600, color: '#999' }}>{currentYear}</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 'min(16px, 1.5cqmin) min(8px, 1cqmin)', textAlign: 'center' }}>
+                    {['S','M','T','W','T','F','S'].map((l, i) => (
+                      <span key={i} style={{ fontSize: 'min(28px, 2.5cqmin)', fontWeight: 600, color: '#888', paddingBottom: '4px' }}>{l}</span>
+                    ))}
+                    {cells.map((day, idx) => {
+                      if (day === null) return <div key={`e-${idx}`} />
+                      const isToday = day === currentDay
+                      return (
+                        <div key={`d-${day}`} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          height: 'min(48px, 5.5cqmin)', fontSize: 'min(32px, 3cqmin)',
+                          fontWeight: isToday ? 700 : 500, color: isToday ? '#fff' : '#333',
+                          position: 'relative'
+                        }}>
+                          {isToday && (
+                            <div style={{
+                              position: 'absolute',
+                              width: 'min(44px, 5.2cqmin)',
+                              height: 'min(44px, 5.2cqmin)',
+                              borderRadius: '50%',
+                              background: '#094cb2',
+                              zIndex: 1
+                            }} />
+                          )}
+                          <span style={{ zIndex: 2 }}>{day}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 'min(16px, 1.5cqmin) min(8px, 1cqmin)', textAlign: 'center' }}>
-                  {['S','M','T','W','T','F','S'].map((l, i) => (
-                    <span key={i} style={{ fontSize: 'min(28px, 2.5cqmin)', fontWeight: 600, color: '#888', paddingBottom: '4px' }}>{l}</span>
-                  ))}
-                  {cells.map((day, idx) => {
-                    if (day === null) return <div key={`e-${idx}`} />
-                    const isToday = day === currentDay
-                    return (
-                      <div key={`d-${day}`} style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        height: 'min(48px, 5.5cqmin)', fontSize: 'min(32px, 3cqmin)',
-                        fontWeight: isToday ? 700 : 500, color: isToday ? '#fff' : '#333',
-                        position: 'relative'
-                      }}>
-                        {isToday && (
-                          <div style={{
-                            position: 'absolute',
-                            width: 'min(44px, 5.2cqmin)',
-                            height: 'min(44px, 5.2cqmin)',
-                            borderRadius: '50%',
-                            background: '#094cb2',
-                            zIndex: 1
-                          }} />
-                        )}
-                        <span style={{ zIndex: 2 }}>{day}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
+              )}
 
             </div>
           </div>

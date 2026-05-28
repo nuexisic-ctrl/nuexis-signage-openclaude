@@ -41,6 +41,9 @@ export default function PlaylistEngine({
 
   // Use a map to store cached blob URLs
   const cacheMap = useRef<Record<string, string>>({})
+  // In-flight signing promises — prevents the same asset being signed concurrently
+  // by both cacheAssets() and PlayableItem, which caused 4-6x duplicate sign requests
+  const signingPromisesRef = useRef<Record<string, Promise<string>>>({})
 
   useEffect(() => {
     let mounted = true
@@ -103,8 +106,28 @@ export default function PlaylistEngine({
         URL.revokeObjectURL(url)
       })
       cacheMap.current = {}
+      signingPromisesRef.current = {}
     }
   }, [playlistId, supabase, hardwareId, secret])
+
+  /**
+   * Deduplicating signed URL getter — if a sign request is already in-flight for
+   * a given filePath, returns that same promise rather than firing a new RPC call.
+   * This prevents the storm of duplicate sign requests seen when cacheAssets() and
+   * PlayableItem both try to sign the same asset at the same time.
+   */
+  const getSignedMediaUrlDeduped = (filePath: string): Promise<string> => {
+    if (filePath in signingPromisesRef.current) {
+      return signingPromisesRef.current[filePath]
+    }
+    const promise = getSignedMediaUrl(filePath, hardwareId, secret).finally(() => {
+      // Remove from in-flight map once resolved or rejected so future calls
+      // (e.g. on next playlist refresh) can re-sign after the 1h URL expires
+      delete signingPromisesRef.current[filePath]
+    })
+    signingPromisesRef.current[filePath] = promise
+    return promise
+  }
 
   const cacheAssets = async (playlistItems: PlaylistItem[]) => {
     try {
@@ -119,8 +142,8 @@ export default function PlaylistEngine({
           
           let response = await cache.match(cacheKey)
           if (!response) {
-            // Get a signed URL from the private bucket
-            const url = await getSignedMediaUrl(item.assets.file_path, hardwareId, secret)
+            // Use deduplicated signing to prevent concurrent duplicate requests
+            const url = await getSignedMediaUrlDeduped(item.assets.file_path)
             response = await fetch(url, { mode: 'cors' })
             if (response.ok) {
               await cache.put(cacheKey, response.clone())
@@ -194,6 +217,7 @@ export default function PlaylistEngine({
              hardwareId={hardwareId}
              secret={secret}
              cacheMap={cacheMap.current}
+             getSignedUrl={getSignedMediaUrlDeduped}
              onComplete={() => {}} // Preload doesn't trigger advance
              isActive={false}
            />
@@ -211,6 +235,7 @@ export default function PlaylistEngine({
           cacheMap={cacheMap.current}
           hardwareId={hardwareId}
           secret={secret}
+          getSignedUrl={getSignedMediaUrlDeduped}
           onComplete={handleNext}
           isActive={true}
         />
@@ -219,7 +244,7 @@ export default function PlaylistEngine({
   )
 }
 
-function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId, secret, onComplete, isActive }: any) {
+function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId, secret, getSignedUrl, onComplete, isActive }: any) {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -239,12 +264,17 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
           setMediaUrl(item.assets.file_path)
         }
       } else if (item.type === 'image' || item.type === 'video') {
-        // Use cached blob if available, otherwise get a signed URL
+        // Use cached blob if available, otherwise get a deduplicated signed URL
         const cached = cacheMap[item.assets.file_path]
         if (cached) {
           if (mounted) setMediaUrl(cached)
         } else {
-          getSignedMediaUrl(item.assets.file_path, hardwareId, secret).then(url => {
+          // Use the parent's deduplicating getter so concurrent PlayableItem renders
+          // (active + preload) for the same asset don't fire two sign requests.
+          ;(getSignedUrl
+            ? getSignedUrl(item.assets.file_path)
+            : getSignedMediaUrl(item.assets.file_path, hardwareId, secret)
+          ).then((url: string) => {
             if (mounted) setMediaUrl(url)
           }).catch(console.error)
         }
@@ -375,6 +405,8 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
           <FlowClockRenderer
             style={config.style}
             showSeconds={config.showSeconds}
+            showDate={config.showDate}
+            use24Hour={config.use24Hour}
             dateFormat={config.dateFormat}
           />
         </div>

@@ -49,34 +49,36 @@ export async function createPlaylist(
   const trimmedName = name.trim()
   if (!trimmedName) throw new Error('Playlist name is required.')
 
-  const { data: playlist, error: playlistError } = await supabase
-    .from('playlists')
-    .insert({ team_id: teamId, name: trimmedName })
-    .select('id')
-    .single()
+  // Use the SECURITY DEFINER RPC — runs playlist insert + item inserts in a
+  // single Postgres transaction. If items fail, the playlist header also rolls
+  // back, preventing ghost empty playlists from accumulating.
+  const itemsJson = items.map((item, index) => ({
+    type: item.type,
+    asset_id: item.asset_id || null,
+    duration_seconds: item.duration_seconds,
+    sort_order: index,
+    widget_type: item.widget_type || null,
+    widget_config: (item.widget_config || null) as import('@/types/supabase').Json,
+  }))
 
-  if (playlistError) throw new Error(playlistError.message)
+  const { data, error: rpcError } = await supabase.rpc('create_playlist_atomic', {
+    p_team_id: teamId,
+    p_name: trimmedName,
+    p_items: itemsJson,
+  })
 
-  if (items.length > 0) {
-    const itemsToInsert = items.map((item, index) => ({
-      playlist_id: playlist.id,
-      type: item.type,
-      asset_id: item.asset_id || null,
-      duration_seconds: item.duration_seconds,
-      sort_order: index,
-      widget_type: item.widget_type || null,
-      widget_config: (item.widget_config || null) as import('@/types/supabase').Json
-    }))
+  if (rpcError) {
+    console.error('[createPlaylist] RPC error:', rpcError)
+    throw new Error('Failed to create playlist. Please try again.')
+  }
 
-    const { error: itemsError } = await supabase
-      .from('playlist_items')
-      .insert(itemsToInsert)
-
-    if (itemsError) throw new Error(itemsError.message)
+  const result = data as unknown as { success: boolean; id?: string; error?: string }
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to create playlist.')
   }
 
   revalidatePath(`/customer/${teamSlug}/playlists`)
-  return playlist
+  return { id: result.id }
 }
 
 export async function deletePlaylist(playlistId: string, teamSlug: string) {

@@ -253,6 +253,10 @@ export function WidgetSelectionModal({
   onSelectHtml: () => void
   onSelectFlow: () => void
 }) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
@@ -339,6 +343,11 @@ export function YouTubeWidgetModal({
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
 
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
@@ -397,6 +406,11 @@ export function RemoteUrlWidgetModal({
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
 
   function validateAndSubmit() {
     try {
@@ -545,6 +559,11 @@ export function HtmlWidgetModal({
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [htmlErrors, setHtmlErrors] = useState<string[]>([])
   const [cssErrors, setCssErrors] = useState<string[]>([])
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
 
   useEffect(() => {
     setHtmlErrors(validateHtml(html))

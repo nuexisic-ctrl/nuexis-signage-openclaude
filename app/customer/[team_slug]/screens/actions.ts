@@ -15,7 +15,6 @@ export async function claimDevice(
 ): Promise<PairDeviceResult> {
   const trimmedCode = pairingCode.trim().replace(/\s/g, '').toUpperCase()
   const trimmedName = screenName.trim()
-  const finalName = trimmedName || `Screen ${trimmedCode}`
 
   console.log('[claimDevice] called with code:', trimmedCode, 'name:', trimmedName, 'team:', teamSlug)
 
@@ -50,7 +49,17 @@ export async function claimDevice(
     return { success: false, error: 'Too many requests. Please try again later.' }
   }
 
-  // 3. Call the SECURITY DEFINER RPC — handles rate-limiting, atomic claim,
+  // 3. Generate default name as sequential "Screen N" when name is optional
+  let finalName = trimmedName
+  if (!finalName) {
+    const { count } = await supabase
+      .from('devices')
+      .select('id', { count: 'exact', head: true })
+      .eq('team_id', teamId)
+    finalName = `Screen ${(count || 0) + 1}`
+  }
+
+  // 4. Call the SECURITY DEFINER RPC — handles rate-limiting, atomic claim,
   //    attempt tracking, and cleanup all in a single database transaction.
   //    No service-role key needed.
   const { data, error: rpcError } = await supabase.rpc('claim_device', {
@@ -212,7 +221,7 @@ export async function updateDeviceLastSeen(
   deviceIds: string[]
 ): Promise<{ success: boolean }> {
   if (!deviceIds.length) return { success: true }
-  
+
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
@@ -221,6 +230,12 @@ export async function updateDeviceLastSeen(
 
   const teamId = user.app_metadata?.team_id as string | undefined
   if (!teamId) {
+    return { success: false }
+  }
+
+  // Rate limit: max 10 calls per 60 seconds per team to prevent DoS
+  if (!(await rateLimitAction(teamId, 'updateDeviceLastSeen', 10, 60))) {
+    console.warn('[updateDeviceLastSeen] Rate limit exceeded for team:', teamId)
     return { success: false }
   }
 

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getCachedUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import PlaylistsClient from './PlaylistsClient'
 import styles from './playlists.module.css'
@@ -26,7 +26,7 @@ export default async function PlaylistsPage({ params, searchParams }: Props) {
   if (!/^[a-z0-9-]+$/.test(team_slug)) notFound()
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCachedUser()
 
   if (!user) redirect(`/customer/${team_slug}/login`)
 

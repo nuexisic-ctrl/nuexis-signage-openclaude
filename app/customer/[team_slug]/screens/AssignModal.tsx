@@ -62,16 +62,22 @@ export function AssignModal({
     }
   }, [])
 
-  // Automatically open browser modal on mount and when content type changes
-  useEffect(() => {
-    if (contentType === 'Asset') {
+  // Opens the appropriate browser when the user explicitly changes content type.
+  // This is intentionally NOT a useEffect — effects fire on mount too (and twice
+  // in React Strict Mode), which caused the browser to pop open immediately.
+  function handleContentTypeChange(newType: 'Asset' | 'Playlist' | 'Schedule') {
+    setContentType(newType)
+    if (newType === 'Asset') {
       setShowAssetBrowser(true)
       setShowPlaylistBrowser(false)
-    } else if (contentType === 'Playlist') {
+    } else if (newType === 'Playlist') {
       setShowPlaylistBrowser(true)
       setShowAssetBrowser(false)
+    } else {
+      setShowAssetBrowser(false)
+      setShowPlaylistBrowser(false)
     }
-  }, [contentType])
+  }
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose()
@@ -114,9 +120,9 @@ export function AssignModal({
           <form className={styles.form} onSubmit={handleSubmit}>
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Content Type</label>
-              <select className={styles.input} value={contentType} onChange={(e) => setContentType(e.target.value as 'Asset' | 'Playlist' | 'Schedule')}>
+              <select className={styles.input} value={contentType} onChange={(e) => handleContentTypeChange(e.target.value as 'Asset' | 'Playlist' | 'Schedule')}>
                 <option value="Asset">Asset</option>
-                <option value="Playlist">Content Loop</option>
+                <option value="Playlist">Playlist</option>
                 <option value="Schedule" disabled>Schedule (Coming Soon)</option>
               </select>
             </div>
@@ -148,7 +154,7 @@ export function AssignModal({
 
             {contentType === 'Playlist' && (
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>Selected Content Loop</label>
+                <label className={styles.label}>Selected Playlist</label>
                 <div 
                   className={styles.customSelectTrigger} 
                   onClick={() => setShowPlaylistBrowser(true)}
@@ -158,7 +164,7 @@ export function AssignModal({
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPlaylistBrowser(true); } }}
                 >
                   <span className={selectedPlaylist ? styles.selectedText : styles.placeholderText}>
-                    {selectedPlaylist ? selectedPlaylist.name : 'No Content Loop selected'}
+                    {selectedPlaylist ? selectedPlaylist.name : 'No Playlist selected'}
                   </span>
                   <button 
                     type="button" 

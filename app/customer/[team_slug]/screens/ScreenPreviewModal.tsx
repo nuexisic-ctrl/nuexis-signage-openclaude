@@ -346,6 +346,8 @@ export function ScreenPreviewModal({
           <FlowClockRenderer
             style={config.style}
             showSeconds={config.showSeconds}
+            showDate={config.showDate}
+            use24Hour={config.use24Hour}
             dateFormat={config.dateFormat}
           />
         )
@@ -392,7 +394,7 @@ export function ScreenPreviewModal({
     } else if (playlistItems.length === 0) {
       contentNode = (
         <div className={styles.emptyState}>
-          <p className={styles.emptyText}>Signage Content Loop is empty</p>
+          <p className={styles.emptyText}>Playlist is empty</p>
         </div>
       )
     } else {
@@ -420,7 +422,7 @@ export function ScreenPreviewModal({
       <div className={styles.emptyState}>
         <Tv size={36} style={{ opacity: 0.6 }} />
         <p className={styles.emptyText}>Screen Simulator Online</p>
-        <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Waiting for Asset or Content Loop assignment...</span>
+        <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Waiting for Asset or Playlist assignment...</span>
       </div>
     )
   }

@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { X, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, FileText, Video, Image as ImageIcon, Play, MoreVertical, Monitor, Link2, Code, Clock } from 'lucide-react'
 import styles from './AssetBrowserModal.module.css'
+import { FilterSidebar } from '../asset/FilterSidebar'
 
 const YoutubeIcon = ({ size = 20, ...props }: { size?: number } & React.SVGProps<SVGSVGElement>) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -26,6 +27,12 @@ export function AssetBrowserModal({
 }: AssetBrowserModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedType, setSelectedType] = useState<string>('all')
+  const [filterDatePreset, setFilterDatePreset] = useState('all')
+  const [filterStartDate, setFilterStartDate] = useState('')
+  const [filterEndDate, setFilterEndDate] = useState('')
+  const [filterSizePreset, setFilterSizePreset] = useState('all')
+  const [filterMinSize, setFilterMinSize] = useState('')
+  const [filterMaxSize, setFilterMaxSize] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('assetBrowserViewMode')
@@ -126,19 +133,68 @@ export function AssetBrowserModal({
     return 'MEDIA'
   }
 
+  // Derived: whether any filter is active
+  const isFilterActive = selectedType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
+
+  const resetFilters = () => {
+    setSelectedType('all')
+    setFilterDatePreset('all')
+    setFilterStartDate('')
+    setFilterEndDate('')
+    setFilterSizePreset('all')
+    setFilterMinSize('')
+    setFilterMaxSize('')
+    setCurrentPage(1)
+  }
+
   // Filter & Search Logic
   const filteredAssets = useMemo(() => {
+    const now = new Date()
     return assets.filter((asset) => {
-      const matchesSearch = asset.file_name.toLowerCase().includes(searchQuery.toLowerCase())
-      if (!matchesSearch) return false
+      // Search
+      if (!asset.file_name.toLowerCase().includes(searchQuery.toLowerCase())) return false
 
-      if (selectedType === 'all') return true
-      if (selectedType === 'widget') return asset.mime_type.startsWith('application/x-widget')
-      if (selectedType === 'video') return asset.mime_type.startsWith('video/')
-      if (selectedType === 'image') return asset.mime_type.startsWith('image/')
+      // Type filter
+      if (selectedType !== 'all') {
+        if (selectedType === 'widget' && !asset.mime_type.startsWith('application/x-widget')) return false
+        if (selectedType === 'video' && !asset.mime_type.startsWith('video/')) return false
+        if (selectedType === 'image' && !asset.mime_type.startsWith('image/')) return false
+      }
+
+      // Date filter
+      if (filterDatePreset !== 'all' && asset.created_at) {
+        const created = new Date(asset.created_at)
+        if (filterDatePreset === 'today') {
+          const today = new Date(); today.setHours(0,0,0,0)
+          if (created < today) return false
+        } else if (filterDatePreset === '7days') {
+          const cutoff = new Date(now.getTime() - 7 * 86400000)
+          if (created < cutoff) return false
+        } else if (filterDatePreset === '30days') {
+          const cutoff = new Date(now.getTime() - 30 * 86400000)
+          if (created < cutoff) return false
+        } else if (filterDatePreset === 'custom') {
+          if (filterStartDate && created < new Date(filterStartDate)) return false
+          if (filterEndDate && created > new Date(filterEndDate + 'T23:59:59')) return false
+        }
+      }
+
+      // Size filter
+      const bytes = asset.size_bytes ?? 0
+      const mb = bytes / (1024 * 1024)
+      if (filterSizePreset === 'under1' && mb >= 1) return false
+      if (filterSizePreset === '1to10' && (mb < 1 || mb > 10)) return false
+      if (filterSizePreset === '10to50' && (mb < 10 || mb > 50)) return false
+      if (filterSizePreset === 'custom') {
+        const min = parseFloat(filterMinSize)
+        const max = parseFloat(filterMaxSize)
+        if (!isNaN(min) && mb < min) return false
+        if (!isNaN(max) && mb > max) return false
+      }
+
       return true
     })
-  }, [assets, searchQuery, selectedType])
+  }, [assets, searchQuery, selectedType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize])
 
   // Pagination Logic
   const totalItems = filteredAssets.length
@@ -289,14 +345,15 @@ export function AssetBrowserModal({
             </div>
             
             <div className={styles.actionsRight}>
-              <button 
-                className={`${styles.filterToggleBtn} ${showFilters || selectedType !== 'all' ? styles.active : ''}`}
-                onClick={() => setShowFilters(!showFilters)}
+              <button
+                className={`${styles.filterToggleBtn} ${showFilters || isFilterActive ? styles.active : ''}`}
+                onClick={() => setShowFilters(v => !v)}
               >
                 <Filter size={14} />
                 Filters
+                {isFilterActive && <span className={styles.filterDot} />}
               </button>
-              
+
               <div className={styles.viewToggleGroup}>
                 <button
                   className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
@@ -315,25 +372,10 @@ export function AssetBrowserModal({
               </div>
             </div>
           </div>
-
-          {showFilters && (
-            <div className={styles.filtersBar}>
-              <span className={styles.filterLabel}>Filter by Type:</span>
-              <select
-                className={styles.filterSelect}
-                value={selectedType}
-                onChange={(e) => handleTypeChange(e.target.value)}
-              >
-                <option value="all">All Assets</option>
-                <option value="image">Images</option>
-                <option value="video">Videos</option>
-                <option value="widget">Widgets</option>
-              </select>
-            </div>
-          )}
         </div>
 
-        <div className={styles.body}>
+        <div className={`${styles.body} ${showFilters ? styles.bodyWithSidebar : ''}`}>
+          <div className={styles.bodyMain}>
           {paginatedAssets.length === 0 ? (
             <div className={styles.emptyState}>
               <h4 className={styles.emptyText}>No assets match your query.</h4>
@@ -426,6 +468,27 @@ export function AssetBrowserModal({
             </div>
           )}
         </div>
+
+        {showFilters && (
+          <FilterSidebar
+            filterType={selectedType}
+            setFilterType={(val) => { setSelectedType(val); setCurrentPage(1) }}
+            filterDatePreset={filterDatePreset}
+            setFilterDatePreset={(val) => { setFilterDatePreset(val); setCurrentPage(1) }}
+            filterStartDate={filterStartDate}
+            setFilterStartDate={setFilterStartDate}
+            filterEndDate={filterEndDate}
+            setFilterEndDate={setFilterEndDate}
+            filterSizePreset={filterSizePreset}
+            setFilterSizePreset={(val) => { setFilterSizePreset(val); setCurrentPage(1) }}
+            filterMinSize={filterMinSize}
+            setFilterMinSize={setFilterMinSize}
+            filterMaxSize={filterMaxSize}
+            setFilterMaxSize={setFilterMaxSize}
+            onClose={() => setShowFilters(false)}
+          />
+        )}
+      </div>
 
         <div className={styles.footer}>
           <div>

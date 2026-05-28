@@ -139,6 +139,8 @@ export default function PairedView({
           <FlowClockRenderer
             style={config.style}
             showSeconds={config.showSeconds}
+            showDate={config.showDate}
+            use24Hour={config.use24Hour}
             dateFormat={config.dateFormat}
           />
         )

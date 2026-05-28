@@ -329,6 +329,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_playlist_atomic: {
+        Args: { p_items: Json; p_name: string; p_team_id: string }
+        Returns: Json
+      }
       device_secret_matches: {
         Args: {
           p_device: Database["public"]["Tables"]["devices"]["Row"]
@@ -358,15 +362,6 @@ export type Database = {
           p_file_path: string
           p_hardware_id: string
           p_secret: string
-        }
-        Returns: string
-      }
-      get_player_signed_media_url_by_session: {
-        Args: {
-          p_device_id: string
-          p_expires_in?: number
-          p_file_path: string
-          p_session_token: string
         }
         Returns: string
       }

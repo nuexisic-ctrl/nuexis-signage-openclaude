@@ -237,6 +237,8 @@ export default function AssetClient({
   const handleCreateFlowWidget = async (name: string, config: {
     style: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist'
     showSeconds: boolean
+    showDate: boolean
+    use24Hour: boolean
     dateFormat: string
   }) => {
     setIsSubmittingWidget(true)
