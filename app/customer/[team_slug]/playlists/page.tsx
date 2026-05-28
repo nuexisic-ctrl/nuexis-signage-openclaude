@@ -48,7 +48,7 @@ export default async function PlaylistsPage({ params, searchParams }: Props) {
   // Fetch playlists
   const { data: playlistsData } = await supabase
     .from('playlists')
-    .select('id, name, created_at, updated_at')
+    .select('id, name, created_at, updated_at, playlist_items(duration_seconds)')
     .eq('team_id', profile?.team_id as string)
     .order('created_at', { ascending: false })
     .limit(100)

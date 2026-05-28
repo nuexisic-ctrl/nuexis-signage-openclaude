@@ -25,4 +25,6 @@ export interface Asset {
 export interface Playlist {
   id: string
   name: string
+  created_at?: string | null
+  playlist_items?: { duration_seconds: number }[]
 }

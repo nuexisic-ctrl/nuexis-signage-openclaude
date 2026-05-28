@@ -1,9 +1,10 @@
-import React, { useState, useTransition, useRef } from 'react'
+import React, { useState, useTransition, useRef, useEffect } from 'react'
 import { AlertTriangle, X, Tv } from 'lucide-react'
 import styles from './Modal.module.css'
 import { Device, Asset, Playlist } from './types'
 import { updateDeviceAssignment, AssignmentData } from './actions'
 import { AssetBrowserModal } from './AssetBrowserModal'
+import { PlaylistBrowserModal } from './PlaylistBrowserModal'
 
 export interface AssignModalProps {
   device: Device
@@ -46,10 +47,20 @@ export function AssignModal({
     (device.orientation as 0 | 90 | 180 | 270) || 0
   )
   const [showAssetBrowser, setShowAssetBrowser] = useState(false)
+  const [showPlaylistBrowser, setShowPlaylistBrowser] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const overlayRef = useRef<HTMLDivElement>(null)
   const selectedAsset = assets.find(a => a.id === assetId)
+  const selectedPlaylist = playlists.find(p => p.id === playlistId)
+
+  // Scroll containment hook - locks background scroll when assigning content
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose()
@@ -127,12 +138,25 @@ export function AssignModal({
             {contentType === 'Playlist' && (
               <div className={styles.fieldGroup}>
                 <label className={styles.label}>Selected Playlist</label>
-                <select className={styles.input} value={playlistId} onChange={(e) => setPlaylistId(e.target.value)}>
-                  <option value="">-- Select a playlist --</option>
-                  {playlists.map(playlist => (
-                    <option key={playlist.id} value={playlist.id}>{playlist.name}</option>
-                  ))}
-                </select>
+                <div 
+                  className={styles.customSelectTrigger} 
+                  onClick={() => setShowPlaylistBrowser(true)}
+                  tabIndex={0}
+                  role="button"
+                  aria-haspopup="dialog"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPlaylistBrowser(true); } }}
+                >
+                  <span className={selectedPlaylist ? styles.selectedText : styles.placeholderText}>
+                    {selectedPlaylist ? selectedPlaylist.name : 'No playlist selected'}
+                  </span>
+                  <button 
+                    type="button" 
+                    className={styles.browseButton}
+                    onClick={(e) => { e.stopPropagation(); setShowPlaylistBrowser(true); }}
+                  >
+                    Browse
+                  </button>
+                </div>
               </div>
             )}
 
@@ -207,6 +231,17 @@ export function AssignModal({
           onSelect={(id) => {
             setAssetId(id)
             setShowAssetBrowser(false)
+          }}
+        />
+      )}
+
+      {showPlaylistBrowser && (
+        <PlaylistBrowserModal
+          playlists={playlists}
+          onClose={() => setShowPlaylistBrowser(false)}
+          onSelect={(id) => {
+            setPlaylistId(id)
+            setShowPlaylistBrowser(false)
           }}
         />
       )}

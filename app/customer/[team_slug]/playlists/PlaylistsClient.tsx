@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, ListVideo, Trash2, X, Image as ImageIcon, Video, Clock } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Plus, ListVideo, Trash2, X, Clock, RefreshCw, LayoutGrid, List } from 'lucide-react'
 import styles from './playlists.module.css'
 import { createPlaylist, deletePlaylist, updatePlaylist, getPlaylistItems } from './actions'
 import { createClient } from '@/lib/supabase/client'
@@ -22,13 +22,57 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
   const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null)
   const [isLoadingItems, setIsLoadingItems] = useState(false)
 
+  // Premium Dashboard States
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
+  const [isMounted, setIsMounted] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showSuccessPulse, setShowSuccessPulse] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('playlistsViewMode')
+    if (saved === 'grid' || saved === 'table') {
+      setViewMode(saved)
+    }
+    setIsMounted(true)
+  }, [])
+
+  const handleSetViewMode = (mode: 'grid' | 'table') => {
+    setViewMode(mode)
+    localStorage.setItem('playlistsViewMode', mode)
+  }
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return
+    setIsRefreshing(true)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('playlists')
+        .select('id, name, created_at, updated_at, playlist_items(duration_seconds)')
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false })
+        .limit(100)
+      
+      if (!error && data) {
+        await new Promise(resolve => setTimeout(resolve, 550))
+        setPlaylists(data)
+        setShowSuccessPulse(true)
+        setTimeout(() => setShowSuccessPulse(false), 600)
+      }
+    } catch (err) {
+      console.error('Error refreshing playlists:', err)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!newPlaylistName.trim()) return
     setIsSaving(true)
     try {
       if (editingPlaylistId) {
         await updatePlaylist(editingPlaylistId, newPlaylistName, teamSlug, items)
-        setPlaylists(playlists.map(p => p.id === editingPlaylistId ? { ...p, name: newPlaylistName } : p))
         
         // Broadcast refresh command to players using this playlist
         const supabase = createClient()
@@ -44,9 +88,22 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
           }
         })
       } else {
-        const created = await createPlaylist(teamId, newPlaylistName, teamSlug, items)
-        setPlaylists([{ id: created.id, name: newPlaylistName, created_at: new Date().toISOString() }, ...playlists])
+        await createPlaylist(teamId, newPlaylistName, teamSlug, items)
       }
+
+      // Re-fetch all playlists to reflect items changes and total play times
+      const supabaseClient = createClient()
+      const { data, error } = await supabaseClient
+        .from('playlists')
+        .select('id, name, created_at, updated_at, playlist_items(duration_seconds)')
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false })
+        .limit(100)
+      
+      if (!error && data) {
+        setPlaylists(data)
+      }
+
       handleCloseModal()
     } catch (err) {
       console.error(err)
@@ -117,6 +174,24 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     setItems(newItems)
   }
 
+  // Playtime display formatting utility
+  const formatPlaytime = (seconds: number) => {
+    if (!seconds) return '0s'
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    if (m > 0) {
+      return `${m}m ${s > 0 ? `${s}s` : ''}`
+    }
+    return `${s}s`
+  }
+
+  const filteredPlaylists = useMemo(() => {
+    return playlists.filter(p => {
+      const q = searchQuery.toLowerCase()
+      return !searchQuery || p.name?.toLowerCase().includes(q)
+    })
+  }, [playlists, searchQuery])
+
   return (
     <>
       <div className={styles.topbar}>
@@ -125,6 +200,15 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
           <p className={styles.pageSubtitle}>Create and schedule dynamic playback loops</p>
         </div>
         <div className={styles.topbarActions}>
+          <button
+            className={styles.refreshBtn}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh Status"
+            title="Refresh Status"
+          >
+            <RefreshCw size={20} className={isRefreshing ? styles.spin : ''} />
+          </button>
           <button className={styles.addBtn} onClick={() => {
             setEditingPlaylistId(null)
             setNewPlaylistName('')
@@ -137,45 +221,161 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
         </div>
       </div>
 
-      {playlists.length === 0 ? (
-        <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}>
-            <ListVideo size={24} />
+      <div className={styles.mainBlockContainer}>
+        <div className={styles.controlsBar}>
+          <div className={styles.searchBox}>
+            <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <input 
+              type="text" 
+              className={styles.searchInput}
+              placeholder="Search playlists..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <h3 className={styles.emptyTitle}>No Playlists Yet</h3>
-          <p className={styles.emptyText}>Create your first playlist to mix images, videos, and dynamic widgets together.</p>
-        </div>
-      ) : (
-        <div className={styles.grid}>
-          {playlists.map((playlist) => (
-            <div key={playlist.id} className={styles.playlistCard} onClick={() => handleEdit(playlist)} style={{ cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ 
-                    width: '42px', height: '42px', borderRadius: '12px', 
-                    background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-surface-muted)'
-                  }}>
-                    <ListVideo size={20} />
-                  </div>
-                  <div>
-                    <h3 className={styles.playlistName}>{playlist.name}</h3>
-                    <div className={styles.playlistMeta}>
-                      Created {new Date(playlist.created_at).toISOString().split('T')[0]}
-                    </div>
-                  </div>
-                </div>
+          <div className={styles.controlsRight}>
+            {isMounted && (
+              <div className={styles.viewToggleGroup}>
                 <button 
-                  onClick={(e) => handleDelete(playlist.id, e)}
-                  style={{ background: 'transparent', border: 0, color: 'var(--on-surface-muted)', cursor: 'pointer', padding: '6px' }}
+                  className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
+                  onClick={() => handleSetViewMode('table')}
+                  title="Table View"
                 >
-                  <Trash2 size={18} />
+                  <List />
+                </button>
+                <button 
+                  className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                  onClick={() => handleSetViewMode('grid')}
+                  title="Grid View"
+                >
+                  <LayoutGrid />
                 </button>
               </div>
-            </div>
-          ))}
+            )}
+          </div>
         </div>
-      )}
+
+        <div className={`${styles.progressBarWrapper} ${isRefreshing ? styles.active : ''}`}>
+          <div className={styles.progressBarLine} />
+        </div>
+
+        {!isMounted ? (
+          <div className={styles.grid} style={{ opacity: 0 }}>
+            <div style={{ height: '300px' }} />
+          </div>
+        ) : filteredPlaylists.length === 0 ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>
+              <ListVideo size={24} />
+            </div>
+            <h3 className={styles.emptyTitle}>No Playlists Found</h3>
+            <p className={styles.emptyText}>
+              {playlists.length === 0 
+                ? 'Create your first playlist to mix images, videos, and dynamic widgets together.'
+                : 'No playlists matched your search criteria.'
+              }
+            </p>
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
+            {filteredPlaylists.map((playlist) => {
+              const playlistItems = playlist.playlist_items || []
+              const totalItems = playlistItems.length
+              const totalDuration = playlistItems.reduce((acc: number, item: any) => acc + (item.duration_seconds || 0), 0)
+
+              return (
+                <div key={playlist.id} className={styles.playlistCard} onClick={() => handleEdit(playlist)}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ 
+                        width: '42px', height: '42px', borderRadius: '12px', 
+                        background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-surface-muted)',
+                        flexShrink: 0
+                      }}>
+                        <ListVideo size={20} />
+                      </div>
+                      <div>
+                        <h3 className={styles.playlistName}>{playlist.name}</h3>
+                        <div className={styles.playlistMeta}>
+                          Created {new Date(playlist.created_at).toISOString().split('T')[0]}
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={(e) => handleDelete(playlist.id, e)}
+                      style={{ background: 'transparent', border: 0, color: 'var(--on-surface-muted)', cursor: 'pointer', padding: '6px', marginLeft: 'auto' }}
+                      title="Delete Playlist"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                  
+                  <div className={styles.playlistStats}>
+                    <span className={styles.statLabel}>
+                      <ListVideo size={14} style={{ marginRight: '4px' }} />
+                      {totalItems} {totalItems === 1 ? 'Item' : 'Items'}
+                    </span>
+                    <span className={styles.statDot}>•</span>
+                    <span className={styles.statLabel}>
+                      <Clock size={14} style={{ marginRight: '4px' }} />
+                      {formatPlaytime(totalDuration)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className={`${styles.tableContainer} ${showSuccessPulse ? styles.successPulse : ''}`}>
+            <table className={styles.playlistsTable}>
+              <thead className={styles.tableHeader}>
+                <tr>
+                  <th>Playlist Name</th>
+                  <th>Total Items</th>
+                  <th>Total Playtime</th>
+                  <th>Created Date</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPlaylists.map((playlist) => {
+                  const playlistItems = playlist.playlist_items || []
+                  const totalItems = playlistItems.length
+                  const totalDuration = playlistItems.reduce((acc: number, item: any) => acc + (item.duration_seconds || 0), 0)
+
+                  return (
+                    <tr key={playlist.id} className={styles.tableRow} onClick={() => handleEdit(playlist)}>
+                      <td>
+                        <div className={styles.playlistNameCell}>
+                          <div className={styles.playlistIconWrapper}>
+                            <ListVideo size={18} />
+                          </div>
+                          <span className={styles.playlistNameText}>{playlist.name}</span>
+                        </div>
+                      </td>
+                      <td>{totalItems} {totalItems === 1 ? 'item' : 'items'}</td>
+                      <td>{formatPlaytime(totalDuration)}</td>
+                      <td>{new Date(playlist.created_at).toISOString().split('T')[0]}</td>
+                      <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          onClick={(e) => handleDelete(playlist.id, e)}
+                          className={styles.deleteRowBtn}
+                          title="Delete Playlist"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {isModalOpen && (
         <div className={styles.modalOverlay}>

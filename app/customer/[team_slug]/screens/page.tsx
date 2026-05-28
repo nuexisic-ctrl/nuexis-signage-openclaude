@@ -95,7 +95,7 @@ export default async function ScreensPage({ params, searchParams }: Props) {
   const playlists = profile?.team_id
     ? (await supabase
         .from('playlists')
-        .select('id, name')
+        .select('id, name, created_at, playlist_items(duration_seconds)')
         .eq('team_id', profile.team_id)
         .order('created_at', { ascending: false })
       ).data ?? []

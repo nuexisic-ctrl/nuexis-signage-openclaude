@@ -45,6 +45,20 @@ export function AssetBrowserModal({
     localStorage.setItem('assetBrowserViewMode', mode)
   }
 
+  // Lock body scroll when modal is open, and handle Escape key to close
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
   // Generate signed URLs for Images & Videos in real-time
   useEffect(() => {
     let isCancelled = false
