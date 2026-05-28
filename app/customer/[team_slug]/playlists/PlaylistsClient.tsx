@@ -261,11 +261,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
           <div className={styles.progressBarLine} />
         </div>
 
-        {!isMounted ? (
-          <div className={styles.grid} style={{ opacity: 0 }}>
-            <div style={{ height: '300px' }} />
-          </div>
-        ) : filteredPlaylists.length === 0 ? (
+        {filteredPlaylists.length === 0 ? (
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>
               <ListVideo size={24} />
@@ -359,14 +355,16 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                       <td>{totalItems} {totalItems === 1 ? 'item' : 'items'}</td>
                       <td>{formatPlaytime(totalDuration)}</td>
                       <td>{new Date(playlist.created_at).toISOString().split('T')[0]}</td>
-                      <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                        <button 
-                          onClick={(e) => handleDelete(playlist.id, e)}
-                          className={styles.deleteRowBtn}
-                          title="Delete Playlist"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <div className={styles.actionsGroup}>
+                          <button 
+                            onClick={(e) => handleDelete(playlist.id, e)}
+                            className={styles.deleteRowBtn}
+                            title="Delete Playlist"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )

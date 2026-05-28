@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Sun, Moon, Bell, LogOut, ChevronDown } from 'lucide-react'
+import { Search, Sun, Moon, Bell, LogOut, ChevronDown, ChevronLeft } from 'lucide-react'
 import styles from './header.module.css'
 
 interface HeaderProps {
@@ -11,7 +11,6 @@ interface HeaderProps {
 
 export default function Header({ fullName, email }: HeaderProps) {
   const [isDark, setIsDark] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -20,8 +19,6 @@ export default function Header({ fullName, email }: HeaderProps) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true)
-     
     setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -45,11 +42,11 @@ export default function Header({ fullName, email }: HeaderProps) {
     }
   }, [])
 
-  const toggleTheme = () => {
-    const newTheme = !isDark
-    setIsDark(newTheme)
-    document.documentElement.setAttribute('data-theme', newTheme ? 'dark' : 'light')
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light')
+  const setTheme = (theme: 'light' | 'dark') => {
+    setIsDark(theme === 'dark')
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+    setIsDropdownOpen(false)
   }
 
   return (
@@ -71,29 +68,13 @@ export default function Header({ fullName, email }: HeaderProps) {
       </div>
 
       <div className={styles.right}>
-        <div 
-          className={styles.themeSwitcher}
-          onClick={toggleTheme}
-          title="Toggle theme"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleTheme() }}
-        >
-          <div className={`${styles.switcherOption} ${mounted && !isDark ? styles.active : ''}`}>
-            <Sun size={16} />
-          </div>
-          <div className={`${styles.switcherOption} ${mounted && isDark ? styles.active : ''}`}>
-            <Moon size={16} />
-          </div>
-        </div>
-
         <button className={styles.notificationBtn} title="Notifications">
           <Bell size={20} />
         </button>
 
         <div className={styles.profileContainer} ref={dropdownRef}>
           <button 
-            className={styles.profileBtn}
+            className={`${styles.profileBtn} ${isDropdownOpen ? styles.activeProfile : ''}`}
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             title="Profile menu"
           >
@@ -104,6 +85,37 @@ export default function Header({ fullName, email }: HeaderProps) {
 
           {isDropdownOpen && (
             <div className={styles.dropdown}>
+              <div className={styles.dropdownSection}>
+                <div className={`${styles.dropdownItem} ${styles.themeItem}`}>
+                  <div className={styles.themeItemLabel}>
+                    <div className={styles.dropdownItemContent}>
+                      {isDark ? <Moon size={16} /> : <Sun size={16} />}
+                      <span style={{ marginLeft: '8px' }}>Theme</span>
+                    </div>
+                    <ChevronLeft size={14} className={styles.submenuArrow} />
+                  </div>
+                  
+                  <div className={styles.submenu}>
+                    <button 
+                      className={`${styles.submenuItem} ${!isDark ? styles.activeSubmenu : ''}`}
+                      onClick={() => setTheme('light')}
+                    >
+                      <Sun size={14} />
+                      <span>Light</span>
+                    </button>
+                    <button 
+                      className={`${styles.submenuItem} ${isDark ? styles.activeSubmenu : ''}`}
+                      onClick={() => setTheme('dark')}
+                    >
+                      <Moon size={14} />
+                      <span>Dark</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.dropdownDivider} />
+
               <form action="/auth/signout" method="post">
                 <button type="submit" className={`${styles.dropdownItem} ${styles.logoutBtn}`}>
                   <LogOut size={16} style={{ marginRight: '8px' }} />

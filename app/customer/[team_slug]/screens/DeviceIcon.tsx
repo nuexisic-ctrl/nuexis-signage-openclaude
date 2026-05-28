@@ -66,7 +66,7 @@ export function getContentKind(
   device: Device,
   assets: Asset[] = [],
   playlists: Playlist[] = [],
-  nowMs: number = Date.now()
+  nowMs: number = 0
 ): ContentKind {
   if (device.content_type === 'Playlist' && device.playlist_id) {
     const pl = playlists.find(p => p.id === device.playlist_id)

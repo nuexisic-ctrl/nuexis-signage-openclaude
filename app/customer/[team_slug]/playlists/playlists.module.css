@@ -572,15 +572,22 @@
   color: var(--on-surface);
 }
 
+.actionsGroup {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .deleteRowBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 0;
-  background: transparent;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
   color: var(--on-surface-muted);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
@@ -588,6 +595,7 @@
 
 .deleteRowBtn:hover {
   background: var(--error-container);
+  border-color: var(--error-container);
   color: var(--error);
 }
 

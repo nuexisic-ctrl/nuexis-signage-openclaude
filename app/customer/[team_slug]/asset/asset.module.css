@@ -438,6 +438,21 @@
   100% { background-position: -200% 0; }
 }
 
+.successPulse {
+  animation: successPulseKeyframe 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes successPulseKeyframe {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.997);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* ─── Floating Upload Panel ─── */
 .uploadPanel {
   position: fixed;

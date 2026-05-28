@@ -39,6 +39,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          created_at: string
+          description: string
+          device_id: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          device_id?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          device_id?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_log_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           created_at: string

@@ -173,7 +173,7 @@ export default function ScreensClient({
     if (!isMounted || devices.length === 0) return
 
     const leftIds = devices
-      .filter(d => getLiveStatus(d) === 'online' && !onlineDeviceIds.has(d.id))
+      .filter(d => d.status === 'online' && !onlineDeviceIds.has(d.id))
       .map(d => d.id)
 
     if (leftIds.length > 0) {
@@ -448,11 +448,7 @@ export default function ScreensClient({
               <div className={styles.progressBarLine} />
             </div>
 
-            {!isMounted ? (
-              <div className={styles.grid} style={{ opacity: 0 }}>
-                <div style={{ height: '300px' }} />
-              </div>
-            ) : filteredDevices.length === 0 ? (
+            {filteredDevices.length === 0 ? (
               <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}>NX</div>
                 <h3 className={styles.emptyTitle}>No screens found</h3>

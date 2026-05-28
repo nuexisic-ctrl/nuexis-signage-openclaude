@@ -94,53 +94,10 @@
 }
 
 .themeToggle,
-.themeSwitcher,
 .notificationBtn,
 .profileBtn {
   -webkit-tap-highlight-color: transparent;
   outline: none;
-}
-
-.themeSwitcher {
-  display: flex;
-  align-items: center;
-  background: var(--surface-lowest);
-  border: 1px solid var(--outline-variant);
-  border-radius: 9999px;
-  padding: 3px;
-  cursor: pointer;
-  height: 38px;
-  width: 72px;
-  position: relative;
-  transition: border-color var(--transition-base), background-color var(--transition-base);
-}
-
-.themeSwitcher:hover {
-  border-color: var(--primary);
-}
-
-.switcherOption {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 30px;
-  border-radius: 50%;
-  color: var(--on-surface-muted);
-  transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.25s ease;
-  z-index: 2;
-}
-
-.switcherOption.active {
-  background: var(--surface-medium);
-  color: var(--on-surface-high);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-/* Light / Dark Mode Switcher Tweaks */
-:global([data-theme='dark']) .switcherOption.active {
-  background: #1e293b;
-  color: #38bdf8;
 }
 
 .notificationBtn {
@@ -184,6 +141,10 @@
   background: var(--surface-low);
 }
 
+.activeProfile {
+  background: var(--surface-low);
+}
+
 .avatar {
   width: 38px;
   height: 38px;
@@ -218,8 +179,13 @@
   transition: transform 0.2s ease, color 0.2s ease;
 }
 
-.profileBtn:hover .dropdownArrow {
+.profileBtn:hover .dropdownArrow,
+.activeProfile .dropdownArrow {
   color: var(--on-surface);
+}
+
+.activeProfile .dropdownArrow {
+  transform: rotate(180deg);
 }
 
 .dropdown {
@@ -228,11 +194,28 @@
   right: 0;
   background: var(--surface-lowest);
   border: 1px solid var(--outline-variant);
-  border-radius: 10px;
-  min-width: 164px;
+  border-radius: 12px;
+  min-width: 180px;
   padding: 6px;
   z-index: 80;
   box-shadow: var(--shadow-modal);
+  animation: dropdownFadeIn 0.2s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdownSection {
+  padding: 2px 0;
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: var(--outline-variant);
+  margin: 4px 6px;
+  opacity: 0.6;
 }
 
 .dropdownItem {
@@ -248,11 +231,88 @@
   font-family: var(--font-label);
   font-size: 0.875rem;
   font-weight: 600;
-  transition: background-color var(--transition-base);
+  transition: background-color var(--transition-base), color var(--transition-base);
+  position: relative;
 }
 
 .dropdownItem:hover {
   background: var(--surface-low);
+}
+
+.dropdownItemContent {
+  display: flex;
+  align-items: center;
+}
+
+.themeItem {
+  position: relative;
+}
+
+.themeItemLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.submenuArrow {
+  color: var(--on-surface-subtle);
+  opacity: 0.5;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.dropdownItem:hover .submenuArrow {
+  opacity: 1;
+  color: var(--primary);
+  transform: translateX(-3px);
+}
+
+.submenu {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 6px);
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  min-width: 130px;
+  padding: 4px;
+  box-shadow: var(--shadow-modal);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(8px);
+  transition: all 0.2s ease;
+}
+
+.themeItem:hover .submenu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+.submenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--on-surface);
+  cursor: pointer;
+  border-radius: 6px;
+  font-family: var(--font-label);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: background-color var(--transition-base);
+}
+
+.submenuItem:hover {
+  background: var(--surface-low);
+}
+
+.activeSubmenu {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .logoutBtn {
@@ -317,23 +377,7 @@
     gap: 6px;
   }
 
-  .iconBtn,
-  .profileBtn {
-    width: 38px;
-    height: 38px;
-  }
-
-  .themeToggle {
-    width: 42px;
-    height: 26px;
-  }
-
-  .themeToggleThumb {
-    width: 20px;
-    height: 20px;
-  }
-
-  .themeToggle.dark  .notificationBtn,
+  .notificationBtn,
   .profileBtn {
     width: 38px;
     height: 38px;

@@ -64,6 +64,7 @@ export default function AssetClient({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPosition, setMenuPosition] = useState<{ top: number, right: number } | null>(null)
   const [isMounted, setIsMounted] = useState(false)
+  const [showSuccessPulse, setShowSuccessPulse] = useState(false)
 
   const [, startTransition] = useTransition()
   const router = useRouter()
@@ -145,6 +146,8 @@ export default function AssetClient({
         router.refresh()
       })
       await new Promise(resolve => setTimeout(resolve, 600))
+      setShowSuccessPulse(true)
+      setTimeout(() => setShowSuccessPulse(false), 600)
     } catch (err) {
       console.error('[Assets] Error during refresh:', err)
     } finally {
@@ -335,13 +338,7 @@ export default function AssetClient({
 
   return (
     <div className={styles.assetArea}>
-      <div className={styles.topbar}>
-        <div>
-          <h1 className={styles.pageTitle}>Media Library</h1>
-          <p className={styles.pageSubtitle}>
-            Upload images/videos or configure interactive text widgets
-          </p>
-        </div>
+      <div className={styles.topbar} style={{ justifyContent: 'flex-end' }}>
         <div className={styles.topbarActions}>
           <button
             className={styles.refreshBtn}
@@ -401,7 +398,7 @@ export default function AssetClient({
       {showSuccess && (
         <div className={styles.successBanner} role="alert">
           <Check className={styles.successIcon} size={17} />
-          Media successfully uploaded. Ready to be assigned in the Screens page!
+          Media uploaded successfully
         </div>
       )}
 
@@ -469,9 +466,7 @@ export default function AssetClient({
               <div className={styles.progressBarLine} />
             </div>
 
-            {!isMounted ? (
-              <div className={styles.grid} style={{ opacity: 0 }}><div style={{ height: '300px' }} /></div>
-            ) : filteredAssets.length === 0 ? (
+            {filteredAssets.length === 0 ? (
               <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}><File size={28} /></div>
                 <h3 className={styles.emptyTitle}>No assets found</h3>
@@ -483,7 +478,7 @@ export default function AssetClient({
                 </p>
               </div>
             ) : viewMode === 'grid' ? (
-              <div className={styles.grid}>
+              <div className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
                 {filteredAssets.map((asset) => (
                   <AssetCard
                     key={asset.id}
@@ -516,18 +511,20 @@ export default function AssetClient({
                 ))}
               </div>
             ) : (
-              <AssetTableView
-                filteredAssets={filteredAssets}
-                openMenuId={openMenuId}
-                menuPosition={menuPosition}
-                setOpenMenuId={setOpenMenuId}
-                setMenuPosition={setMenuPosition}
-                setPreviewAsset={setPreviewAsset}
-                setRenameModalAsset={setRenameModalAsset}
-                setDeleteModalAsset={setDeleteModalAsset}
-                deletingIds={deletingIds}
-                getPreviewUrl={getPreviewUrl}
-              />
+              <div className={showSuccessPulse ? styles.successPulse : ''}>
+                <AssetTableView
+                  filteredAssets={filteredAssets}
+                  openMenuId={openMenuId}
+                  menuPosition={menuPosition}
+                  setOpenMenuId={setOpenMenuId}
+                  setMenuPosition={setMenuPosition}
+                  setPreviewAsset={setPreviewAsset}
+                  setRenameModalAsset={setRenameModalAsset}
+                  setDeleteModalAsset={setDeleteModalAsset}
+                  deletingIds={deletingIds}
+                  getPreviewUrl={getPreviewUrl}
+                />
+              </div>
             )}
             
             {assets.length > 0 && (

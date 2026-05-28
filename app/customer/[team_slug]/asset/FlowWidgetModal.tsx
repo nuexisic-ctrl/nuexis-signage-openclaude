@@ -49,7 +49,7 @@ function HoverPreviewSelect<T extends string>({
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const hoverTimeoutRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -76,8 +76,8 @@ function HoverPreviewSelect<T extends string>({
   }, [open, onHoverChange])
 
   const debouncedHover = useCallback((val: T | null) => {
-    clearTimeout(hoverTimeoutRef.current)
-    hoverTimeoutRef.current = setTimeout(() => onHoverChange(val), 120)
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+    hoverTimeoutRef.current = window.setTimeout(() => onHoverChange(val), 120)
   }, [onHoverChange])
 
   const selectedLabel = options.find(o => o.value === value)?.label ?? value

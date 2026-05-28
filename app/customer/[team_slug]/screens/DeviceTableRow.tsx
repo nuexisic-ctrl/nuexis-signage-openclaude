@@ -5,7 +5,6 @@ import { Device, Asset, Playlist, LiveStatus } from './types'
 import {
   DeviceIcon, StatusBadge, formatLastSeen,
   getContentLabel, getContentKind, ContentIcon,
-  buildTooltipInfo, ContentTooltipWrapper,
 } from './DeviceIcon'
 
 export interface DeviceTableRowProps {
@@ -41,7 +40,6 @@ export function DeviceTableRow({
 
   const kind = getContentKind(device, assets, playlists)
   const label = getContentLabel(device, assets, playlists)
-  const tooltipInfo = buildTooltipInfo(device, assets, playlists)
   const isEmpty = kind === 'empty'
 
   const kindClassMap: Record<string, string> = {
@@ -86,20 +84,18 @@ export function DeviceTableRow({
 
       {/* ── Playing Now cell ── */}
       <td className={styles.tableCell}>
-        <ContentTooltipWrapper info={tooltipInfo}>
-          <div 
-            className={`${styles.playlistCell} ${isEmpty ? styles.playlistCellEmpty : ''}`}
-            onClick={onEdit}
-            style={{ cursor: 'pointer' }}
-          >
-            <span className={`${styles.contentIconWrap} ${kindClassMap[kind] ?? ''}`}>
-              <ContentIcon kind={kind} size={16} />
-            </span>
-            <span className={isEmpty ? styles.playlistCellEmptyText : styles.playlistCellText}>
-              {label}
-            </span>
-          </div>
-        </ContentTooltipWrapper>
+        <div 
+          className={`${styles.playlistCell} ${isEmpty ? styles.playlistCellEmpty : ''}`}
+          onClick={onEdit}
+          style={{ cursor: 'pointer' }}
+        >
+          <span className={`${styles.contentIconWrap} ${kindClassMap[kind] ?? ''}`}>
+            <ContentIcon kind={kind} size={16} />
+          </span>
+          <span className={isEmpty ? styles.playlistCellEmptyText : styles.playlistCellText}>
+            {label}
+          </span>
+        </div>
       </td>
 
       <td className={styles.tableCell}>
