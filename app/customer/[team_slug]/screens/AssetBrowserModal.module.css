@@ -267,6 +267,13 @@
   flex-shrink: 0;
 }
 
+.tableThumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 7px;
+}
+
 .fileNameText {
   font-weight: 700;
   color: var(--on-surface);

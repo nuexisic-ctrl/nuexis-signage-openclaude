@@ -14,8 +14,77 @@ export type ContentKind =
   | 'html-widget'
   | 'empty'
 
-export function getContentKind(device: Device, assets: Asset[] = []): ContentKind {
-  if (device.content_type === 'Playlist' && device.playlist_id) return 'playlist'
+export function getActivePlaylistItem(
+  playlist: Playlist | undefined,
+  nowMs: number = Date.now()
+) {
+  if (!playlist || !playlist.playlist_items || playlist.playlist_items.length === 0) {
+    return { item: null, index: -1, elapsedInItem: 0, remainingInItem: 0, totalCycleSeconds: 0, elapsedInCycle: 0 }
+  }
+  const items = playlist.playlist_items
+  const totalCycleSeconds = items.reduce((acc, item) => acc + (item.duration_seconds || 10), 0)
+  if (totalCycleSeconds <= 0) {
+    return { item: items[0], index: 0, elapsedInItem: 0, remainingInItem: items[0].duration_seconds || 10, totalCycleSeconds: 0, elapsedInCycle: 0 }
+  }
+
+  // Elapsed seconds in the current cycle
+  const elapsedInCycle = (nowMs / 1000) % totalCycleSeconds
+
+  let currentStart = 0
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    const duration = item.duration_seconds || 10
+    const currentEnd = currentStart + duration
+    if (elapsedInCycle >= currentStart && elapsedInCycle < currentEnd) {
+      const elapsedInItem = elapsedInCycle - currentStart
+      const remainingInItem = duration - elapsedInItem
+      return {
+        item,
+        index: i,
+        elapsedInItem,
+        remainingInItem,
+        totalCycleSeconds,
+        elapsedInCycle
+      }
+    }
+    currentStart = currentEnd
+  }
+
+  const lastItem = items[items.length - 1]
+  const lastDuration = lastItem.duration_seconds || 10
+  return {
+    item: lastItem,
+    index: items.length - 1,
+    elapsedInItem: lastDuration,
+    remainingInItem: 0,
+    totalCycleSeconds,
+    elapsedInCycle: totalCycleSeconds
+  }
+}
+
+export function getContentKind(
+  device: Device,
+  assets: Asset[] = [],
+  playlists: Playlist[] = [],
+  nowMs: number = Date.now()
+): ContentKind {
+  if (device.content_type === 'Playlist' && device.playlist_id) {
+    const pl = playlists.find(p => p.id === device.playlist_id)
+    const { item } = getActivePlaylistItem(pl, nowMs)
+    if (!item) return 'playlist'
+    
+    if (item.widget_type === 'flow-clock' || item.assets?.mime_type === 'application/x-widget-flow') return 'clock'
+    if (item.assets) {
+      const mime = item.assets.mime_type
+      if (mime === 'application/x-widget-youtube') return 'youtube'
+      if (mime === 'application/x-widget-remote-url') return 'remote-url'
+      if (mime === 'application/x-widget-html') return 'html-widget'
+      if (mime === 'application/x-widget-flow') return 'clock'
+      if (mime.startsWith('video/')) return 'video'
+      if (mime.startsWith('image/')) return 'image'
+    }
+    return 'playlist'
+  }
   if (!device.asset_id) return 'empty'
   const asset = assets.find(a => a.id === device.asset_id)
   if (!asset) return 'empty'
@@ -49,9 +118,9 @@ export function getClockStyleName(filePathOrConfig: string): string {
 // ── Human-readable label (column text) ────────────────────────────────────────
 export function getContentLabel(device: Device, assets: Asset[] = [], playlists: Playlist[] = []) {
   if (device.content_type === 'Playlist') {
-    if (!device.playlist_id) return 'No playlist selected'
+    if (!device.playlist_id) return 'No Content Loop selected'
     const pl = playlists.find(p => p.id === device.playlist_id)
-    return pl ? pl.name : 'Unknown Playlist'
+    return pl ? pl.name : 'Unknown Content Loop'
   }
   if (!device.asset_id) return 'No content assigned'
   const asset = assets.find(a => a.id === device.asset_id)
@@ -59,7 +128,9 @@ export function getContentLabel(device: Device, assets: Asset[] = [], playlists:
   if (asset.mime_type === 'application/x-widget-youtube') return 'YouTube'
   if (asset.mime_type === 'application/x-widget-remote-url') return 'Remote URL'
   if (asset.mime_type === 'application/x-widget-html') return 'Custom HTML'
-  if (asset.mime_type === 'application/x-widget-flow') return getClockStyleName(asset.file_path)
+  if (asset.mime_type === 'application/x-widget-flow') {
+    return `${asset.file_name} (${getClockStyleName(asset.file_path)})`
+  }
   return asset.file_name
 }
 
@@ -90,17 +161,16 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// Detect dominant item type in a playlist for the "Plays" tooltip line
 function describePrimaryPlaylistContent(items: Playlist['playlist_items']): string {
   if (!items || items.length === 0) return 'No items'
   const kinds: Record<string, number> = {}
   for (const item of items) {
     let kind = 'Other'
-    if (item.widget_type === 'flow-clock' || item.assets?.mime_type === 'application/x-widget-flow') kind = 'Clock widgets'
-    else if (item.assets?.mime_type?.startsWith('video/')) kind = 'Videos'
-    else if (item.assets?.mime_type?.startsWith('image/')) kind = 'Images'
-    else if (item.assets?.mime_type === 'application/x-widget-youtube') kind = 'YouTube streams'
-    else if (item.assets?.mime_type === 'application/x-widget-remote-url') kind = 'Remote URLs'
+    if (item.widget_type === 'flow-clock' || item.assets?.mime_type === 'application/x-widget-flow') kind = 'Clock'
+    else if (item.assets?.mime_type?.startsWith('video/')) kind = 'Video'
+    else if (item.assets?.mime_type?.startsWith('image/')) kind = 'Image'
+    else if (item.assets?.mime_type === 'application/x-widget-youtube') kind = 'YouTube'
+    else if (item.assets?.mime_type === 'application/x-widget-remote-url') kind = 'Remote URL'
     else if (item.assets?.mime_type === 'application/x-widget-html') kind = 'Custom HTML'
     kinds[kind] = (kinds[kind] || 0) + 1
   }
@@ -114,34 +184,32 @@ export function buildTooltipInfo(
   assets: Asset[],
   playlists: Playlist[]
 ): ContentTooltipInfo {
-  const kind = getContentKind(device, assets)
-
-  // ── Playlist ──
-  if (kind === 'playlist') {
+  if (device.content_type === 'Playlist') {
     const pl = playlists.find(p => p.id === device.playlist_id)
     const items = pl?.playlist_items ?? []
-    const totalSec = items.reduce((acc, it) => acc + (it.duration_seconds || 0), 0)
+    const totalSec = items.reduce((acc, it) => acc + (it.duration_seconds || 10), 0)
     const itemCount = items.length
+
     return {
-      headline: 'Playing a Playlist',
+      headline: 'Playing Content Loop',
       meta: [
-        { label: 'Name', value: pl?.name ?? 'Unknown Playlist' },
-        { label: 'Items', value: `${itemCount} item${itemCount !== 1 ? 's' : ''}` },
-        { label: 'Cycle time', value: itemCount > 0 ? formatDuration(totalSec) : 'No items' },
-        { label: 'Content', value: describePrimaryPlaylistContent(items) },
+        { label: 'Name', value: pl?.name ?? 'Unknown Content Loop' },
+        { label: 'Loop Stats', value: `${itemCount} item${itemCount !== 1 ? 's' : ''} / ${formatDuration(totalSec)}` },
+        { label: 'Content Type', value: describePrimaryPlaylistContent(items) },
       ],
-      note: 'Playlist loops continuously on the player device.',
+      note: 'This content loop plays continuously on the player device.',
     }
   }
 
   const asset = assets.find(a => a.id === device.asset_id)
+  const kind = getContentKind(device, assets, playlists)
 
   // ── Empty ──
   if (kind === 'empty' || !asset) {
     return {
       headline: 'No Content Assigned',
       meta: [],
-      note: 'Click Edit to assign content to this screen.',
+      note: 'Click here or Edit to assign content to this screen.',
     }
   }
 
@@ -150,11 +218,10 @@ export function buildTooltipInfo(
     return {
       headline: 'Displaying an Image',
       meta: [
-        { label: 'File', value: asset.file_name },
-        { label: 'Type', value: asset.mime_type },
+        { label: 'File Name', value: asset.file_name },
+        { label: 'MIME Type', value: asset.mime_type },
         { label: 'Size', value: formatBytes(asset.size_bytes) },
       ],
-      note: 'Image is shown statically on the player device.',
     }
   }
 
@@ -163,11 +230,11 @@ export function buildTooltipInfo(
     return {
       headline: 'Playing a Video',
       meta: [
-        { label: 'File', value: asset.file_name },
-        { label: 'Type', value: asset.mime_type },
+        { label: 'File Name', value: asset.file_name },
+        { label: 'MIME Type', value: asset.mime_type },
         { label: 'Size', value: formatBytes(asset.size_bytes) },
       ],
-      note: 'Video loops automatically on the player device.',
+      note: 'This video loops automatically on the player device.',
     }
   }
 
@@ -177,10 +244,9 @@ export function buildTooltipInfo(
     return {
       headline: 'Showing a Clock',
       meta: [
-        { label: 'Style', value: clockStyle },
-        { label: 'Widget', value: 'Flow Clock' },
+        { label: 'Clock Style', value: clockStyle },
       ],
-      note: 'Live clock updates every second on the player device.',
+      note: 'This clock updates every second on the player device.',
     }
   }
 
@@ -190,9 +256,8 @@ export function buildTooltipInfo(
       headline: 'Streaming YouTube',
       meta: [
         { label: 'URL', value: asset.file_name },
-        { label: 'Type', value: 'YouTube Embed' },
+        { label: 'Embed Type', value: 'YouTube Embed' },
       ],
-      note: 'Embedded YouTube stream plays on the player device.',
     }
   }
 
@@ -202,9 +267,8 @@ export function buildTooltipInfo(
       headline: 'Loading Remote URL',
       meta: [
         { label: 'URL', value: asset.file_name },
-        { label: 'Type', value: 'Web Page Embed' },
+        { label: 'Embed Type', value: 'Web Page Embed' },
       ],
-      note: 'Remote webpage is embedded live on the player device.',
     }
   }
 
@@ -213,10 +277,9 @@ export function buildTooltipInfo(
     return {
       headline: 'Running Custom HTML',
       meta: [
-        { label: 'Name', value: asset.file_name },
-        { label: 'Type', value: 'Custom HTML Widget' },
+        { label: 'Widget Name', value: asset.file_name },
       ],
-      note: 'HTML widget renders interactively on the player device.',
+      note: 'This custom HTML widget renders interactively on the player device.',
     }
   }
 
@@ -299,19 +362,38 @@ export function ContentTooltipWrapper({ info, children }: ContentTooltipProps) {
   const triggerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
 
   const show = () => {
     if (!triggerRef.current) return
-    const rect = triggerRef.current.getBoundingClientRect()
-    setPos({
-      top: rect.bottom + window.scrollY + 8,
-      left: rect.left + window.scrollX,
-    })
-    setVisible(true)
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    
+    timeoutRef.current = setTimeout(() => {
+      if (!triggerRef.current) return
+      const rect = triggerRef.current.getBoundingClientRect()
+      setPos({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX,
+      })
+      setVisible(true)
+    }, 250) // Ideal amount of hover delay (250ms)
   }
-  const hide = () => setVisible(false)
+
+  const hide = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+    setVisible(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [])
 
   // Reposition if tooltip overflows right edge
   useEffect(() => {

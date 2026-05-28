@@ -104,7 +104,7 @@ export default function FlowWidgetModal({
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Clock size={22} color="var(--primary)" />
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)', fontWeight: 600 }}>Create Cloak</h2>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)', fontWeight: 600 }}>Create Clock Widget</h2>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>Deploy elegant, sandboxed, high-performance clocks on your displays.</p>
               </div>
             </div>
@@ -136,7 +136,7 @@ export default function FlowWidgetModal({
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="e.g. Lobby Central Cloak"
+                  placeholder="e.g. Lobby Central Clock"
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -208,7 +208,7 @@ export default function FlowWidgetModal({
                   style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
                 />
                 <label htmlFor="showSecondsCheckbox" style={{ fontSize: '0.9rem', color: 'var(--on-surface)', fontFamily: 'var(--font-body)', fontWeight: 500, cursor: 'pointer' }}>
-                  Show Seconds (sweeping animations at 60 fps)
+                  Show Seconds
                 </label>
               </div>
             </form>

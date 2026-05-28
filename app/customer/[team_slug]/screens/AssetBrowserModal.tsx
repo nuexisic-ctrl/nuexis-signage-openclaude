@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
-import { X, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, FileText, Video, Image as ImageIcon, Play, MoreVertical, Monitor, Link2 } from 'lucide-react'
+import { X, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, FileText, Video, Image as ImageIcon, Play, MoreVertical, Monitor, Link2, Code, Clock } from 'lucide-react'
 import styles from './AssetBrowserModal.module.css'
 
 const YoutubeIcon = ({ size = 20, ...props }: { size?: number } & React.SVGProps<SVGSVGElement>) => (
@@ -169,16 +169,19 @@ export function AssetBrowserModal({
     const previewUrl = previewUrls[asset.file_path]
 
     if (isWidget) {
-      if (asset.file_name.toLowerCase().includes('kilo') || asset.file_name.toLowerCase().includes('link') || asset.mime_type === 'application/x-widget-remote-url') {
-        return (
-          <div className={styles.cardPreviewBox} style={{ background: 'var(--surface-low)' }}>
-            <Link2 size={36} className={styles.cardPreviewIcon} style={{ color: 'var(--on-surface-muted)' }} />
-          </div>
-        )
-      }
       return (
-        <div className={styles.cardPreviewBox} style={{ background: 'var(--surface-low)' }}>
-          <YoutubeIcon size={36} className={styles.cardPreviewIcon} style={{ color: 'var(--on-surface-muted)' }} />
+        <div className={styles.cardPreviewBox} style={{ background: 'var(--surface-low)', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {asset.mime_type === 'application/x-widget-youtube' ? (
+            <YoutubeIcon size={72} style={{ stroke: '#ff0000', color: '#ff0000' }} />
+          ) : asset.mime_type === 'application/x-widget-remote-url' ? (
+            <Link2 size={72} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
+          ) : asset.mime_type === 'application/x-widget-html' ? (
+            <Code size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
+          ) : asset.mime_type === 'application/x-widget-flow' ? (
+            <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+          ) : (
+            <LayoutGrid size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
+          )}
         </div>
       )
     }
@@ -228,15 +231,35 @@ export function AssetBrowserModal({
     const isWidget = asset.mime_type.startsWith('application/x-widget')
     const isVideo = asset.mime_type.startsWith('video/')
     const isImage = asset.mime_type.startsWith('image/')
+    const previewUrl = previewUrls[asset.file_path]
 
     if (isWidget) {
-      if (asset.file_name.toLowerCase().includes('kilo') || asset.file_name.toLowerCase().includes('link') || asset.mime_type === 'application/x-widget-remote-url') {
-        return <Link2 size={18} />
+      if (asset.mime_type === 'application/x-widget-youtube') {
+        return <YoutubeIcon size={18} style={{ stroke: '#ff0000', color: '#ff0000' }} />
       }
-      return <YoutubeIcon size={18} />
+      if (asset.mime_type === 'application/x-widget-remote-url') {
+        return <Link2 size={18} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
+      }
+      if (asset.mime_type === 'application/x-widget-html') {
+        return <Code size={18} style={{ stroke: '#10b981', color: '#10b981' }} />
+      }
+      if (asset.mime_type === 'application/x-widget-flow') {
+        return <Clock size={18} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+      }
+      return <LayoutGrid size={18} style={{ stroke: '#a855f7', color: '#a855f7' }} />
     }
-    if (isVideo) return <Video size={18} />
-    if (isImage) return <ImageIcon size={18} />
+    if (isImage) {
+      if (previewUrl) {
+        return <img src={previewUrl} className={styles.tableThumbnail} alt="" />
+      }
+      return <ImageIcon size={18} />
+    }
+    if (isVideo) {
+      if (previewUrl) {
+        return <video src={`${previewUrl}#t=0.001`} className={styles.tableThumbnail} preload="metadata" muted playsInline />
+      }
+      return <Video size={18} />
+    }
     return <FileText size={18} />
   }
 

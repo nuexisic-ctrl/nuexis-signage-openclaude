@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getHardwareId } from '@/lib/utils/fingerprint'
 import {
@@ -47,7 +47,30 @@ export default function PlayerPage() {
   const teamChannelRef   = useRef<RealtimeChannel>(null)
   const reconnectPresenceRef = useRef<(() => void) | null>(null)
   const supabaseRef      = useRef(createClient())
-  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const playtimeAccumulatorRef = useRef(0)
+  const playtimeFlushCyclesRef = useRef(0)
+
+  // ── Playtime flushing ───────────────────────────────────────────────
+  const flushPlaytime = useCallback(async () => {
+    const sec = playtimeAccumulatorRef.current
+    if (sec <= 0) return
+
+    const hwId = hardwareIdRef.current
+    const devId = deviceIdRef.current
+    const secret = secretRef.current
+
+    if (devId && hwId && secret) {
+      playtimeAccumulatorRef.current = 0
+      try {
+        await incrementPlaytime(devId, hwId, secret, sec)
+      } catch (err: any) {
+        playtimeAccumulatorRef.current += sec
+        console.warn('[Player] Playtime increment deferred:', err.message || err)
+      }
+    }
+  }, [])
 
   // ── Playtime & heartbeat tracking ───────────────────────────────────
   useEffect(() => {
@@ -57,21 +80,17 @@ export default function PlayerPage() {
       const secret = secretRef.current
 
       if (stateRef.current === 'paired' && assetUrlRef.current && hwId && devId && secret) {
-        incrementPlaytime(devId, hwId, secret, 60).catch((err: any) => {
-          console.warn('[Player] Playtime increment deferred (transient network or extension override):', err.message || err)
-        })
+        playtimeAccumulatorRef.current += 60
+        playtimeFlushCyclesRef.current += 1
+
+        if (playtimeFlushCyclesRef.current >= 15) {
+          playtimeFlushCyclesRef.current = 0
+          flushPlaytime()
+        }
       }
 
       if (stateRef.current === 'paired' && teamChannelRef.current && devId) {
         const tId = teamIdRef.current
-        teamChannelRef.current.track({
-          device_id: devId,
-          online_at: new Date().toISOString(),
-        }).catch((err: unknown) => {
-          console.warn('[Player] Failed to re-track presence:', err)
-          reconnectPresenceRef.current?.()
-        })
-
         if (tId && hwId && secret) {
           sendHeartbeat(devId, tId, hwId, secret).catch((err: any) => {
             console.warn('[Player] Heartbeat deferred (transient network or extension override):', err.message || err)
@@ -81,7 +100,7 @@ export default function PlayerPage() {
     }, 60000)
 
     return () => clearInterval(playtimeInterval)
-  }, [])
+  }, [flushPlaytime])
 
   // ── Presence key init ───────────────────────────────────────────────
   useEffect(() => {
@@ -112,6 +131,8 @@ export default function PlayerPage() {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && deviceIdRef.current && teamIdRef.current) {
         reconnectPresenceRef.current?.()
+      } else if (document.visibilityState === 'hidden') {
+        flushPlaytime()
       }
     }
 
@@ -125,6 +146,7 @@ export default function PlayerPage() {
       if (teamChannelRef.current) {
         teamChannelRef.current.untrack()
       }
+      flushPlaytime()
     }
 
     document.addEventListener('visibilitychange', handleVisibility)
@@ -143,9 +165,9 @@ export default function PlayerPage() {
       window.removeEventListener('keydown', handleFocusOrActivity)
       window.removeEventListener('beforeunload', handleUnload)
       window.removeEventListener('unload', handleUnload)
-      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
+      if (pollingIntervalRef.current) clearTimeout(pollingIntervalRef.current)
     }
-  }, [])
+  }, [flushPlaytime])
 
   useEffect(() => {
     const supabase = supabaseRef.current
@@ -311,36 +333,47 @@ export default function PlayerPage() {
     }
 
     function startStatePolling() {
-      if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
+      if (pollingIntervalRef.current) {
+        clearTimeout(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
 
-      pollingIntervalRef.current = setInterval(async () => {
+      const poll = async () => {
         const hwId = hardwareIdRef.current
         const sec = secretRef.current
         if (!hwId) return
 
         try {
           const fresh = await getDeviceState(hwId, sec || undefined)
-          if (!fresh) return
+          if (fresh) {
+            if (fresh.team_id && !isPairedRef.current) {
+              isPairedRef.current = true
+              teamIdRef.current = fresh.team_id
+              setState('paired')
+              if (timerRef.current) clearTimeout(timerRef.current)
+              if (intervalRef.current) clearInterval(intervalRef.current)
+              startPresenceTracking(fresh.team_id, fresh.id)
+            }
 
-          if (fresh.team_id && !isPairedRef.current) {
-            isPairedRef.current = true
-            teamIdRef.current = fresh.team_id
-            setState('paired')
-            if (timerRef.current) clearTimeout(timerRef.current)
-            if (intervalRef.current) clearInterval(intervalRef.current)
-            startPresenceTracking(fresh.team_id, fresh.id)
+            if (!fresh.team_id && isPairedRef.current) {
+              window.location.assign(window.location.pathname)
+              return
+            }
+
+            applyDeviceState(fresh)
           }
-
-          if (!fresh.team_id && isPairedRef.current) {
-            window.location.assign(window.location.pathname)
-            return
-          }
-
-          applyDeviceState(fresh)
         } catch (err) {
           console.error('[Player] Polling error:', err)
         }
-      }, 5000)
+
+        // Schedule next fallback poll: 5 minutes base + randomized jitter (+/- 15s)
+        const nextDelay = 300000 + (Math.random() * 30 - 15) * 1000
+        pollingIntervalRef.current = setTimeout(poll, Math.max(10000, nextDelay))
+      }
+
+      // Schedule first fallback poll
+      const initialDelay = 300000 + (Math.random() * 30 - 15) * 1000
+      pollingIntervalRef.current = setTimeout(poll, Math.max(10000, initialDelay))
     }
 
     async function init() {
@@ -466,7 +499,7 @@ export default function PlayerPage() {
           if (status === 'SUBSCRIBED') {
             // Stop state polling once realtime is subscribed for paired devices (H-18)
             if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current)
+              clearTimeout(pollingIntervalRef.current)
               pollingIntervalRef.current = null
             }
 

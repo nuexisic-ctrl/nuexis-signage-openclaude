@@ -380,10 +380,10 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
         </div>
       )
     } catch (err) {
-      console.error('Failed to render Cloak widget in playlist engine:', err)
+      console.error('Failed to render Clock widget in playlist engine:', err)
       return (
         <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
-          Error rendering Cloak widget
+          Error rendering Clock widget
         </div>
       )
     }

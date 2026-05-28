@@ -12,58 +12,68 @@ const GLOBAL_CSS = `
 
 .fck-classic-root {
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:#ffffff;width:100%;height:100%;padding:24px;box-sizing:border-box;
+  background:#ffffff;width:100%;height:100%;padding:4cqmin;box-sizing:border-box;
   font-family:'Noto Serif',Georgia,serif;text-align:center;
 }
 .fck-classic-time {
-  font-size:min(15cqw,5rem);font-weight:400;margin:0;
+  font-size:min(24cqmin,7rem);font-weight:400;margin:0;
   line-height:1.1;letter-spacing:-0.02em;color:#000;
 }
 .fck-classic-secs {
   font-size:0.5em;margin-left:0.15em;font-weight:300;color:#000;
 }
 .fck-classic-ampm {
-  font-size:min(4cqw,1.3rem);font-weight:300;margin-left:12px;
+  font-size:min(6cqmin,1.8rem);font-weight:300;margin-left:12px;
   font-family:'Public Sans',sans-serif;text-transform:uppercase;color:#000;
 }
 .fck-classic-date {
-  font-size:min(3.5cqw,1.1rem);font-weight:400;margin-top:16px;margin-bottom:0;
+  font-size:min(5.5cqmin,1.6rem);font-weight:400;margin-top:2cqmin;margin-bottom:0;
   letter-spacing:0.12em;font-family:'Public Sans',sans-serif;color:#000;text-transform:uppercase;
 }
 
 .fck-modern-root {
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:#eef6fc;color:#094cb2;width:100%;height:100%;padding:24px;
-  box-sizing:border-box;font-family:'Courier New',Courier,monospace;text-align:center;
+  background:#090d16;color:#ffffff;width:100%;height:100%;padding:4cqmin;
+  box-sizing:border-box;font-family:'Public Sans',sans-serif;text-align:center;
 }
 .fck-modern-time {
-  font-size:min(13cqw,4.2rem);font-weight:bold;margin:0;line-height:1;letter-spacing:-0.03em;
+  font-size:min(22cqmin,6.5rem);font-weight:700;margin:0;line-height:1;letter-spacing:-0.03em;
 }
 .fck-modern-date {
-  font-size:min(4cqw,1.2rem);font-weight:600;margin-top:20px;margin-bottom:0;letter-spacing:0.05em;
+  font-size:min(6cqmin,1.8rem);font-weight:600;margin-top:2cqmin;margin-bottom:0;letter-spacing:0.05em;
+  color:#94a3b8;text-transform:uppercase;
 }
 
 .fck-mini-root {
-  display:flex;flex-direction:row;flex-wrap:wrap;gap:32px;width:100%;max-width:850px;
-  align-items:center;justify-content:center;font-family:'Public Sans',sans-serif;
+  display:flex;flex-direction:row;align-items:center;justify-content:center;
+  gap:4cqw;width:100%;height:100%;box-sizing:border-box;
 }
 .fck-mini-left {
-  background:#fff;border-radius:40px;
-  width:min(280px,42cqw);height:min(280px,42cqw);
-  min-width:220px;min-height:220px;
+  background:#fff;border-radius:min(24px, 5cqmin);
+  width:min(500px, 70cqh);height:min(500px, 70cqh);
   display:flex;align-items:center;justify-content:center;
   position:relative;box-shadow:0 10px 25px rgba(0,0,0,0.03);
 }
 .fck-mini-right {
-  background:#fff;border-radius:40px;padding:28px;
-  width:min(330px,48cqw);min-width:260px;
+  background:#fff;border-radius:min(24px, 5cqmin);padding:min(28px, 5cqmin);
+  width:min(550px, 80cqh);height:min(500px, 70cqh);
   box-shadow:0 10px 25px rgba(0,0,0,0.03);
-  display:flex;flex-direction:column;gap:16px;
+  display:flex;flex-direction:column;justify-content:center;gap:min(16px, 3cqh);
 }
-@container (max-width:520px){
-  .fck-mini-root{flex-direction:column!important;gap:16px!important;}
-  .fck-mini-left{width:min(150px,60cqw)!important;height:min(150px,60cqw)!important;min-width:unset!important;min-height:unset!important;border-radius:24px!important;}
-  .fck-mini-right{width:min(210px,80cqw)!important;min-width:unset!important;border-radius:24px!important;padding:16px!important;gap:8px!important;}
+
+@container (orientation: portrait) {
+  .fck-mini-root {
+    flex-direction:column!important;gap:4cqh!important;
+  }
+  .fck-mini-left {
+    width:min(450px, 75cqw)!important;height:min(450px, 75cqw)!important;
+    border-radius:16px!important;
+  }
+  .fck-mini-right {
+    width:min(500px, 80cqw)!important;height:auto!important;
+    padding:20px!important;border-radius:16px!important;
+    gap:16px!important;
+  }
 }
 `
 
@@ -208,7 +218,7 @@ export default function FlowClockRenderer({
   return (
     <div style={{
       width: '100%', height: '100%',
-      containerType: 'inline-size',
+      containerType: 'size',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       overflow: 'hidden',
     }}>
@@ -234,9 +244,9 @@ export default function FlowClockRenderer({
         <div className="fck-modern-root">
           <h1 className="fck-modern-time">
             {hours12}:{minsStr}
-            {showSeconds && <span style={{ fontSize: '0.6em' }}>:{secsStr}</span>}
+            {showSeconds && <span style={{ fontSize: '0.6em', color: '#38bdf8' }}>:{secsStr}</span>}
             {' '}
-            <span style={{ fontSize: '0.7em' }}>{ampm}</span>
+            <span style={{ fontSize: '0.7em', color: '#38bdf8' }}>{ampm}</span>
           </h1>
           <p className="fck-modern-date">{formatDate(time, dateFormat)}</p>
         </div>
@@ -246,10 +256,10 @@ export default function FlowClockRenderer({
       {style === 'classic-analog' && (
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: '#ffffff', width: '100%', height: '100%', padding: '20px', boxSizing: 'border-box',
+          background: '#ffffff', width: '100%', height: '100%', padding: '4cqmin', boxSizing: 'border-box',
           fontFamily: "'Public Sans', sans-serif",
         }}>
-          <div style={{ position: 'relative', width: 'min(75cqw, 75vh)', height: 'min(75cqw, 75vh)' }}>
+          <div style={{ position: 'relative', width: 'min(70cqw, 70cqh)', height: 'min(70cqw, 70cqh)' }}>
             <svg viewBox="0 0 200 200" style={{ width: '100%', height: '100%' }}>
               {Array.from({ length: 60 }).map((_, i) => {
                 if (i % 5 === 0) return null
@@ -275,7 +285,7 @@ export default function FlowClockRenderer({
               <circle cx="100" cy="100" r="2.5" fill="#111" />
             </svg>
           </div>
-          <p style={{ fontSize: 'min(4.5cqw,1rem)', fontWeight: 500, color: '#666', marginTop: '16px', marginBottom: 0, letterSpacing: '0.04em' }}>
+          <p style={{ fontSize: 'min(32px, 4.5cqmin)', fontWeight: 500, color: '#666', marginTop: '2.5cqmin', marginBottom: 0, letterSpacing: '0.04em' }}>
             {formatDate(time, dateFormat)}
           </p>
         </div>
@@ -285,12 +295,12 @@ export default function FlowClockRenderer({
       {style === 'modern-analog' && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: '#07111f', width: '100%', height: '100%', padding: '24px', boxSizing: 'border-box',
+          background: '#07111f', width: '100%', height: '100%', padding: '4cqmin', boxSizing: 'border-box',
         }}>
           <div style={{
-            background: '#fff', borderRadius: '36px', padding: '24px',
+            background: '#fff', borderRadius: 'min(36px, 5cqmin)', padding: 'min(24px, 4cqmin)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: 'min(75cqw,75vh)', height: 'min(75cqw,75vh)',
+            width: 'min(70cqw, 70cqh)', height: 'min(70cqw, 70cqh)',
             boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
           }}>
             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -336,7 +346,7 @@ export default function FlowClockRenderer({
         return (
           <div style={{
             display: 'flex', background: '#f4f5f7', width: '100%', height: '100%',
-            padding: 'min(4vw,36px)', boxSizing: 'border-box',
+            padding: '4cqmin', boxSizing: 'border-box',
             alignItems: 'center', justifyContent: 'center',
             fontFamily: "'Public Sans', sans-serif",
           }}>
@@ -362,11 +372,11 @@ export default function FlowClockRenderer({
                   })}
                 </svg>
                 <div style={{ textAlign: 'center', zIndex: 5 }}>
-                  <h1 style={{ fontSize: 'max(2.8rem,6cqw)', fontWeight: 750, margin: 0, color: '#111', lineHeight: 1, fontFamily: "'Public Sans',sans-serif", letterSpacing: '-0.04em' }}>
+                  <h1 style={{ fontSize: 'min(96px, 12cqmin)', fontWeight: 750, margin: 0, color: '#111', lineHeight: 1, fontFamily: "'Public Sans',sans-serif", letterSpacing: '-0.04em' }}>
                     {String(hours12).padStart(2, '0')}:{minsStr}
                   </h1>
                   {showSeconds && (
-                    <div style={{ fontSize: '1rem', fontWeight: 600, color: '#666', marginTop: '6px', letterSpacing: '0.05em' }}>
+                    <div style={{ fontSize: 'min(32px, 3.5cqmin)', fontWeight: 600, color: '#666', marginTop: '1.5cqmin', letterSpacing: '0.05em' }}>
                       {secsStr}s
                     </div>
                   )}
@@ -376,21 +386,35 @@ export default function FlowClockRenderer({
               {/* Calendar card */}
               <div className="fck-mini-right">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#094cb2', fontFamily: "'Public Sans',sans-serif" }}>
+                  <h2 style={{ margin: 0, fontSize: 'min(48px, 4.5cqmin)', fontWeight: 700, color: '#094cb2', fontFamily: "'Public Sans',sans-serif" }}>
                     {monthNames[currentMonth]}
                   </h2>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#999' }}>{currentYear}</span>
+                  <span style={{ fontSize: 'min(32px, 3cqmin)', fontWeight: 600, color: '#999' }}>{currentYear}</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '10px 4px', textAlign: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 'min(16px, 1.5cqmin) min(8px, 1cqmin)', textAlign: 'center' }}>
                   {['S','M','T','W','T','F','S'].map((l, i) => (
-                    <span key={i} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#888', paddingBottom: '4px' }}>{l}</span>
+                    <span key={i} style={{ fontSize: 'min(28px, 2.5cqmin)', fontWeight: 600, color: '#888', paddingBottom: '4px' }}>{l}</span>
                   ))}
                   {cells.map((day, idx) => {
                     if (day === null) return <div key={`e-${idx}`} />
                     const isToday = day === currentDay
                     return (
-                      <div key={`d-${day}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '24px', fontSize: '0.82rem', fontWeight: isToday ? 700 : 500, color: isToday ? '#fff' : '#333', position: 'relative' }}>
-                        {isToday && <div style={{ position: 'absolute', width: '26px', height: '26px', borderRadius: '50%', background: '#094cb2', zIndex: 1 }} />}
+                      <div key={`d-${day}`} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        height: 'min(48px, 5.5cqmin)', fontSize: 'min(32px, 3cqmin)',
+                        fontWeight: isToday ? 700 : 500, color: isToday ? '#fff' : '#333',
+                        position: 'relative'
+                      }}>
+                        {isToday && (
+                          <div style={{
+                            position: 'absolute',
+                            width: 'min(44px, 5.2cqmin)',
+                            height: 'min(44px, 5.2cqmin)',
+                            borderRadius: '50%',
+                            background: '#094cb2',
+                            zIndex: 1
+                          }} />
+                        )}
                         <span style={{ zIndex: 2 }}>{day}</span>
                       </div>
                     )

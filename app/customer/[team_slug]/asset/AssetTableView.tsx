@@ -24,6 +24,7 @@ interface AssetTableViewProps {
   setRenameModalAsset: (asset: Asset) => void
   setDeleteModalAsset: (asset: Asset) => void
   deletingIds: Set<string>
+  getPreviewUrl: (filePath: string) => string | null
 }
 
 export function AssetTableView({
@@ -36,6 +37,7 @@ export function AssetTableView({
   setRenameModalAsset,
   setDeleteModalAsset,
   deletingIds,
+  getPreviewUrl,
 }: AssetTableViewProps) {
   const supabase = createClient()
 
@@ -85,17 +87,25 @@ export function AssetTableView({
                   <div className={styles.nameCellContent}>
                     <div className={styles.deviceIconWrapper}>
                       {isImage(asset.mime_type) ? (
-                        <ImageIcon size={20} />
+                        getPreviewUrl(asset.file_path) ? (
+                          <img src={getPreviewUrl(asset.file_path)!} className={styles.tableThumbnail} alt="" />
+                        ) : (
+                          <ImageIcon size={20} />
+                        )
                       ) : isVideo(asset.mime_type) ? (
-                        <Play size={20} />
+                        getPreviewUrl(asset.file_path) ? (
+                          <video src={getPreviewUrl(asset.file_path)! + '#t=0.001'} className={styles.tableThumbnail} preload="metadata" muted playsInline />
+                        ) : (
+                          <Play size={20} />
+                        )
                       ) : asset.mime_type === 'application/x-widget-youtube' ? (
-                        <YoutubeIcon size={20} />
+                        <YoutubeIcon size={20} style={{ stroke: '#ff0000', color: '#ff0000' }} />
                       ) : asset.mime_type === 'application/x-widget-remote-url' ? (
-                        <Link size={20} />
+                        <Link size={20} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
                       ) : asset.mime_type === 'application/x-widget-html' ? (
-                        <Code size={20} />
+                        <Code size={20} style={{ stroke: '#10b981', color: '#10b981' }} />
                       ) : asset.mime_type === 'application/x-widget-flow' ? (
-                        <Clock size={20} />
+                        <Clock size={20} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
                       ) : (
                         <File size={20} />
                       )}
@@ -114,7 +124,7 @@ export function AssetTableView({
                     }}
                   >
                     {asset.mime_type === 'application/x-widget-flow'
-                      ? 'CLOAK'
+                      ? 'CLOCK'
                       : isWidget(asset.mime_type)
                       ? 'WIDGET'
                       : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}

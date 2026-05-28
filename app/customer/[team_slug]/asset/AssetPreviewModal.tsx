@@ -63,7 +63,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
         <div className={styles.modalHeader}>
           <div className={styles.modalMeta}>
             <span className={styles.modalTitle} title={asset.file_name}>{asset.file_name}</span>
-            <span className={styles.modalMime}>{isYouTube ? 'YouTube Widget' : isRemoteUrl ? 'Remote URL Widget' : isHtml ? 'Text/HTML Widget' : asset.mime_type === 'application/x-widget-flow' ? 'Cloak' : asset.mime_type}</span>
+            <span className={styles.modalMime}>{isYouTube ? 'YouTube Widget' : isRemoteUrl ? 'Remote URL Widget' : isHtml ? 'Text/HTML Widget' : asset.mime_type === 'application/x-widget-flow' ? 'Clock Widget' : asset.mime_type}</span>
           </div>
           <button className={styles.modalCloseBtn} onClick={onClose} aria-label="Close preview">
             <X size={24} />
@@ -132,8 +132,8 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
                 </div>
               )
             } catch (err) {
-              console.error('Failed to parse Cloak widget config in preview:', err)
-              return <div style={{ color: 'red', padding: '20px' }}>Error rendering Cloak</div>
+              console.error('Failed to parse Clock widget config in preview:', err)
+              return <div style={{ color: 'red', padding: '20px' }}>Error rendering Clock widget</div>
             }
           })() : (
             <div className={styles.modalUnsupported} style={{ padding: '40px', textAlign: 'center', color: '#fff' }}>

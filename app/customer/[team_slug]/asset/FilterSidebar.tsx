@@ -12,6 +12,12 @@ interface FilterSidebarProps {
   setFilterStartDate: (val: string) => void
   filterEndDate: string
   setFilterEndDate: (val: string) => void
+  filterSizePreset: string
+  setFilterSizePreset: (val: string) => void
+  filterMinSize: string
+  setFilterMinSize: (val: string) => void
+  filterMaxSize: string
+  setFilterMaxSize: (val: string) => void
   onClose: () => void
 }
 
@@ -24,6 +30,12 @@ export function FilterSidebar({
   setFilterStartDate,
   filterEndDate,
   setFilterEndDate,
+  filterSizePreset,
+  setFilterSizePreset,
+  filterMinSize,
+  setFilterMinSize,
+  filterMaxSize,
+  setFilterMaxSize,
   onClose,
 }: FilterSidebarProps) {
   return (
@@ -71,6 +83,31 @@ export function FilterSidebar({
               </div>
             </>
           )}
+
+          <div className={styles.filterGroup}>
+            <label className={styles.filterLabel}>Storage Size</label>
+            <select className={styles.filterSelect} value={filterSizePreset} onChange={e => setFilterSizePreset(e.target.value)}>
+              <option value="all">Any size</option>
+              <option value="under1">Under 1 MB</option>
+              <option value="1to10">1 MB to 10 MB</option>
+              <option value="10to50">10 MB to 50 MB</option>
+              <option value="custom">Custom Size Range</option>
+            </select>
+          </div>
+
+          {filterSizePreset === 'custom' && (
+            <>
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Min Size (MB)</label>
+                <input type="number" step="any" min="0" placeholder="e.g. 0.5" className={styles.filterInput} value={filterMinSize} onChange={e => setFilterMinSize(e.target.value)} />
+              </div>
+              
+              <div className={styles.filterGroup}>
+                <label className={styles.filterLabel}>Max Size (MB)</label>
+                <input type="number" step="any" min="0" placeholder="e.g. 15" className={styles.filterInput} value={filterMaxSize} onChange={e => setFilterMaxSize(e.target.value)} />
+              </div>
+            </>
+          )}
         </div>
         <div className={styles.sidebarFooter}>
           <button 
@@ -80,6 +117,9 @@ export function FilterSidebar({
               setFilterDatePreset('all');
               setFilterStartDate(''); 
               setFilterEndDate('');
+              setFilterSizePreset('all');
+              setFilterMinSize('');
+              setFilterMaxSize('');
             }}
           >
             Reset All Filters

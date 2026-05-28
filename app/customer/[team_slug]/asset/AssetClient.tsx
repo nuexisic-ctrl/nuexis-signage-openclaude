@@ -1,19 +1,19 @@
 'use client'
 
-import { useState, useCallback, useTransition, useEffect } from 'react'
+import { useState, useCallback, useTransition, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, File, Plus, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Check, File, Plus, RefreshCw, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { getUploadUrl, insertAsset } from './actions'
+import { insertAsset } from './actions'
 import { AssetPreviewModal } from './AssetPreviewModal'
-import { UploadZone } from './UploadZone'
 import { AssetCard } from './AssetCard'
 import { FilterSidebar } from './FilterSidebar'
 import { RenameAssetModal, DeleteAssetModal } from './ActionModals'
-import { WidgetSelectionModal, YouTubeWidgetModal, RemoteUrlWidgetModal, HtmlWidgetModal } from './WidgetModals'
-import FlowWidgetModal from './FlowWidgetModal'
 import { AssetTableView } from './AssetTableView'
 import { Asset, isImage, isVideo, isWidget } from './types'
+import { useAssetUpload } from './useAssetUpload'
+import { UploadPanel } from './UploadPanel'
+import { WidgetModalsContainer } from './WidgetModalsContainer'
 import styles from './asset.module.css'
 
 interface Props {
@@ -35,10 +35,8 @@ export default function AssetClient({
 }: Props) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets)
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const [showSuccess, setShowSuccess] = useState(false)
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
   const [showWidgetSelection, setShowWidgetSelection] = useState(false)
   const [showYouTubeConfig, setShowYouTubeConfig] = useState(false)
@@ -53,10 +51,16 @@ export default function AssetClient({
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false)
+  
+  // Advanced filters state variables
   const [filterType, setFilterType] = useState<string>('all')
   const [filterDatePreset, setFilterDatePreset] = useState<string>('all')
   const [filterStartDate, setFilterStartDate] = useState<string>('')
   const [filterEndDate, setFilterEndDate] = useState<string>('')
+  const [filterSizePreset, setFilterSizePreset] = useState<string>('all')
+  const [filterMinSize, setFilterMinSize] = useState<string>('')
+  const [filterMaxSize, setFilterMaxSize] = useState<string>('')
+
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPosition, setMenuPosition] = useState<{ top: number, right: number } | null>(null)
   const [isMounted, setIsMounted] = useState(false)
@@ -64,6 +68,27 @@ export default function AssetClient({
   const [, startTransition] = useTransition()
   const router = useRouter()
   const supabase = createClient()
+
+  // Use the extracted asset upload custom hook
+  const {
+    uploadQueue,
+    setUploadQueue,
+    isQueueCollapsed,
+    setIsQueueCollapsed,
+    showQueuePanel,
+    setShowQueuePanel,
+    uploadError,
+    showSuccess,
+    setShowSuccess,
+    handleFiles,
+  } = useAssetUpload({
+    teamId,
+    teamSlug,
+    supabase,
+    setAssets,
+    startTransition,
+    router,
+  })
 
   useEffect(() => {
     const saved = localStorage.getItem('assetsViewMode')
@@ -127,78 +152,8 @@ export default function AssetClient({
     }
   }
 
-  const handleFiles = useCallback(async (files: File[]) => {
-    if (!teamId) {
-      setUploadError('Could not determine your team. Please refresh and try again.')
-      return
-    }
-    setUploadError(null)
-    setIsUploading(true)
-    setUploadProgress(0)
-
-    const total = files.length
-    let completed = 0
-    const newAssets: Asset[] = []
-
-    for (const file of files) {
-      try {
-        const uploadUrlResult = await getUploadUrl(teamSlug, file.name, file.size)
-        if (!uploadUrlResult.success) {
-          setUploadError(`Failed to get upload URL: ${uploadUrlResult.error}`)
-          continue
-        }
-        const { path: filePath, token } = uploadUrlResult
-        const { error: storageError } = await supabase.storage
-          .from('workspace-media')
-          .uploadToSignedUrl(filePath, token, file, { cacheControl: '3600', upsert: false })
-
-        if (storageError) {
-          setUploadError(`Upload failed for "${file.name}": ${storageError.message}`)
-          continue
-        }
-
-        const result = await insertAsset(teamSlug, {
-          file_name: file.name,
-          file_path: filePath,
-          mime_type: file.type,
-          size_bytes: file.size,
-        })
-
-        if (!result.success) {
-          setUploadError(`Saved file but failed to record metadata: ${result.error}`)
-        } else {
-          newAssets.push({
-            id: result.id,
-            file_name: file.name,
-            file_path: filePath,
-            mime_type: file.type,
-            size_bytes: file.size,
-            created_at: new Date().toISOString(),
-          })
-        }
-      } catch (err) {
-        console.error('[upload] unexpected error:', err)
-        setUploadError(`Unexpected error uploading "${file.name}".`)
-      }
-      completed += 1
-      setUploadProgress(Math.round((completed / total) * 100))
-    }
-
-    setAssets(prev => [...newAssets.reverse(), ...prev])
-    setIsUploading(false)
-    setUploadProgress(0)
-
-    if (newAssets.length > 0) {
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
-    }
-
-    startTransition(() => { router.refresh() })
-  }, [teamId, teamSlug, supabase, router])
-
   const handleCreateYouTubeWidget = async (name: string, url: string) => {
     setIsSubmittingWidget(true)
-    setUploadError(null)
     const result = await insertAsset(teamSlug, {
       file_name: name,
       file_path: url,
@@ -206,9 +161,7 @@ export default function AssetClient({
       size_bytes: 0,
     })
 
-    if (!result.success) {
-      setUploadError(`Failed to save widget: ${result.error}`)
-    } else {
+    if (result.success) {
       const newAsset: Asset = {
         id: result.id!,
         file_name: name,
@@ -228,7 +181,6 @@ export default function AssetClient({
 
   const handleCreateRemoteUrlWidget = async (name: string, url: string) => {
     setIsSubmittingWidget(true)
-    setUploadError(null)
     const result = await insertAsset(teamSlug, {
       file_name: name,
       file_path: url,
@@ -236,9 +188,7 @@ export default function AssetClient({
       size_bytes: 0,
     })
 
-    if (!result.success) {
-      setUploadError(`Failed to save widget: ${result.error}`)
-    } else {
+    if (result.success) {
       const newAsset: Asset = {
         id: result.id!,
         file_name: name,
@@ -258,7 +208,6 @@ export default function AssetClient({
 
   const handleCreateHtmlWidget = async (name: string, html: string, css: string) => {
     setIsSubmittingWidget(true)
-    setUploadError(null)
     const serialized = JSON.stringify({ html, css })
     const result = await insertAsset(teamSlug, {
       file_name: name,
@@ -267,9 +216,7 @@ export default function AssetClient({
       size_bytes: 0,
     })
 
-    if (!result.success) {
-      setUploadError(`Failed to save widget: ${result.error}`)
-    } else {
+    if (result.success) {
       const newAsset: Asset = {
         id: result.id!,
         file_name: name,
@@ -293,7 +240,6 @@ export default function AssetClient({
     dateFormat: string
   }) => {
     setIsSubmittingWidget(true)
-    setUploadError(null)
     const serialized = JSON.stringify(config)
     const result = await insertAsset(teamSlug, {
       file_name: name,
@@ -302,9 +248,7 @@ export default function AssetClient({
       size_bytes: 0,
     })
 
-    if (!result.success) {
-      setUploadError(`Failed to save widget: ${result.error}`)
-    } else {
+    if (result.success) {
       const newAsset: Asset = {
         id: result.id!,
         file_name: name,
@@ -356,6 +300,24 @@ export default function AssetClient({
       }
     }
 
+    // Storage Size Filtering (size is computed in decimal MB)
+    if (filterSizePreset !== 'all') {
+      const sizeMB = (a.size_bytes || 0) / (1024 * 1024)
+      if (filterSizePreset === 'under1' && sizeMB >= 1) return false
+      if (filterSizePreset === '1to10' && (sizeMB < 1 || sizeMB > 10)) return false
+      if (filterSizePreset === '10to50' && (sizeMB < 10 || sizeMB > 50)) return false
+      if (filterSizePreset === 'custom') {
+        if (filterMinSize) {
+          const min = parseFloat(filterMinSize)
+          if (!isNaN(min) && sizeMB < min) return false
+        }
+        if (filterMaxSize) {
+          const max = parseFloat(filterMaxSize)
+          if (!isNaN(max) && sizeMB > max) return false
+        }
+      }
+    }
+
     if (!searchQuery) return true
     return a.file_name.toLowerCase().includes(searchQuery.toLowerCase())
   })
@@ -365,6 +327,9 @@ export default function AssetClient({
   const hasPrevPage = currentPage > 1
   const startItem = totalAssets === 0 ? 0 : (currentPage - 1) * pageSize + 1
   const endItem = Math.min(currentPage * pageSize, totalAssets)
+
+  const isFiltersActive = isFilterSidebarOpen || filterType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
+  const showFilterDot = filterType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
 
   return (
     <div className={styles.assetArea}>
@@ -385,6 +350,30 @@ export default function AssetClient({
           >
             <RefreshCw size={20} className={isRefreshing ? styles.spin : ''} />
           </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,video/mp4,video/webm,application/pdf"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? [])
+              if (files.length) handleFiles(files)
+              e.target.value = ''
+            }}
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
+              background: 'var(--surface-low)', color: 'var(--on-surface)', borderRadius: '8px', 
+              border: '1px solid var(--outline-variant)', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-label)',
+              minHeight: '42px'
+            }}
+          >
+            <Upload size={16} />
+            Upload Media
+          </button>
           <button 
             onClick={() => setShowWidgetSelection(true)}
             style={{ 
@@ -399,13 +388,6 @@ export default function AssetClient({
           </button>
         </div>
       </div>
-
-      <UploadZone
-        onFiles={handleFiles}
-        isUploading={isUploading}
-        progress={uploadProgress}
-        onError={setUploadError}
-      />
 
       {uploadError && (
         <div className={styles.errorBanner} role="alert">
@@ -439,14 +421,14 @@ export default function AssetClient({
               </div>
               <div className={styles.controlsRight}>
                 <button 
-                  className={`${styles.filterBtn} ${isFilterSidebarOpen || filterType !== 'all' || filterDatePreset !== 'all' ? styles.active : ''}`}
+                  className={`${styles.filterBtn} ${isFiltersActive ? styles.active : ''}`}
                   onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                   </svg>
                   Filters
-                  {(filterType !== 'all' || filterDatePreset !== 'all') && <span className={styles.filterDot} />}
+                  {showFilterDot && <span className={styles.filterDot} />}
                 </button>
                 {isMounted && (
                   <div className={styles.viewToggleGroup}>
@@ -542,6 +524,7 @@ export default function AssetClient({
                 setRenameModalAsset={setRenameModalAsset}
                 setDeleteModalAsset={setDeleteModalAsset}
                 deletingIds={deletingIds}
+                getPreviewUrl={getPreviewUrl}
               />
             )}
             
@@ -593,6 +576,12 @@ export default function AssetClient({
             setFilterStartDate={setFilterStartDate}
             filterEndDate={filterEndDate}
             setFilterEndDate={setFilterEndDate}
+            filterSizePreset={filterSizePreset}
+            setFilterSizePreset={setFilterSizePreset}
+            filterMinSize={filterMinSize}
+            setFilterMinSize={setFilterMinSize}
+            filterMaxSize={filterMaxSize}
+            setFilterMaxSize={setFilterMaxSize}
             onClose={() => setIsFilterSidebarOpen(false)}
           />
         )}
@@ -606,48 +595,24 @@ export default function AssetClient({
         />
       )}
 
-      {showWidgetSelection && (
-        <WidgetSelectionModal 
-          onClose={() => setShowWidgetSelection(false)} 
-          onSelectYouTube={() => setShowYouTubeConfig(true)}
-          onSelectRemoteUrl={() => setShowRemoteUrlConfig(true)}
-          onSelectHtml={() => setShowHtmlConfig(true)}
-          onSelectFlow={() => setShowFlowConfig(true)}
-        />
-      )}
-
-      {showYouTubeConfig && (
-        <YouTubeWidgetModal 
-          onClose={() => setShowYouTubeConfig(false)}
-          onSubmit={handleCreateYouTubeWidget}
-          isSubmitting={isSubmittingWidget}
-        />
-      )}
-
-      {showRemoteUrlConfig && (
-        <RemoteUrlWidgetModal 
-          onClose={() => setShowRemoteUrlConfig(false)}
-          onSubmit={handleCreateRemoteUrlWidget}
-          isSubmitting={isSubmittingWidget}
-        />
-      )}
-
-      {showHtmlConfig && (
-        <HtmlWidgetModal
-          onClose={() => setShowHtmlConfig(false)}
-          onSubmit={handleCreateHtmlWidget}
-          isSubmitting={isSubmittingWidget}
-          teamSlug={teamSlug}
-        />
-      )}
-
-      {showFlowConfig && (
-        <FlowWidgetModal
-          onClose={() => setShowFlowConfig(false)}
-          onSubmit={handleCreateFlowWidget}
-          isSubmitting={isSubmittingWidget}
-        />
-      )}
+      <WidgetModalsContainer
+        showWidgetSelection={showWidgetSelection}
+        setShowWidgetSelection={setShowWidgetSelection}
+        showYouTubeConfig={showYouTubeConfig}
+        setShowYouTubeConfig={setShowYouTubeConfig}
+        showRemoteUrlConfig={showRemoteUrlConfig}
+        setShowRemoteUrlConfig={setShowRemoteUrlConfig}
+        showHtmlConfig={showHtmlConfig}
+        setShowHtmlConfig={setShowHtmlConfig}
+        showFlowConfig={showFlowConfig}
+        setShowFlowConfig={setShowFlowConfig}
+        isSubmittingWidget={isSubmittingWidget}
+        teamSlug={teamSlug}
+        onCreateYouTube={handleCreateYouTubeWidget}
+        onCreateRemoteUrl={handleCreateRemoteUrlWidget}
+        onCreateHtml={handleCreateHtmlWidget}
+        onCreateFlow={handleCreateFlowWidget}
+      />
 
       {renameModalAsset && (
         <RenameAssetModal
@@ -669,6 +634,16 @@ export default function AssetClient({
           onSuccess={handleDeleteSuccess}
         />
       )}
+
+      {/* Floating Upload Manager Panel */}
+      <UploadPanel
+        showQueuePanel={showQueuePanel}
+        uploadQueue={uploadQueue}
+        isQueueCollapsed={isQueueCollapsed}
+        setIsQueueCollapsed={setIsQueueCollapsed}
+        setShowQueuePanel={setShowQueuePanel}
+        setUploadQueue={setUploadQueue}
+      />
     </div>
   )
 }

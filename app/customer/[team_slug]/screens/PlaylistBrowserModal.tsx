@@ -100,7 +100,7 @@ export function PlaylistBrowserModal({
         
         <div className={styles.header}>
           <div className={styles.titleRow}>
-            <h3 className={styles.title}>Playlist Library</h3>
+            <h3 className={styles.title}>Content Loop Library</h3>
             <button className={styles.closeBtn} onClick={onClose} aria-label="Close browser">
               <X size={16} />
             </button>
@@ -112,7 +112,7 @@ export function PlaylistBrowserModal({
               <input
                 type="text"
                 className={styles.searchInput}
-                placeholder="Search by playlist name..."
+                placeholder="Search by content loop name..."
                 value={searchQuery}
                 onChange={handleSearchChange}
                 autoFocus
@@ -143,14 +143,14 @@ export function PlaylistBrowserModal({
         <div className={styles.body}>
           {paginatedPlaylists.length === 0 ? (
             <div className={styles.emptyState}>
-              <h4 className={styles.emptyText}>No playlists match your query.</h4>
+              <h4 className={styles.emptyText}>No content loops match your query.</h4>
             </div>
           ) : viewMode === 'table' ? (
             <div className={styles.tableContainer}>
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>Playlist Name</th>
+                    <th>Content Loop Name</th>
                     <th>Total Items</th>
                     <th>Total Playtime</th>
                     <th>Date Created</th>
@@ -228,7 +228,7 @@ export function PlaylistBrowserModal({
 
         <div className={styles.footer}>
           <div>
-            Showing {startItem} to {endItem} of {totalItems} playlists
+            Showing {startItem} to {endItem} of {totalItems} content loops
           </div>
           {totalPages > 1 && (
             <div className={styles.pagination}>

@@ -273,8 +273,8 @@ export function WidgetSelectionModal({
             onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
             onMouseOut={e => e.currentTarget.style.borderColor = 'var(--outline-variant)'}
           >
-            <Clock color="#ff9800" size={28} />
-            Cloak
+            <Clock color="#8b5cf6" size={28} />
+            Clock
           </button>
           <button 
             onClick={() => { onClose(); onSelectYouTube(); }}

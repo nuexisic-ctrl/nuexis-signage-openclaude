@@ -87,15 +87,15 @@ export function AssetCard({
           <div className={styles.videoThumbWrapper} style={{ position: 'relative', width: '100%', height: '100%' }}>
              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-low)' }}>
                {asset.mime_type === 'application/x-widget-youtube' ? (
-                 <YoutubeIcon color="var(--on-surface-muted)" size={48} />
+                 <YoutubeIcon size={72} style={{ stroke: '#ff0000', color: '#ff0000' }} />
                ) : asset.mime_type === 'application/x-widget-remote-url' ? (
-                 <Link color="var(--on-surface-muted)" size={48} />
+                 <Link size={72} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
                ) : asset.mime_type === 'application/x-widget-html' ? (
-                 <Code color="var(--on-surface-muted)" size={48} />
+                 <Code size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
                ) : asset.mime_type === 'application/x-widget-flow' ? (
-                 <Clock color="var(--on-surface-muted)" size={48} />
+                 <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
                ) : (
-                 <LayoutTemplate color="var(--on-surface-muted)" size={48} />
+                 <LayoutTemplate size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
                )}
              </div>
           </div>
@@ -106,7 +106,7 @@ export function AssetCard({
         )}
         
         <div className={styles.mimeChip}>
-          {asset.mime_type === 'application/x-widget-flow' ? 'CLOAK' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+          {asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
         </div>
       </div>
 

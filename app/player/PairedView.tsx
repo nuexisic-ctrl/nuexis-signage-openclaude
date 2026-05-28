@@ -143,8 +143,8 @@ export default function PairedView({
           />
         )
       } catch (err) {
-        console.error('Failed to parse Cloak widget config in PairedView:', err)
-        content = <div style={{ color: 'red', padding: '10px' }}>Error rendering Cloak widget</div>
+        console.error('Failed to parse Clock widget config in PairedView:', err)
+        content = <div style={{ color: 'red', padding: '10px' }}>Error rendering Clock widget</div>
       }
     } else if (mimeType?.startsWith('video/')) {
       content = (
@@ -174,6 +174,11 @@ export default function PairedView({
     )
   }
 
+  const isLandscape = orientation === 0 || orientation === 180
+  const controlsOverlayStyle: React.CSSProperties = isLandscape
+    ? { left: 'auto', right: '24px' }
+    : {}
+
   return (
     <div className={styles.pairedView} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#000' }}>
       
@@ -185,7 +190,7 @@ export default function PairedView({
       </div>
 
       {/* ── Upright Controls Overlay (Outside rotated viewport) ── */}
-      <div className={styles.controlsOverlay}>
+      <div className={styles.controlsOverlay} style={controlsOverlayStyle}>
         <button className={styles.iconButton} onClick={toggleFullscreen} title="Toggle Fullscreen">
           {isFullscreen ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

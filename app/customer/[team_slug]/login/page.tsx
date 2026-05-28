@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import LoginForm from './LoginForm'
 import WorkspaceNotFound from './WorkspaceNotFound'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 interface Props {
   params: Promise<{ team_slug: string }>
@@ -24,14 +24,12 @@ export default async function TeamLoginPage({ params }: Props) {
     notFound()
   }
 
-  const supabase = createAdminClient()
-  const { data: team } = await supabase
-    .from('teams')
-    .select('slug')
-    .eq('slug', team_slug)
-    .maybeSingle()
+  const supabase = await createClient()
+  const { data: exists } = await supabase.rpc('check_team_exists', {
+    p_slug: team_slug,
+  })
 
-  if (!team) {
+  if (!exists) {
     return <WorkspaceNotFound teamSlug={team_slug} />
   }
 

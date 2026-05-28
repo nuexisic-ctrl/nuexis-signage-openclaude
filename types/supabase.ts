@@ -318,6 +318,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_team_exists: { Args: { p_slug: string }; Returns: boolean }
+      check_team_slug_available: { Args: { p_slug: string }; Returns: boolean }
       claim_device: {
         Args: {
           p_name: string
@@ -333,6 +335,10 @@ export type Database = {
           p_secret: string
         }
         Returns: boolean
+      }
+      get_player_asset: {
+        Args: { p_asset_id: string; p_hardware_id: string; p_secret: string }
+        Returns: Json
       }
       get_player_asset_info: {
         Args: { p_asset_id: string; p_hardware_id: string; p_secret: string }
@@ -352,6 +358,15 @@ export type Database = {
           p_file_path: string
           p_hardware_id: string
           p_secret: string
+        }
+        Returns: string
+      }
+      get_player_signed_media_url_by_session: {
+        Args: {
+          p_device_id: string
+          p_expires_in?: number
+          p_file_path: string
+          p_session_token: string
         }
         Returns: string
       }

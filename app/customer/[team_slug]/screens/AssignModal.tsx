@@ -62,6 +62,17 @@ export function AssignModal({
     }
   }, [])
 
+  // Automatically open browser modal on mount and when content type changes
+  useEffect(() => {
+    if (contentType === 'Asset') {
+      setShowAssetBrowser(true)
+      setShowPlaylistBrowser(false)
+    } else if (contentType === 'Playlist') {
+      setShowPlaylistBrowser(true)
+      setShowAssetBrowser(false)
+    }
+  }, [contentType])
+
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose()
   }
@@ -105,7 +116,7 @@ export function AssignModal({
               <label className={styles.label}>Content Type</label>
               <select className={styles.input} value={contentType} onChange={(e) => setContentType(e.target.value as 'Asset' | 'Playlist' | 'Schedule')}>
                 <option value="Asset">Asset</option>
-                <option value="Playlist">Playlist</option>
+                <option value="Playlist">Content Loop</option>
                 <option value="Schedule" disabled>Schedule (Coming Soon)</option>
               </select>
             </div>
@@ -137,7 +148,7 @@ export function AssignModal({
 
             {contentType === 'Playlist' && (
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>Selected Playlist</label>
+                <label className={styles.label}>Selected Content Loop</label>
                 <div 
                   className={styles.customSelectTrigger} 
                   onClick={() => setShowPlaylistBrowser(true)}
@@ -147,7 +158,7 @@ export function AssignModal({
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPlaylistBrowser(true); } }}
                 >
                   <span className={selectedPlaylist ? styles.selectedText : styles.placeholderText}>
-                    {selectedPlaylist ? selectedPlaylist.name : 'No playlist selected'}
+                    {selectedPlaylist ? selectedPlaylist.name : 'No Content Loop selected'}
                   </span>
                   <button 
                     type="button" 
@@ -160,15 +171,17 @@ export function AssignModal({
               </div>
             )}
 
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>Scale Mode</label>
-              <select className={styles.input} value={scaleMode} onChange={(e) => setScaleMode(e.target.value as 'None' | 'Fit' | 'Stretch' | 'Zoom')}>
-                <option value="None">None</option>
-                <option value="Fit">Fit</option>
-                <option value="Stretch">Stretch</option>
-                <option value="Zoom">Zoom</option>
-              </select>
-            </div>
+            {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget'))) && (
+              <div className={styles.fieldGroup}>
+                <label className={styles.label}>Scale Mode</label>
+                <select className={styles.input} value={scaleMode} onChange={(e) => setScaleMode(e.target.value as 'None' | 'Fit' | 'Stretch' | 'Zoom')}>
+                  <option value="None">None</option>
+                  <option value="Fit">Fit</option>
+                  <option value="Stretch">Stretch</option>
+                  <option value="Zoom">Zoom</option>
+                </select>
+              </div>
+            )}
 
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Orientation</label>

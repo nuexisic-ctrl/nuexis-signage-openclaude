@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { rateLimitAction } from '@/lib/redis'
 import { headers } from 'next/headers'
 import type { Database } from '@/types/supabase'
@@ -65,24 +64,17 @@ export async function signupWithRateLimit(formData: {
   }
 
   // 3. Team slug uniqueness check (M-34)
-  const serviceClient = createSupabaseClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-  )
+  const supabaseAnon = await createClient()
+  const { data: isAvailable, error: rpcError } = await supabaseAnon.rpc('check_team_slug_available', {
+    p_slug: teamSlug.toLowerCase(),
+  })
 
-  const { data: existingTeam, error: queryError } = await serviceClient
-    .from('teams')
-    .select('id')
-    .eq('slug', teamSlug.toLowerCase())
-    .maybeSingle()
-
-  if (queryError) {
-    console.error('[signup] Error checking slug uniqueness:', queryError)
+  if (rpcError) {
+    console.error('[signup] Error checking slug uniqueness:', rpcError)
     return { success: false, error: 'An error occurred during verification. Please try again.' }
   }
 
-  if (existingTeam) {
+  if (!isAvailable) {
     return { success: false, error: 'This workspace URL is already taken. Please choose another one.' }
   }
 

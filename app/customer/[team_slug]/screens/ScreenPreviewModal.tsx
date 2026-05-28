@@ -350,8 +350,8 @@ export function ScreenPreviewModal({
           />
         )
       } catch (err) {
-        console.error('Failed to render Cloak widget in simulator:', err)
-        return <div style={{ color: 'red', padding: '10px' }}>Error rendering Cloak</div>
+        console.error('Failed to render Clock widget in simulator:', err)
+        return <div style={{ color: 'red', padding: '10px' }}>Error rendering Clock widget</div>
       }
     }
 
@@ -392,7 +392,7 @@ export function ScreenPreviewModal({
     } else if (playlistItems.length === 0) {
       contentNode = (
         <div className={styles.emptyState}>
-          <p className={styles.emptyText}>Signage Playlist is empty</p>
+          <p className={styles.emptyText}>Signage Content Loop is empty</p>
         </div>
       )
     } else {
@@ -420,7 +420,7 @@ export function ScreenPreviewModal({
       <div className={styles.emptyState}>
         <Tv size={36} style={{ opacity: 0.6 }} />
         <p className={styles.emptyText}>Screen Simulator Online</p>
-        <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Waiting for Asset or Playlist assignment...</span>
+        <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Waiting for Asset or Content Loop assignment...</span>
       </div>
     )
   }

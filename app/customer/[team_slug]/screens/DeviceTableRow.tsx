@@ -39,7 +39,7 @@ export function DeviceTableRow({
   const isMenuOpen = openMenuId === device.id
   const isOnline = liveStatus === 'online'
 
-  const kind = getContentKind(device, assets)
+  const kind = getContentKind(device, assets, playlists)
   const label = getContentLabel(device, assets, playlists)
   const tooltipInfo = buildTooltipInfo(device, assets, playlists)
   const isEmpty = kind === 'empty'
@@ -87,7 +87,11 @@ export function DeviceTableRow({
       {/* ── Playing Now cell ── */}
       <td className={styles.tableCell}>
         <ContentTooltipWrapper info={tooltipInfo}>
-          <div className={`${styles.playlistCell} ${isEmpty ? styles.playlistCellEmpty : ''}`}>
+          <div 
+            className={`${styles.playlistCell} ${isEmpty ? styles.playlistCellEmpty : ''}`}
+            onClick={onEdit}
+            style={{ cursor: 'pointer' }}
+          >
             <span className={`${styles.contentIconWrap} ${kindClassMap[kind] ?? ''}`}>
               <ContentIcon kind={kind} size={16} />
             </span>
