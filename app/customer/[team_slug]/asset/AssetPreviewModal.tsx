@@ -82,6 +82,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
               style={{ width: '100%', aspectRatio: '16/9', border: 'none', maxHeight: '70vh' }}
               allow="autoplay; encrypted-media; fullscreen"
               allowFullScreen
+              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             />
           ) : isRemoteUrl ? (
             asset.file_path.match(/\.(mp4|webm)$/i) ? (

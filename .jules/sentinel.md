@@ -1,0 +1,4 @@
+## 2025-05-15 - Consistent Iframe Sandboxing Pattern
+**Vulnerability:** Inconsistent or missing `sandbox` attributes on iframes rendering user-provided or third-party content.
+**Learning:** For remote URL widgets, `allow-same-origin` should be omitted to prevent the framed content from accessing the host's cookies or DOM if it somehow ends up on the same domain (or via other exploits). YouTube requires `allow-same-origin` to function correctly in many cases. Custom HTML widgets (rendered via `srcDoc`) often only need `allow-same-origin` if they don't use scripts, which provides a safe middle ground.
+**Prevention:** Audit all iframe usage and ensure they follow the established security patterns: YouTube (`allow-scripts allow-same-origin allow-forms allow-presentation`), Remote URL (`allow-scripts allow-forms allow-presentation`), and HTML Widgets (`allow-same-origin`).
