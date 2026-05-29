@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { rateLimitAction } from '@/lib/redis'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +12,28 @@ export async function POST(request: NextRequest) {
 
     if (!body.deviceId || !body.sessionToken || !body.filePath) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // H-02: Validate input formats
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(body.deviceId)) {
+      return NextResponse.json({ error: 'Invalid device ID format' }, { status: 400 })
+    }
+
+    // Reject path traversal attempts
+    if (body.filePath.includes('..') || body.filePath.startsWith('/')) {
+      return NextResponse.json({ error: 'Invalid file path' }, { status: 400 })
+    }
+
+    // H-02: Rate limit by deviceId (60 requests per minute)
+    if (!(await rateLimitAction(body.deviceId, 'mediaUrl', 60, 60))) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    }
+
+    // H-02: Rate limit by IP (120 requests per minute)
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    if (!(await rateLimitAction(ip, 'mediaUrl:ip', 120, 60))) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
     }
 
     if (body.filePath.startsWith('http://') || body.filePath.startsWith('https://')) {

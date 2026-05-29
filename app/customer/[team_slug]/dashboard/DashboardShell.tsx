@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import GridLayout from 'react-grid-layout'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { Responsive, WidthProvider } from 'react-grid-layout/legacy'
 import 'react-grid-layout/css/styles.css'
-import type { LayoutItem } from 'react-grid-layout'
+import type { Layout, ResponsiveLayouts as Layouts } from 'react-grid-layout/legacy'
 import { Plus, GripVertical } from 'lucide-react'
+
 
 import { ActiveScreensWidget } from './widgets/activeScreensWidget'
 import { OfflineTrendWidget } from './widgets/offlineTrendWidget'
@@ -32,12 +33,19 @@ import type {
 
 import styles from './dashboard.module.css'
 
+const ResponsiveGridLayout = WidthProvider(Responsive)
+
+type LayoutItem = Layout[number]
+
 interface WidgetDef {
   id: string
   title: string
   defaultSize: { w: number; h: number }
   minSize?: { w: number; h: number }
 }
+
+const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 } as const
+const COLS = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 } as const
 
 const WIDGET_REGISTRY: Record<string, WidgetDef> = {
   uptime: { id: 'uptime', title: 'App Uptime', defaultSize: { w: 4, h: 2 } },
@@ -53,7 +61,7 @@ const WIDGET_REGISTRY: Record<string, WidgetDef> = {
 
 const ALL_WIDGET_IDS = Object.keys(WIDGET_REGISTRY)
 
-function getDefaultLayout(): LayoutItem[] {
+function getDefaultLayout(): Layout {
   return [
     { i: 'dateTimeStatus', x: 10, y: 0, w: 2, h: 1, minW: 2, minH: 1 },
     { i: 'uptime', x: 0, y: 1, w: 4, h: 2, minW: 3, minH: 2 },
@@ -65,6 +73,54 @@ function getDefaultLayout(): LayoutItem[] {
     { i: 'analyticsOverview', x: 0, y: 5, w: 6, h: 2, minW: 4, minH: 2 },
     { i: 'screenUptime', x: 6, y: 5, w: 6, h: 2, minW: 4, minH: 2 },
   ]
+}
+
+function normalizeLayoutForCols(layout: Layout, cols: number): Layout {
+  return layout.map((item) => {
+    const w = Math.min(item.w, cols)
+    const minW = item.minW ? Math.min(item.minW, cols) : undefined
+    const x = Math.max(0, Math.min(item.x, cols - w))
+    return { ...item, w, x, minW }
+  })
+}
+
+function buildResponsiveLayouts(base: Layout): Layouts {
+  return {
+    lg: normalizeLayoutForCols(base, COLS.lg),
+    md: normalizeLayoutForCols(base, COLS.md),
+    sm: normalizeLayoutForCols(base, COLS.sm),
+    xs: normalizeLayoutForCols(base, COLS.xs),
+    xxs: normalizeLayoutForCols(base, COLS.xxs),
+  }
+}
+
+function filterHiddenFromLayouts(layouts: Layouts, hidden: Set<string>): Layouts {
+  const filter = (arr: Layout | undefined) => (arr ?? []).filter((l) => !hidden.has(l.i))
+  return {
+    lg: filter(layouts.lg),
+    md: filter(layouts.md),
+    sm: filter(layouts.sm),
+    xs: filter(layouts.xs),
+    xxs: filter(layouts.xxs),
+  }
+}
+
+function mergeVisibleLayouts(prev: Layouts, nextVisible: Layouts, hidden: Set<string>): Layouts {
+  const mergeForBreakpoint = (bp: keyof typeof COLS): Layout => {
+    const prevArr = prev[bp] ?? []
+    const nextArr = nextVisible[bp] ?? []
+    const nextVisibleIds = new Set(nextArr.map((l: LayoutItem) => l.i))
+    const hiddenArr = prevArr.filter((l: LayoutItem) => hidden.has(l.i) && !nextVisibleIds.has(l.i))
+    return [...hiddenArr, ...nextArr]
+  }
+
+  return {
+    lg: mergeForBreakpoint('lg'),
+    md: mergeForBreakpoint('md'),
+    sm: mergeForBreakpoint('sm'),
+    xs: mergeForBreakpoint('xs'),
+    xxs: mergeForBreakpoint('xxs'),
+  }
 }
 
 interface DashboardData {
@@ -96,27 +152,61 @@ export default function DashboardShell({
   uptimeHistory,
   screenUptimeData,
 }: Props) {
-  const [layout, setLayout] = useState<LayoutItem[]>(() => {
+  const [isSmallScreen, setIsSmallScreen] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const update = () => setIsSmallScreen(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  const [layouts, setLayouts] = useState<Layouts>(() => {
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem(`dashboard_layout_${teamSlug}`)
-        if (saved) return JSON.parse(saved) as LayoutItem[]
+        if (saved) {
+          const parsed = JSON.parse(saved) as unknown
+          // Backwards compatibility: older versions stored a single Layout[].
+          if (Array.isArray(parsed)) return buildResponsiveLayouts(parsed as any)
+          if (parsed && typeof parsed === 'object') {
+            const p = parsed as Partial<Layouts>
+            const base = (p.lg && Array.isArray(p.lg) ? (p.lg as any) : null) ?? getDefaultLayout()
+            return {
+              ...buildResponsiveLayouts(base),
+              ...Object.fromEntries(
+                (Object.keys(COLS) as Array<keyof typeof COLS>).map((bp) => [
+                  bp,
+                  Array.isArray(p[bp]) ? normalizeLayoutForCols(p[bp] as any, COLS[bp]) : undefined,
+                ])
+              ),
+            } as Layouts
+          }
+        }
       } catch { /* ignore */ }
     }
-    return getDefaultLayout()
+    return buildResponsiveLayouts(getDefaultLayout())
   })
 
   const [hiddenWidgetIds, setHiddenWidgetIds] = useState<Set<string>>(new Set())
   const [showAddMenu, setShowAddMenu] = useState(false)
   const addMenuRef = useRef<HTMLDivElement>(null)
 
-  const visibleLayout = layout.filter((l: LayoutItem) => !hiddenWidgetIds.has(l.i))
+  const visibleLayouts = useMemo(() => {
+    return filterHiddenFromLayouts(layouts, hiddenWidgetIds)
+  }, [layouts, hiddenWidgetIds])
 
   useEffect(() => {
     try {
-      localStorage.setItem(`dashboard_layout_${teamSlug}`, JSON.stringify(layout))
+      localStorage.setItem(`dashboard_layout_${teamSlug}`, JSON.stringify(layouts))
     } catch { /* ignore */ }
-  }, [layout, teamSlug])
+  }, [layouts, teamSlug])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -128,9 +218,9 @@ export default function DashboardShell({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const handleLayoutChange = useCallback((newLayout: readonly LayoutItem[]) => {
-    setLayout([...newLayout])
-  }, [])
+  const handleLayoutChange = useCallback((_: Layout, allLayouts: Layouts) => {
+    setLayouts((prev) => mergeVisibleLayouts(prev, allLayouts, hiddenWidgetIds))
+  }, [hiddenWidgetIds])
 
   const hideWidget = useCallback((widgetId: string) => {
     setHiddenWidgetIds((prev: Set<string>) => {
@@ -146,18 +236,30 @@ export default function DashboardShell({
       next.delete(widgetId)
       return next
     })
-    setLayout((prev: LayoutItem[]) => {
-      const exists = prev.find((l: LayoutItem) => l.i === widgetId)
-      if (exists) return prev
+    setLayouts((prev) => {
       const def = WIDGET_REGISTRY[widgetId]
       if (!def) return prev
-      const maxY = prev.reduce((max: number, l: LayoutItem) => Math.max(max, l.y + l.h), 0)
-      const newItem: LayoutItem = { i: widgetId, x: 0, y: maxY, w: def.defaultSize.w, h: def.defaultSize.h }
-      if (def.minSize) {
-        newItem.minW = def.minSize.w
-        newItem.minH = def.minSize.h
-      }
-      return [...prev, newItem]
+
+      const next: Layouts = { ...prev }
+      ;(Object.keys(COLS) as Array<keyof typeof COLS>).forEach((bp) => {
+        const cols = COLS[bp]
+        const arr = [...(prev[bp] ?? [])]
+        const exists = arr.some((l: any) => l.i === widgetId)
+        if (exists) {
+          next[bp] = arr as any
+          return
+        }
+
+        const maxY = arr.reduce((max: number, l: any) => Math.max(max, (l.y ?? 0) + (l.h ?? 0)), 0)
+        const w = Math.min(def.defaultSize.w, cols)
+        const newItem: any = { i: widgetId, x: 0, y: maxY, w, h: def.defaultSize.h }
+        if (def.minSize) {
+          newItem.minW = Math.min(def.minSize.w, cols)
+          newItem.minH = def.minSize.h
+        }
+        next[bp] = [...arr, newItem] as any
+      })
+      return next
     })
   }, [])
 
@@ -234,47 +336,44 @@ export default function DashboardShell({
           </div>
         </div>
 
-        <GridLayout
-          className={styles.gridLayout}
-          layout={visibleLayout}
-          width={1200}
-          onLayoutChange={handleLayoutChange}
-          gridConfig={{
-            cols: 12,
-            rowHeight: 90,
-            margin: [14, 14] as const,
-            containerPadding: [0, 0] as const,
-            maxRows: Infinity,
-          }}
-          dragConfig={{
-            enabled: true,
-            handle: '.widget-drag-handle',
-            bounded: false,
-            threshold: 3,
-          }}
-          resizeConfig={{
-            enabled: true,
-            handles: ['se'] as const,
-          }}
-        >
-          {visibleLayout.map((l: LayoutItem) => (
-            <div key={l.i} className={styles.gridWidget}>
-              <div className={`${styles.widgetDragHandle} widget-drag-handle`}>
-                <GripVertical size={12} />
+        {isMounted ? (
+          <ResponsiveGridLayout
+            className={styles.gridLayout}
+            layouts={visibleLayouts}
+            breakpoints={BREAKPOINTS}
+            cols={COLS}
+            rowHeight={90}
+            margin={[14, 14]}
+            containerPadding={[0, 0]}
+            onLayoutChange={handleLayoutChange}
+            draggableHandle=".widget-drag-handle"
+            isDraggable={!isSmallScreen}
+            isResizable={!isSmallScreen}
+            resizeHandles={['se']}
+          >
+            {(visibleLayouts.lg ?? []).map((l: any) => (
+              <div key={l.i} className={styles.gridWidget}>
+                <div className={`${styles.widgetDragHandle} widget-drag-handle`}>
+                  <GripVertical size={12} />
+                </div>
+                <button
+                  className={styles.widgetCloseBtn}
+                  onClick={() => hideWidget(l.i)}
+                  title="Remove widget"
+                >
+                  ×
+                </button>
+                <div className={styles.widgetInner}>
+                  {renderWidget(l.i)}
+                </div>
               </div>
-              <button
-                className={styles.widgetCloseBtn}
-                onClick={() => hideWidget(l.i)}
-                title="Remove widget"
-              >
-                ×
-              </button>
-              <div className={styles.widgetInner}>
-                {renderWidget(l.i)}
-              </div>
-            </div>
-          ))}
-        </GridLayout>
+            ))}
+          </ResponsiveGridLayout>
+        ) : (
+          <div className={styles.gridLayout} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ opacity: 0.5 }}>Loading layout...</span>
+          </div>
+        )}
       </div>
     </div>
   )

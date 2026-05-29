@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useTransition, useEffect, useRef } from 'react'
+import { useState, useCallback, useTransition, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Check, File, Plus, RefreshCw, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -93,7 +93,10 @@ export default function AssetClient({
 
   useEffect(() => {
     const saved = localStorage.getItem('assetsViewMode')
-    if (saved === 'grid' || saved === 'table') setViewMode(saved)
+    if (saved === 'grid' || saved === 'table') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setViewMode(saved)
+    }
     setIsMounted(true)
   }, [])
 
@@ -114,24 +117,40 @@ export default function AssetClient({
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
 
   useEffect(() => {
+    let cancelled = false
     const generateUrls = async () => {
+      // M-02: Only sign URLs for visible page assets (already server-paginated to pageSize)
       const targetAssets = assets.filter(
         asset => (isImage(asset.mime_type) || isVideo(asset.mime_type)) && !asset.mime_type.startsWith('application/x-widget')
       )
-      const promises = targetAssets.map(async (asset) => {
-        const { data } = await supabase.storage
-          .from('workspace-media')
-          .createSignedUrl(asset.file_path, 3600)
-        return { path: asset.file_path, url: data?.signedUrl || null }
-      })
-      const results = await Promise.all(promises)
+      // Sign in small batches to avoid overwhelming Supabase
+      const BATCH_SIZE = 10
       const urls: Record<string, string> = {}
-      for (const res of results) {
-        if (res.url) urls[res.path] = res.url
+      for (let i = 0; i < targetAssets.length; i += BATCH_SIZE) {
+        if (cancelled) return
+        const batch = targetAssets.slice(i, i + BATCH_SIZE)
+        const results = await Promise.all(
+          batch.map(async (asset) => {
+            // Skip if we already have a cached URL for this path
+            if (previewUrls[asset.file_path]) {
+              return { path: asset.file_path, url: previewUrls[asset.file_path] }
+            }
+            const { data } = await supabase.storage
+              .from('workspace-media')
+              .createSignedUrl(asset.file_path, 3600)
+            return { path: asset.file_path, url: data?.signedUrl || null }
+          })
+        )
+        for (const res of results) {
+          if (res.url) urls[res.path] = res.url
+        }
       }
-      setPreviewUrls(urls)
+      if (!cancelled) {
+        setPreviewUrls(prev => ({ ...prev, ...urls }))
+      }
     }
     generateUrls()
+    return () => { cancelled = true }
   }, [assets, supabase])
 
   const getPreviewUrl = useCallback((filePath: string) => {
@@ -286,46 +305,51 @@ export default function AssetClient({
     setRenameModalAsset(null)
   }
 
-  const filteredAssets = assets.filter(a => {
-    if (filterType !== 'all') {
-      if (filterType === 'image' && !isImage(a.mime_type)) return false
-      if (filterType === 'video' && !isVideo(a.mime_type)) return false
-      if (filterType === 'widget' && !isWidget(a.mime_type)) return false
-    }
-
-    if (filterDatePreset !== 'all') {
-      const dDate = new Date(a.created_at).getTime()
-      const now = Date.now()
-      if (filterDatePreset === 'today' && dDate < new Date().setHours(0,0,0,0)) return false
-      if (filterDatePreset === '7days' && dDate < now - 7 * 86400000) return false
-      if (filterDatePreset === '30days' && dDate < now - 30 * 86400000) return false
-      if (filterDatePreset === 'custom') {
-        if (filterStartDate && dDate < new Date(filterStartDate).getTime()) return false
-        if (filterEndDate && dDate >= new Date(filterEndDate).getTime() + 86400000) return false
+  const filteredAssets = useMemo(() => {
+    // eslint-disable-next-line react-hooks/purity
+    const now = Date.now()
+    const today = new Date().setHours(0,0,0,0)
+    
+    return assets.filter(a => {
+      if (filterType !== 'all') {
+        if (filterType === 'image' && !isImage(a.mime_type)) return false
+        if (filterType === 'video' && !isVideo(a.mime_type)) return false
+        if (filterType === 'widget' && !isWidget(a.mime_type)) return false
       }
-    }
 
-    // Storage Size Filtering (size is computed in decimal MB)
-    if (filterSizePreset !== 'all') {
-      const sizeMB = (a.size_bytes || 0) / (1024 * 1024)
-      if (filterSizePreset === 'under1' && sizeMB >= 1) return false
-      if (filterSizePreset === '1to10' && (sizeMB < 1 || sizeMB > 10)) return false
-      if (filterSizePreset === '10to50' && (sizeMB < 10 || sizeMB > 50)) return false
-      if (filterSizePreset === 'custom') {
-        if (filterMinSize) {
-          const min = parseFloat(filterMinSize)
-          if (!isNaN(min) && sizeMB < min) return false
-        }
-        if (filterMaxSize) {
-          const max = parseFloat(filterMaxSize)
-          if (!isNaN(max) && sizeMB > max) return false
+      if (filterDatePreset !== 'all') {
+        const dDate = new Date(a.created_at).getTime()
+        if (filterDatePreset === 'today' && dDate < today) return false
+        if (filterDatePreset === '7days' && dDate < now - 7 * 86400000) return false
+        if (filterDatePreset === '30days' && dDate < now - 30 * 86400000) return false
+        if (filterDatePreset === 'custom') {
+          if (filterStartDate && dDate < new Date(filterStartDate).getTime()) return false
+          if (filterEndDate && dDate >= new Date(filterEndDate).getTime() + 86400000) return false
         }
       }
-    }
 
-    if (!searchQuery) return true
-    return a.file_name.toLowerCase().includes(searchQuery.toLowerCase())
-  })
+      // Storage Size Filtering (size is computed in decimal MB)
+      if (filterSizePreset !== 'all') {
+        const sizeMB = (a.size_bytes || 0) / (1024 * 1024)
+        if (filterSizePreset === 'under1' && sizeMB >= 1) return false
+        if (filterSizePreset === '1to10' && (sizeMB < 1 || sizeMB > 10)) return false
+        if (filterSizePreset === '10to50' && (sizeMB < 10 || sizeMB > 50)) return false
+        if (filterSizePreset === 'custom') {
+          if (filterMinSize) {
+            const min = parseFloat(filterMinSize)
+            if (!isNaN(min) && sizeMB < min) return false
+          }
+          if (filterMaxSize) {
+            const max = parseFloat(filterMaxSize)
+            if (!isNaN(max) && sizeMB > max) return false
+          }
+        }
+      }
+
+      if (!searchQuery) return true
+      return a.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+    })
+  }, [assets, filterType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery])
 
   const totalPages = Math.ceil(totalAssets / pageSize)
   const hasNextPage = currentPage < totalPages
@@ -338,7 +362,15 @@ export default function AssetClient({
 
   return (
     <div className={styles.assetArea}>
-      <div className={styles.topbar} style={{ justifyContent: 'flex-end' }}>
+      <div className={styles.topbar}>
+        <div>
+          <h1 className={styles.pageTitle}>Asset Library</h1>
+          <p className={styles.pageSubtitle}>
+            {totalAssets > 0
+              ? `${totalAssets} asset${totalAssets === 1 ? '' : 's'} in your library.`
+              : 'Upload images and videos to get started.'}
+          </p>
+        </div>
         <div className={styles.topbarActions}>
           <button
             className={styles.refreshBtn}

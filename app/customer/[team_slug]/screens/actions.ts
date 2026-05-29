@@ -16,7 +16,6 @@ export async function claimDevice(
   const trimmedCode = pairingCode.trim().replace(/\s/g, '').toUpperCase()
   const trimmedName = screenName.trim()
 
-  console.log('[claimDevice] called with code:', trimmedCode, 'name:', trimmedName, 'team:', teamSlug)
 
   if (!/^[A-Z0-9]{6}$/.test(trimmedCode)) {
     return { success: false, error: 'Please enter a valid 6-character pairing code.' }
@@ -26,7 +25,6 @@ export async function claimDevice(
 
   // 1. Get authenticated user
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-  console.log('[claimDevice] user:', user?.id, 'authError:', authError)
 
   if (authError || !user) {
     return { success: false, error: 'You must be logged in to add a screen.' }
@@ -81,7 +79,6 @@ export async function claimDevice(
     return { success: false, error: result.error || 'Unknown error' }
   }
 
-  console.log('[claimDevice] success! device', result.device_id, 'claimed by team', teamId)
 
   // 4. Revalidate the screens page so the grid refreshes on next server render
   revalidatePath(`/customer/${teamSlug}/screens`)
@@ -196,13 +193,25 @@ export async function getDeviceHeartbeats(teamId: string): Promise<Record<string
   }
 
   try {
-    const keys = await redis.keys(`heartbeat:${teamId}:*`)
-    if (keys.length === 0) return {}
+    const allKeys: string[] = []
+    const MAX_HEARTBEAT_KEYS = 500
+    let cursor = 0
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, {
+        match: `heartbeat:${teamId}:*`,
+        count: 100,
+      })
+      cursor = Number(nextCursor)
+      allKeys.push(...keys)
+      if (allKeys.length >= MAX_HEARTBEAT_KEYS) break
+    } while (cursor !== 0)
 
-    const values = await redis.mget(...keys)
+    if (allKeys.length === 0) return {}
+
+    const values = await redis.mget(...allKeys)
     const result: Record<string, string> = {}
     
-    keys.forEach((key, index) => {
+    allKeys.forEach((key, index) => {
       const deviceId = key.split(':').pop()
       if (deviceId && values[index]) {
         result[deviceId] = values[index] as string

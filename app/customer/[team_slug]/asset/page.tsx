@@ -77,16 +77,6 @@ export default async function AssetPage({ params, searchParams }: Props) {
       {/* Main */}
       <main className={styles.main}>
         <Header fullName={fullName} email={user.email} />
-        <div className={styles.topbar}>
-          <div>
-            <h1 className={styles.pageTitle}>Asset Library</h1>
-            <p className={styles.pageSubtitle}>
-              {totalAssets > 0
-                ? `${totalAssets} asset${totalAssets === 1 ? '' : 's'} in your library.`
-                : 'Upload images and videos to get started.'}
-            </p>
-          </div>
-        </div>
 
         <AssetClient
           initialAssets={assets as Parameters<typeof AssetClient>[0]['initialAssets']}

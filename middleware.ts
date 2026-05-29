@@ -11,6 +11,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Landing page is public — no session needed
+  if (pathname === '/') return NextResponse.next()
+
+  // API routes handle their own auth
+  if (pathname.startsWith('/api/')) return NextResponse.next()
+
   const supabaseResponse = await updateSession(request)
 
   return supabaseResponse

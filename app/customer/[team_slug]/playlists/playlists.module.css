@@ -645,3 +645,104 @@
   }
 }
 
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .main,
+  :global(.sidebar-collapsed) .main {
+    margin-left: 84px;
+    width: calc(100% - 84px);
+    padding-inline: 28px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .main,
+  :global(.sidebar-collapsed) .main {
+    margin-left: 0;
+    width: 100%;
+    padding: 0 16px 96px;
+    gap: 20px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .topbarActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .addBtn {
+    width: 100%;
+  }
+
+  .controlsBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchBox {
+    width: 100%;
+  }
+
+  .controlsRight {
+    justify-content: flex-end;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modalOverlay {
+    padding: 14px;
+  }
+
+  .modalContent {
+    max-width: 100%;
+    border-radius: 14px;
+    max-height: 92dvh;
+  }
+
+  .itemEditorRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .itemEditorControls {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .durationInput {
+    width: 100%;
+  }
+
+  .modalFooter {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .cancelBtn,
+  .saveBtn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .playlistNameCell {
+    gap: 10px;
+  }
+
+  .playlistIconWrapper {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+}

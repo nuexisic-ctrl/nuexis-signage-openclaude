@@ -35,6 +35,10 @@ export default function PlayerPage() {
   useEffect(() => { stateRef.current = state }, [state])
   useEffect(() => { assetUrlRef.current = assetUrl }, [assetUrl])
 
+  const [hardwareId, setHardwareId] = useState<string | null>(null)
+  const [secret, setSecret] = useState<string | null>(null)
+  const [supabase] = useState(() => createClient())
+
   const deviceIdRef      = useRef<string | null>(null)
   const hardwareIdRef    = useRef<string | null>(null)
   const secretRef        = useRef<string | null>(null)
@@ -46,7 +50,6 @@ export default function PlayerPage() {
   const channelRef       = useRef<RealtimeChannel>(null)
   const teamChannelRef   = useRef<RealtimeChannel>(null)
   const reconnectPresenceRef = useRef<(() => void) | null>(null)
-  const supabaseRef      = useRef(createClient())
   const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const playtimeAccumulatorRef = useRef(0)
@@ -170,7 +173,6 @@ export default function PlayerPage() {
   }, [flushPlaytime])
 
   useEffect(() => {
-    const supabase = supabaseRef.current
     let cancelled = false
     let currentAssetId: string | null = null
 
@@ -379,6 +381,7 @@ export default function PlayerPage() {
     async function init() {
       const hardwareId = window.Android ? window.Android.getNativeHardwareId() : await getHardwareId()
       hardwareIdRef.current = hardwareId
+      setHardwareId(hardwareId)
 
       const savedSecret = window.Android ? window.Android.getNativeSecret() : localStorage.getItem('nuexis_device_secret')
       const existing = await getDeviceState(hardwareId, savedSecret || undefined)
@@ -391,6 +394,7 @@ export default function PlayerPage() {
 
       if (existing) {
         secretRef.current = savedSecret
+        setSecret(savedSecret)
         if (existing.team_id) {
           deviceIdRef.current = existing.id
           isPairedRef.current = true
@@ -434,6 +438,7 @@ export default function PlayerPage() {
             else localStorage.setItem('nuexis_device_secret', data.secret)
           }
           secretRef.current = data.secret
+          setSecret(data.secret)
           deviceIdRef.current = data.id
           setCode(activeCode)
           setState('pairing')
@@ -538,13 +543,13 @@ export default function PlayerPage() {
       cancelled = true
       clearTimeout(timerRef.current!)
       clearInterval(intervalRef.current!)
-      if (channelRef.current) supabaseRef.current.removeChannel(channelRef.current)
+      if (channelRef.current) supabase.removeChannel(channelRef.current)
       if (teamChannelRef.current) {
         teamChannelRef.current.untrack()
-        supabaseRef.current.removeChannel(teamChannelRef.current)
+        supabase.removeChannel(teamChannelRef.current)
       }
     }
-  }, [])
+  }, [supabase])
 
   // ── Event handlers ──────────────────────────────────────────────────
   const handleUnpair = async () => {
@@ -593,9 +598,9 @@ export default function PlayerPage() {
         scaleMode={scaleMode}
         isMuted={isMuted}
         orientation={orientation}
-        hardwareId={hardwareIdRef.current!}
-        secret={secretRef.current!}
-        supabase={supabaseRef.current}
+        hardwareId={hardwareId!}
+        secret={secret!}
+        supabase={supabase}
         onUnpair={handleUnpair}
         onOrientationChange={handleOrientationChange}
         onMuteToggle={toggleMute}

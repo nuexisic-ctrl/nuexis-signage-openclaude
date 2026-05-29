@@ -84,7 +84,6 @@ export default function PlaylistEngine({
         'broadcast',
         { event: 'refresh' },
         () => {
-          console.log('[PlaylistEngine] Broadcast refresh received. Performing professional refresh...')
           
           // Professional hard-refresh: fade out the screen before reloading to prevent jarring cuts (M-17)
           setFadeOpacity(0)
@@ -356,7 +355,7 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
         style={{ ...mediaStyle, border: 'none' }}
         allow="autoplay; encrypted-media; fullscreen"
         onLoad={() => setIsLoaded(true)}
-        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+        sandbox="allow-scripts allow-forms allow-presentation"
       />
     )
   }

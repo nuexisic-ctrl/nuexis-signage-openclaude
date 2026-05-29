@@ -46,8 +46,8 @@ export async function insertAsset(
   if (asset.mime_type === 'application/x-widget-remote-url') {
     try {
       const parsed = new URL(asset.file_path)
-      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-        return { success: false, error: 'URL must use HTTP or HTTPS protocol.' }
+      if (parsed.protocol !== 'https:') {
+        return { success: false, error: 'Remote URLs must use HTTPS for security.' }
       }
     } catch {
       return { success: false, error: 'Invalid URL.' }

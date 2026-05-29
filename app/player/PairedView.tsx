@@ -99,7 +99,7 @@ export default function PairedView({
           src={assetUrl}
           style={{ ...mediaStyle, border: 'none' }}
           allow="autoplay; encrypted-media; fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+          sandbox="allow-scripts allow-forms allow-presentation"
         />
       )
     } else if (mimeType === 'application/x-widget-html') {
