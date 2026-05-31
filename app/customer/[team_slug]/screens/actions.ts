@@ -117,6 +117,25 @@ export async function updateDeviceAssignment(
     return { success: false, error: err.message }
   }
 
+  // ── IDOR Prevention: Verify referenced content belongs to this team ────────
+  if (data.content_type === 'Asset' && data.asset_id) {
+    const { data: asset, error: assetErr } = await supabase
+      .from('assets')
+      .select('id')
+      .eq('id', data.asset_id)
+      .eq('team_id', teamId)
+      .single()
+    if (assetErr || !asset) return { success: false, error: 'Selected asset not found or unauthorized.' }
+  } else if (data.content_type === 'Playlist' && data.playlist_id) {
+    const { data: playlist, error: playErr } = await supabase
+      .from('playlists')
+      .select('id')
+      .eq('id', data.playlist_id)
+      .eq('team_id', teamId)
+      .single()
+    if (playErr || !playlist) return { success: false, error: 'Selected playlist not found or unauthorized.' }
+  }
+
   const { data: updated, error: updateError } = await supabase
     .from('devices')
     .update({
