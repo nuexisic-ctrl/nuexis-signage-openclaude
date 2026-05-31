@@ -294,6 +294,15 @@ export async function pushWidgetToScreen(
     return { success: false, error: err.message }
   }
 
+  // ── IDOR Prevention: Verify asset belongs to this team ─────────────────────
+  const { data: asset, error: assetErr } = await supabase
+    .from('assets')
+    .select('id')
+    .eq('id', assetId)
+    .eq('team_id', teamId)
+    .single()
+  if (assetErr || !asset) return { success: false, error: 'Selected asset not found or unauthorized.' }
+
   const { error: updateError } = await supabase
     .from('devices')
     .update({
