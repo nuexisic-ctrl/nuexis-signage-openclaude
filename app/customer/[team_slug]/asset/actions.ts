@@ -35,8 +35,8 @@ export async function insertAsset(
 
   try {
     await requireOwner(supabase, user.id)
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unauthorized' }
   }
 
   if (!asset.mime_type.startsWith('application/x-widget') && !asset.file_path.startsWith(`${teamId}/`)) {
@@ -99,8 +99,8 @@ export async function getUploadUrl(
 
   try {
     await requireOwner(supabase, user.id)
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unauthorized' }
   }
 
   // 1. Validate file size (max 50MB)
@@ -173,8 +173,8 @@ export async function deleteAsset(
 
   try {
     await requireOwner(supabase, user.id)
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unauthorized' }
   }
 
   // ── Verify ownership before touching anything ──────────────────────────────
@@ -250,8 +250,8 @@ export async function updateAssetName(
 
   try {
     await requireOwner(supabase, user.id)
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unauthorized' }
   }
 
   const { data: updated, error: updateError } = await supabase
@@ -290,9 +290,18 @@ export async function pushWidgetToScreen(
 
   try {
     await requireOwner(supabase, user.id)
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unauthorized' }
   }
+
+  // ── IDOR Validation: Verify asset belongs to the team ──────────────────────
+  const { data: asset, error: assetErr } = await supabase
+    .from('assets')
+    .select('id')
+    .eq('id', assetId)
+    .eq('team_id', teamId)
+    .single()
+  if (assetErr || !asset) return { success: false, error: 'Asset not found or unauthorized.' }
 
   const { error: updateError } = await supabase
     .from('devices')
@@ -313,4 +322,3 @@ export async function pushWidgetToScreen(
   revalidatePath(`/customer/${teamSlug}/asset`)
   return { success: true }
 }
-

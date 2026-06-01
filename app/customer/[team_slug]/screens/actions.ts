@@ -39,8 +39,8 @@ export async function claimDevice(
 
   try {
     await requireOwner(supabase, user.id)
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unauthorized' }
   }
 
   if (!(await rateLimitAction(user.id, 'claimDevice', 20, 60))) {
@@ -113,8 +113,29 @@ export async function updateDeviceAssignment(
 
   try {
     await requireOwner(supabase, user.id)
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unauthorized' }
+  }
+
+  // ── IDOR Validation: Verify assigned content belongs to the team ──────────
+  if (data.content_type === 'Asset' && data.asset_id) {
+    const { data: asset, error: assetErr } = await supabase
+      .from('assets')
+      .select('id')
+      .eq('id', data.asset_id)
+      .eq('team_id', teamId)
+      .single()
+    if (assetErr || !asset) return { success: false, error: 'Selected asset not found or unauthorized.' }
+  }
+
+  if (data.content_type === 'Playlist' && data.playlist_id) {
+    const { data: playlist, error: playlistErr } = await supabase
+      .from('playlists')
+      .select('id')
+      .eq('id', data.playlist_id)
+      .eq('team_id', teamId)
+      .single()
+    if (playlistErr || !playlist) return { success: false, error: 'Selected playlist not found or unauthorized.' }
   }
 
   const { data: updated, error: updateError } = await supabase
@@ -157,8 +178,8 @@ export async function deleteAndUnpairDevice(
 
   try {
     await requireOwner(supabase, user.id)
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unauthorized' }
   }
 
   if (!(await rateLimitAction(user.id, 'deleteAndUnpairDevice', 10, 60))) {
@@ -285,8 +306,8 @@ export async function updateDeviceName(
 
   try {
     await requireOwner(supabase, user.id)
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unauthorized' }
   }
 
   if (!(await rateLimitAction(user.id, 'updateDeviceName', 30, 60))) {

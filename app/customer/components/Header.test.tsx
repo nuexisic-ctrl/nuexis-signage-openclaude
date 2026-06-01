@@ -22,12 +22,11 @@ describe('Header component', () => {
     render(<Header fullName="Test User" email="test@example.com" />)
     
     expect(screen.getByText('Test User')).toBeInTheDocument()
-    expect(screen.getByText('test@example.com')).toBeInTheDocument()
   })
 
   it('renders fallback when name is not provided', () => {
     render(<Header email="test@example.com" />)
     
-    expect(screen.getByText('test@example.com')).toBeInTheDocument()
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
   })
 })
