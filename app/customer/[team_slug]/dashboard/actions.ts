@@ -97,18 +97,24 @@ export interface AssetOption {
   sizeBytes: number
 }
 
-async function getTeamId(supabase: Awaited<ReturnType<typeof createClient>>, teamSlug: string): Promise<string | null> {
+async function getAuthenticatedTeamId(supabase: Awaited<ReturnType<typeof createClient>>, teamSlug: string): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser()
+  const teamId = user?.app_metadata?.team_id
+  if (!teamId) return null
+
   const { data: team } = await supabase
     .from('teams')
     .select('id')
     .eq('slug', teamSlug)
+    .eq('id', teamId)
     .single()
+
   return team?.id ?? null
 }
 
 export async function getDashboardStats(teamSlug: string): Promise<DashboardStats | null> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return null
 
   const { data: devices } = await supabase
@@ -145,7 +151,7 @@ export async function getDashboardStats(teamSlug: string): Promise<DashboardStat
 
 export async function getOfflineTrend(teamSlug: string): Promise<OfflineTrend> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return { todayPercent: 0, yesterdayPercent: 0, direction: 'stable', changePercent: 0 }
 
   const { data: devices } = await supabase
@@ -201,7 +207,7 @@ export async function getOfflineTrend(teamSlug: string): Promise<OfflineTrend> {
 
 export async function getAlerts(teamSlug: string): Promise<Alert[]> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return []
 
   const alerts: Alert[] = []
@@ -256,7 +262,7 @@ export async function getAlerts(teamSlug: string): Promise<Alert[]> {
 
 export async function getRecentActivity(teamSlug: string): Promise<Activity[]> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return []
 
   const { data: devices } = await supabase
@@ -283,7 +289,7 @@ export async function getRecentActivity(teamSlug: string): Promise<Activity[]> {
 
 export async function getAnalytics(teamSlug: string): Promise<AnalyticsOverview> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) {
     return { totalPlaytimeSeconds: 0, formattedPlaytime: '0s', impressions: { available: false }, topContent: { available: false }, topSkills: { available: false } }
   }
@@ -312,7 +318,7 @@ export async function getAnalytics(teamSlug: string): Promise<AnalyticsOverview>
 
 export async function getDeviceHealth(teamSlug: string): Promise<DeviceHealth[]> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return []
 
   const { data: devices } = await supabase
@@ -341,7 +347,7 @@ export async function getDeviceHealth(teamSlug: string): Promise<DeviceHealth[]>
 
 export async function getScheduledTimeline(teamSlug: string): Promise<ScheduleEvent[]> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return []
 
   const { data: devices } = await supabase
@@ -397,7 +403,7 @@ function generateDaysArray(days: number): string[] {
 
 export async function getUptimeHistory(teamSlug: string): Promise<UptimeDataPoint[]> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return []
 
   const { data: devices } = await supabase
@@ -423,7 +429,7 @@ export async function getUptimeHistory(teamSlug: string): Promise<UptimeDataPoin
 
 export async function getScreenUptimeHistory(teamSlug: string): Promise<ScreenUptime[]> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return []
 
   const { data: devices } = await supabase
@@ -456,7 +462,7 @@ export async function getScreenUptimeHistory(teamSlug: string): Promise<ScreenUp
 
 export async function getDashboardDevices(teamSlug: string): Promise<DashboardDevice[]> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return []
 
   const { data: devices } = await supabase
@@ -535,7 +541,7 @@ export async function getDashboardDevices(teamSlug: string): Promise<DashboardDe
 
 export async function getPlaylistOptions(teamSlug: string): Promise<PlaylistOption[]> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return []
 
   const { data: playlists } = await supabase
@@ -550,7 +556,7 @@ export async function getPlaylistOptions(teamSlug: string): Promise<PlaylistOpti
 
 export async function getAssetOptions(teamSlug: string): Promise<AssetOption[]> {
   const supabase = await createClient()
-  const teamId = await getTeamId(supabase, teamSlug)
+  const teamId = await getAuthenticatedTeamId(supabase, teamSlug)
   if (!teamId) return []
 
   const { data: assets } = await supabase
