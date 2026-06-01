@@ -112,7 +112,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
                   title="widget-html-preview"
                   srcDoc={iframeSrcDoc}
                   style={{ width: '100%', aspectRatio: '16/9', border: 'none', maxHeight: '70vh', background: 'transparent' }}
-                  sandbox="allow-same-origin"
+                  sandbox=""
                 />
               )
             } catch (err) {

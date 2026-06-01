@@ -15,7 +15,7 @@ export function validateHtml(html: string): string[] {
   const getLineNumber = (index: number): number => {
     let currentLength = 0
     for (let i = 0; i < lines.length; i++) {
-      currentLength += lines[i].length + 1 // +1 for newline character
+      currentLength += (lines.at(i) || '').length + 1 // +1 for newline character
       if (currentLength > index) {
         return i + 1
       }
@@ -82,7 +82,7 @@ export function validateCss(css: string): string[] {
   let inBlock = false
 
   for (let i = 0; i < lines.length; i++) {
-    let line = lines[i].trim()
+    let line = (lines.at(i) || '').trim()
     const lineNum = i + 1
 
     // Strip comments
@@ -128,7 +128,7 @@ export function validateCss(css: string): string[] {
         }
         if (!val || val === ';') {
           errors.push(`CSS Error (Line ${lineNum}): Missing property value after colon.`)
-        } else if (!val.endsWith(';') && !val.endsWith('}') && !lines[i + 1]?.trim().startsWith('}')) {
+        } else if (!val.endsWith(';') && !val.endsWith('}') && !(lines.at(i + 1) || '').trim().startsWith('}')) {
           errors.push(`CSS Warning (Line ${lineNum}): Rule is missing a trailing semicolon ';'.`)
         }
       }

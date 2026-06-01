@@ -64,10 +64,9 @@ export default function ScreensClient({
   const [deleteModalDevice, setDeleteModalDevice] = useState<Device | null>(null)
   const [renameModalDevice, setRenameModalDevice] = useState<Device | null>(null)
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
+  const [hasSyncedPresence, setHasSyncedPresence] = useState(false)
   const [presenceRefreshKey, setPresenceRefreshKey] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [showSyncToast, setShowSyncToast] = useState(false)
-  const [toastMessage, setToastMessage] = useState('')
   const [showSuccessPulse, setShowSuccessPulse] = useState(false)
   const [, setNowMs] = useState(() => Date.now())
   const [isMounted, setIsMounted] = useState(false)
@@ -114,9 +113,7 @@ export default function ScreensClient({
   const teamChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const lastRefreshRef = useRef<number>(0)
 
-  useEffect(() => {
-    setDevices(initialDevices)
-  }, [initialDevices])
+
 
   useEffect(() => {
     const intervalId = setInterval(() => setNowMs(Date.now()), RELATIVE_TIME_TICK_MS)
@@ -128,7 +125,6 @@ export default function ScreensClient({
     if (!teamId) return
 
     let isUnmounting = false
-    let debounceTimer: NodeJS.Timeout | null = null
 
     const channel = supabase
       .channel(`team-status:${teamId}`)
@@ -141,17 +137,12 @@ export default function ScreensClient({
             .filter(Boolean)
         )
         setOnlineDeviceIds(ids)
+        setHasSyncedPresence(true)
       })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
           if (isUnmounting) return
-          console.warn(`[Dashboard] Presence channel ${status}, auto-reconnecting in 3s...`)
-          if (debounceTimer) clearTimeout(debounceTimer)
-          debounceTimer = setTimeout(() => {
-            if (!isUnmounting) {
-              setPresenceRefreshKey(prev => prev + 1)
-            }
-          }, 3000)
+          console.warn(`[Dashboard] Presence channel ${status}. Auto-reconnecting...`)
         }
       })
 
@@ -159,18 +150,16 @@ export default function ScreensClient({
 
     return () => {
       isUnmounting = true
-      if (debounceTimer) clearTimeout(debounceTimer)
       supabase.removeChannel(channel)
       if (teamChannelRef.current === channel) {
         teamChannelRef.current = null
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, presenceRefreshKey])
+  }, [teamId, presenceRefreshKey, supabase])
 
   // Handle presence shifts (side-effects for online/offline transitions)
   useEffect(() => {
-    if (!isMounted || devices.length === 0) return
+    if (!isMounted || !hasSyncedPresence || devices.length === 0) return
 
     const leftIds = devices
       .filter(d => d.status === 'online' && !onlineDeviceIds.has(d.id))
@@ -185,8 +174,7 @@ export default function ScreensClient({
         console.error('[Dashboard] Error updating last seen:', err)
       )
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlineDeviceIds, isMounted, teamSlug])
+  }, [onlineDeviceIds, isMounted, teamSlug, devices, hasSyncedPresence])
 
   // ── Postgres Changes for device list (INSERT/UPDATE/DELETE) ───────────
   useEffect(() => {
@@ -251,15 +239,6 @@ export default function ScreensClient({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId])
-
-  useEffect(() => {
-    if (showSyncToast) {
-      const timer = setTimeout(() => {
-        setShowSyncToast(false)
-      }, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [showSyncToast])
 
   useEffect(() => {
     const handleClick = () => {
@@ -601,16 +580,6 @@ export default function ScreensClient({
         />
       )}
 
-      {showSyncToast && (
-        <div className={`${styles.toastContainer} ${showSyncToast ? styles.toastShow : ''}`}>
-          <div className={styles.toastContent}>
-            <svg className={styles.toastIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-            <span className={styles.toastMessage}>{toastMessage}</span>
-          </div>
-        </div>
-      )}
     </>
   )
 }

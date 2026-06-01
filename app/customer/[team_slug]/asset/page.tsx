@@ -79,6 +79,7 @@ export default async function AssetPage({ params, searchParams }: Props) {
         <Header fullName={fullName} email={user.email} />
 
         <AssetClient
+          key={`${team_slug}-${currentPage}`}
           initialAssets={assets as Parameters<typeof AssetClient>[0]['initialAssets']}
           teamId={profile?.team_id ?? ''}
           teamSlug={team_slug}

@@ -1,4 +1,16 @@
-import fpPromise from '@fingerprintjs/fingerprintjs';
+import { load } from '@fingerprintjs/fingerprintjs';
+
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Standard math-based RFC4122 v4 compliant UUID generator fallback for non-secure HTTP contexts
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 const IDB_DB_NAME = 'nuexis_device_store';
 const IDB_STORE_NAME = 'identity';
@@ -95,14 +107,14 @@ export async function getHardwareId(): Promise<string> {
   // ── Tier 3: Generate new UUID, use fingerprint as entropy seed ─────────
   let deviceId: string;
   try {
-    const fp = await fpPromise.load();
+    const fp = await load();
     const result = await fp.get();
     // Prefix with a random UUID portion to guarantee uniqueness even on
     // identical hardware, but append the fingerprint for traceability.
-    deviceId = `${crypto.randomUUID()}-fp-${result.visitorId.slice(0, 8)}`;
+    deviceId = `${generateUUID()}-fp-${result.visitorId.slice(0, 8)}`;
   } catch {
     // If FingerprintJS fails entirely, fall back to pure UUID
-    deviceId = crypto.randomUUID();
+    deviceId = generateUUID();
   }
 
   // Persist to all tiers

@@ -1,0 +1,148 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - Next.js
+  - React
+  - Supabase
+  - Redis
+  - TailwindCSS
+  - Serwist (PWA)
+routes:
+  - path: /
+    file: app/page.tsx
+    auth_required: false
+    description: Landing page for NuExis Digital Signage Platform
+  - path: /login
+    file: app/login/page.tsx
+    auth_required: false
+    description: Global generic login page
+  - path: /signup
+    file: app/signup/page.tsx
+    auth_required: false
+    description: Sign up new user and register a workspace
+  - path: /player
+    file: app/player/page.tsx
+    auth_required: false
+    description: Digital signage player page for connected hardware displays
+  - path: /customer/[team_slug]/login
+    file: app/customer/[team_slug]/login/page.tsx
+    auth_required: false
+    description: Team/workspace-specific login page
+  - path: /customer/[team_slug]/dashboard
+    file: app/customer/[team_slug]/dashboard/page.tsx
+    auth_required: true
+    description: Main dashboard dashboard showing workspace widgets
+  - path: /customer/[team_slug]/asset
+    file: app/customer/[team_slug]/asset/page.tsx
+    auth_required: true
+    description: Asset library management for media and widgets
+  - path: /customer/[team_slug]/playlists
+    file: app/customer/[team_slug]/playlists/page.tsx
+    auth_required: true
+    description: Playlist building and sequencing tool
+  - path: /customer/[team_slug]/screens
+    file: app/customer/[team_slug]/screens/page.tsx
+    auth_required: true
+    description: Device fleet management and screen pairing
+features:
+  - name: Global Landing Page
+    description: General introduction to the digital signage features
+    files:
+      - app/page.tsx
+    entry_route: /
+    user_interactions:
+      - Click Log In button to go to login page
+      - Click Sign Up button to go to registration page
+      - Click Create Workspace button to start registration
+    api_calls: []
+    auth_required: false
+  - name: Global Authentication
+    description: Log in using generic email and password credentials
+    files:
+      - app/login/page.tsx
+      - app/login/GenericLoginForm.tsx
+    entry_route: /login
+    user_interactions:
+      - Fill email input field
+      - Fill password input field
+      - Click login submit button
+      - See error messages on invalid input
+    api_calls: []
+    auth_required: false
+  - name: Registration and Workspace Setup
+    description: Sign up a new user account and initialize a workspace with team slug
+    files:
+      - app/signup/page.tsx
+      - app/signup/actions.ts
+    entry_route: /signup
+    user_interactions:
+      - Fill email and password fields
+      - Fill company name and workspace slug field
+      - Click Sign Up to create profile and team workspace
+    api_calls: []
+    auth_required: false
+  - name: Workspace Login
+    description: Workspace-specific authentication matching the team slug context
+    files:
+      - app/customer/[team_slug]/login/page.tsx
+      - app/customer/[team_slug]/login/LoginForm.tsx
+      - app/customer/[team_slug]/login/actions.ts
+    entry_route: /customer/[team_slug]/login
+    user_interactions:
+      - Fill email and password
+      - Click Sign In
+    api_calls: []
+    auth_required: false
+  - name: Player Experience
+    description: Hardware rendering player for digital displays
+    files:
+      - app/player/page.tsx
+    entry_route: /player
+    user_interactions:
+      - Render full-screen digital content
+      - Connect to Supabase Realtime channel
+    api_calls: []
+    auth_required: false
+  - name: Asset Management
+    description: Upload images/videos and configure custom dashboard widgets or flows
+    files:
+      - app/customer/[team_slug]/asset/page.tsx
+      - app/customer/[team_slug]/asset/AssetClient.tsx
+      - app/customer/[team_slug]/asset/actions.ts
+    entry_route: /customer/[team_slug]/asset
+    user_interactions:
+      - Upload image or video files using upload zone
+      - Add widgets (Clock, RSS, weather)
+      - Delete existing assets
+    api_calls: []
+    auth_required: true
+  - name: Playlists sequencing
+    description: Arrange media items into playlists with custom durations and orders
+    files:
+      - app/customer/[team_slug]/playlists/page.tsx
+      - app/customer/[team_slug]/playlists/PlaylistsClient.tsx
+      - app/customer/[team_slug]/playlists/actions.ts
+    entry_route: /customer/[team_slug]/playlists
+    user_interactions:
+      - Create a new playlist
+      - Add media items to playlist timeline
+      - Reorder playlist items
+      - Save playlist configuration
+    api_calls: []
+    auth_required: true
+  - name: Device management and Pairing
+    description: View screens status, pair new players, rename screens, assign playlists
+    files:
+      - app/customer/[team_slug]/screens/page.tsx
+      - app/customer/[team_slug]/screens/ScreensClient.tsx
+      - app/customer/[team_slug]/screens/actions.ts
+    entry_route: /customer/[team_slug]/screens
+    user_interactions:
+      - View screen list and status
+      - Click Pair Screen and enter numeric code
+      - Assign playlist to device
+      - Update device configuration or rename
+    api_calls: []
+    auth_required: true
+known_limitations: []

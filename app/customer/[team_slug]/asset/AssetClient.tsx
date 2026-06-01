@@ -4,7 +4,6 @@ import { useState, useCallback, useTransition, useEffect, useRef, useMemo } from
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Check, File, Plus, RefreshCw, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { insertAsset } from './actions'
 import { AssetPreviewModal } from './AssetPreviewModal'
 import { AssetCard } from './AssetCard'
 import { FilterSidebar } from './FilterSidebar'
@@ -14,6 +13,7 @@ import { Asset, isImage, isVideo, isWidget } from './types'
 import { useAssetUpload } from './useAssetUpload'
 import { UploadPanel } from './UploadPanel'
 import { WidgetModalsContainer } from './WidgetModalsContainer'
+import { t } from '@/lib/i18n'
 import styles from './asset.module.css'
 
 interface Props {
@@ -39,11 +39,6 @@ export default function AssetClient({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
   const [showWidgetSelection, setShowWidgetSelection] = useState(false)
-  const [showYouTubeConfig, setShowYouTubeConfig] = useState(false)
-  const [showRemoteUrlConfig, setShowRemoteUrlConfig] = useState(false)
-  const [showHtmlConfig, setShowHtmlConfig] = useState(false)
-  const [showFlowConfig, setShowFlowConfig] = useState(false)
-  const [isSubmittingWidget, setIsSubmittingWidget] = useState(false)
   const [renameModalAsset, setRenameModalAsset] = useState<Asset | null>(null)
   const [deleteModalAsset, setDeleteModalAsset] = useState<Asset | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -94,7 +89,6 @@ export default function AssetClient({
   useEffect(() => {
     const saved = localStorage.getItem('assetsViewMode')
     if (saved === 'grid' || saved === 'table') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setViewMode(saved)
     }
     setIsMounted(true)
@@ -114,26 +108,26 @@ export default function AssetClient({
     localStorage.setItem('assetsViewMode', mode)
   }
 
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
+  const [previewUrls, setPreviewUrls] = useState<Map<string, string>>(() => new Map())
 
   useEffect(() => {
     let cancelled = false
     const generateUrls = async () => {
-      // M-02: Only sign URLs for visible page assets (already server-paginated to pageSize)
       const targetAssets = assets.filter(
         asset => (isImage(asset.mime_type) || isVideo(asset.mime_type)) && !asset.mime_type.startsWith('application/x-widget')
       )
       // Sign in small batches to avoid overwhelming Supabase
       const BATCH_SIZE = 10
-      const urls: Record<string, string> = {}
+      const newUrls = new Map<string, string>()
       for (let i = 0; i < targetAssets.length; i += BATCH_SIZE) {
         if (cancelled) return
         const batch = targetAssets.slice(i, i + BATCH_SIZE)
         const results = await Promise.all(
           batch.map(async (asset) => {
             // Skip if we already have a cached URL for this path
-            if (previewUrls[asset.file_path]) {
-              return { path: asset.file_path, url: previewUrls[asset.file_path] }
+            const cachedVal = previewUrls.get(asset.file_path)
+            if (cachedVal) {
+              return { path: asset.file_path, url: cachedVal }
             }
             const { data } = await supabase.storage
               .from('workspace-media')
@@ -142,19 +136,24 @@ export default function AssetClient({
           })
         )
         for (const res of results) {
-          if (res.url) urls[res.path] = res.url
+          if (res.url) newUrls.set(res.path, res.url)
         }
       }
       if (!cancelled) {
-        setPreviewUrls(prev => ({ ...prev, ...urls }))
+        setPreviewUrls(prev => {
+          const next = new Map(prev)
+          newUrls.forEach((val, key) => next.set(key, val))
+          return next
+        })
       }
     }
     generateUrls()
     return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets, supabase])
 
   const getPreviewUrl = useCallback((filePath: string) => {
-    return previewUrls[filePath] || null
+    return previewUrls.get(filePath) || null
   }, [previewUrls])
 
   const handleRefresh = async () => {
@@ -172,122 +171,6 @@ export default function AssetClient({
     } finally {
       setIsRefreshing(false)
     }
-  }
-
-  const handleCreateYouTubeWidget = async (name: string, url: string) => {
-    setIsSubmittingWidget(true)
-    const result = await insertAsset(teamSlug, {
-      file_name: name,
-      file_path: url,
-      mime_type: 'application/x-widget-youtube',
-      size_bytes: 0,
-    })
-
-    if (result.success) {
-      const newAsset: Asset = {
-        id: result.id!,
-        file_name: name,
-        file_path: url,
-        mime_type: 'application/x-widget-youtube',
-        size_bytes: 0,
-        created_at: new Date().toISOString(),
-      }
-      setAssets(prev => [newAsset, ...prev])
-      setShowYouTubeConfig(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
-      startTransition(() => { router.refresh() })
-    }
-    setIsSubmittingWidget(false)
-  }
-
-  const handleCreateRemoteUrlWidget = async (name: string, url: string) => {
-    setIsSubmittingWidget(true)
-    const result = await insertAsset(teamSlug, {
-      file_name: name,
-      file_path: url,
-      mime_type: 'application/x-widget-remote-url',
-      size_bytes: 0,
-    })
-
-    if (result.success) {
-      const newAsset: Asset = {
-        id: result.id!,
-        file_name: name,
-        file_path: url,
-        mime_type: 'application/x-widget-remote-url',
-        size_bytes: 0,
-        created_at: new Date().toISOString(),
-      }
-      setAssets(prev => [newAsset, ...prev])
-      setShowRemoteUrlConfig(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
-      startTransition(() => { router.refresh() })
-    }
-    setIsSubmittingWidget(false)
-  }
-
-  const handleCreateHtmlWidget = async (name: string, html: string, css: string) => {
-    setIsSubmittingWidget(true)
-    const serialized = JSON.stringify({ html, css })
-    const result = await insertAsset(teamSlug, {
-      file_name: name,
-      file_path: serialized,
-      mime_type: 'application/x-widget-html',
-      size_bytes: 0,
-    })
-
-    if (result.success) {
-      const newAsset: Asset = {
-        id: result.id!,
-        file_name: name,
-        file_path: serialized,
-        mime_type: 'application/x-widget-html',
-        size_bytes: 0,
-        created_at: new Date().toISOString(),
-      }
-      setAssets(prev => [newAsset, ...prev])
-      setShowHtmlConfig(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
-      startTransition(() => { router.refresh() })
-    }
-    setIsSubmittingWidget(false)
-  }
-
-  const handleCreateFlowWidget = async (name: string, config: {
-    style: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist'
-    showSeconds: boolean
-    showDate: boolean
-    use24Hour: boolean
-    dateFormat: string
-  }) => {
-    setIsSubmittingWidget(true)
-    const serialized = JSON.stringify(config)
-    const result = await insertAsset(teamSlug, {
-      file_name: name,
-      file_path: serialized,
-      mime_type: 'application/x-widget-flow',
-      size_bytes: 0,
-    })
-
-    if (result.success) {
-      const newAsset: Asset = {
-        id: result.id!,
-        file_name: name,
-        file_path: serialized,
-        mime_type: 'application/x-widget-flow',
-        size_bytes: 0,
-        created_at: new Date().toISOString(),
-      }
-      setAssets(prev => [newAsset, ...prev])
-      setShowFlowConfig(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
-      startTransition(() => { router.refresh() })
-    }
-    setIsSubmittingWidget(false)
   }
 
   const handleDeleteSuccess = (assetId: string) => {
@@ -364,11 +247,11 @@ export default function AssetClient({
     <div className={styles.assetArea}>
       <div className={styles.topbar}>
         <div>
-          <h1 className={styles.pageTitle}>Asset Library</h1>
+          <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
           <p className={styles.pageSubtitle}>
             {totalAssets > 0
-              ? `${totalAssets} asset${totalAssets === 1 ? '' : 's'} in your library.`
-              : 'Upload images and videos to get started.'}
+              ? `${totalAssets} ${totalAssets === 1 ? t('asset') : t('assets')} ${t('in your library.')}`
+              : t('Upload images and videos to get started.')}
           </p>
         </div>
         <div className={styles.topbarActions}>
@@ -403,7 +286,7 @@ export default function AssetClient({
             }}
           >
             <Upload size={16} />
-            Upload Media
+            {t('Upload Media')}
           </button>
           <button 
             onClick={() => setShowWidgetSelection(true)}
@@ -415,7 +298,7 @@ export default function AssetClient({
             }}
           >
             <Plus size={16} />
-            Create Widget
+            {t('Create Widget')}
           </button>
         </div>
       </div>
@@ -430,7 +313,7 @@ export default function AssetClient({
       {showSuccess && (
         <div className={styles.successBanner} role="alert">
           <Check className={styles.successIcon} size={17} />
-          Media uploaded successfully
+          {t('Media uploaded successfully')}
         </div>
       )}
 
@@ -445,7 +328,7 @@ export default function AssetClient({
                 <input 
                   type="text" 
                   className={styles.searchInput}
-                  placeholder="Search by file name..."
+                  placeholder={t('Search by file name...')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -458,7 +341,7 @@ export default function AssetClient({
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                   </svg>
-                  Filters
+                  {t('Filters')}
                   {showFilterDot && <span className={styles.filterDot} />}
                 </button>
                 {isMounted && (
@@ -466,7 +349,7 @@ export default function AssetClient({
                     <button 
                       className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
                       onClick={() => handleSetViewMode('table')}
-                      title="Table View"
+                      title={t('Table View')}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -480,7 +363,7 @@ export default function AssetClient({
                     <button 
                       className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
                       onClick={() => handleSetViewMode('grid')}
-                      title="Grid View"
+                      title={t('Grid View')}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
@@ -501,11 +384,11 @@ export default function AssetClient({
             {filteredAssets.length === 0 ? (
               <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}><File size={28} /></div>
-                <h3 className={styles.emptyTitle}>No assets found</h3>
+                <h3 className={styles.emptyTitle}>{t('No assets found')}</h3>
                 <p className={styles.emptyText}>
                   {assets.length === 0 
-                    ? "Upload images or videos above to start building your asset library."
-                    : "No assets matched your search criteria."
+                    ? t("Upload images or videos above to start building your asset library.")
+                    : t("No assets matched your search criteria.")
                   }
                 </p>
               </div>
@@ -563,8 +446,8 @@ export default function AssetClient({
               <div className={styles.tableFooter}>
                 <div>
                   {searchQuery 
-                    ? `Showing ${filteredAssets.length} filtered assets` 
-                    : `Showing ${startItem} to ${endItem} of ${totalAssets} assets`
+                    ? `${t('Showing')} ${filteredAssets.length} ${t('filtered assets')}` 
+                    : `${t('Showing')} ${startItem} ${t('to')} ${endItem} ${t('of')} ${totalAssets} ${t('assets')}`
                   }
                 </div>
                 {!searchQuery && (
@@ -629,20 +512,9 @@ export default function AssetClient({
       <WidgetModalsContainer
         showWidgetSelection={showWidgetSelection}
         setShowWidgetSelection={setShowWidgetSelection}
-        showYouTubeConfig={showYouTubeConfig}
-        setShowYouTubeConfig={setShowYouTubeConfig}
-        showRemoteUrlConfig={showRemoteUrlConfig}
-        setShowRemoteUrlConfig={setShowRemoteUrlConfig}
-        showHtmlConfig={showHtmlConfig}
-        setShowHtmlConfig={setShowHtmlConfig}
-        showFlowConfig={showFlowConfig}
-        setShowFlowConfig={setShowFlowConfig}
-        isSubmittingWidget={isSubmittingWidget}
         teamSlug={teamSlug}
-        onCreateYouTube={handleCreateYouTubeWidget}
-        onCreateRemoteUrl={handleCreateRemoteUrlWidget}
-        onCreateHtml={handleCreateHtmlWidget}
-        onCreateFlow={handleCreateFlowWidget}
+        setAssets={setAssets}
+        setShowSuccess={setShowSuccess}
       />
 
       {renameModalAsset && (

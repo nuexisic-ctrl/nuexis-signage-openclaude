@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000/customer/test/login",
+  "loginUser": "test@gmail.com",
+  "loginPassword": "test@gmail.com",
+  "executionArgs": {
+    "projectName": "Digital-Signage-Openclaude",
+    "projectPath": "c:\\Users\\nikhi\\Downloads\\Projects\\Digital-Signage-Openclaude",
+    "testIds": [],
+    "additionalInstruction": "Run code analysis and verify code quality, rendering, Next.js, and Supabase integration.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-Kf0eOlEEA0Et3__6MwhCvEu3K06MHutQc53rZLtL2RS7hQGrpqWsPxT1eA-Bm5r_Oga5Mx4vG9RQO_Qg-maT4Tv9yied5E1Sd2uRFZ8X5gHakNXZfBX4csz2QM10H9lrS3U"
+    }
+  },
+  "serverPort": 64811
+}

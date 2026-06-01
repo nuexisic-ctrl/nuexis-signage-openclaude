@@ -21,6 +21,16 @@ interface UploadPanelProps {
   setUploadQueue: React.Dispatch<React.SetStateAction<UploadItem[]>>
 }
 
+const getStatusClass = (status: UploadItem['status']) => {
+  switch (status) {
+    case 'waiting': return styles.waiting
+    case 'uploading': return styles.uploading
+    case 'completed': return styles.completed
+    case 'failed': return styles.failed
+    default: return ''
+  }
+}
+
 export function UploadPanel({
   showQueuePanel,
   uploadQueue,
@@ -89,7 +99,7 @@ export function UploadPanel({
                 <span className={styles.uploadItemName} title={item.fileName}>
                   {item.fileName}
                 </span>
-                <span className={`${styles.uploadItemMeta} ${styles[item.status]}`}>
+                <span className={`${styles.uploadItemMeta} ${getStatusClass(item.status)}`}>
                   {item.status === 'completed' && <CheckCircle2 size={12} />}
                   {item.status === 'failed' && <AlertTriangle size={12} />}
                   {item.status === 'uploading' && `${item.progress}%`}
@@ -98,7 +108,7 @@ export function UploadPanel({
               </div>
               <div className={styles.uploadItemProgressContainer}>
                 <div 
-                  className={`${styles.uploadItemProgressBar} ${styles[item.status]}`}
+                  className={`${styles.uploadItemProgressBar} ${getStatusClass(item.status)}`}
                   style={{ width: `${item.progress}%` }}
                 />
               </div>

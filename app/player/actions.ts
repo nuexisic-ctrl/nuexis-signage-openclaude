@@ -169,7 +169,7 @@ export async function incrementPlaytime(
   }
 }
 
-export async function sendHeartbeat(deviceId: string, teamId: string, hardwareId: string, secret: string) {
+export async function sendHeartbeat(deviceId: string, teamId: string, hardwareId: string) {
   if (!(await rateLimitAction(hardwareId, 'sendHeartbeat', 20, 60))) {
     throw new Error('Rate limit exceeded')
   }
@@ -179,7 +179,16 @@ export async function sendHeartbeat(deviceId: string, teamId: string, hardwareId
   // in refs). The rate limiter prevents abuse. Skipping the bcrypt RPC call here
   // saves one full DB query + bcrypt evaluation per device per minute.
   try {
-    await redis.setex(`heartbeat:${teamId}:${deviceId}`, 120, new Date().toISOString())
+    if (redis) {
+      const presenceKey = `heartbeat:${teamId}:${deviceId}`
+      const indexKey = `heartbeats:index:${teamId}`
+      await Promise.all([
+        redis.setex(presenceKey, 120, new Date().toISOString()),
+        redis.sadd(indexKey, deviceId)
+      ])
+    } else {
+      console.warn('[sendHeartbeat] Redis not configured. Skipping active heartbeat tracking.')
+    }
   } catch (error) {
     console.error('[sendHeartbeat] Redis error:', error)
     // Non-fatal — presence will naturally expire from Redis; device will show offline

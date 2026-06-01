@@ -6,13 +6,14 @@ import { getHardwareId } from '@/lib/utils/fingerprint'
 import {
   registerDevice, refreshDeviceCode, getDeviceState,
   unpairDevice, updateDeviceOrientation, incrementPlaytime,
-  sendHeartbeat, getSignedMediaUrl, getPlayerAsset,
+  sendHeartbeat,
 } from './actions'
 import PairingView from './PairingView'
 import PairedView from './PairedView'
 import { ExpiredView, LoadingView } from './StatusViews'
 import { PAIRING_DURATION_MS, generateCode } from './types'
 import type { PlayerState, DeviceState, RealtimeChannel } from './types'
+import { resolveAsset } from './assetResolver'
 
 export default function PlayerPage() {
   const [state, setState] = useState<PlayerState>('loading')
@@ -95,7 +96,7 @@ export default function PlayerPage() {
       if (stateRef.current === 'paired' && teamChannelRef.current && devId) {
         const tId = teamIdRef.current
         if (tId && hwId && secret) {
-          sendHeartbeat(devId, tId, hwId, secret).catch((err: any) => {
+          sendHeartbeat(devId, tId, hwId).catch((err: any) => {
             console.warn('[Player] Heartbeat deferred (transient network or extension override):', err.message || err)
           })
         }
@@ -147,7 +148,7 @@ export default function PlayerPage() {
 
     const handleUnload = () => {
       if (teamChannelRef.current) {
-        teamChannelRef.current.untrack()
+        teamChannelRef.current.untrack().catch(() => {})
       }
       flushPlaytime()
     }
@@ -185,101 +186,13 @@ export default function PlayerPage() {
       setMimeType(null)
     }
 
-    async function cleanupOldCaches(currentUrlToKeep: string) {
-      try {
-        const cache = await caches.open('nuexis-media-cache')
-        const keys = await cache.keys()
-        for (const request of keys) {
-          if (request.url !== currentUrlToKeep) {
-            await cache.delete(request)
-          }
-        }
-      } catch (err) {
-        console.error('Failed to clean up old caches', err)
-      }
-    }
-
-    async function resolveAsset(client: typeof supabase, assetId: string | null) {
-      currentAssetId = assetId
-      if (!assetId) {
-        clearAsset()
-        return
-      }
-
-      try {
-        const asset = await getPlayerAsset(assetId, hardwareIdRef.current!, secretRef.current!)
-        if (currentAssetId !== assetId || cancelled) return
-
-        if (!asset) {
-          clearAsset()
-          return
-        }
-
-        if (
-          asset.mime_type === 'application/x-widget-youtube' || 
-          asset.mime_type === 'application/x-widget-remote-url' ||
-          asset.mime_type === 'application/x-widget-html' ||
-          asset.mime_type === 'application/x-widget-flow'
-        ) {
-          setBlobUrl((prev) => {
-            if (prev) URL.revokeObjectURL(prev)
-            return null
-          })
-          setAssetUrl(asset.file_path)
-          setMimeType(asset.mime_type)
-          return
-        }
-
-        const cacheKey = `https://local-media-cache/${asset.file_path}`
-
-        try {
-          const cache = await caches.open('nuexis-media-cache')
-          let response = await cache.match(cacheKey)
-
-          if (currentAssetId !== assetId || cancelled) return
-
-          if (!response) {
-            const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareIdRef.current!, secretRef.current!)
-            if (currentAssetId !== assetId || cancelled) return
-            response = await fetch(mediaUrl, { mode: 'cors' })
-            if (response.ok) {
-              await cache.put(cacheKey, response.clone())
-            }
-          }
-
-          if (currentAssetId !== assetId || cancelled) return
-
-          if (response?.ok) {
-            const blob = await response.blob()
-            if (currentAssetId !== assetId || cancelled) return
-            const localBlobUrl = URL.createObjectURL(blob)
-            setBlobUrl((prev) => {
-              if (prev) URL.revokeObjectURL(prev)
-              return localBlobUrl
-            })
-            setAssetUrl(localBlobUrl)
-            setMimeType(asset.mime_type)
-            cleanupOldCaches(cacheKey)
-          } else {
-            throw new Error('Failed to load media')
-          }
-        } catch {
-          if (currentAssetId !== assetId || cancelled) return
-          const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareIdRef.current!, secretRef.current!).catch(() => null)
-          if (currentAssetId !== assetId || cancelled) return
-          if (mediaUrl) {
-            setBlobUrl((prev) => {
-              if (prev) URL.revokeObjectURL(prev)
-              return null
-            })
-            setAssetUrl(mediaUrl)
-            setMimeType(asset.mime_type)
-          }
-        }
-      } catch (err) {
-        console.error('Failed to resolve asset in player:', err)
-        clearAsset()
-      }
+    const handleResolve = (url: string | null, type: string | null, bUrl: string | null) => {
+      setAssetUrl(url)
+      setMimeType(type)
+      setBlobUrl((prev) => {
+        if (prev && prev !== bUrl) URL.revokeObjectURL(prev)
+        return bUrl
+      })
     }
 
     function applyDeviceState(device: DeviceState) {
@@ -288,7 +201,23 @@ export default function PlayerPage() {
       setOrientation(device.orientation || 0)
       if (device.content_type === 'Asset') {
         setPlaylistId(null)
-        resolveAsset(supabase, device.asset_id)
+        currentAssetId = device.asset_id
+        resolveAsset({
+          assetId: device.asset_id,
+          hardwareId: hardwareIdRef.current!,
+          secret: secretRef.current!,
+          onResolve: (url, type, bUrl) => {
+            if (currentAssetId === device.asset_id && !cancelled) {
+              handleResolve(url, type, bUrl)
+            }
+          },
+          onClear: () => {
+            if (currentAssetId === device.asset_id && !cancelled) {
+              clearAsset()
+            }
+          },
+          isCancelled: () => cancelled || currentAssetId !== device.asset_id
+        })
       } else if (device.content_type === 'Playlist') {
         clearAsset()
         setPlaylistId(device.playlist_id)
@@ -300,7 +229,7 @@ export default function PlayerPage() {
 
     function startPresenceTracking(teamId: string, deviceId: string) {
       if (teamChannelRef.current) {
-        teamChannelRef.current.untrack()
+        teamChannelRef.current.untrack().catch(() => {})
         supabase.removeChannel(teamChannelRef.current)
       }
 
@@ -315,6 +244,8 @@ export default function PlayerPage() {
             await teamChannel.track({
               device_id: deviceId,
               online_at: new Date().toISOString(),
+            }).catch((err: any) => {
+              console.warn('[Player] Presence tracking failed:', err.message || err)
             })
           }
           if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
@@ -545,7 +476,7 @@ export default function PlayerPage() {
       clearInterval(intervalRef.current!)
       if (channelRef.current) supabase.removeChannel(channelRef.current)
       if (teamChannelRef.current) {
-        teamChannelRef.current.untrack()
+        teamChannelRef.current.untrack().catch(() => {})
         supabase.removeChannel(teamChannelRef.current)
       }
     }

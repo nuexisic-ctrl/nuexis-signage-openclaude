@@ -129,6 +129,10 @@ export default function PlaylistEngine({
   }
 
   const cacheAssets = async (playlistItems: PlaylistItem[]) => {
+    if (typeof window === 'undefined' || !('caches' in window)) {
+      console.warn('[PlaylistEngine] Cache Storage API is not supported in this browser context.')
+      return
+    }
     try {
       const cache = await caches.open('nuexis-playlist-cache')
       for (const item of playlistItems) {
@@ -383,7 +387,7 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
           srcDoc={iframeSrcDoc}
           style={{ ...mediaStyle, border: 'none' }}
           onLoad={() => setIsLoaded(true)}
-          sandbox="allow-same-origin"
+          sandbox=""
         />
       )
     } catch (err) {
@@ -407,6 +411,7 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
             showDate={config.showDate}
             use24Hour={config.use24Hour}
             dateFormat={config.dateFormat}
+            theme={config.theme}
           />
         </div>
       )

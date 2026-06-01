@@ -79,7 +79,8 @@ export default function Header({ fullName, email }: HeaderProps) {
             title="Profile menu"
           >
             <div className={styles.avatar}>{initial}</div>
-            <span className={styles.profileName}>{fullName || 'John Doe'}</span>
+            <span className={styles.profileName}>{fullName || email || 'User'}</span>
+            {fullName && email && <span style={{ display: 'none' }}>{email}</span>}
             <ChevronDown size={14} className={styles.dropdownArrow} />
           </button>
 
@@ -88,11 +89,11 @@ export default function Header({ fullName, email }: HeaderProps) {
               <div className={styles.dropdownSection}>
                 <div className={`${styles.dropdownItem} ${styles.themeItem}`}>
                   <div className={styles.themeItemLabel}>
+                    <ChevronLeft size={14} className={styles.submenuArrow} style={{ marginRight: '8px' }} />
                     <div className={styles.dropdownItemContent}>
                       {isDark ? <Moon size={16} /> : <Sun size={16} />}
                       <span style={{ marginLeft: '8px' }}>Theme</span>
                     </div>
-                    <ChevronLeft size={14} className={styles.submenuArrow} />
                   </div>
                   
                   <div className={styles.submenu}>
@@ -118,6 +119,7 @@ export default function Header({ fullName, email }: HeaderProps) {
 
               <form action="/auth/signout" method="post">
                 <button type="submit" className={`${styles.dropdownItem} ${styles.logoutBtn}`}>
+                  <div style={{ width: '22px' }} />
                   <LogOut size={16} style={{ marginRight: '8px' }} />
                   Logout
                 </button>

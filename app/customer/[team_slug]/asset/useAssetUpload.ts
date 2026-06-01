@@ -63,8 +63,10 @@ export function useAssetUpload({
     const uploadedAssets: Asset[] = []
 
     for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const queueItem = newItems[i]
+      const file = files.at(i)
+      const queueItem = newItems.at(i)
+
+      if (!file || !queueItem) continue
 
       // Set status to uploading and initial progress
       setUploadQueue(prev => prev.map(item => item.id === queueItem.id ? { ...item, status: 'uploading', progress: 5 } : item))

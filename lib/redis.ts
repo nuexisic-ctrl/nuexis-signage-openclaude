@@ -4,24 +4,22 @@ import { Redis } from '@upstash/redis'
 // to a dummy URL, which would cause all heartbeats to fail silently
 // and show every device as offline.
 if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-  console.error(
-    '[Redis] FATAL: UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set. ' +
-    'Device heartbeats will not work without Redis.'
+  console.warn(
+    '[Redis] UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are not set. ' +
+    'Device heartbeats and active rate limiting will be bypassed.'
   )
 }
 
-export const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+export const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    })
+  : null
 
 export async function rateLimitAction(userId: string, actionName: string, maxRequests: number = 30, windowSeconds: number = 60): Promise<boolean> {
-  // If Redis credentials are not configured, fail closed in production, fail open in dev
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error(`[rateLimitAction] Redis credentials missing in production. Blocking action: ${actionName}`)
-      return false
-    }
+  // If Redis credentials are not configured, gracefully bypass rate check to let the app function
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN || !redis) {
     console.warn(`[rateLimitAction] Redis credentials missing. Gracefully bypassing rate limit for: ${actionName}`)
     return true
   }

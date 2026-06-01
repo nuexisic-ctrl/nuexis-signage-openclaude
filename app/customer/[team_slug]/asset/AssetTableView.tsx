@@ -2,17 +2,27 @@
 
 import { createPortal } from 'react-dom'
 import { File, Play, Image as ImageIcon, Link, Code, Clock } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
+import { t } from '@/lib/i18n'
 import styles from './AssetTableView.module.css'
 
-const YoutubeIcon = ({ size = 20, ...props }: { size?: number } & React.SVGProps<SVGSVGElement>) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+const YoutubeIcon = ({ size = 20, style }: { size?: number; style?: React.CSSProperties }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    style={style}
+  >
     <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
     <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
   </svg>
 )
-
-import { createClient } from '@/lib/supabase/client'
-import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 
 interface AssetTableViewProps {
   filteredAssets: Asset[]
@@ -61,11 +71,11 @@ export function AssetTableView({
       <table className={styles.screensTable}>
         <thead className={styles.tableHeader}>
           <tr>
-            <th>File Name</th>
-            <th>Type</th>
-            <th>Size</th>
-            <th>Date Added</th>
-            <th>Actions</th>
+            <th>{t('File Name')}</th>
+            <th>{t('Type')}</th>
+            <th>{t('Size')}</th>
+            <th>{t('Date Added')}</th>
+            <th>{t('Actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -88,6 +98,7 @@ export function AssetTableView({
                     <div className={styles.deviceIconWrapper}>
                       {isImage(asset.mime_type) ? (
                         getPreviewUrl(asset.file_path) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img src={getPreviewUrl(asset.file_path)!} className={styles.tableThumbnail} alt="" />
                         ) : (
                           <ImageIcon size={20} />
@@ -197,7 +208,7 @@ export function AssetTableView({
                                 setRenameModalAsset(asset)
                               }}
                             >
-                              Rename
+                              {t('Rename')}
                             </button>
                             {!isWidget(asset.mime_type) && (
                               <button
@@ -207,7 +218,7 @@ export function AssetTableView({
                                   handleDownload(asset)
                                 }}
                               >
-                                Download
+                                {t('Download')}
                               </button>
                             )}
                             <button
@@ -217,7 +228,7 @@ export function AssetTableView({
                                 setDeleteModalAsset(asset)
                               }}
                             >
-                              Delete Asset
+                              {t('Delete Asset')}
                             </button>
                           </div>,
                           document.body

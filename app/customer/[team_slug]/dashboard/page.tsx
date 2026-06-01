@@ -6,17 +6,19 @@ import styles from './dashboard.module.css'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import DashboardShell from './DashboardShell'
-
 import {
-  getDashboardStats,
-  getOfflineTrend,
   getAlerts,
-  getRecentActivity,
   getAnalytics,
+  getDashboardDevices,
+  getDashboardStats,
   getDeviceHealth,
+  getOfflineTrend,
+  getPlaylistOptions,
+  getAssetOptions,
+  getRecentActivity,
   getScheduledTimeline,
-  getUptimeHistory,
   getScreenUptimeHistory,
+  getUptimeHistory,
 } from './actions'
 
 interface Props {
@@ -57,12 +59,23 @@ export default async function DashboardPage({ params }: Props) {
     redirect(`/customer/${userTeamSlug}/dashboard`)
   }
 
-  const teamId = profile?.team_id || ''
-
   const cookieStore = await cookies()
   const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true'
 
-  const [stats, offlineTrend, alerts, activities, analytics, deviceHealth, scheduleEvents, uptimeHistory, screenUptimeData] = await Promise.all([
+  const [
+    stats,
+    offlineTrend,
+    alerts,
+    activities,
+    analytics,
+    deviceHealth,
+    scheduleEvents,
+    uptimeHistory,
+    screenUptimeData,
+    devices,
+    playlistOptions,
+    assetOptions,
+  ] = await Promise.all([
     getDashboardStats(team_slug),
     getOfflineTrend(team_slug),
     getAlerts(team_slug),
@@ -72,6 +85,9 @@ export default async function DashboardPage({ params }: Props) {
     getScheduledTimeline(team_slug),
     getUptimeHistory(team_slug),
     getScreenUptimeHistory(team_slug),
+    getDashboardDevices(team_slug),
+    getPlaylistOptions(team_slug),
+    getAssetOptions(team_slug),
   ])
 
   return (
@@ -92,7 +108,7 @@ export default async function DashboardPage({ params }: Props) {
 
         <DashboardShell
           teamSlug={team_slug}
-          teamId={teamId}
+          teamId={profile?.team_id ?? ''}
           stats={stats}
           offlineTrend={offlineTrend}
           alerts={alerts}
@@ -102,6 +118,9 @@ export default async function DashboardPage({ params }: Props) {
           scheduleEvents={scheduleEvents}
           uptimeHistory={uptimeHistory}
           screenUptimeData={screenUptimeData}
+          devices={devices}
+          playlistOptions={playlistOptions}
+          assetOptions={assetOptions}
         />
       </main>
     </div>

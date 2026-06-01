@@ -71,6 +71,32 @@ export interface AnalyticsOverview {
   topSkills: { available: false }
 }
 
+export interface DashboardDevice {
+  id: string
+  name: string | null
+  status: 'online' | 'offline' | 'pairing'
+  lastSeenAt: string | null
+  contentType: string | null
+  contentName: string | null
+  playlistId: string | null
+  assetId: string | null
+  totalPlaytimeSeconds: number
+  uptimePercent: number
+  offlineMinutes: number | null
+}
+
+export interface PlaylistOption {
+  id: string
+  name: string
+}
+
+export interface AssetOption {
+  id: string
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+}
+
 async function getTeamId(supabase: Awaited<ReturnType<typeof createClient>>, teamSlug: string): Promise<string | null> {
   const { data: team } = await supabase
     .from('teams')
@@ -426,4 +452,118 @@ export async function getScreenUptimeHistory(teamSlug: string): Promise<ScreenUp
       }),
     }
   })
+}
+
+export async function getDashboardDevices(teamSlug: string): Promise<DashboardDevice[]> {
+  const supabase = await createClient()
+  const teamId = await getTeamId(supabase, teamSlug)
+  if (!teamId) return []
+
+  const { data: devices } = await supabase
+    .from('devices')
+    .select('id, name, status, last_seen_at, content_type, asset_id, playlist_id, total_playtime_seconds, created_at')
+    .eq('team_id', teamId)
+
+  if (!devices || devices.length === 0) return []
+
+  const assetIds = Array.from(new Set(devices.map(d => d.asset_id).filter(Boolean))) as string[]
+  const playlistIds = Array.from(new Set(devices.map(d => d.playlist_id).filter(Boolean))) as string[]
+
+  const [assetsRes, playlistsRes] = await Promise.all([
+    assetIds.length
+      ? supabase.from('assets').select('id, file_name, mime_type, size_bytes').in('id', assetIds)
+      : Promise.resolve({ data: [] as unknown[] }),
+    playlistIds.length
+      ? supabase.from('playlists').select('id, name').in('id', playlistIds)
+      : Promise.resolve({ data: [] as unknown[] }),
+  ])
+
+  const assetMap = new Map<string, { file_name: string; mime_type: string; size_bytes: number }>()
+  for (const a of (assetsRes as { data?: Array<{ id: string; file_name: string; mime_type: string; size_bytes: number }> }).data || []) {
+    assetMap.set(a.id, { file_name: a.file_name, mime_type: a.mime_type, size_bytes: a.size_bytes })
+  }
+
+  const playlistMap = new Map<string, { name: string }>()
+  for (const p of (playlistsRes as { data?: Array<{ id: string; name: string }> }).data || []) {
+    playlistMap.set(p.id, { name: p.name })
+  }
+
+  const now = Date.now()
+
+  const enriched: DashboardDevice[] = devices.map(d => {
+    const lifetimeSeconds = (now - new Date(d.created_at).getTime()) / 1000
+    const totalPlaytimeSeconds = Number(d.total_playtime_seconds || 0)
+    const uptimePercent = lifetimeSeconds > 0 ? Math.min(Math.round((totalPlaytimeSeconds / lifetimeSeconds) * 100), 100) : 100
+
+    const offlineMinutes = d.last_seen_at ? Math.floor((now - new Date(d.last_seen_at).getTime()) / 60000) : null
+
+    let contentName: string | null = null
+    if (d.content_type === 'Asset' && d.asset_id) {
+      contentName = assetMap.get(d.asset_id)?.file_name ?? null
+    }
+    if (d.content_type === 'Playlist' && d.playlist_id) {
+      contentName = playlistMap.get(d.playlist_id)?.name ?? null
+    }
+
+    return {
+      id: d.id,
+      name: d.name,
+      status: (d.status as 'online' | 'offline' | 'pairing') ?? 'offline',
+      lastSeenAt: d.last_seen_at,
+      contentType: d.content_type,
+      contentName,
+      playlistId: d.playlist_id,
+      assetId: d.asset_id,
+      totalPlaytimeSeconds,
+      uptimePercent,
+      offlineMinutes: d.status === 'offline' ? offlineMinutes : null,
+    }
+  })
+
+  // Stable ordering: online first, then pairing, then offline; within group, most recently seen first.
+  const weight = (s: string) => (s === 'online' ? 0 : s === 'pairing' ? 1 : 2)
+  enriched.sort((a, b) => {
+    const w = weight(a.status) - weight(b.status)
+    if (w !== 0) return w
+    const at = a.lastSeenAt ? new Date(a.lastSeenAt).getTime() : 0
+    const bt = b.lastSeenAt ? new Date(b.lastSeenAt).getTime() : 0
+    return bt - at
+  })
+
+  return enriched
+}
+
+export async function getPlaylistOptions(teamSlug: string): Promise<PlaylistOption[]> {
+  const supabase = await createClient()
+  const teamId = await getTeamId(supabase, teamSlug)
+  if (!teamId) return []
+
+  const { data: playlists } = await supabase
+    .from('playlists')
+    .select('id, name')
+    .eq('team_id', teamId)
+    .order('updated_at', { ascending: false })
+    .limit(100)
+
+  return (playlists || []).map((p) => ({ id: p.id, name: p.name }))
+}
+
+export async function getAssetOptions(teamSlug: string): Promise<AssetOption[]> {
+  const supabase = await createClient()
+  const teamId = await getTeamId(supabase, teamSlug)
+  if (!teamId) return []
+
+  const { data: assets } = await supabase
+    .from('assets')
+    .select('id, file_name, mime_type, size_bytes')
+    .eq('team_id', teamId)
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  return (assets || []).map((a) => ({
+    id: a.id,
+    fileName: a.file_name,
+    mimeType: a.mime_type,
+    sizeBytes: a.size_bytes,
+  }))
 }

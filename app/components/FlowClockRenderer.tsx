@@ -12,53 +12,98 @@ const GLOBAL_CSS = `
 
 .fck-classic-root {
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:#ffffff;width:100%;height:100%;padding:4cqmin;box-sizing:border-box;
+  width:100%;height:100%;padding:4cqmin;box-sizing:border-box;
   font-family:'Noto Serif',Georgia,serif;text-align:center;
+  background: var(--fck-bg, #ffffff);
+  transition: background var(--transition-base, 0.2s), color var(--transition-base, 0.2s);
+}
+.fck-classic-root[data-theme="light"] {
+  --fck-bg: #ffffff;
+  --fck-text: #000000;
+}
+.fck-classic-root[data-theme="dark"] {
+  --fck-bg: #121214;
+  --fck-text: #ffffff;
 }
 .fck-classic-time {
   font-size:min(24cqmin,7rem);font-weight:400;margin:0;
-  line-height:1.1;letter-spacing:-0.02em;color:#000;
+  line-height:1.1;letter-spacing:-0.02em;color: var(--fck-text);
 }
 .fck-classic-secs {
-  font-size:0.5em;margin-left:0.15em;font-weight:300;color:#000;
+  font-size:0.5em;margin-left:0.15em;font-weight:300;color: var(--fck-text);
 }
 .fck-classic-ampm {
   font-size:min(6cqmin,1.8rem);font-weight:300;margin-left:12px;
-  font-family:'Public Sans',sans-serif;text-transform:uppercase;color:#000;
+  font-family:'Public Sans',sans-serif;text-transform:uppercase;color: var(--fck-text);
 }
 .fck-classic-date {
   font-size:min(5.5cqmin,1.6rem);font-weight:400;margin-top:2cqmin;margin-bottom:0;
-  letter-spacing:0.12em;font-family:'Public Sans',sans-serif;color:#000;text-transform:uppercase;
+  letter-spacing:0.12em;font-family:'Public Sans',sans-serif;color: var(--fck-text);text-transform:uppercase;
 }
 
 .fck-modern-root {
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:#090d16;color:#ffffff;width:100%;height:100%;padding:4cqmin;
+  width:100%;height:100%;padding:4cqmin;
   box-sizing:border-box;font-family:'Public Sans',sans-serif;text-align:center;
+  background: var(--fck-modern-bg, #090d16);
+  color: var(--fck-modern-text, #ffffff);
+  transition: background var(--transition-base, 0.2s), color var(--transition-base, 0.2s);
+}
+.fck-modern-root[data-theme="light"] {
+  --fck-modern-bg: #f8fafc;
+  --fck-modern-text: #0f172a;
+  --fck-modern-date: #64748b;
+  --fck-modern-accent: #0284c7;
+}
+.fck-modern-root[data-theme="dark"] {
+  --fck-modern-bg: #090d16;
+  --fck-modern-text: #ffffff;
+  --fck-modern-date: #94a3b8;
+  --fck-modern-accent: #38bdf8;
 }
 .fck-modern-time {
   font-size:min(22cqmin,6.5rem);font-weight:700;margin:0;line-height:1;letter-spacing:-0.03em;
 }
 .fck-modern-date {
   font-size:min(6cqmin,1.8rem);font-weight:600;margin-top:2cqmin;margin-bottom:0;letter-spacing:0.05em;
-  color:#94a3b8;text-transform:uppercase;
+  color: var(--fck-modern-date);text-transform:uppercase;
 }
 
 .fck-mini-root {
   display:flex;flex-direction:row;align-items:center;justify-content:center;
   gap:4cqw;width:100%;height:100%;box-sizing:border-box;
+  --fck-mini-bg: #f4f5f7;
+  --fck-mini-card-bg: #ffffff;
+  --fck-mini-text: #111111;
+  --fck-mini-muted: #666666;
+  --fck-mini-accent: #094cb2;
+  --fck-mini-border: rgba(0,0,0,0.1);
+  --fck-mini-shadow: rgba(0,0,0,0.03);
+}
+.fck-mini-root[data-theme="dark"] {
+  --fck-mini-bg: #0f172a;
+  --fck-mini-card-bg: #1e293b;
+  --fck-mini-text: #ffffff;
+  --fck-mini-muted: #94a3b8;
+  --fck-mini-accent: #38bdf8;
+  --fck-mini-border: rgba(255,255,255,0.08);
+  --fck-mini-shadow: rgba(0,0,0,0.4);
 }
 .fck-mini-left {
-  background:#fff;border-radius:min(24px, 5cqmin);
+  background: var(--fck-mini-card-bg);
+  border-radius:min(24px, 5cqmin);
   width:min(500px, 70cqh);height:min(500px, 70cqh);
   display:flex;align-items:center;justify-content:center;
-  position:relative;box-shadow:0 10px 25px rgba(0,0,0,0.03);
+  position:relative;box-shadow:0 10px 25px var(--fck-mini-shadow);
+  transition: background var(--transition-base, 0.2s);
 }
 .fck-mini-right {
-  background:#fff;border-radius:min(24px, 5cqmin);padding:min(28px, 5cqmin);
+  background: var(--fck-mini-card-bg);
+  border-radius:min(24px, 5cqmin);padding:min(28px, 5cqmin);
   width:min(550px, 80cqh);height:min(500px, 70cqh);
-  box-shadow:0 10px 25px rgba(0,0,0,0.03);
+  box-shadow:0 10px 25px var(--fck-mini-shadow);
   display:flex;flex-direction:column;justify-content:center;gap:min(16px, 3cqh);
+  transition: background var(--transition-base, 0.2s);
 }
 
 @container (orientation: portrait) {
@@ -97,11 +142,11 @@ function formatDate(date: Date, format: string): string {
   const yyyy = date.getFullYear()
   const mm   = String(date.getMonth() + 1).padStart(2, '0')
   const dd   = String(date.getDate()).padStart(2, '0')
-  const monthName      = months[date.getMonth()]
-  const monthNameUpper = months[date.getMonth()].toUpperCase()
-  const monthNameShort = monthsShort[date.getMonth()]
-  const dayName        = days[date.getDay()]
-  const dayNameShort   = daysShort[date.getDay()]
+  const monthName      = months.at(date.getMonth()) || ''
+  const monthNameUpper = (months.at(date.getMonth()) || '').toUpperCase()
+  const monthNameShort = monthsShort.at(date.getMonth()) || ''
+  const dayName        = days.at(date.getDay()) || ''
+  const dayNameShort   = daysShort.at(date.getDay()) || ''
 
   switch (format) {
     case 'January 01, 2024':            return `${monthName} ${dd}, ${yyyy}`
@@ -125,6 +170,7 @@ interface FlowClockRendererProps {
   showDate?: boolean
   use24Hour?: boolean
   dateFormat?: string
+  theme?: 'light' | 'dark'
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,6 +182,7 @@ export default function FlowClockRenderer({
   showDate = true,
   use24Hour = false,
   dateFormat  = 'January 01, 2024',
+  theme,
 }: FlowClockRendererProps) {
 
   const isAnalog = style === 'classic-analog' || style === 'modern-analog'
@@ -221,6 +268,10 @@ export default function FlowClockRenderer({
   const secsStr   = String(time.getSeconds()).padStart(2, '0')
 
   // ── Render ──────────────────────────────────────────────────────────────────
+  const defaultTheme = theme ?? (
+    (style === 'modern-digital' || style === 'modern-analog') ? 'dark' : 'light'
+  )
+
   return (
     <div style={{
       width: '100%', height: '100%',
@@ -231,7 +282,7 @@ export default function FlowClockRenderer({
 
       {/* ── Classic Digital ── */}
       {style === 'classic-digital' && (
-        <div className="fck-classic-root">
+        <div className="fck-classic-root" data-theme={defaultTheme}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
             <h1 className="fck-classic-time">
               {hoursStr}:{minsStr}
@@ -249,11 +300,11 @@ export default function FlowClockRenderer({
 
       {/* ── Modern Digital ── */}
       {style === 'modern-digital' && (
-        <div className="fck-modern-root">
+        <div className="fck-modern-root" data-theme={defaultTheme}>
           <h1 className="fck-modern-time">
             {hoursStr}:{minsStr}
-            {showSeconds && <span style={{ fontSize: '0.6em', color: '#38bdf8' }}>:{secsStr}</span>}
-            {!use24Hour && <> <span style={{ fontSize: '0.7em', color: '#38bdf8' }}>{ampm}</span></>}
+            {showSeconds && <span style={{ fontSize: '0.6em', color: 'var(--fck-modern-accent)' }}>:{secsStr}</span>}
+            {!use24Hour && <> <span style={{ fontSize: '0.7em', color: 'var(--fck-modern-accent)' }}>{ampm}</span></>}
           </h1>
           {showDate && <p className="fck-modern-date">{formatDate(time, dateFormat)}</p>}
         </div>
@@ -263,37 +314,38 @@ export default function FlowClockRenderer({
       {style === 'classic-analog' && (
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: '#ffffff', width: '100%', height: '100%', padding: '4cqmin', boxSizing: 'border-box',
+          background: defaultTheme === 'dark' ? '#121214' : '#ffffff', width: '100%', height: '100%', padding: '4cqmin', boxSizing: 'border-box',
           fontFamily: "'Public Sans', sans-serif",
+          transition: 'background 0.2s',
         }}>
           <div style={{ position: 'relative', width: 'min(70cqw, 70cqh)', height: 'min(70cqw, 70cqh)' }}>
             <svg viewBox="0 0 200 200" style={{ width: '100%', height: '100%' }}>
               {Array.from({ length: 60 }).map((_, i) => {
                 if (i % 5 === 0) return null
                 const a = (i * 6 * Math.PI) / 180
-                return <line key={i} x1={100+82*Math.sin(a)} y1={100-82*Math.cos(a)} x2={100+86*Math.sin(a)} y2={100-86*Math.cos(a)} stroke="#aaa" strokeWidth="1" />
+                return <line key={i} x1={100+82*Math.sin(a)} y1={100-82*Math.cos(a)} x2={100+86*Math.sin(a)} y2={100-86*Math.cos(a)} stroke={defaultTheme === 'dark' ? '#444446' : '#aaa'} strokeWidth="1" />
               })}
               {Array.from({ length: 12 }).map((_, i) => {
                 const a = (i * 30 * Math.PI) / 180
-                return <line key={i} x1={100+78*Math.sin(a)} y1={100-78*Math.cos(a)} x2={100+86*Math.sin(a)} y2={100-86*Math.cos(a)} stroke="#000" strokeWidth="3" strokeLinecap="round" />
+                return <line key={i} x1={100+78*Math.sin(a)} y1={100-78*Math.cos(a)} x2={100+86*Math.sin(a)} y2={100-86*Math.cos(a)} stroke={defaultTheme === 'dark' ? '#ffffff' : '#000'} strokeWidth="3" strokeLinecap="round" />
               })}
               {Array.from({ length: 12 }).map((_, i) => {
                 const a = (i * 30 * Math.PI) / 180
-                return <text key={i} x={100+64*Math.sin(a)} y={100-64*Math.cos(a)+4} textAnchor="middle" style={{ fontSize: '12px', fontWeight: 500, fill: '#333' }}>{i || 12}</text>
+                return <text key={i} x={100+64*Math.sin(a)} y={100-64*Math.cos(a)+4} textAnchor="middle" style={{ fontSize: '12px', fontWeight: 500, fill: defaultTheme === 'dark' ? '#cccccc' : '#333' }}>{i || 12}</text>
               })}
-              <line x1="100" y1="100" x2={100+42*Math.sin(hrAngle*Math.PI/180)} y2={100-42*Math.cos(hrAngle*Math.PI/180)} stroke="#111" strokeWidth="5" strokeLinecap="round" />
-              <line x1="100" y1="100" x2={100+68*Math.sin(minAngle*Math.PI/180)} y2={100-68*Math.cos(minAngle*Math.PI/180)} stroke="#222" strokeWidth="3.5" strokeLinecap="round" />
+              <line x1="100" y1="100" x2={100+42*Math.sin(hrAngle*Math.PI/180)} y2={100-42*Math.cos(hrAngle*Math.PI/180)} stroke={defaultTheme === 'dark' ? '#ffffff' : '#111'} strokeWidth="5" strokeLinecap="round" />
+              <line x1="100" y1="100" x2={100+68*Math.sin(minAngle*Math.PI/180)} y2={100-68*Math.cos(minAngle*Math.PI/180)} stroke={defaultTheme === 'dark' ? '#dddddd' : '#222'} strokeWidth="3.5" strokeLinecap="round" />
               {showSeconds && (
                 <>
-                  <line x1={100-15*Math.sin(secAngle*Math.PI/180)} y1={100+15*Math.cos(secAngle*Math.PI/180)} x2={100+78*Math.sin(secAngle*Math.PI/180)} y2={100-78*Math.cos(secAngle*Math.PI/180)} stroke="#ff9800" strokeWidth="1.2" />
-                  <circle cx="100" cy="100" r="5" fill="#ff9900" />
+                  <line x1={100-15*Math.sin(secAngle*Math.PI/180)} y1={100+15*Math.cos(secAngle*Math.PI/180)} x2={100+78*Math.sin(secAngle*Math.PI/180)} y2={100-78*Math.cos(secAngle*Math.PI/180)} stroke={defaultTheme === 'dark' ? '#ffb74d' : '#ff9800'} strokeWidth="1.2" />
+                  <circle cx="100" cy="100" r="5" fill={defaultTheme === 'dark' ? '#ffb74d' : '#ff9900'} />
                 </>
               )}
-              <circle cx="100" cy="100" r="2.5" fill="#111" />
+              <circle cx="100" cy="100" r="2.5" fill={defaultTheme === 'dark' ? '#ffffff' : '#111'} />
             </svg>
           </div>
           {showDate && (
-            <p style={{ fontSize: 'min(32px, 4.5cqmin)', fontWeight: 500, color: '#666', marginTop: '2.5cqmin', marginBottom: 0, letterSpacing: '0.04em' }}>
+            <p style={{ fontSize: 'min(32px, 4.5cqmin)', fontWeight: 500, color: defaultTheme === 'dark' ? '#a1a1aa' : '#666', marginTop: '2.5cqmin', marginBottom: 0, letterSpacing: '0.04em', transition: 'color 0.2s' }}>
               {formatDate(time, dateFormat)}
             </p>
           )}
@@ -304,13 +356,15 @@ export default function FlowClockRenderer({
       {style === 'modern-analog' && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: '#07111f', width: '100%', height: '100%', padding: '4cqmin', boxSizing: 'border-box',
+          background: defaultTheme === 'dark' ? '#090d16' : '#f8fafc', width: '100%', height: '100%', padding: '4cqmin', boxSizing: 'border-box',
+          transition: 'background 0.2s',
         }}>
           <div style={{
-            background: '#fff', borderRadius: 'min(36px, 5cqmin)', padding: 'min(24px, 4cqmin)',
+            background: defaultTheme === 'dark' ? '#1e293b' : '#fff', borderRadius: 'min(36px, 5cqmin)', padding: 'min(24px, 4cqmin)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: 'min(70cqw, 70cqh)', height: 'min(70cqw, 70cqh)',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+            boxShadow: defaultTheme === 'dark' ? '0 20px 40px rgba(0,0,0,0.4)' : '0 20px 40px rgba(0,0,0,0.06)',
+            transition: 'background 0.2s, box-shadow 0.2s',
           }}>
             <div style={{ width: '100%', height: '100%', position: 'relative' }}>
               <svg viewBox="0 0 200 200" style={{ width: '100%', height: '100%' }}>
@@ -322,17 +376,17 @@ export default function FlowClockRenderer({
                 {Array.from({ length: 60 }).map((_, i) => {
                   const a = (i * 6 * Math.PI) / 180
                   const isHr = i % 5 === 0
-                  return <line key={i} x1={100+(isHr?78:82)*Math.sin(a)} y1={100-(isHr?78:82)*Math.cos(a)} x2={100+86*Math.sin(a)} y2={100-86*Math.cos(a)} stroke={isHr?'#111':'#bbb'} strokeWidth={isHr?2.5:1} strokeLinecap="round" />
+                  return <line key={i} x1={100+(isHr?78:82)*Math.sin(a)} y1={100-(isHr?78:82)*Math.cos(a)} x2={100+86*Math.sin(a)} y2={100-86*Math.cos(a)} stroke={isHr ? (defaultTheme === 'dark' ? '#ffffff' : '#111') : (defaultTheme === 'dark' ? '#475569' : '#bbb')} strokeWidth={isHr?2.5:1} strokeLinecap="round" />
                 })}
-                <line x1="100" y1="100" x2={100+44*Math.sin(hrAngle*Math.PI/180)} y2={100-44*Math.cos(hrAngle*Math.PI/180)} stroke="#1c1c1e" strokeWidth="5" strokeLinecap="round" filter="url(#fck-shadow)" />
-                <line x1="100" y1="100" x2={100+72*Math.sin(minAngle*Math.PI/180)} y2={100-72*Math.cos(minAngle*Math.PI/180)} stroke="#2c2c2e" strokeWidth="3.2" strokeLinecap="round" filter="url(#fck-shadow)" />
+                <line x1="100" y1="100" x2={100+44*Math.sin(hrAngle*Math.PI/180)} y2={100-44*Math.cos(hrAngle*Math.PI/180)} stroke={defaultTheme === 'dark' ? '#e2e8f0' : '#1c1c1e'} strokeWidth="5" strokeLinecap="round" filter="url(#fck-shadow)" />
+                <line x1="100" y1="100" x2={100+72*Math.sin(minAngle*Math.PI/180)} y2={100-72*Math.cos(minAngle*Math.PI/180)} stroke={defaultTheme === 'dark' ? '#cbd5e1' : '#2c2c2e'} strokeWidth="3.2" strokeLinecap="round" filter="url(#fck-shadow)" />
                 {showSeconds && (
                   <>
-                    <line x1={100-20*Math.sin(secAngle*Math.PI/180)} y1={100+20*Math.cos(secAngle*Math.PI/180)} x2={100+82*Math.sin(secAngle*Math.PI/180)} y2={100-82*Math.cos(secAngle*Math.PI/180)} stroke="#ff3b30" strokeWidth="1.2" />
-                    <circle cx="100" cy="100" r="5" fill="#ff3b30" />
+                    <line x1={100-20*Math.sin(secAngle*Math.PI/180)} y1={100+20*Math.cos(secAngle*Math.PI/180)} x2={100+82*Math.sin(secAngle*Math.PI/180)} y2={100-82*Math.cos(secAngle*Math.PI/180)} stroke={defaultTheme === 'dark' ? '#ff453a' : '#ff3b30'} strokeWidth="1.2" />
+                    <circle cx="100" cy="100" r="5" fill={defaultTheme === 'dark' ? '#ff453a' : '#ff3b30'} />
                   </>
                 )}
-                <circle cx="100" cy="100" r="2" fill="#fff" />
+                <circle cx="100" cy="100" r="2" fill={defaultTheme === 'dark' ? '#1e293b' : '#fff'} />
               </svg>
             </div>
           </div>
@@ -352,21 +406,32 @@ export default function FlowClockRenderer({
         for (let i = 0; i < firstDayIndex; i++) cells.push(null)
         for (let d = 1; d <= totalDays; d++) cells.push(d)
 
+        const isDark = defaultTheme === 'dark'
+        const miniCardBg = isDark ? '#1e293b' : '#fff'
+        const miniText = isDark ? '#ffffff' : '#111'
+        const miniMuted = isDark ? '#94a3b8' : '#666'
+        const miniAccent = isDark ? '#38bdf8' : '#094cb2'
+        const activeTick = isDark ? '#ffffff' : '#111'
+        const inactiveTick = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)'
+        const shadow = isDark ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.03)'
+
         return (
           <div style={{
-            display: 'flex', background: '#f4f5f7', width: '100%', height: '100%',
+            display: 'flex', background: isDark ? '#0f172a' : '#f4f5f7', width: '100%', height: '100%',
             padding: '4cqmin', boxSizing: 'border-box',
             alignItems: 'center', justifyContent: 'center',
             fontFamily: "'Public Sans', sans-serif",
+            transition: 'background 0.2s',
           }}>
-            <div className={showDate ? 'fck-mini-root' : ''} style={!showDate ? { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' } : {}}>
+            <div className={showDate ? 'fck-mini-root' : ''} data-theme={defaultTheme} style={!showDate ? { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' } : {}}>
 
               {/* Clock card */}
               <div className={showDate ? 'fck-mini-left' : ''} style={!showDate ? {
-                background: '#fff', borderRadius: 'min(24px, 5cqmin)',
+                background: miniCardBg, borderRadius: 'min(24px, 5cqmin)',
                 width: 'min(400px, 70cqw)', height: 'min(400px, 70cqw)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                position: 'relative', boxShadow: '0 10px 25px rgba(0,0,0,0.03)',
+                position: 'relative', boxShadow: `0 10px 25px ${shadow}`,
+                transition: 'background 0.2s',
               } : {}}>
                 <svg viewBox="0 0 200 200" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
                   {Array.from({ length: 60 }).map((_, i) => {
@@ -378,7 +443,7 @@ export default function FlowClockRenderer({
                         key={i}
                         x1={100+(isHr?78:82)*Math.sin(a)} y1={100-(isHr?78:82)*Math.cos(a)}
                         x2={100+88*Math.sin(a)}            y2={100-88*Math.cos(a)}
-                        stroke={isActive ? '#111' : 'rgba(0,0,0,0.1)'}
+                        stroke={isActive ? activeTick : inactiveTick}
                         strokeWidth={isHr ? 3 : 1.5} strokeLinecap="round"
                         style={{ transition: 'stroke 0.12s ease' }}
                       />
@@ -386,11 +451,11 @@ export default function FlowClockRenderer({
                   })}
                 </svg>
                 <div style={{ textAlign: 'center', zIndex: 5 }}>
-                  <h1 style={{ fontSize: 'min(96px, 12cqmin)', fontWeight: 750, margin: 0, color: '#111', lineHeight: 1, fontFamily: "'Public Sans',sans-serif", letterSpacing: '-0.04em' }}>
+                  <h1 style={{ fontSize: 'min(96px, 12cqmin)', fontWeight: 750, margin: 0, color: miniText, lineHeight: 1, fontFamily: "'Public Sans',sans-serif", letterSpacing: '-0.04em', transition: 'color 0.2s' }}>
                     {hoursStr}:{minsStr}
                   </h1>
                   {showSeconds && (
-                    <div style={{ fontSize: 'min(32px, 3.5cqmin)', fontWeight: 600, color: '#666', marginTop: '1.5cqmin', letterSpacing: '0.05em' }}>
+                    <div style={{ fontSize: 'min(32px, 3.5cqmin)', fontWeight: 600, color: miniMuted, marginTop: '1.5cqmin', letterSpacing: '0.05em', transition: 'color 0.2s' }}>
                       {secsStr}s
                     </div>
                   )}
@@ -401,14 +466,14 @@ export default function FlowClockRenderer({
               {showDate && (
                 <div className="fck-mini-right">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ margin: 0, fontSize: 'min(48px, 4.5cqmin)', fontWeight: 700, color: '#094cb2', fontFamily: "'Public Sans',sans-serif" }}>
+                    <h2 style={{ margin: 0, fontSize: 'min(48px, 4.5cqmin)', fontWeight: 700, color: miniAccent, fontFamily: "'Public Sans',sans-serif", transition: 'color 0.2s' }}>
                       {monthNames[currentMonth]}
                     </h2>
-                    <span style={{ fontSize: 'min(32px, 3cqmin)', fontWeight: 600, color: '#999' }}>{currentYear}</span>
+                    <span style={{ fontSize: 'min(32px, 3cqmin)', fontWeight: 600, color: miniMuted, transition: 'color 0.2s' }}>{currentYear}</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 'min(16px, 1.5cqmin) min(8px, 1cqmin)', textAlign: 'center' }}>
                     {['S','M','T','W','T','F','S'].map((l, i) => (
-                      <span key={i} style={{ fontSize: 'min(28px, 2.5cqmin)', fontWeight: 600, color: '#888', paddingBottom: '4px' }}>{l}</span>
+                      <span key={i} style={{ fontSize: 'min(28px, 2.5cqmin)', fontWeight: 600, color: miniMuted, paddingBottom: '4px', transition: 'color 0.2s' }}>{l}</span>
                     ))}
                     {cells.map((day, idx) => {
                       if (day === null) return <div key={`e-${idx}`} />
@@ -417,8 +482,9 @@ export default function FlowClockRenderer({
                         <div key={`d-${day}`} style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           height: 'min(48px, 5.5cqmin)', fontSize: 'min(32px, 3cqmin)',
-                          fontWeight: isToday ? 700 : 500, color: isToday ? '#fff' : '#333',
-                          position: 'relative'
+                          fontWeight: isToday ? 700 : 500, color: isToday ? (isDark ? '#0f172a' : '#fff') : miniText,
+                          position: 'relative',
+                          transition: 'color 0.2s',
                         }}>
                           {isToday && (
                             <div style={{
@@ -426,8 +492,9 @@ export default function FlowClockRenderer({
                               width: 'min(44px, 5.2cqmin)',
                               height: 'min(44px, 5.2cqmin)',
                               borderRadius: '50%',
-                              background: '#094cb2',
-                              zIndex: 1
+                              background: miniAccent,
+                              zIndex: 1,
+                              transition: 'background 0.2s',
                             }} />
                           )}
                           <span style={{ zIndex: 2 }}>{day}</span>
@@ -446,3 +513,4 @@ export default function FlowClockRenderer({
     </div>
   )
 }
+

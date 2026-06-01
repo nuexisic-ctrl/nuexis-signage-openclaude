@@ -77,6 +77,7 @@ export default async function PlaylistsPage({ params, searchParams }: Props) {
         <Header fullName={fullName} email={user.email} />
         
         <PlaylistsClient
+          key={team_slug}
           initialPlaylists={playlists}
           assets={assets}
           teamSlug={team_slug}

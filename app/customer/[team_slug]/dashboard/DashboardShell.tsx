@@ -1,11 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Responsive, WidthProvider } from 'react-grid-layout/legacy'
-import 'react-grid-layout/css/styles.css'
-import type { Layout, ResponsiveLayouts as Layouts } from 'react-grid-layout/legacy'
-import { Plus, GripVertical } from 'lucide-react'
-
+import { Plus, RotateCcw } from 'lucide-react'
+import { t } from '@/lib/i18n'
 
 import { ActiveScreensWidget } from './widgets/activeScreensWidget'
 import { OfflineTrendWidget } from './widgets/offlineTrendWidget'
@@ -18,6 +15,10 @@ import { AnalyticsOverviewWidget } from './widgets/analyticsOverviewWidget'
 import { DeviceHealthWidget } from './widgets/deviceHealthWidget'
 import { ScreenUptimeWidget } from './widgets/screenUptimeWidget'
 import { DateTimeStatusWidget } from './widgets/dateTimeStatusWidget'
+import { ScreensTableWidget } from './widgets/screensTableWidget'
+import { StatusBreakdownWidget } from './widgets/statusBreakdownWidget'
+import { TopPlaytimeWidget } from './widgets/topPlaytimeWidget'
+import DashboardFiltersBar, { type DashboardFilters } from './DashboardFiltersBar'
 
 import type {
   DashboardStats,
@@ -29,99 +30,53 @@ import type {
   ScheduleEvent,
   UptimeDataPoint,
   ScreenUptime,
+  DashboardDevice,
+  PlaylistOption,
+  AssetOption,
 } from './actions'
 
 import styles from './dashboard.module.css'
 
-const ResponsiveGridLayout = WidthProvider(Responsive)
-
-type LayoutItem = Layout[number]
-
 interface WidgetDef {
   id: string
   title: string
-  defaultSize: { w: number; h: number }
-  minSize?: { w: number; h: number }
+  // Presentation hints for the fixed (non-draggable) layout.
+  span: { lg: number; md: number; sm: number }
+  minHeightPx: number
 }
 
-const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 } as const
-const COLS = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 } as const
+const WIDGET_REGISTRY = new Map<string, WidgetDef>([
+  ['dateTimeStatus', { id: 'dateTimeStatus', title: 'Date & Status', span: { lg: 3, md: 3, sm: 1 }, minHeightPx: 120 }],
+  ['quickActions', { id: 'quickActions', title: 'Quick Actions', span: { lg: 3, md: 3, sm: 1 }, minHeightPx: 220 }],
+  ['uptime', { id: 'uptime', title: 'App Uptime', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 260 }],
+  ['screensTable', { id: 'screensTable', title: 'Screens', span: { lg: 12, md: 6, sm: 1 }, minHeightPx: 380 }],
+  ['alerts', { id: 'alerts', title: 'Alerts & Issues', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 260 }],
+  ['recentActivity', { id: 'recentActivity', title: 'Recent Activity', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 300 }],
+  ['statusBreakdown', { id: 'statusBreakdown', title: 'Status Breakdown', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 320 }],
+  ['topPlaytime', { id: 'topPlaytime', title: 'Top Screens', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 320 }],
+  ['deviceHealth', { id: 'deviceHealth', title: 'Device Health', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 260 }],
+  ['scheduledTimeline', { id: 'scheduledTimeline', title: 'Scheduled Timeline', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 300 }],
+  ['analyticsOverview', { id: 'analyticsOverview', title: 'Analytics Overview', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 240 }],
+  ['screenUptime', { id: 'screenUptime', title: 'Screen Uptime', span: { lg: 12, md: 6, sm: 1 }, minHeightPx: 360 }]
+])
 
-const WIDGET_REGISTRY: Record<string, WidgetDef> = {
-  uptime: { id: 'uptime', title: 'App Uptime', defaultSize: { w: 4, h: 2 } },
-  quickActions: { id: 'quickActions', title: 'Quick Actions', defaultSize: { w: 2, h: 1 } },
-  alerts: { id: 'alerts', title: 'Alerts & Issues', defaultSize: { w: 3, h: 2 } },
-  recentActivity: { id: 'recentActivity', title: 'Recent Activity', defaultSize: { w: 4, h: 2 } },
-  scheduledTimeline: { id: 'scheduledTimeline', title: 'Scheduled Timeline', defaultSize: { w: 4, h: 2 } },
-  analyticsOverview: { id: 'analyticsOverview', title: 'Analytics Overview', defaultSize: { w: 6, h: 2 } },
-  deviceHealth: { id: 'deviceHealth', title: 'Device Health', defaultSize: { w: 3, h: 2 } },
-  screenUptime: { id: 'screenUptime', title: 'Screen Uptime', defaultSize: { w: 6, h: 2 } },
-  dateTimeStatus: { id: 'dateTimeStatus', title: 'Date & Status', defaultSize: { w: 2, h: 1 } },
-}
+const ALL_WIDGET_IDS = Array.from(WIDGET_REGISTRY.keys())
 
-const ALL_WIDGET_IDS = Object.keys(WIDGET_REGISTRY)
-
-function getDefaultLayout(): Layout {
-  return [
-    { i: 'dateTimeStatus', x: 10, y: 0, w: 2, h: 1, minW: 2, minH: 1 },
-    { i: 'uptime', x: 0, y: 1, w: 4, h: 2, minW: 3, minH: 2 },
-    { i: 'quickActions', x: 4, y: 1, w: 2, h: 1, minW: 2, minH: 1 },
-    { i: 'alerts', x: 6, y: 1, w: 3, h: 2, minW: 2, minH: 2 },
-    { i: 'recentActivity', x: 0, y: 3, w: 4, h: 2, minW: 3, minH: 2 },
-    { i: 'deviceHealth', x: 4, y: 3, w: 3, h: 2, minW: 2, minH: 2 },
-    { i: 'scheduledTimeline', x: 7, y: 3, w: 4, h: 2, minW: 3, minH: 2 },
-    { i: 'analyticsOverview', x: 0, y: 5, w: 6, h: 2, minW: 4, minH: 2 },
-    { i: 'screenUptime', x: 6, y: 5, w: 6, h: 2, minW: 4, minH: 2 },
-  ]
-}
-
-function normalizeLayoutForCols(layout: Layout, cols: number): Layout {
-  return layout.map((item) => {
-    const w = Math.min(item.w, cols)
-    const minW = item.minW ? Math.min(item.minW, cols) : undefined
-    const x = Math.max(0, Math.min(item.x, cols - w))
-    return { ...item, w, x, minW }
-  })
-}
-
-function buildResponsiveLayouts(base: Layout): Layouts {
-  return {
-    lg: normalizeLayoutForCols(base, COLS.lg),
-    md: normalizeLayoutForCols(base, COLS.md),
-    sm: normalizeLayoutForCols(base, COLS.sm),
-    xs: normalizeLayoutForCols(base, COLS.xs),
-    xxs: normalizeLayoutForCols(base, COLS.xxs),
-  }
-}
-
-function filterHiddenFromLayouts(layouts: Layouts, hidden: Set<string>): Layouts {
-  const filter = (arr: Layout | undefined) => (arr ?? []).filter((l) => !hidden.has(l.i))
-  return {
-    lg: filter(layouts.lg),
-    md: filter(layouts.md),
-    sm: filter(layouts.sm),
-    xs: filter(layouts.xs),
-    xxs: filter(layouts.xxs),
-  }
-}
-
-function mergeVisibleLayouts(prev: Layouts, nextVisible: Layouts, hidden: Set<string>): Layouts {
-  const mergeForBreakpoint = (bp: keyof typeof COLS): Layout => {
-    const prevArr = prev[bp] ?? []
-    const nextArr = nextVisible[bp] ?? []
-    const nextVisibleIds = new Set(nextArr.map((l: LayoutItem) => l.i))
-    const hiddenArr = prevArr.filter((l: LayoutItem) => hidden.has(l.i) && !nextVisibleIds.has(l.i))
-    return [...hiddenArr, ...nextArr]
-  }
-
-  return {
-    lg: mergeForBreakpoint('lg'),
-    md: mergeForBreakpoint('md'),
-    sm: mergeForBreakpoint('sm'),
-    xs: mergeForBreakpoint('xs'),
-    xxs: mergeForBreakpoint('xxs'),
-  }
-}
+// Fixed, curated order for a stable, professional dashboard layout.
+const DEFAULT_WIDGET_ORDER: string[] = [
+  'dateTimeStatus',
+  'quickActions',
+  'uptime',
+  'screensTable',
+  'alerts',
+  'recentActivity',
+  'statusBreakdown',
+  'topPlaytime',
+  'deviceHealth',
+  'scheduledTimeline',
+  'analyticsOverview',
+  'screenUptime',
+]
 
 interface DashboardData {
   stats: DashboardStats | null
@@ -138,6 +93,9 @@ interface DashboardData {
 interface Props extends DashboardData {
   teamSlug: string
   teamId: string
+  devices: DashboardDevice[]
+  playlistOptions: PlaylistOption[]
+  assetOptions: AssetOption[]
 }
 
 export default function DashboardShell({
@@ -151,62 +109,30 @@ export default function DashboardShell({
   scheduleEvents,
   uptimeHistory,
   screenUptimeData,
+  devices,
+  playlistOptions,
+  assetOptions,
 }: Props) {
-  const [isSmallScreen, setIsSmallScreen] = useState(false)
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)')
-    const update = () => setIsSmallScreen(mq.matches)
-    update()
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [])
-
-  const [layouts, setLayouts] = useState<Layouts>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(`dashboard_layout_${teamSlug}`)
-        if (saved) {
-          const parsed = JSON.parse(saved) as unknown
-          // Backwards compatibility: older versions stored a single Layout[].
-          if (Array.isArray(parsed)) return buildResponsiveLayouts(parsed as any)
-          if (parsed && typeof parsed === 'object') {
-            const p = parsed as Partial<Layouts>
-            const base = (p.lg && Array.isArray(p.lg) ? (p.lg as any) : null) ?? getDefaultLayout()
-            return {
-              ...buildResponsiveLayouts(base),
-              ...Object.fromEntries(
-                (Object.keys(COLS) as Array<keyof typeof COLS>).map((bp) => [
-                  bp,
-                  Array.isArray(p[bp]) ? normalizeLayoutForCols(p[bp] as any, COLS[bp]) : undefined,
-                ])
-              ),
-            } as Layouts
-          }
-        }
-      } catch { /* ignore */ }
+  const [hiddenWidgetIds, setHiddenWidgetIds] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try {
+      const saved = localStorage.getItem(`dashboard_hidden_${teamSlug}`)
+      if (!saved) return new Set()
+      const parsed = JSON.parse(saved) as unknown
+      if (!Array.isArray(parsed)) return new Set()
+      return new Set(parsed.filter((v) => typeof v === 'string'))
+    } catch {
+      return new Set()
     }
-    return buildResponsiveLayouts(getDefaultLayout())
   })
-
-  const [hiddenWidgetIds, setHiddenWidgetIds] = useState<Set<string>>(new Set())
   const [showAddMenu, setShowAddMenu] = useState(false)
   const addMenuRef = useRef<HTMLDivElement>(null)
 
-  const visibleLayouts = useMemo(() => {
-    return filterHiddenFromLayouts(layouts, hiddenWidgetIds)
-  }, [layouts, hiddenWidgetIds])
-
   useEffect(() => {
     try {
-      localStorage.setItem(`dashboard_layout_${teamSlug}`, JSON.stringify(layouts))
+      localStorage.setItem(`dashboard_hidden_${teamSlug}`, JSON.stringify(Array.from(hiddenWidgetIds)))
     } catch { /* ignore */ }
-  }, [layouts, teamSlug])
+  }, [hiddenWidgetIds, teamSlug])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -217,10 +143,6 @@ export default function DashboardShell({
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
-
-  const handleLayoutChange = useCallback((_: Layout, allLayouts: Layouts) => {
-    setLayouts((prev) => mergeVisibleLayouts(prev, allLayouts, hiddenWidgetIds))
-  }, [hiddenWidgetIds])
 
   const hideWidget = useCallback((widgetId: string) => {
     setHiddenWidgetIds((prev: Set<string>) => {
@@ -236,34 +158,66 @@ export default function DashboardShell({
       next.delete(widgetId)
       return next
     })
-    setLayouts((prev) => {
-      const def = WIDGET_REGISTRY[widgetId]
-      if (!def) return prev
-
-      const next: Layouts = { ...prev }
-      ;(Object.keys(COLS) as Array<keyof typeof COLS>).forEach((bp) => {
-        const cols = COLS[bp]
-        const arr = [...(prev[bp] ?? [])]
-        const exists = arr.some((l: any) => l.i === widgetId)
-        if (exists) {
-          next[bp] = arr as any
-          return
-        }
-
-        const maxY = arr.reduce((max: number, l: any) => Math.max(max, (l.y ?? 0) + (l.h ?? 0)), 0)
-        const w = Math.min(def.defaultSize.w, cols)
-        const newItem: any = { i: widgetId, x: 0, y: maxY, w, h: def.defaultSize.h }
-        if (def.minSize) {
-          newItem.minW = Math.min(def.minSize.w, cols)
-          newItem.minH = def.minSize.h
-        }
-        next[bp] = [...arr, newItem] as any
-      })
-      return next
-    })
   }, [])
 
   const availableWidgets = ALL_WIDGET_IDS.filter(id => hiddenWidgetIds.has(id))
+  const visibleWidgetIds = DEFAULT_WIDGET_ORDER.filter((id) => !hiddenWidgetIds.has(id))
+  const hasHiddenWidgets = availableWidgets.length > 0
+
+  const resetWidgets = useCallback(() => {
+    setHiddenWidgetIds(new Set())
+  }, [])
+
+  const [filters, setFilters] = useState<DashboardFilters>(() => ({
+    query: '',
+    status: 'all',
+    contentType: 'all',
+    playlistId: 'all',
+    assetId: 'all',
+  }))
+
+  const isFiltering = useMemo(() => {
+    return Boolean(
+      filters.query.trim() ||
+        filters.status !== 'all' ||
+        filters.contentType !== 'all' ||
+        filters.playlistId !== 'all' ||
+        filters.assetId !== 'all'
+    )
+  }, [filters])
+
+  const filteredDevices = useMemo(() => {
+    const q = filters.query.trim().toLowerCase()
+    return devices.filter((d) => {
+      if (filters.status !== 'all' && d.status !== filters.status) return false
+      if (filters.contentType !== 'all') {
+        if (filters.contentType === 'None') {
+          if (d.contentType) return false
+        } else if (d.contentType !== filters.contentType) {
+          return false
+        }
+      }
+      if (filters.playlistId !== 'all') {
+        if (d.playlistId !== filters.playlistId) return false
+      }
+      if (filters.assetId !== 'all') {
+        if (d.assetId !== filters.assetId) return false
+      }
+      if (q) {
+        const hay = `${d.name ?? ''} ${d.contentName ?? ''} ${d.contentType ?? ''}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+  }, [devices, filters])
+
+  const derivedCounts = useMemo(() => {
+    const totalScreens = filteredDevices.length
+    const activeScreens = filteredDevices.filter(d => d.status === 'online').length
+    const offlineScreens = filteredDevices.filter(d => d.status === 'offline').length
+    const pairingScreens = filteredDevices.filter(d => d.status === 'pairing').length
+    return { totalScreens, activeScreens, offlineScreens, pairingScreens }
+  }, [filteredDevices])
 
   function renderWidget(widgetId: string) {
     switch (widgetId) {
@@ -273,10 +227,16 @@ export default function DashboardShell({
         return stats ? <UptimeWidget uptimePercent={stats.uptimePercent} history={uptimeHistory} /> : null
       case 'quickActions':
         return <QuickActionsWidget teamSlug={teamSlug} />
+      case 'screensTable':
+        return <ScreensTableWidget teamSlug={teamSlug} devices={filteredDevices} />
       case 'alerts':
         return <AlertsWidget alerts={alerts} />
       case 'recentActivity':
         return <RecentActivityWidget activities={activities} />
+      case 'statusBreakdown':
+        return <StatusBreakdownWidget devices={filteredDevices} />
+      case 'topPlaytime':
+        return <TopPlaytimeWidget devices={filteredDevices} />
       case 'scheduledTimeline':
         return <ScheduledTimelineWidget events={scheduleEvents} />
       case 'analyticsOverview':
@@ -292,14 +252,21 @@ export default function DashboardShell({
 
   return (
     <div className={styles.dashboardShellClient}>
-      <ActiveScreensWidget
-        totalScreens={stats?.totalScreens ?? 0}
-        activeScreens={stats?.activeScreens ?? 0}
-        offlineScreens={stats?.offlineScreens ?? 0}
-        pairingScreens={stats?.pairingScreens ?? 0}
+      <DashboardFiltersBar
+        playlistOptions={playlistOptions}
+        assetOptions={assetOptions}
+        value={filters}
+        onChange={setFilters}
       />
 
-      <div className={styles.gridSection}>
+      <ActiveScreensWidget
+        totalScreens={isFiltering ? derivedCounts.totalScreens : (stats?.totalScreens ?? derivedCounts.totalScreens)}
+        activeScreens={isFiltering ? derivedCounts.activeScreens : (stats?.activeScreens ?? derivedCounts.activeScreens)}
+        offlineScreens={isFiltering ? derivedCounts.offlineScreens : (stats?.offlineScreens ?? derivedCounts.offlineScreens)}
+        pairingScreens={isFiltering ? derivedCounts.pairingScreens : (stats?.pairingScreens ?? derivedCounts.pairingScreens)}
+      />
+
+      <div className={styles.gridSectionSection}>
         <div className={styles.gridHeader}>
           <div className={styles.gridHeaderInfo}>
             <OfflineTrendWidget data={offlineTrend} />
@@ -309,10 +276,10 @@ export default function DashboardShell({
               <button
                 className={styles.addWidgetBtn}
                 onClick={() => setShowAddMenu(prev => !prev)}
-                title="Add Widget"
+                title={t('Add Widget')}
               >
                 <Plus size={16} />
-                Add Widget
+                {t('Add Widget')}
               </button>
               {showAddMenu && availableWidgets.length > 0 && (
                 <div className={styles.addWidgetMenu}>
@@ -322,58 +289,72 @@ export default function DashboardShell({
                       className={styles.addWidgetMenuItem}
                       onClick={() => { showWidget(id); setShowAddMenu(false) }}
                     >
-                      {WIDGET_REGISTRY[id].title}
+                      {WIDGET_REGISTRY.get(id)?.title}
                     </button>
                   ))}
                 </div>
               )}
               {showAddMenu && availableWidgets.length === 0 && (
                 <div className={styles.addWidgetMenu}>
-                  <span className={styles.addWidgetMenuEmpty}>All widgets are visible</span>
+                  <span className={styles.addWidgetMenuEmpty}>{t('All widgets are visible')}</span>
                 </div>
               )}
             </div>
+
+            <button
+              className={styles.resetWidgetsBtn}
+              onClick={resetWidgets}
+              title={t('Reset widgets')}
+              disabled={!hasHiddenWidgets}
+            >
+              <RotateCcw size={16} />
+              {t('Reset')}
+            </button>
           </div>
         </div>
 
-        {isMounted ? (
-          <ResponsiveGridLayout
-            className={styles.gridLayout}
-            layouts={visibleLayouts}
-            breakpoints={BREAKPOINTS}
-            cols={COLS}
-            rowHeight={90}
-            margin={[14, 14]}
-            containerPadding={[0, 0]}
-            onLayoutChange={handleLayoutChange}
-            draggableHandle=".widget-drag-handle"
-            isDraggable={!isSmallScreen}
-            isResizable={!isSmallScreen}
-            resizeHandles={['se']}
-          >
-            {(visibleLayouts.lg ?? []).map((l: any) => (
-              <div key={l.i} className={styles.gridWidget}>
-                <div className={`${styles.widgetDragHandle} widget-drag-handle`}>
-                  <GripVertical size={12} />
-                </div>
+        <div className={styles.widgetsGrid}>
+          {visibleWidgetIds.length === 0 ? (
+            <div className={styles.widgetsEmpty}>
+              <span className={styles.widgetsEmptyTitle}>{t('No widgets selected')}</span>
+              <span className={styles.widgetsEmptyHint}>{t('Use “Add Widget” to bring widgets back.')}</span>
+            </div>
+          ) : null}
+
+          {visibleWidgetIds.map((id) => {
+            const def = WIDGET_REGISTRY.get(id)
+            const widget = renderWidget(id)
+            if (!widget || !def) return null
+
+            return (
+              <section
+                key={id}
+                className={styles.widgetCard}
+                style={{
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ['--widget-span-lg' as any]: String(def.span.lg),
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ['--widget-span-md' as any]: String(def.span.md),
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ['--widget-span-sm' as any]: String(def.span.sm),
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ['--widget-min-height' as any]: `${def.minHeightPx}px`,
+                }}
+              >
                 <button
                   className={styles.widgetCloseBtn}
-                  onClick={() => hideWidget(l.i)}
-                  title="Remove widget"
+                  onClick={() => hideWidget(id)}
+                  title={t('Remove widget')}
                 >
                   ×
                 </button>
                 <div className={styles.widgetInner}>
-                  {renderWidget(l.i)}
+                  {widget}
                 </div>
-              </div>
-            ))}
-          </ResponsiveGridLayout>
-        ) : (
-          <div className={styles.gridLayout} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ opacity: 0.5 }}>Loading layout...</span>
-          </div>
-        )}
+              </section>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

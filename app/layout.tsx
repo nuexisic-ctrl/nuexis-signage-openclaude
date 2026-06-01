@@ -36,6 +36,17 @@ export default async function RootLayout({
                   document.documentElement.setAttribute('data-theme', 'light');
                 }
               } catch (_) {}
+              try {
+                if ('serviceWorker' in navigator && ${process.env.NODE_ENV === 'development'}) {
+                  navigator.serviceWorker.getRegistrations().then(function(regs) {
+                    for (var i = 0; i < regs.length; i++) {
+                      regs[i].unregister().then(function() {
+                        console.log('[NuExis] Unregistered stale development service worker.');
+                      });
+                    }
+                  });
+                }
+              } catch (_) {}
             `,
           }}
         />

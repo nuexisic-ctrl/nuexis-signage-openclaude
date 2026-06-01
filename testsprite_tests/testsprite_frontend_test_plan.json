@@ -1,0 +1,835 @@
+[
+  {
+    "id": "TC001",
+    "title": "Log in with valid credentials",
+    "description": "This test verifies that a user can submit valid credentials on the login page and reach the authenticated app.",
+    "category": "Global Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the authenticated area is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Log in to a workspace and reach the dashboard",
+    "description": "This verifies that a workspace member can sign in with valid credentials and arrive at the authenticated dashboard for that workspace.",
+    "category": "Workspace Login",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/[team_slug]/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workspace dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is in the correct workspace context"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Create a new workspace successfully",
+    "description": "This test verifies that a new user can complete registration and create a workspace with a team slug.",
+    "category": "Registration and Workspace Setup",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /signup"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with a valid email address"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with a valid password"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the company name field with a new workspace name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workspace slug field with a unique slug"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workspace creation success state is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the authenticated workspace area is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Upload an image asset to the library",
+    "description": "This verifies that a workspace user can upload an image and see it appear in the asset library.",
+    "category": "Asset Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/[team_slug]/asset"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the upload control with a valid image file"
+      },
+      {
+        "type": "action",
+        "description": "Submit the upload"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the uploaded asset appears in the library"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the asset list is populated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Upload a video asset to the library",
+    "description": "This verifies that a workspace user can upload a video and see it appear in the asset library.",
+    "category": "Asset Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/[team_slug]/asset"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the upload control with a valid video file"
+      },
+      {
+        "type": "action",
+        "description": "Submit the upload"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the uploaded asset appears in the library"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the asset list is populated"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Create and save a new playlist with media items",
+    "description": "This test verifies that a workspace user can create a playlist, add media items, and save a usable playlist configuration.",
+    "category": "Playlists Sequencing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/{{TEAM_SLUG}}/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workspace login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the playlists area"
+      },
+      {
+        "type": "action",
+        "description": "Create a new playlist"
+      },
+      {
+        "type": "action",
+        "description": "Add media items to the playlist timeline"
+      },
+      {
+        "type": "action",
+        "description": "Save the playlist configuration"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new playlist is displayed in the playlists area"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the playlist contains added items"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "View signage content on the player page",
+    "description": "This verifies that the public player page renders full-screen digital signage content for a connected display.",
+    "category": "Player Experience",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /player"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify full-screen digital content is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the player view is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Pair a new screen with a numeric code",
+    "description": "This test verifies that an operator can pair a screen by entering a valid numeric code and see it appear in the workspace list.",
+    "category": "Device Management and Pairing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/{{TEAM_SLUG}}/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workspace login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the screens area"
+      },
+      {
+        "type": "action",
+        "description": "Start the screen pairing flow"
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid numeric pairing code"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the pairing"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new screen appears in the screen list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the screen shows a paired status"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "See live content updates on the player page",
+    "description": "This verifies that the player view reacts to live content changes and updates the displayed signage content accordingly.",
+    "category": "Player Experience",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /player"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify full-screen digital content is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updated content appears in the player view"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Reorder playlist items before saving",
+    "description": "This test verifies that a workspace user can change playlist item order and save the updated sequence.",
+    "category": "Playlists Sequencing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/{{TEAM_SLUG}}/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workspace login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the playlists area"
+      },
+      {
+        "type": "action",
+        "description": "Create a new playlist"
+      },
+      {
+        "type": "action",
+        "description": "Add media items to the playlist timeline"
+      },
+      {
+        "type": "action",
+        "description": "Reorder the playlist items"
+      },
+      {
+        "type": "action",
+        "description": "Save the playlist configuration"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the saved playlist is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the item order is reflected in the playlist"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Assign a playlist to a paired screen",
+    "description": "This test verifies that an operator can assign a playlist to an existing screen and see the assignment reflected in the screen list.",
+    "category": "Device Management and Pairing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/{{TEAM_SLUG}}/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workspace login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the screens area"
+      },
+      {
+        "type": "action",
+        "description": "Select a paired screen"
+      },
+      {
+        "type": "action",
+        "description": "Assign a playlist to the screen"
+      },
+      {
+        "type": "action",
+        "description": "Save the screen changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the screen shows the selected playlist"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the screen remains in the workspace list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Delete an asset from the library",
+    "description": "This verifies that a workspace user can remove an existing asset and see it disappear from the library.",
+    "category": "Asset Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/[team_slug]/asset"
+      },
+      {
+        "type": "action",
+        "description": "Upload a valid image file"
+      },
+      {
+        "type": "action",
+        "description": "Submit the upload"
+      },
+      {
+        "type": "action",
+        "description": "Delete the uploaded asset"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the asset is removed from the library"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the asset list no longer includes the deleted item"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Keep playlist changes after saving and returning to the list",
+    "description": "This test verifies that a saved playlist remains available after the user leaves and returns to the playlists area.",
+    "category": "Playlists Sequencing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/{{TEAM_SLUG}}/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workspace login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the playlists area"
+      },
+      {
+        "type": "action",
+        "description": "Create a new playlist"
+      },
+      {
+        "type": "action",
+        "description": "Add media items to the playlist timeline"
+      },
+      {
+        "type": "action",
+        "description": "Save the playlist configuration"
+      },
+      {
+        "type": "action",
+        "description": "Return to the playlists list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the saved playlist remains available"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the playlist can be opened again"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC014",
+    "title": "Show validation feedback for invalid workspace login",
+    "description": "This verifies that submitting incorrect workspace credentials shows validation errors and does not grant access.",
+    "category": "Workspace Login",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/[team_slug]/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with an invalid email value"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with an invalid password value"
+      },
+      {
+        "type": "action",
+        "description": "Submit the sign-in form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation error messages are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workspace dashboard is not displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC015",
+    "title": "Add a widget to the workspace asset library",
+    "description": "This verifies that a workspace user can add a supported widget and see it listed among workspace assets.",
+    "category": "Asset Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/[team_slug]/asset"
+      },
+      {
+        "type": "action",
+        "description": "Add a clock widget"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the widget appears in the asset library"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the workspace assets include the new widget"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC016",
+    "title": "Rename a screen and keep its pairing",
+    "description": "This test verifies that an operator can rename a paired screen and the updated name remains visible in the device list.",
+    "category": "Device Management and Pairing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/{{TEAM_SLUG}}/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workspace login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the screens area"
+      },
+      {
+        "type": "action",
+        "description": "Select a paired screen"
+      },
+      {
+        "type": "action",
+        "description": "Rename the screen"
+      },
+      {
+        "type": "action",
+        "description": "Save the screen changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated screen name is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the screen remains paired"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Show validation feedback for incomplete workspace registration",
+    "description": "This test verifies that submitting the sign up form without required information shows validation feedback and prevents workspace creation.",
+    "category": "Registration and Workspace Setup",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /signup"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify registration validation errors are visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "See validation feedback for invalid login details",
+    "description": "This test verifies that submitting invalid credentials on the login page shows validation errors and does not continue into the authenticated area.",
+    "category": "Global Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with invalid@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with incorrect-password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login validation errors are visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Reach sign up from the landing page",
+    "description": "This test verifies that a public visitor can start from the homepage and navigate to the registration page.",
+    "category": "Global Landing Page",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to sign up"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the registration page is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC020",
+    "title": "Reach workspace creation from the landing page",
+    "description": "This test verifies that a public visitor can start from the homepage and reach the workspace registration flow.",
+    "category": "Global Landing Page",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to create a workspace"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the registration page is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC021",
+    "title": "Reach login from the landing page",
+    "description": "This test verifies that a public visitor can start from the homepage and navigate to the login screen.",
+    "category": "Global Landing Page",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to log in"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the login page is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Show a validation error when saving an empty playlist",
+    "description": "This test verifies that the playlist builder prevents saving when no media items have been added.",
+    "category": "Playlists Sequencing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/{{TEAM_SLUG}}/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workspace login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the playlists area"
+      },
+      {
+        "type": "action",
+        "description": "Create a new playlist"
+      },
+      {
+        "type": "action",
+        "description": "Save the playlist configuration"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the playlist is not saved"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC023",
+    "title": "Block unsupported media from being added to the library",
+    "description": "This verifies that unsupported media cannot be added and that the asset library shows validation feedback instead of creating the item.",
+    "category": "Asset Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/[team_slug]/asset"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the upload control with an unsupported media file"
+      },
+      {
+        "type": "action",
+        "description": "Submit the upload"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the unsupported file is not added to the library"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC024",
+    "title": "Reject an invalid pairing code",
+    "description": "This test verifies that the pairing flow shows an error when the operator enters an invalid numeric code and does not add a new screen.",
+    "category": "Device Management and Pairing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/{{TEAM_SLUG}}/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workspace login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the screens area"
+      },
+      {
+        "type": "action",
+        "description": "Start the screen pairing flow"
+      },
+      {
+        "type": "action",
+        "description": "Enter an invalid pairing code"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the pairing"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a pairing validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new screen is added"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC025",
+    "title": "Handle an empty screen list",
+    "description": "This test verifies that the screens page shows an empty state when no devices are paired yet.",
+    "category": "Device Management and Pairing",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /customer/{{TEAM_SLUG}}/login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the workspace login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the screens area"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no screens are listed"
+      }
+    ],
+    "priority": "Low"
+  }
+]

@@ -37,6 +37,36 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.filePath.startsWith('http://') || body.filePath.startsWith('https://')) {
+      if (body.filePath.startsWith('http://')) {
+        return NextResponse.json({ error: 'Insecure protocol: only HTTPS is allowed' }, { status: 400 })
+      }
+      try {
+        const parsedUrl = new URL(body.filePath)
+        const allowedHosts = [
+          'youtube.com',
+          'www.youtube.com',
+          'youtu.be',
+          'youtube-nocookie.com',
+          'www.youtube-nocookie.com',
+        ]
+        
+        if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+          try {
+            const supabaseHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
+            allowedHosts.push(supabaseHost)
+          } catch {}
+        }
+        
+        const isAllowed = allowedHosts.some(host => 
+          parsedUrl.hostname === host || parsedUrl.hostname.endsWith('.' + host)
+        )
+        
+        if (!isAllowed) {
+          return NextResponse.json({ error: 'Untrusted external URL' }, { status: 400 })
+        }
+      } catch {
+        return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 })
+      }
       return NextResponse.json({ signedUrl: body.filePath })
     }
 

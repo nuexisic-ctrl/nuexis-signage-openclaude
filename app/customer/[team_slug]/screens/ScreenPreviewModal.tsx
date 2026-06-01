@@ -330,7 +330,7 @@ export function ScreenPreviewModal({
             title="widget-html-simulator"
             srcDoc={iframeSrcDoc}
             style={{ ...mediaStyle, border: 'none' }}
-            sandbox="allow-same-origin"
+            sandbox=""
           />
         )
       } catch (err) {
@@ -349,6 +349,7 @@ export function ScreenPreviewModal({
             showDate={config.showDate}
             use24Hour={config.use24Hour}
             dateFormat={config.dateFormat}
+            theme={config.theme}
           />
         )
       } catch (err) {

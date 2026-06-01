@@ -13,6 +13,7 @@ interface FlowWidgetModalProps {
     showDate: boolean
     use24Hour: boolean
     dateFormat: string
+    theme?: 'light' | 'dark'
   }) => void
   isSubmitting: boolean
 }
@@ -163,9 +164,10 @@ export default function FlowWidgetModal({
   const [showDate, setShowDate] = useState(true)
   const [use24Hour, setUse24Hour] = useState(false)
   const [dateFormat, setDateFormat] = useState<typeof DATE_FORMATS_WHITELIST[number]>('January 01, 2024')
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   // Hover preview overrides — applied to live preview while hovering, cleared on revert
-  const [previewOverride, setPreviewOverride] = useState<{ style?: string; dateFormat?: string }>({})
+  const [previewOverride, setPreviewOverride] = useState<{ style?: string; dateFormat?: string; theme?: 'light' | 'dark' }>({})
 
   // Preview Mode: 'landscape' | 'portrait'
   const [previewMode, setPreviewMode] = useState<'landscape' | 'portrait'>('landscape')
@@ -204,7 +206,8 @@ export default function FlowWidgetModal({
       showSeconds: !!showSeconds,
       showDate: !!showDate,
       use24Hour: !!use24Hour,
-      dateFormat: validatedDateFormat
+      dateFormat: validatedDateFormat,
+      theme: theme
     })
   }
 
@@ -341,6 +344,19 @@ export default function FlowWidgetModal({
                   24-hour Format
                 </label>
               </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Theme</label>
+                <HoverPreviewSelect
+                  value={theme}
+                  options={[
+                    { value: 'light', label: 'Light Mode' },
+                    { value: 'dark', label: 'Dark Mode' }
+                  ]}
+                  onChange={val => { setTheme(val as any); setPreviewOverride(p => ({ ...p, theme: undefined })) }}
+                  onHoverChange={val => setPreviewOverride(p => ({ ...p, theme: (val as any) ?? undefined }))}
+                />
+              </div>
             </form>
 
             {/* Right: Live Interactive Simulator Area */}
@@ -423,6 +439,7 @@ export default function FlowWidgetModal({
                     showDate={showDate}
                     use24Hour={use24Hour}
                     dateFormat={previewOverride.dateFormat ?? dateFormat}
+                    theme={previewOverride.theme ?? theme}
                   />
                 </div>
               </div>
@@ -506,6 +523,7 @@ export default function FlowWidgetModal({
               showDate={showDate}
               use24Hour={use24Hour}
               dateFormat={previewOverride.dateFormat ?? dateFormat}
+              theme={previewOverride.theme ?? theme}
             />
           </div>
 

@@ -115,6 +115,7 @@ export default async function ScreensPage({ params, searchParams }: Props) {
         <Header fullName={fullName} email={user.email} />
         
         <ScreensClient
+          key={`${team_slug}-${currentPage}`}
           devices={devices}
           assets={assets}
           playlists={playlists}

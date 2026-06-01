@@ -176,6 +176,17 @@ export async function deleteAndUnpairDevice(
     return { success: false, error: 'Failed to update screen settings. Please try again later.' }
   }
 
+  try {
+    if (redis) {
+      await Promise.all([
+        redis.del(`heartbeat:${teamId}:${deviceId}`),
+        redis.srem(`heartbeats:index:${teamId}`, deviceId),
+      ])
+    }
+  } catch (err) {
+    console.error('[deleteAndUnpairDevice] Redis cleanup failed:', err)
+  }
+
   revalidatePath(`/customer/${teamSlug}/screens`)
   return { success: true }
 }
@@ -192,32 +203,36 @@ export async function getDeviceHeartbeats(teamId: string): Promise<Record<string
     throw new Error('Unauthorized team access')
   }
 
+  if (!redis) {
+    console.warn('[getDeviceHeartbeats] Redis is not configured. Returning empty heartbeats map.')
+    return {}
+  }
+
   try {
-    const allKeys: string[] = []
-    const MAX_HEARTBEAT_KEYS = 500
-    let cursor = 0
-    do {
-      const [nextCursor, keys] = await redis.scan(cursor, {
-        match: `heartbeat:${teamId}:*`,
-        count: 100,
-      })
-      cursor = Number(nextCursor)
-      allKeys.push(...keys)
-      if (allKeys.length >= MAX_HEARTBEAT_KEYS) break
-    } while (cursor !== 0)
+    const indexKey = `heartbeats:index:${teamId}`
+    const deviceIds = await redis.smembers(indexKey)
+    if (!deviceIds || deviceIds.length === 0) return {}
 
-    if (allKeys.length === 0) return {}
-
-    const values = await redis.mget(...allKeys)
+    const keys = deviceIds.map(id => `heartbeat:${teamId}:${id}`)
+    const values = await redis.mget(...keys)
     const result: Record<string, string> = {}
-    
-    allKeys.forEach((key, index) => {
-      const deviceId = key.split(':').pop()
-      if (deviceId && values[index]) {
-        result[deviceId] = values[index] as string
+    const expiredDeviceIds: string[] = []
+
+    deviceIds.forEach((id, index) => {
+      const val = values[index]
+      if (val) {
+        result[id] = val as string
+      } else {
+        expiredDeviceIds.push(id)
       }
     })
-    
+
+    if (expiredDeviceIds.length > 0) {
+      redis.srem(indexKey, ...expiredDeviceIds).catch(err => {
+        console.error('[getDeviceHeartbeats] failed to cleanup expired keys:', err)
+      })
+    }
+
     return result
   } catch (error) {
     console.error('[getDeviceHeartbeats] error:', error)

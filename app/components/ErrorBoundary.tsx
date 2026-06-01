@@ -1,6 +1,7 @@
 'use client'
 
 import { Component, type ReactNode } from 'react'
+import { t } from '@/lib/i18n'
 
 interface Props {
   children: ReactNode
@@ -81,10 +82,10 @@ export default class ErrorBoundary extends Component<Props, State> {
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#fff' }}>
-            Something went wrong
+            {t('Something went wrong')}
           </h2>
           <p style={{ margin: 0, maxWidth: '360px', fontSize: '0.9rem', color: '#8fa3c0', lineHeight: 1.6 }}>
-            An unexpected error occurred. Please try refreshing the page.
+            {t('An unexpected error occurred. Please try refreshing the page.')}
           </p>
           {this.state.error && (
             <code
@@ -115,7 +116,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               cursor: 'pointer',
             }}
           >
-            Reload Page
+            {t('Reload Page')}
           </button>
         </div>
       )

@@ -125,7 +125,7 @@ export default function PairedView({
             title="widget-html-paired"
             srcDoc={iframeSrcDoc}
             style={{ ...mediaStyle, border: 'none' }}
-            sandbox="allow-same-origin"
+            sandbox=""
           />
         )
       } catch (err) {
@@ -142,6 +142,7 @@ export default function PairedView({
             showDate={config.showDate}
             use24Hour={config.use24Hour}
             dateFormat={config.dateFormat}
+            theme={config.theme}
           />
         )
       } catch (err) {

@@ -4,6 +4,7 @@ import { createClient, requireOwner } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import sanitize from 'sanitize-filename'
 import { redis } from '@/lib/redis'
+import DOMPurify from 'isomorphic-dompurify'
 
 export type InsertAssetResult =
   | { success: true; id: string }
@@ -51,6 +52,23 @@ export async function insertAsset(
       }
     } catch {
       return { success: false, error: 'Invalid URL.' }
+    }
+  }
+
+  if (asset.mime_type === 'application/x-widget-html') {
+    try {
+      const { html = '', css = '' } = JSON.parse(asset.file_path)
+      const sanitizedHtml = DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: [
+          'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
+          'br', 'img', 'a', 'strong', 'em', 'b', 'i', 'u', 'table', 'thead', 'tbody',
+          'tr', 'th', 'td', 'style'
+        ],
+        ALLOWED_ATTR: ['class', 'style', 'src', 'href', 'target', 'alt', 'width', 'height']
+      })
+      asset.file_path = JSON.stringify({ html: sanitizedHtml, css })
+    } catch (err) {
+      return { success: false, error: 'Invalid HTML widget data.' }
     }
   }
 
@@ -117,13 +135,15 @@ export async function getUploadUrl(
 
   // 3. Rate Limit & Storage Quota
   try {
-    const uploadCountKey = `upload_count:${teamId}`
-    const uploadsCount = await redis.incr(uploadCountKey)
-    if (uploadsCount === 1) {
-      await redis.expire(uploadCountKey, 3600) // 1 hour window
-    }
-    if (uploadsCount > 100) { // Max 100 uploads per hour
-      return { success: false, error: 'Upload rate limit exceeded. Try again later.' }
+    if (redis) {
+      const uploadCountKey = `upload_count:${teamId}`
+      const uploadsCount = await redis.incr(uploadCountKey)
+      if (uploadsCount === 1) {
+        await redis.expire(uploadCountKey, 3600) // 1 hour window
+      }
+      if (uploadsCount > 100) { // Max 100 uploads per hour
+        return { success: false, error: 'Upload rate limit exceeded. Try again later.' }
+      }
     }
   } catch (err) {
     console.error('[getUploadUrl] Rate limiting error:', err)
