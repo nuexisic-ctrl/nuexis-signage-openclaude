@@ -7,6 +7,8 @@ import { AssignModal } from './AssignModal'
 import { DeleteModal } from './DeleteModal'
 import { RenameModal } from './RenameModal'
 import { ScreenPreviewModal } from './ScreenPreviewModal'
+import NewGroupModal from '../components/NewGroupModal'
+import { GroupEditModal } from './GroupEditModal'
 
 interface ScreensModalsProps {
   showPairModal: boolean
@@ -26,6 +28,17 @@ interface ScreensModalsProps {
   handleAssignSuccess: () => void
   handleDeleteSuccess: () => void
   handleRenameSuccess: (name: string) => void
+  
+  // Group modals props
+  showCreateGroupFromSelection: boolean
+  setShowCreateGroupFromSelection: (show: boolean) => void
+  editGroup: any | null
+  setEditGroup: (group: any | null) => void
+  devices: Device[]
+  memberships: any[]
+  selectedDeviceIds: Set<string>
+  setSelectedDeviceIds: (ids: Set<string>) => void
+  router: any
 }
 
 export function ScreensModals({
@@ -45,7 +58,17 @@ export function ScreensModals({
   handlePairSuccess,
   handleAssignSuccess,
   handleDeleteSuccess,
-  handleRenameSuccess
+  handleRenameSuccess,
+  
+  showCreateGroupFromSelection,
+  setShowCreateGroupFromSelection,
+  editGroup,
+  setEditGroup,
+  devices,
+  memberships,
+  selectedDeviceIds,
+  setSelectedDeviceIds,
+  router
 }: ScreensModalsProps) {
   return (
     <>
@@ -103,6 +126,37 @@ export function ScreensModals({
           orientation={previewState.orientation} 
           assets={assets} 
           playlists={playlists}
+        />
+      )}
+
+      {showCreateGroupFromSelection && (
+        <NewGroupModal
+          isOpen={showCreateGroupFromSelection}
+          onClose={() => setShowCreateGroupFromSelection(false)}
+          teamSlug={teamSlug}
+          devices={devices}
+          initialSelectedDeviceIds={Array.from(selectedDeviceIds)}
+          onSuccess={() => {
+            setShowCreateGroupFromSelection(false)
+            setSelectedDeviceIds(new Set())
+            router.refresh()
+          }}
+        />
+      )}
+
+      {editGroup && (
+        <GroupEditModal
+          group={editGroup}
+          devices={devices}
+          memberships={memberships}
+          assets={assets}
+          playlists={playlists}
+          teamSlug={teamSlug}
+          onClose={() => setEditGroup(null)}
+          onSuccess={() => {
+            setEditGroup(null)
+            router.refresh()
+          }}
         />
       )}
     </>

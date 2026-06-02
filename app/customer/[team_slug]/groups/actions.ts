@@ -7,6 +7,7 @@ import { rateLimitAction } from '@/lib/redis'
 export interface GroupActionResult {
   success: boolean
   error?: string
+  groupId?: string
 }
 
 export async function createGroup(
@@ -14,8 +15,14 @@ export async function createGroup(
   name: string,
   color: string
 ): Promise<GroupActionResult> {
-  const trimmedName = name.trim()
-  if (!trimmedName || trimmedName.length < 1 || trimmedName.length > 60) {
+  let finalName = name.trim()
+  if (!finalName) {
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    finalName = `Group - ${dateStr} ${timeStr}`
+  }
+
+  if (finalName.length < 1 || finalName.length > 60) {
     return { success: false, error: 'Group name must be between 1 and 60 characters.' }
   }
 
@@ -41,14 +48,16 @@ export async function createGroup(
     return { success: false, error: 'Too many requests. Please try again later.' }
   }
 
-  const { error: insertError } = await supabase
+  const { data: newGroup, error: insertError } = await supabase
     .from('screen_groups')
     .insert({
       team_id: teamId,
-      name: trimmedName,
+      name: finalName,
       color: color || '#3b82f6',
       created_by: user.id
     })
+    .select('id')
+    .single()
 
   if (insertError) {
     console.error('[createGroup] Insert error:', insertError)
@@ -60,7 +69,7 @@ export async function createGroup(
 
   revalidatePath(`/customer/${teamSlug}/screens`)
   revalidatePath(`/customer/${teamSlug}/groups`)
-  return { success: true }
+  return { success: true, groupId: newGroup?.id }
 }
 
 export async function renameGroup(
@@ -421,3 +430,112 @@ export async function removeDevicesFromGroup(
   revalidatePath(`/customer/${teamSlug}/groups`)
   return { success: true }
 }
+
+export async function saveGroupChanges(
+  teamSlug: string,
+  groupId: string,
+  data: {
+    name: string
+    color: string
+    content_type: 'Asset' | 'Playlist' | 'Schedule' | null
+    asset_id: string | null
+    playlist_id: string | null
+    orientation: 0 | 90 | 180 | 270
+    deviceIds: string[]
+  }
+): Promise<GroupActionResult> {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to update a group.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  if (!(await rateLimitAction(user.id, 'saveGroupChanges', 30, 60))) {
+    return { success: false, error: 'Too many requests. Please try again later.' }
+  }
+
+  // 1. Update group properties
+  const { error: groupUpdateError } = await supabase
+    .from('screen_groups')
+    .update({
+      name: data.name.trim(),
+      color: data.color,
+      content_type: data.content_type,
+      asset_id: data.content_type === 'Asset' ? data.asset_id : null,
+      playlist_id: data.content_type === 'Playlist' ? data.playlist_id : null,
+      orientation: data.orientation
+    })
+    .eq('id', groupId)
+    .eq('team_id', teamId)
+
+  if (groupUpdateError) {
+    console.error('[saveGroupChanges] Group update error:', groupUpdateError)
+    return { success: false, error: 'Failed to update group settings.' }
+  }
+
+  // 2. Sync members
+  const { error: deleteError } = await supabase
+    .from('screen_group_members')
+    .delete()
+    .eq('group_id', groupId)
+    .eq('team_id', teamId)
+
+  if (deleteError) {
+    console.error('[saveGroupChanges] Delete members error:', deleteError)
+    return { success: false, error: 'Failed to update group screens.' }
+  }
+
+  if (data.deviceIds.length > 0) {
+    const insertRows = data.deviceIds.map(id => ({
+      group_id: groupId,
+      device_id: id,
+      team_id: teamId,
+      is_primary: true
+    }))
+    const { error: insertError } = await supabase
+      .from('screen_group_members')
+      .insert(insertRows)
+
+    if (insertError) {
+      console.error('[saveGroupChanges] Insert members error:', insertError)
+      return { success: false, error: 'Failed to add screens to group.' }
+    }
+  }
+
+  // 3. Update all screens in the group in the devices table
+  if (data.deviceIds.length > 0) {
+    const { error: devicesUpdateError } = await supabase
+      .from('devices')
+      .update({
+        content_type: data.content_type,
+        asset_id: data.content_type === 'Asset' ? data.asset_id : null,
+        playlist_id: data.content_type === 'Playlist' ? data.playlist_id : null,
+        orientation: data.orientation,
+        last_seen_at: new Date().toISOString() // Touch to trigger realtime sync
+      })
+      .in('id', data.deviceIds)
+      .eq('team_id', teamId)
+
+    if (devicesUpdateError) {
+      console.error('[saveGroupChanges] Devices update error:', devicesUpdateError)
+      return { success: false, error: 'Failed to apply settings to member screens.' }
+    }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/screens`)
+  revalidatePath(`/customer/${teamSlug}/groups`)
+  return { success: true }
+}
+

@@ -1,0 +1,477 @@
+.sectionContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.headerTitleArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sectionIcon {
+  color: var(--primary);
+}
+
+.sectionTitle {
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.groupCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 9999px;
+  background: var(--primary-container);
+  color: var(--primary);
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.viewToggleGroup {
+  display: flex;
+  height: 38px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.viewToggleBtn {
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.viewToggleBtn:last-child {
+  border-right: 0;
+}
+
+.viewToggleBtn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.viewToggleBtn:hover,
+.viewToggleBtn.active {
+  background: var(--surface-lowest);
+  color: var(--primary);
+}
+
+/* Empty State */
+.emptyContainer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: var(--surface-lowest);
+  border: 1px dashed var(--outline-variant);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.emptyIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-subtle);
+}
+
+.emptyTitle {
+  font-family: var(--font-serif);
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.emptyText {
+  font-size: 0.84rem;
+  color: var(--on-surface-muted);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+/* Table View styles */
+.tableWrapper {
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th {
+  padding: 12px 16px;
+  font-family: var(--font-label);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--on-surface-subtle);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.tableRow {
+  cursor: pointer;
+  transition: background-color var(--transition-base);
+}
+
+.tableRow:hover {
+  background-color: var(--surface-low);
+}
+
+.tableRow td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--outline-variant);
+  font-size: 0.875rem;
+  color: var(--on-surface);
+}
+
+.tableRow:last-child td {
+  border-bottom: 0;
+}
+
+.groupNameCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.colorIndicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.groupNameText {
+  font-weight: 700;
+}
+
+.memberCount {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--on-surface-muted);
+  font-family: var(--font-label);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.subIcon {
+  color: var(--on-surface-subtle);
+}
+
+.statusCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-label);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.onlineBadge, .offlineBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.onlineBadge {
+  color: #10b981;
+}
+
+.offlineBadge {
+  color: var(--on-surface-subtle);
+}
+
+.statusDotOnline, .statusDotOffline {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.statusDotOnline {
+  background-color: #10b981;
+}
+
+.statusDotOffline {
+  background-color: var(--on-surface-subtle);
+}
+
+.noScreensText {
+  color: var(--on-surface-subtle);
+  font-style: italic;
+}
+
+.contentCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 240px;
+}
+
+.contentIcon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.contentLabelText {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unassignedText {
+  color: var(--on-surface-subtle);
+  font-style: italic;
+}
+
+.orientationText {
+  font-size: 0.8125rem;
+  color: var(--on-surface-muted);
+}
+
+.actionsCell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.actionBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+}
+
+.actionBtn:hover {
+  background: var(--surface-medium);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.actionBtn.deleteBtn:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Grid View styles */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-left: 4px solid var(--group-border-color, var(--primary));
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardTitle {
+  font-family: var(--font-body);
+  font-size: 0.94rem;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.cardBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardContentPreview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+}
+
+.cardContentThumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.cardContentMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardContentLabel {
+  font-family: var(--font-label);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--on-surface-subtle);
+}
+
+.cardContentName {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.cardStatusRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-label);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.cardStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--on-surface-muted);
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  border-top: 1px solid var(--outline-variant);
+  padding-top: 12px;
+}
+
+.cardBtn {
+  flex: 1;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
+  color: var(--on-surface);
+  font-family: var(--font-label);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.cardBtn:hover {
+  background: var(--surface-medium);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.cardBtnDanger:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+@media (max-width: 768px) {
+  .sectionHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .viewToggleGroup {
+    display: none; /* Hide toggle on mobile, fallback to grid cards or simple list */
+  }
+}

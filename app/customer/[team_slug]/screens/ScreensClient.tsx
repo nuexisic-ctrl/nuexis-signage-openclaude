@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, RefreshCw } from 'lucide-react'
+import { Plus, RefreshCw, FolderTree } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { updateDeviceLastSeen } from './actions'
 import styles from './screens.module.css'
@@ -17,10 +17,13 @@ import { RenameModal } from './RenameModal'
 import { FilterSidebar } from './FilterSidebar'
 import { StatsGrid } from './StatsGrid'
 import { ScreenPreviewModal } from './ScreenPreviewModal'
-import { BulkActionsBar } from './BulkActionsBar'
 import { DeviceTable } from './DeviceTable'
 import { ScreensModals } from './ScreensModals'
 import { useDevicePresence } from './useDevicePresence'
+import { deleteGroup } from '../groups/actions'
+import { SelectedActions } from './SelectedActions'
+import { GroupsSection } from './GroupsSection'
+
 
 // Tick relative timestamps every 60s — "5 mins ago" accuracy doesn't need faster updates
 // (was 15s which caused 4 full re-renders/min of the device list for no user-visible benefit)
@@ -90,9 +93,12 @@ export default function ScreensClient({
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
   const [filterGroupId, setFilterGroupId] = useState<string>('all')
+  const [showCreateGroupFromSelection, setShowCreateGroupFromSelection] = useState(false)
 
   const [groups, setGroups] = useState<any[]>(initialGroups)
   const [memberships, setMemberships] = useState<any[]>(initialMemberships)
+  const [editGroup, setEditGroup] = useState<any | null>(null)
+
 
   // Use Custom Hook for device presence & fallback polling
   const {
@@ -190,11 +196,29 @@ export default function ScreensClient({
 
   const handlePairSuccess = () => { setShowPairModal(false); router.refresh(); }
   const handleAssignSuccess = () => { setAssignModalDevice(null); router.refresh(); }
-  const handleDeleteSuccess = () => { setDeleteModalDevice(null); router.refresh(); }
+  const handleDeleteSuccess = () => {
+    setDeleteModalDevice(null)
+    setSelectedDeviceIds(new Set())
+    router.refresh()
+  }
   const handleRenameSuccess = (newName: string) => {
     setDevices(prev => prev.map(d => d.id === renameModalDevice?.id ? { ...d, name: newName } : d))
     setRenameModalDevice(null)
   }
+
+  const handleDeleteGroup = (group: any) => {
+    if (window.confirm(`Are you sure you want to delete the group "${group.name}"?`)) {
+      startTransition(async () => {
+        const res = await deleteGroup(teamSlug, group.id)
+        if (res.success) {
+          router.refresh()
+        } else {
+          alert(res.error || 'Failed to delete group.')
+        }
+      })
+    }
+  }
+
 
   const handleToggleSelect = (deviceId: string) => {
     setSelectedDeviceIds(prev => {
@@ -271,6 +295,18 @@ export default function ScreensClient({
             <RefreshCw size={20} className={isRefreshing ? styles.spin : ''} />
           </button>
           <button
+            className={styles.addBtn}
+            onClick={() => setShowCreateGroupFromSelection(true)}
+            style={{ 
+              background: 'var(--surface-low)', 
+              color: 'var(--on-surface)', 
+              border: '1px solid var(--outline-variant)' 
+            }}
+          >
+            <FolderTree className={styles.addBtnIcon} size={18} />
+            New Group
+          </button>
+          <button
             id="add-screen-btn"
             className={styles.addBtn}
             onClick={() => setShowPairModal(true)}
@@ -291,8 +327,20 @@ export default function ScreensClient({
             totalPlaytimeSeconds={totalPlaytimeSeconds}
           />
 
+          <GroupsSection
+            groups={groups}
+            devices={devices}
+            memberships={memberships}
+            assets={assets}
+            playlists={playlists}
+            teamSlug={teamSlug}
+            onSelectGroup={(g) => setEditGroup(g)}
+            onDeleteGroup={handleDeleteGroup}
+          />
+
           <div className={styles.mainBlockContainer}>
             <div className={styles.controlsBar}>
+
               <div className={styles.searchBox}>
                 <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
@@ -306,6 +354,16 @@ export default function ScreensClient({
                 />
               </div>
               <div className={styles.controlsRight}>
+                {selectedDeviceIds.size > 0 && (
+                  <SelectedActions
+                    selectedDeviceIds={selectedDeviceIds}
+                    setSelectedDeviceIds={setSelectedDeviceIds}
+                    setShowCreateGroupFromSelection={setShowCreateGroupFromSelection}
+                    setDeleteModalDevice={setDeleteModalDevice}
+                    setAssignModalDevice={setAssignModalDevice}
+                  />
+                )}
+
                 {groups.length > 0 && (
                   <select
                     value={filterGroupId}
@@ -513,18 +571,19 @@ export default function ScreensClient({
         handleAssignSuccess={handleAssignSuccess}
         handleDeleteSuccess={handleDeleteSuccess}
         handleRenameSuccess={handleRenameSuccess}
-      />
-
-      <BulkActionsBar
+        
+        // Group properties and modals
+        showCreateGroupFromSelection={showCreateGroupFromSelection}
+        setShowCreateGroupFromSelection={setShowCreateGroupFromSelection}
+        editGroup={editGroup}
+        setEditGroup={setEditGroup}
+        devices={devices}
+        memberships={memberships}
         selectedDeviceIds={selectedDeviceIds}
         setSelectedDeviceIds={setSelectedDeviceIds}
-        groups={groups}
-        teamSlug={teamSlug}
-        isPending={isPending}
-        startTransition={startTransition}
-        setAssignModalDevice={setAssignModalDevice}
         router={router}
       />
     </>
+
   )
 }

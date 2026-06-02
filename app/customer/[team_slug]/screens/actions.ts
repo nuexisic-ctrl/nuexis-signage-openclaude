@@ -166,10 +166,12 @@ export async function deleteAndUnpairDevice(
     return { success: false, error: 'Too many requests. Please try again later.' }
   }
 
+  const ids = deviceId.split(',')
+
   const { error: deleteError } = await supabase
     .from('devices')
     .delete()
-    .eq('id', deviceId)
+    .in('id', ids)
     .eq('team_id', teamId)
 
   if (deleteError) {
@@ -179,10 +181,13 @@ export async function deleteAndUnpairDevice(
 
   try {
     if (redis) {
-      await Promise.all([
-        redis.del(`heartbeat:${teamId}:${deviceId}`),
-        redis.srem(`heartbeats:index:${teamId}`, deviceId),
-      ])
+      const redisClient = redis
+      await Promise.all(
+        ids.flatMap(id => [
+          redisClient.del(`heartbeat:${teamId}:${id}`),
+          redisClient.srem(`heartbeats:index:${teamId}`, id)
+        ])
+      )
     }
   } catch (err) {
     console.error('[deleteAndUnpairDevice] Redis cleanup failed:', err)
