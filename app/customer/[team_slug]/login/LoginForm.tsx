@@ -278,7 +278,14 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
                   placeholder="name@company.com"
                   className={`form-input ${styles.formInputWithIcon}`}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setEmail(val)
+                    const savedEmail = localStorage.getItem('nuexis_remembered_email')
+                    if (savedEmail && val !== savedEmail) {
+                      setRememberMe(false)
+                    }
+                  }}
                   disabled={status === 'loading' || status === 'success'}
                   aria-invalid={!!error && !email}
                   required
@@ -364,15 +371,15 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
 
             {/* Remember Me Toggle */}
             <div className={styles.checkboxGroup} style={{ marginBottom: '18px' }}>
+              <input
+                id="remember-me"
+                type="checkbox"
+                className={styles.customCheckbox}
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                disabled={status === 'loading' || status === 'success'}
+              />
               <label className={styles.checkboxLabel} htmlFor="remember-me">
-                <input
-                  id="remember-me"
-                  type="checkbox"
-                  className={styles.customCheckbox}
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  disabled={status === 'loading' || status === 'success'}
-                />
                 <span className={styles.checkboxText}>Remember me</span>
               </label>
             </div>

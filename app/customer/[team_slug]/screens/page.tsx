@@ -103,6 +103,25 @@ export default async function ScreensPage({ params, searchParams }: Props) {
       ).data ?? []
     : []
 
+  // Fetch all screen groups for this team
+  const groups = profile?.team_id
+    ? (await supabase
+        .from('screen_groups')
+        .select('*')
+        .eq('team_id', profile.team_id)
+        .order('name', { ascending: true })
+      ).data ?? []
+    : []
+
+  // Fetch all screen group memberships for this team
+  const memberships = profile?.team_id
+    ? (await supabase
+        .from('screen_group_members')
+        .select('group_id, device_id, is_primary')
+        .eq('team_id', profile.team_id)
+      ).data ?? []
+    : []
+
   const cookieStore = await cookies();
   const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
 
@@ -119,6 +138,8 @@ export default async function ScreensPage({ params, searchParams }: Props) {
           devices={devices}
           assets={assets}
           playlists={playlists}
+          groups={groups}
+          memberships={memberships}
           teamSlug={team_slug}
           teamId={profile?.team_id as string}
           totalScreens={totalScreens}

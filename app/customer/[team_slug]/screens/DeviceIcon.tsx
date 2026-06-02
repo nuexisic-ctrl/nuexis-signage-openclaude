@@ -518,3 +518,29 @@ export function formatPlaytime(seconds: number): string {
   if (h > 0) return `${h}h ${m > 0 ? `${m}m` : ''}`.trim()
   return `${m}m`
 }
+
+export function resolveDeviceContent(
+  device: Device,
+  groups: any[] = [],
+  memberships: any[] = []
+): Device {
+  if (device.content_type) return device
+
+  // Find member groups
+  const deviceMemberships = memberships.filter(m => m.device_id === device.id)
+  const deviceGroups = groups.filter(g => deviceMemberships.some(m => m.group_id === g.id))
+
+  // Resolve from first member group
+  const primaryGroup = deviceGroups[0]
+  if (primaryGroup) {
+    return {
+      ...device,
+      content_type: primaryGroup.content_type,
+      asset_id: primaryGroup.asset_id,
+      playlist_id: primaryGroup.playlist_id,
+      orientation: primaryGroup.orientation ?? device.orientation
+    }
+  }
+
+  return device
+}

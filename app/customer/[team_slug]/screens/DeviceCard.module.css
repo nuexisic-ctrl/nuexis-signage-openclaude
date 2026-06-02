@@ -16,6 +16,12 @@
   transform: translateY(-1px);
 }
 
+.deviceCardSelected {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 1.5px var(--primary), var(--shadow-card);
+  background: var(--surface-low);
+}
+
 .deviceCardHeaderTop {
   display: flex;
   align-items: flex-start;

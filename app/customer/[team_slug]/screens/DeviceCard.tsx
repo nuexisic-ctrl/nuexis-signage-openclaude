@@ -1,7 +1,7 @@
 import React from 'react'
 import styles from './DeviceCard.module.css'
 import { Device, Asset, Playlist, LiveStatus } from './types'
-import { DeviceIcon, StatusBadge, formatLastSeen, getContentLabel } from './DeviceIcon'
+import { DeviceIcon, StatusBadge, formatLastSeen, getContentLabel, resolveDeviceContent } from './DeviceIcon'
 
 export interface DeviceCardProps {
   device: Device
@@ -13,6 +13,11 @@ export interface DeviceCardProps {
   onToggleMenu: (e: React.MouseEvent) => void
   assets: Asset[]
   playlists: Playlist[]
+  groups?: any[]
+  memberships?: any[]
+  selected?: boolean
+  onToggleSelect?: () => void
+  onGroupClick?: (groupId: string) => void
 }
 
 export function DeviceCard({
@@ -24,7 +29,12 @@ export function DeviceCard({
   menuOpen,
   onToggleMenu,
   assets,
-  playlists
+  playlists,
+  groups = [],
+  memberships = [],
+  selected = false,
+  onToggleSelect,
+  onGroupClick
 }: DeviceCardProps) {
   const createdAt = new Date(device.created_at).toLocaleDateString('en-US', {
     month: 'short',
@@ -33,14 +43,58 @@ export function DeviceCard({
   })
   const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online')
 
+  // Find member groups
+  const deviceMemberships = memberships.filter(m => m.device_id === device.id)
+  const deviceGroups = groups.filter(g => deviceMemberships.some(m => m.group_id === g.id))
+
+  // Resolve content from group if device has no explicit content set
+  const resolvedDevice = resolveDeviceContent(device, groups, memberships)
+  const isInherited = !device.content_type && resolvedDevice.content_type
+
   return (
-    <div className={styles.deviceCard}>
+    <div className={`${styles.deviceCard} ${selected ? styles.deviceCardSelected : ''}`}>
       <div className={styles.deviceCardHeaderTop}>
         <div className={styles.deviceCardHeaderLeft}>
+          {onToggleSelect && (
+            <input 
+              type="checkbox" 
+              checked={selected} 
+              onChange={onToggleSelect} 
+              style={{ marginRight: '10px', width: '16px', height: '16px', cursor: 'pointer', flexShrink: 0 }}
+            />
+          )}
           <div className={styles.deviceCardIcon}>
             <DeviceIcon name={device.name || ''} orientation={device.orientation} />
           </div>
-          <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
+          <div>
+            <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
+            {deviceGroups.length > 0 && (
+              <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+                {deviceGroups.map(g => (
+                  <span 
+                    key={g.id} 
+                    style={{ 
+                      backgroundColor: g.color || '#3b82f6', 
+                      color: '#fff', 
+                      fontSize: '0.65rem', 
+                      padding: '1px 5px', 
+                      borderRadius: '3px', 
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      fontFamily: 'var(--font-label)',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onGroupClick?.(g.id)
+                    }}
+                  >
+                    {g.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className={styles.statusAndMenu}>
           <StatusBadge status={liveStatus} />
@@ -80,9 +134,13 @@ export function DeviceCard({
           <span className={styles.deviceMetaLabel}>CURRENT CONTENT</span>
           <span 
             className={styles.deviceMetaValue} 
-            style={(!device.asset_id && !device.playlist_id) ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}
+            style={(!resolvedDevice.asset_id && !resolvedDevice.playlist_id) ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}
           >
-            {getContentLabel(device, assets, playlists)}
+            {getContentLabel(resolvedDevice, assets, playlists)} {isInherited && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--primary)', opacity: 0.85, fontWeight: 500, fontStyle: 'italic', marginLeft: '4px' }}>
+                (Group)
+              </span>
+            )}
           </span>
         </div>
         <div className={styles.deviceMetaRow}>

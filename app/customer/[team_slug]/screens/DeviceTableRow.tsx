@@ -5,6 +5,7 @@ import { Device, Asset, Playlist, LiveStatus } from './types'
 import {
   DeviceIcon, StatusBadge, formatLastSeen,
   getContentLabel, getContentKind, ContentIcon,
+  resolveDeviceContent
 } from './DeviceIcon'
 
 export interface DeviceTableRowProps {
@@ -19,6 +20,11 @@ export interface DeviceTableRowProps {
   onEdit: () => void
   onRename: () => void
   onDelete: () => void
+  groups?: any[]
+  memberships?: any[]
+  selected?: boolean
+  onToggleSelect?: () => void
+  onGroupClick?: (groupId: string) => void
 }
 
 export function DeviceTableRow({
@@ -33,14 +39,26 @@ export function DeviceTableRow({
   onEdit,
   onRename,
   onDelete,
+  groups = [],
+  memberships = [],
+  selected = false,
+  onToggleSelect,
+  onGroupClick
 }: DeviceTableRowProps) {
   const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online')
   const isMenuOpen = openMenuId === device.id
   const isOnline = liveStatus === 'online'
 
-  const kind = getContentKind(device, assets, playlists)
-  const label = getContentLabel(device, assets, playlists)
+  // Find member groups
+  const deviceMemberships = memberships.filter(m => m.device_id === device.id)
+  const deviceGroups = groups.filter(g => deviceMemberships.some(m => m.group_id === g.id))
+
+  // Resolve content from group if device has no explicit content set
+  const resolvedDevice = resolveDeviceContent(device, groups, memberships)
+  const kind = getContentKind(resolvedDevice, assets, playlists)
+  const label = getContentLabel(resolvedDevice, assets, playlists)
   const isEmpty = kind === 'empty'
+  const isInherited = !device.content_type && resolvedDevice.content_type
 
   const kindClassMap: Record<string, string> = {
     clock:        styles.contentIcon_clock,
@@ -53,14 +71,48 @@ export function DeviceTableRow({
   }
 
   return (
-    <tr className={styles.tableRow}>
+    <tr className={`${styles.tableRow} ${selected ? styles.rowSelected : ''}`}>
+      {onToggleSelect && (
+        <td className={styles.tableCell} style={{ width: '40px', textAlign: 'center' }}>
+          <input 
+            type="checkbox" 
+            checked={selected} 
+            onChange={onToggleSelect} 
+            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+          />
+        </td>
+      )}
       <td className={styles.tableCell}>
         <div className={styles.nameCellContent}>
           <div className={styles.deviceIconWrapper}>
             <DeviceIcon name={device.name || ''} orientation={device.orientation} />
           </div>
           <div>
-            <div className={styles.cellName}>{device.name || 'Unnamed Screen'}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div className={styles.cellName}>{device.name || 'Unnamed Screen'}</div>
+              {deviceGroups.map(g => (
+                <span 
+                  key={g.id} 
+                  style={{ 
+                    backgroundColor: g.color || '#3b82f6', 
+                    color: '#fff', 
+                    fontSize: '0.625rem', 
+                    padding: '1px 5px', 
+                    borderRadius: '3px', 
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontFamily: 'var(--font-label)',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onGroupClick?.(g.id)
+                  }}
+                >
+                  {g.name}
+                </span>
+              ))}
+            </div>
             <div className={styles.cellId}>
               ID: NX-{device.id.slice(0, 4).toUpperCase()}-{device.id.slice(4, 5).toUpperCase()}
             </div>
@@ -93,7 +145,11 @@ export function DeviceTableRow({
             <ContentIcon kind={kind} size={16} />
           </span>
           <span className={isEmpty ? styles.playlistCellEmptyText : styles.playlistCellText}>
-            {label}
+            {label} {isInherited && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--primary)', opacity: 0.85, fontWeight: 500, fontStyle: 'italic', marginLeft: '4px' }}>
+                (Group)
+              </span>
+            )}
           </span>
         </div>
       </td>

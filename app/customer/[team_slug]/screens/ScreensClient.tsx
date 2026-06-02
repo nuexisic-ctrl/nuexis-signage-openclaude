@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -17,6 +17,10 @@ import { RenameModal } from './RenameModal'
 import { FilterSidebar } from './FilterSidebar'
 import { StatsGrid } from './StatsGrid'
 import { ScreenPreviewModal } from './ScreenPreviewModal'
+import { BulkActionsBar } from './BulkActionsBar'
+import { DeviceTable } from './DeviceTable'
+import { ScreensModals } from './ScreensModals'
+import { useDevicePresence } from './useDevicePresence'
 
 // Tick relative timestamps every 60s — "5 mins ago" accuracy doesn't need faster updates
 // (was 15s which caused 4 full re-renders/min of the device list for no user-visible benefit)
@@ -41,6 +45,8 @@ interface Props {
   devices: Device[]
   assets: Asset[]
   playlists?: Playlist[]
+  groups?: any[]
+  memberships?: any[]
   teamSlug: string
   teamId: string
   totalScreens?: number
@@ -52,23 +58,24 @@ export default function ScreensClient({
   devices: initialDevices,
   assets,
   playlists = [],
+  groups: initialGroups = [],
+  memberships: initialMemberships = [],
   teamSlug,
   teamId,
   totalScreens = 0,
   currentPage = 1,
   pageSize = 30
 }: Props) {
-  const [devices, setDevices] = useState<Device[]>(initialDevices)
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  
   const [showPairModal, setShowPairModal] = useState(false)
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
   const [deleteModalDevice, setDeleteModalDevice] = useState<Device | null>(null)
   const [renameModalDevice, setRenameModalDevice] = useState<Device | null>(null)
-  const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
-  const [hasSyncedPresence, setHasSyncedPresence] = useState(false)
-  const [presenceRefreshKey, setPresenceRefreshKey] = useState(0)
+
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showSuccessPulse, setShowSuccessPulse] = useState(false)
-  const [, setNowMs] = useState(() => Date.now())
   const [isMounted, setIsMounted] = useState(false)
   const [previewState, setPreviewState] = useState<{
     device: Device
@@ -81,14 +88,46 @@ export default function ScreensClient({
   
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
+  const [filterGroupId, setFilterGroupId] = useState<string>('all')
+
+  const [groups, setGroups] = useState<any[]>(initialGroups)
+  const [memberships, setMemberships] = useState<any[]>(initialMemberships)
+
+  // Use Custom Hook for device presence & fallback polling
+  const {
+    devices,
+    setDevices,
+    onlineDeviceIds,
+    setPresenceRefreshKey,
+    hasSyncedPresence,
+    mapDevice
+  } = useDevicePresence(
+    initialDevices,
+    teamId,
+    teamSlug,
+    currentPage,
+    pageSize,
+    isRefreshing,
+    router
+  )
 
   useEffect(() => {
     const saved = localStorage.getItem('screensViewMode')
     if (saved === 'grid' || saved === 'table') {
       setViewMode(saved)
     }
+    const savedGroup = localStorage.getItem('filterGroupId')
+    if (savedGroup) {
+      setFilterGroupId(savedGroup)
+    }
     setIsMounted(true)
   }, [])
+
+  useEffect(() => {
+    setGroups(initialGroups)
+    setMemberships(initialMemberships)
+  }, [initialGroups, initialMemberships])
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPosition, setMenuPosition] = useState<{ top: number, right: number } | null>(null)
@@ -106,139 +145,7 @@ export default function ScreensClient({
     localStorage.setItem('screensViewMode', mode)
   }
 
-  const router = useRouter()
   const supabase = createClient()
-
-  // Persistent presence channel ref
-  const teamChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
-  const lastRefreshRef = useRef<number>(0)
-
-
-
-  useEffect(() => {
-    const intervalId = setInterval(() => setNowMs(Date.now()), RELATIVE_TIME_TICK_MS)
-    return () => clearInterval(intervalId)
-  }, [])
-
-  // ── Persistent presence channel ────────────────────────────────────────
-  useEffect(() => {
-    if (!teamId) return
-
-    let isUnmounting = false
-
-    const channel = supabase
-      .channel(`team-status:${teamId}`)
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState<{ device_id: string }>()
-        const ids = new Set(
-          Object.values(state)
-            .flat()
-            .map((p) => p.device_id)
-            .filter(Boolean)
-        )
-        setOnlineDeviceIds(ids)
-        setHasSyncedPresence(true)
-      })
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-          if (isUnmounting) return
-          console.warn(`[Dashboard] Presence channel ${status}. Auto-reconnecting...`)
-        }
-      })
-
-    teamChannelRef.current = channel
-
-    return () => {
-      isUnmounting = true
-      supabase.removeChannel(channel)
-      if (teamChannelRef.current === channel) {
-        teamChannelRef.current = null
-      }
-    }
-  }, [teamId, presenceRefreshKey, supabase])
-
-  // Handle presence shifts (side-effects for online/offline transitions)
-  useEffect(() => {
-    if (!isMounted || !hasSyncedPresence || devices.length === 0) return
-
-    const leftIds = devices
-      .filter(d => d.status === 'online' && !onlineDeviceIds.has(d.id))
-      .map(d => d.id)
-
-    if (leftIds.length > 0) {
-      const now = new Date().toISOString()
-      setDevices(prev => 
-        prev.map(d => leftIds.includes(d.id) ? { ...d, status: 'offline', last_seen_at: now } : d)
-      )
-      updateDeviceLastSeen(teamSlug, leftIds).catch(err => 
-        console.error('[Dashboard] Error updating last seen:', err)
-      )
-    }
-  }, [onlineDeviceIds, isMounted, teamSlug, devices, hasSyncedPresence])
-
-  // ── Postgres Changes for device list (INSERT/UPDATE/DELETE) ───────────
-  useEffect(() => {
-    if (!teamId) return
-
-    const channel = supabase
-      .channel('screens-realtime')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'devices',
-          filter: `team_id=eq.${teamId}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setDevices((prev) => [payload.new as Device, ...prev])
-          } else if (payload.eventType === 'UPDATE') {
-            setDevices((prev) =>
-              prev.map((d) => (d.id === payload.new.id ? { ...d, ...payload.new } as Device : d))
-            )
-          } else if (payload.eventType === 'DELETE') {
-            setDevices((prev) => prev.filter((d) => d.id !== payload.old.id))
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId])
-
-  // ── Polling fallback (Heartbeat check) ────────────────────────────────
-  useEffect(() => {
-    if (!teamId) return
-
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        const from = (currentPage - 1) * pageSize;
-        const to = from + pageSize - 1;
-
-        const { data, error } = await supabase
-          .from('devices')
-          .select(DEVICE_SELECT_FIELDS)
-          .eq('team_id', teamId)
-          .order('created_at', { ascending: false })
-          .range(from, to)
-        
-        if (!error && data) {
-          setDevices((data as any[]).map(mapDevice))
-        }
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId])
 
   useEffect(() => {
     const handleClick = () => {
@@ -289,6 +196,23 @@ export default function ScreensClient({
     setRenameModalDevice(null)
   }
 
+  const handleToggleSelect = (deviceId: string) => {
+    setSelectedDeviceIds(prev => {
+      const next = new Set(prev)
+      if (next.has(deviceId)) {
+        next.delete(deviceId)
+      } else {
+        next.add(deviceId)
+      }
+      return next
+    })
+  }
+
+  const handleGroupBadgeClick = (groupId: string) => {
+    setFilterGroupId(groupId)
+    localStorage.setItem('filterGroupId', groupId)
+  }
+
   function getLiveStatus(device: Device): LiveStatus {
     if (device.status === 'pairing') return 'pairing'
     return onlineDeviceIds.has(device.id) ? 'online' : 'offline'
@@ -298,6 +222,10 @@ export default function ScreensClient({
     const liveStatus = getLiveStatus(d)
     if (filterStatus !== 'all' && liveStatus !== filterStatus) return false
     if (filterOrientation !== 'all' && (d.orientation ?? 0).toString() !== filterOrientation) return false
+    if (filterGroupId !== 'all') {
+      const isMember = memberships.some(m => m.group_id === filterGroupId && m.device_id === d.id)
+      if (!isMember) return false
+    }
     if (filterDatePreset !== 'all') {
       const dTime = new Date(d.created_at).getTime()
       const now = Date.now()
@@ -378,6 +306,33 @@ export default function ScreensClient({
                 />
               </div>
               <div className={styles.controlsRight}>
+                {groups.length > 0 && (
+                  <select
+                    value={filterGroupId}
+                    onChange={(e) => {
+                      setFilterGroupId(e.target.value)
+                      localStorage.setItem('filterGroupId', e.target.value)
+                    }}
+                    style={{
+                      height: '42px',
+                      padding: '0 14px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--outline-variant)',
+                      background: 'var(--surface-low)',
+                      color: 'var(--on-surface)',
+                      fontSize: '0.84rem',
+                      fontFamily: 'var(--font-label)',
+                      fontWeight: 800,
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="all">All Groups</option>
+                    {groups.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                )}
                 <button 
                   className={`${styles.filterBtn} ${isFilterSidebarOpen || filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' ? styles.active : ''}`}
                   onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
@@ -386,7 +341,7 @@ export default function ScreensClient({
                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                   </svg>
                   Filters
-                  {(filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all') && (
+                  {(filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' || filterGroupId !== 'all') && (
                     <span className={styles.filterDot} />
                   )}
                 </button>
@@ -461,47 +416,35 @@ export default function ScreensClient({
                     }}
                     assets={assets}
                     playlists={playlists}
+                    groups={groups}
+                    memberships={memberships}
+                    selected={selectedDeviceIds.has(device.id)}
+                    onToggleSelect={() => handleToggleSelect(device.id)}
+                    onGroupClick={handleGroupBadgeClick}
                   />
                 ))}
               </div>
             ) : (
-              <div className={`${styles.tableContainer} ${showSuccessPulse ? styles.successPulse : ''}`}>
-                <table className={styles.screensTable}>
-                  <thead className={styles.tableHeader}>
-                    <tr>
-                      <th>Screen Name</th>
-                      <th>Status</th>
-                      <th>Last Seen</th>
-                      <th>Playing Now</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDevices.map(device => (
-                      <DeviceTableRow
-                        key={device.id}
-                        device={device}
-                        liveStatus={getLiveStatus(device)}
-                        assets={assets}
-                        playlists={playlists}
-                        openMenuId={openMenuId}
-                        menuPosition={menuPosition}
-                        setOpenMenuId={setOpenMenuId}
-                        setMenuPosition={setMenuPosition}
-                        onEdit={() => setAssignModalDevice(device)}
-                        onRename={() => {
-                          setOpenMenuId(null);
-                          setRenameModalDevice(device);
-                        }}
-                        onDelete={() => {
-                          setOpenMenuId(null);
-                          setDeleteModalDevice(device);
-                        }}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DeviceTable
+                filteredDevices={filteredDevices}
+                selectedDeviceIds={selectedDeviceIds}
+                setSelectedDeviceIds={setSelectedDeviceIds}
+                assets={assets}
+                playlists={playlists}
+                openMenuId={openMenuId}
+                menuPosition={menuPosition}
+                setOpenMenuId={setOpenMenuId}
+                setMenuPosition={setMenuPosition}
+                setAssignModalDevice={setAssignModalDevice}
+                setRenameModalDevice={setRenameModalDevice}
+                setDeleteModalDevice={setDeleteModalDevice}
+                groups={groups}
+                memberships={memberships}
+                handleToggleSelect={handleToggleSelect}
+                handleGroupBadgeClick={handleGroupBadgeClick}
+                getLiveStatus={getLiveStatus}
+                showSuccessPulse={showSuccessPulse}
+              />
             )}
             
             {devices.length > 0 && (
@@ -552,34 +495,36 @@ export default function ScreensClient({
         />
       </div>
 
-      {showPairModal && <PairModal teamSlug={teamSlug} onClose={() => setShowPairModal(false)} onSuccess={handlePairSuccess} />}
+      <ScreensModals
+        showPairModal={showPairModal}
+        setShowPairModal={setShowPairModal}
+        assignModalDevice={assignModalDevice}
+        setAssignModalDevice={setAssignModalDevice}
+        deleteModalDevice={deleteModalDevice}
+        setDeleteModalDevice={setDeleteModalDevice}
+        renameModalDevice={renameModalDevice}
+        setRenameModalDevice={setRenameModalDevice}
+        previewState={previewState}
+        setPreviewState={setPreviewState}
+        assets={assets}
+        playlists={playlists}
+        teamSlug={teamSlug}
+        handlePairSuccess={handlePairSuccess}
+        handleAssignSuccess={handleAssignSuccess}
+        handleDeleteSuccess={handleDeleteSuccess}
+        handleRenameSuccess={handleRenameSuccess}
+      />
 
-      {assignModalDevice && (
-        <AssignModal
-          device={assignModalDevice} assets={assets} playlists={playlists} teamSlug={teamSlug}
-          onClose={() => setAssignModalDevice(null)} onSuccess={handleAssignSuccess}
-          onPreview={(device, contentType, assetId, playlistId, scaleMode, orientation) => 
-            setPreviewState({ device, contentType, assetId, playlistId, scaleMode, orientation })
-          }
-        />
-      )}
-
-      {deleteModalDevice && (
-        <DeleteModal deviceId={deleteModalDevice.id} deviceName={deleteModalDevice.name || 'Unnamed Screen'} teamSlug={teamSlug} onClose={() => setDeleteModalDevice(null)} onSuccess={handleDeleteSuccess} />
-      )}
-
-      {renameModalDevice && (
-        <RenameModal currentName={renameModalDevice.name || 'Unnamed Screen'} teamSlug={teamSlug} deviceId={renameModalDevice.id} onClose={() => setRenameModalDevice(null)} onSuccess={handleRenameSuccess} />
-      )}
-
-      {previewState && (
-        <ScreenPreviewModal
-          device={previewState.device} teamSlug={teamSlug} onClose={() => setPreviewState(null)}
-          contentType={previewState.contentType} assetId={previewState.assetId} playlistId={previewState.playlistId}
-          scaleMode={previewState.scaleMode} orientation={previewState.orientation} assets={assets} playlists={playlists}
-        />
-      )}
-
+      <BulkActionsBar
+        selectedDeviceIds={selectedDeviceIds}
+        setSelectedDeviceIds={setSelectedDeviceIds}
+        groups={groups}
+        teamSlug={teamSlug}
+        isPending={isPending}
+        startTransition={startTransition}
+        setAssignModalDevice={setAssignModalDevice}
+        router={router}
+      />
     </>
   )
 }

@@ -10,6 +10,11 @@
   background: var(--surface-low);
 }
 
+.rowSelected {
+  background: var(--surface-low) !important;
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+
 .tableCell {
   padding: 14px 16px;
   vertical-align: middle;

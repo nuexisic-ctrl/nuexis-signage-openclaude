@@ -377,8 +377,7 @@
   left: 0;
   bottom: 0;
   width: 320px;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(24px);
+  background: #0f172a;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   z-index: 300;
   display: flex;

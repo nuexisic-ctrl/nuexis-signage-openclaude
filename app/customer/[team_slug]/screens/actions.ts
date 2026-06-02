@@ -117,7 +117,7 @@ export async function updateDeviceAssignment(
     return { success: false, error: err.message }
   }
 
-  const { data: updated, error: updateError } = await supabase
+  const assignmentQuery = supabase
     .from('devices')
     .update({
       content_type: data.content_type,
@@ -125,9 +125,10 @@ export async function updateDeviceAssignment(
       playlist_id: data.playlist_id,
       orientation: data.orientation,
     })
-    .eq('id', deviceId)
-    .eq('team_id', teamId)
-    .select('id')
+
+  const { data: updated, error: updateError } = deviceId.includes(',')
+    ? await assignmentQuery.in('id', deviceId.split(',')).eq('team_id', teamId).select('id')
+    : await assignmentQuery.eq('id', deviceId).eq('team_id', teamId).select('id')
 
   if (updateError || !updated || updated.length === 0) {
     console.error('[updateDeviceAssignment] update error:', updateError ? { message: updateError.message, details: updateError.details, hint: updateError.hint } : 'No rows updated')

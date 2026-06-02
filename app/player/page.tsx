@@ -420,7 +420,20 @@ export default function PlayerPage() {
                 clearInterval(intervalRef.current!)
                 startPresenceTracking(payload.new.team_id, activeDevice!.id)
               }
-              applyDeviceState(payload.new)
+              
+              if (payload.new.content_type) {
+                // Device has explicit content, apply it directly (instant, reliable, bypasses rate limits)
+                applyDeviceState(payload.new)
+              } else {
+                // Device inherits from group, resolve it dynamically by fetching resolved state
+                getDeviceState(hardwareIdRef.current!, secretRef.current || undefined)
+                  .then((fresh) => {
+                    if (fresh && !cancelled) {
+                      applyDeviceState(fresh)
+                    }
+                  })
+                  .catch(console.error)
+              }
             } else {
               if (navigator.onLine) window.location.assign(window.location.pathname)
             }

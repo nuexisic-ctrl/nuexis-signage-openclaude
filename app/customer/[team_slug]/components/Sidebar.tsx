@@ -13,7 +13,8 @@ import {
   Settings, 
   ListVideo,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FolderTree
 } from 'lucide-react'
 import styles from './sidebar.module.css'
 
@@ -45,6 +46,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: `/customer/${teamSlug}/dashboard` },
     { icon: Monitor,         label: 'Screens',   href: `/customer/${teamSlug}/screens` },
+    { icon: FolderTree,      label: 'Groups',    href: `/customer/${teamSlug}/groups` },
     { icon: ImageIcon,       label: 'Assets',    href: `/customer/${teamSlug}/asset` },
     { icon: ListVideo,       label: 'Playlists', href: `/customer/${teamSlug}/playlists` },
     { icon: CalendarClock,   label: 'Schedules', href: '#' },

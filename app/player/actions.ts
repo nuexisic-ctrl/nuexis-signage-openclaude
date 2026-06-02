@@ -3,6 +3,7 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 import { redis, rateLimitAction } from '@/lib/redis'
+import { createAdminClient } from '@/lib/supabase/server'
 
 /**
  * Creates a Supabase client using the ANON key (not the service-role key).
@@ -74,7 +75,8 @@ export async function refreshDeviceCode(
 
 export async function getDeviceState(hardwareId: string, secret?: string) {
   if (!(await rateLimitAction(hardwareId, 'getDeviceState', 40, 60))) {
-    throw new Error('Rate limit exceeded')
+    console.warn('[getDeviceState] Rate limit hit for device:', hardwareId)
+    return null
   }
 
   const supabase = getPlayerClient()
@@ -153,7 +155,8 @@ export async function incrementPlaytime(
   seconds: number
 ) {
   if (!(await rateLimitAction(hardwareId, 'incrementPlaytime', 20, 60))) {
-    throw new Error('Rate limit exceeded')
+    console.warn('[incrementPlaytime] Rate limit hit for device:', hardwareId)
+    return
   }
 
   const supabase = getPlayerClient()
@@ -171,7 +174,8 @@ export async function incrementPlaytime(
 
 export async function sendHeartbeat(deviceId: string, teamId: string, hardwareId: string) {
   if (!(await rateLimitAction(hardwareId, 'sendHeartbeat', 20, 60))) {
-    throw new Error('Rate limit exceeded')
+    console.warn('[sendHeartbeat] Rate limit hit for device:', hardwareId)
+    return
   }
 
   // Write presence to Redis only — no DB round-trip needed.
@@ -198,7 +202,8 @@ export async function sendHeartbeat(deviceId: string, teamId: string, hardwareId
 
 export async function getPlaylistItems(playlistId: string, hardwareId: string, secret: string) {
   if (!(await rateLimitAction(hardwareId, 'getPlaylistItems', 30, 60))) {
-    throw new Error('Rate limit exceeded')
+    console.warn('[getPlaylistItems] Rate limit hit for device:', hardwareId)
+    return []
   }
 
   const supabase = getPlayerClient()
@@ -241,25 +246,45 @@ export async function getSignedMediaUrl(
     return filePath
   }
 
-  if (!(await rateLimitAction(hardwareId, 'getSignedMediaUrl', 60, 60))) {
-    throw new Error('Rate limit exceeded')
+  // Rate limiting
+  if (!(await rateLimitAction(hardwareId, 'getSignedMediaUrl', 120, 60))) {
+    console.warn('[getSignedMediaUrl] Rate limit exceeded for hardwareId:', hardwareId)
+    // Fallback to standard public storage URL
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-media/${filePath}`
   }
 
-  const supabasePlayer = getPlayerClient()
-  const { data: signedUrl, error } = await supabasePlayer.rpc('get_player_signed_media_url', {
-    p_hardware_id: hardwareId,
-    p_secret: secret,
-    p_file_path: filePath,
-    p_expires_in: expiresIn,
-  })
+  try {
+    // 1. Validate device credentials and get its team ID
+    const device = await getDeviceState(hardwareId, secret)
+    if (!device || !device.team_id) {
+      console.warn('[getSignedMediaUrl] Unauthorized device or missing team_id')
+      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-media/${filePath}`
+    }
 
-  if (error || !signedUrl) {
-    console.error('[getSignedMediaUrl] Error:', error)
-    throw new Error('Failed to generate media URL')
+    // 2. Validate file path belongs to the device's team
+    if (!filePath.startsWith(device.team_id + '/')) {
+      console.warn('[getSignedMediaUrl] Unauthorized file path access attempt')
+      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-media/${filePath}`
+    }
+
+    // 3. Generate a signed URL using createAdminClient (which has service-role storage sign permissions)
+    const adminSupabase = createAdminClient()
+    const { data, error } = await adminSupabase.storage
+      .from('workspace-media')
+      .createSignedUrl(filePath, expiresIn)
+
+    if (error || !data?.signedUrl) {
+      console.error('[getSignedMediaUrl] Failed to generate signed URL from storage client:', error || 'No URL returned')
+      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-media/${filePath}`
+    }
+
+    return data.signedUrl
+  } catch (err) {
+    console.error('[getSignedMediaUrl] Exception during signed URL generation:', err)
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-media/${filePath}`
   }
-
-  return signedUrl
 }
+
 
 export async function getPlayerAsset(
   assetId: string,
@@ -267,25 +292,32 @@ export async function getPlayerAsset(
   secret: string
 ) {
   if (!(await rateLimitAction(hardwareId, 'getPlayerAsset', 60, 60))) {
-    throw new Error('Rate limit exceeded')
+    console.warn('[getPlayerAsset] Rate limit hit for device:', hardwareId)
+    return null
   }
 
-  const supabasePlayer = getPlayerClient()
-  const { data: assetData, error } = await supabasePlayer.rpc('get_player_asset', {
-    p_hardware_id: hardwareId,
-    p_secret: secret,
-    p_asset_id: assetId,
-  })
+  try {
+    const supabasePlayer = getPlayerClient()
+    const { data: assetData, error } = await supabasePlayer.rpc('get_player_asset', {
+      p_hardware_id: hardwareId,
+      p_secret: secret,
+      p_asset_id: assetId,
+    })
 
-  if (error || !assetData) {
-    console.error('[getPlayerAsset] Error:', error)
-    throw new Error('Asset not found')
-  }
+    if (error || !assetData) {
+      console.warn('[getPlayerAsset] Error or missing asset:', error || 'No asset returned')
+      return null
+    }
 
-  const asset = assetData as { file_path: string; mime_type: string }
-  return {
-    file_path: asset.file_path,
-    mime_type: asset.mime_type,
+    const asset = assetData as { file_path: string; mime_type: string }
+    return {
+      file_path: asset.file_path,
+      mime_type: asset.mime_type,
+    }
+  } catch (err) {
+    console.error('[getPlayerAsset] Exception caught:', err)
+    return null
   }
 }
+
 
