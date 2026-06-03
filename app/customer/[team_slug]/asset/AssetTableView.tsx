@@ -71,11 +71,11 @@ export function AssetTableView({
       <table className={styles.screensTable}>
         <thead className={styles.tableHeader}>
           <tr>
-            <th>{t('File Name')}</th>
-            <th>{t('Type')}</th>
-            <th>{t('Size')}</th>
-            <th>{t('Date Added')}</th>
-            <th>{t('Actions')}</th>
+            <th style={{ width: '35%' }}>{t('File Name')}</th>
+            <th style={{ width: '15%' }}>{t('Type')}</th>
+            <th style={{ width: '15%' }}>{t('Size')}</th>
+            <th style={{ width: '25%' }}>{t('Date Added')}</th>
+            <th style={{ width: '10%', textAlign: 'right' }}>{t('Actions')}</th>
           </tr>
         </thead>
         <tbody>

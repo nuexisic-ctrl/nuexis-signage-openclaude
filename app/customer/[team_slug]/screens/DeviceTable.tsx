@@ -65,11 +65,11 @@ export function DeviceTable({
                 style={{ width: '16px', height: '16px', cursor: 'pointer' }}
               />
             </th>
-            <th>Screen Name</th>
-            <th>Status</th>
-            <th>Last Seen</th>
-            <th>Playing Now</th>
-            <th>Actions</th>
+            <th style={{ width: '25%' }}>Screen Name</th>
+            <th style={{ width: '15%' }}>Status</th>
+            <th style={{ width: '20%' }}>Last Seen</th>
+            <th style={{ width: '30%' }}>Playing Now</th>
+            <th style={{ width: '10%', textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>

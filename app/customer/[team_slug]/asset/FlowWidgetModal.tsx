@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Monitor, Smartphone, Maximize, Clock, ChevronDown } from 'lucide-react'
 import styles from './Modal.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
+import { modalStack } from '@/lib/utils/modalStack'
 
 interface FlowWidgetModalProps {
   onClose: () => void
@@ -51,6 +52,17 @@ function HoverPreviewSelect<T extends string>({
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const hoverTimeoutRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (open) {
+      modalStack.push('flow-widget-dropdown')
+    } else {
+      modalStack.pop('flow-widget-dropdown')
+    }
+    return () => {
+      modalStack.pop('flow-widget-dropdown')
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -173,25 +185,31 @@ export default function FlowWidgetModal({
   const [previewMode, setPreviewMode] = useState<'landscape' | 'portrait'>('landscape')
   const [showFullscreenPreview, setShowFullscreenPreview] = useState(false)
 
-  // Lock body scroll while modal is open
+  // Lock body scroll while modal is open and register with modalStack
   useEffect(() => {
+    modalStack.push('flow-widget-modal')
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    return () => {
+      modalStack.pop('flow-widget-modal')
+      document.body.style.overflow = ''
+    }
   }, [])
 
-  // Listen for Escape key to exit fullscreen preview
+  // Listen for Escape key to exit fullscreen preview or close modal based on stack priority
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showFullscreenPreview) {
           setShowFullscreenPreview(false)
-        } else {
+        } else if (modalStack.isTop('flow-widget-modal')) {
           onClose()
         }
       }
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
   }, [showFullscreenPreview, onClose])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -213,7 +231,15 @@ export default function FlowWidgetModal({
 
   return (
     <>
-      <div className={styles.modalOverlay} onClick={onClose}>
+      <div 
+        className={styles.modalOverlay} 
+        onClick={() => {
+          if (modalStack.hasActiveChildOf('flow-widget-modal')) {
+            return
+          }
+          onClose()
+        }}
+      >
         <div
           className={styles.modalContainer}
           onClick={e => e.stopPropagation()}

@@ -24,6 +24,11 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
+  transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.topbar.sidebarOpen {
+  margin-right: 320px;
 }
 
 .pageTitle {
@@ -109,7 +114,6 @@
 
 .pageLayout {
   display: flex;
-  gap: 20px;
   align-items: flex-start;
   position: relative;
 }
@@ -120,7 +124,11 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  transition: width 0.3s ease;
+  transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mainContent.sidebarOpen {
+  margin-right: 320px;
 }
 
 .mainBlockContainer {
@@ -332,10 +340,22 @@
   color: var(--on-surface-muted);
 }
 
+.paginationInfo {
+  font-family: var(--font-body);
+}
+
 .pagination {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.pageIndicator {
+  font-family: var(--font-label);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--on-surface-subtle);
+  margin-right: 4px;
 }
 
 .pageBtn {
@@ -442,6 +462,14 @@
 
   .pagination {
     justify-content: flex-end;
+  }
+
+  .mainContent.sidebarOpen {
+    margin-right: 0;
+  }
+
+  .topbar.sidebarOpen {
+    margin-right: 0;
   }
 }
 

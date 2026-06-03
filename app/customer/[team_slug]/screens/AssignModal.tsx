@@ -5,6 +5,8 @@ import { Device, Asset, Playlist } from './types'
 import { updateDeviceAssignment, AssignmentData } from './actions'
 import { AssetBrowserModal } from './AssetBrowserModal'
 import { PlaylistBrowserModal } from './PlaylistBrowserModal'
+import { modalStack } from '@/lib/utils/modalStack'
+import CustomSelect from '../components/CustomSelect'
 
 export interface AssignModalProps {
   device: Device
@@ -54,13 +56,30 @@ export function AssignModal({
   const selectedAsset = assets.find(a => a.id === assetId)
   const selectedPlaylist = playlists.find(p => p.id === playlistId)
 
-  // Scroll containment hook - locks background scroll when assigning content
+  // Scroll containment hook & modalStack registration
   useEffect(() => {
+    modalStack.push('assign-modal')
     document.body.style.overflow = 'hidden'
     return () => {
+      modalStack.pop('assign-modal')
       document.body.style.overflow = ''
     }
   }, [])
+
+  // Close modal on Escape if it is the topmost modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (modalStack.isTop('assign-modal')) {
+          onClose()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onClose])
 
   // Opens the appropriate browser when the user explicitly changes content type.
   // This is intentionally NOT a useEffect — effects fire on mount too (and twice
@@ -85,8 +104,22 @@ export function AssignModal({
     }
   }
 
+  const childWasActiveRef = useRef(false)
+
+  function handleOverlayMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) {
+      childWasActiveRef.current = modalStack.hasActiveChildOf('assign-modal')
+    }
+  }
+
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) onClose()
+    if (e.target === overlayRef.current) {
+      if (childWasActiveRef.current) {
+        childWasActiveRef.current = false
+        return
+      }
+      onClose()
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -113,7 +146,12 @@ export function AssignModal({
 
   return (
     <>
-      <div className={styles.overlay} ref={overlayRef} onClick={handleOverlayClick}>
+      <div 
+        className={styles.overlay} 
+        ref={overlayRef} 
+        onMouseDown={handleOverlayMouseDown} 
+        onClick={handleOverlayClick}
+      >
         <div className={styles.modal} role="dialog">
           <div className={styles.modalHeader}>
             <div>
@@ -126,14 +164,17 @@ export function AssignModal({
           <form className={styles.form} onSubmit={handleSubmit}>
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Content Type</label>
-              <select className={styles.input} value={contentType || ''} onChange={(e) => handleContentTypeChange(e.target.value as any)}>
-                {!contentType && (
-                  <option value="" disabled>no content</option>
-                )}
-                <option value="Asset">Asset</option>
-                <option value="Playlist">Playlist</option>
-                <option value="Schedule" disabled>Schedule (Coming Soon)</option>
-              </select>
+              <CustomSelect
+                id="assign-content-type"
+                value={contentType || ''}
+                onChange={(val) => handleContentTypeChange(val)}
+                options={[
+                  ...(!contentType ? [{ value: '', label: 'no content', disabled: true }] : []),
+                  { value: 'Asset', label: 'Asset' },
+                  { value: 'Playlist', label: 'Playlist' },
+                  { value: 'Schedule', label: 'Schedule (Coming Soon)', disabled: true }
+                ]}
+              />
             </div>
 
             {contentType === 'Asset' && (
@@ -189,23 +230,33 @@ export function AssignModal({
             {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget'))) && (
               <div className={styles.fieldGroup}>
                 <label className={styles.label}>Scale Mode</label>
-                <select className={styles.input} value={scaleMode} onChange={(e) => setScaleMode(e.target.value as 'None' | 'Fit' | 'Stretch' | 'Zoom')}>
-                  <option value="None">None</option>
-                  <option value="Fit">Fit</option>
-                  <option value="Stretch">Stretch</option>
-                  <option value="Zoom">Zoom</option>
-                </select>
+                <CustomSelect
+                  id="assign-scale-mode"
+                  value={scaleMode}
+                  onChange={(val) => setScaleMode(val)}
+                  options={[
+                    { value: 'None', label: 'None' },
+                    { value: 'Fit', label: 'Fit' },
+                    { value: 'Stretch', label: 'Stretch' },
+                    { value: 'Zoom', label: 'Zoom' }
+                  ]}
+                />
               </div>
             )}
 
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Orientation</label>
-              <select className={styles.input} value={orientation} onChange={(e) => setOrientation(Number(e.target.value) as 0 | 90 | 180 | 270)}>
-                <option value={0}>Landscape (0°)</option>
-                <option value={90}>Rotate 90°</option>
-                <option value={180}>Rotate 180°</option>
-                <option value={270}>Rotate 270°</option>
-              </select>
+              <CustomSelect
+                id="assign-orientation"
+                value={orientation}
+                onChange={(val) => setOrientation(Number(val) as 0 | 90 | 180 | 270)}
+                options={[
+                  { value: 0, label: 'Landscape (0°)' },
+                  { value: 90, label: 'Rotate 90°' },
+                  { value: 180, label: 'Rotate 180°' },
+                  { value: 270, label: 'Rotate 270°' }
+                ]}
+              />
             </div>
 
             {error && <div className={styles.errorMsg}><AlertTriangle size={16} />{error}</div>}

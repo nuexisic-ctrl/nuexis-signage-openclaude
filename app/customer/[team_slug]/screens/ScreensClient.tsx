@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, RefreshCw } from 'lucide-react'
+import { Plus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
 import { updateDeviceLastSeen } from './actions'
@@ -179,17 +179,38 @@ export default function ScreensClient({
       const from = (currentPage - 1) * pageSize
       const to = from + pageSize - 1
 
-      const { data, error } = await supabase
-        .from('devices')
-        .select(DEVICE_SELECT_FIELDS)
-        .eq('team_id', teamId)
-        .order('created_at', { ascending: false })
-        .range(from, to)
+      const [devicesRes, groupsRes, membershipsRes] = await Promise.all([
+        supabase
+          .from('devices')
+          .select(DEVICE_SELECT_FIELDS)
+          .eq('team_id', teamId)
+          .order('created_at', { ascending: false })
+          .range(from, to),
+        supabase
+          .from('screen_groups')
+          .select('*')
+          .eq('team_id', teamId)
+          .order('name', { ascending: true }),
+        supabase
+          .from('screen_group_members')
+          .select('group_id, device_id, is_primary')
+          .eq('team_id', teamId)
+      ])
 
-      if (!error && data) {
+      if (!devicesRes.error && devicesRes.data) {
         await new Promise(resolve => setTimeout(resolve, 550))
-        setDevices((data as any[]).map(mapDevice))
-        
+        setDevices((devicesRes.data as any[]).map(mapDevice))
+      }
+
+      if (!groupsRes.error && groupsRes.data) {
+        setGroups(groupsRes.data)
+      }
+
+      if (!membershipsRes.error && membershipsRes.data) {
+        setMemberships(membershipsRes.data)
+      }
+
+      if (!devicesRes.error && devicesRes.data) {
         // Trigger subtle success pulse on grid/table
         setShowSuccessPulse(true)
         setTimeout(() => setShowSuccessPulse(false), 600)
@@ -285,7 +306,7 @@ export default function ScreensClient({
 
   return (
     <>
-      <div className={styles.topbar}>
+      <div className={`${styles.topbar} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
         <div>
           <h1 className={styles.pageTitle}>Screens</h1>
           <p className={styles.pageSubtitle}>
@@ -343,6 +364,8 @@ export default function ScreensClient({
             teamSlug={teamSlug}
             onSelectGroup={(g) => setEditGroup(g)}
             onDeleteGroup={handleDeleteGroup}
+            isRefreshing={isRefreshing}
+            showSuccessPulse={showSuccessPulse}
           />
 
           <div className={styles.mainBlockContainer}>
@@ -370,19 +393,8 @@ export default function ScreensClient({
                     setAssignModalDevice={setAssignModalDevice}
                   />
                 )}
-
-                {groups.length > 0 && (
-                  <GroupFilterDropdown
-                    groups={groups}
-                    selectedGroupIds={filterGroupIds}
-                    onChange={(ids) => {
-                      setFilterGroupIds(ids)
-                      localStorage.setItem('filterGroupIds', JSON.stringify(ids))
-                    }}
-                  />
-                )}
                 <button 
-                  className={`${styles.filterBtn} ${isFilterSidebarOpen || filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' ? styles.active : ''}`}
+                  className={`${styles.filterBtn} ${isFilterSidebarOpen || filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' || filterGroupIds.length > 0 ? styles.active : ''}`}
                   onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -497,7 +509,7 @@ export default function ScreensClient({
             
             {devices.length > 0 && (
               <div className={styles.tableFooter}>
-                <div>
+                <div className={styles.paginationInfo}>
                   {searchQuery 
                     ? `Showing ${filteredDevices.length} filtered screens` 
                     : `Showing ${startItem} to ${endItem} of ${totalScreens} screens`
@@ -505,26 +517,24 @@ export default function ScreensClient({
                 </div>
                 {!searchQuery && (
                   <div className={styles.pagination}>
+                    <span className={styles.pageIndicator}>
+                      Page {currentPage} of {totalPages}
+                    </span>
                     <button 
                       className={styles.pageBtn} 
                       onClick={() => router.push(`?page=${currentPage - 1}`)}
                       disabled={!hasPrevPage}
                       style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                      </svg>
+                      <ChevronLeft size={16} />
                     </button>
-                    <button className={`${styles.pageBtn} ${styles.active}`}>{currentPage}</button>
                     <button 
                       className={styles.pageBtn} 
                       onClick={() => router.push(`?page=${currentPage + 1}`)}
                       disabled={!hasNextPage}
                       style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                      </svg>
+                      <ChevronRight size={16} />
                     </button>
                   </div>
                 )}
@@ -540,6 +550,9 @@ export default function ScreensClient({
           filterDatePreset={filterDatePreset} setFilterDatePreset={setFilterDatePreset}
           filterStartDate={filterStartDate} setFilterStartDate={setFilterStartDate}
           filterEndDate={filterEndDate} setFilterEndDate={setFilterEndDate}
+          groups={groups}
+          filterGroupIds={filterGroupIds}
+          setFilterGroupIds={setFilterGroupIds}
         />
       </div>
 

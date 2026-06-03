@@ -1,5 +1,7 @@
 import React from 'react'
 import { X } from 'lucide-react'
+import { GroupFilterDropdown } from './GroupFilterDropdown'
+import CustomSelect from '../components/CustomSelect'
 import styles from './FilterSidebar.module.css'
 
 export interface FilterSidebarProps {
@@ -15,6 +17,9 @@ export interface FilterSidebarProps {
   setFilterStartDate: (date: string) => void
   filterEndDate: string
   setFilterEndDate: (date: string) => void
+  groups: any[]
+  filterGroupIds: string[]
+  setFilterGroupIds: (ids: string[]) => void
 }
 
 export function FilterSidebar({
@@ -30,13 +35,48 @@ export function FilterSidebar({
   setFilterStartDate,
   filterEndDate,
   setFilterEndDate,
+  groups,
+  filterGroupIds,
+  setFilterGroupIds,
 }: FilterSidebarProps) {
-  if (!isFilterSidebarOpen) return null
+  React.useEffect(() => {
+    if (!isFilterSidebarOpen) return
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      
+      const rightSidebar = document.querySelector(`.${styles.filterSidebar}`)
+      const leftSidebar = document.querySelector('aside[class*="sidebar"]')
+      const filterBtn = document.querySelector('button[class*="filterBtn"]')
+
+      if (rightSidebar?.contains(target)) return
+      if (leftSidebar?.contains(target)) return
+      if (filterBtn?.contains(target)) return
+
+      if (target.closest('[class*="modal"]') || target.closest('[class*="dropdown"]') || target.closest('[class*="select"]')) {
+        return
+      }
+
+      setIsFilterSidebarOpen(false)
+    }
+
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleOutsideClick)
+    }, 50)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('click', handleOutsideClick)
+    }
+  }, [isFilterSidebarOpen, setIsFilterSidebarOpen])
 
   return (
     <>
-      <div className={styles.sidebarOverlay} onClick={() => setIsFilterSidebarOpen(false)} />
-      <aside className={styles.filterSidebar}>
+      <div 
+        className={`${styles.sidebarOverlay} ${isFilterSidebarOpen ? styles.overlayOpen : ''}`} 
+        onClick={() => setIsFilterSidebarOpen(false)} 
+      />
+      <aside className={`${styles.filterSidebar} ${isFilterSidebarOpen ? styles.isOpen : ''}`}>
         <div className={styles.sidebarHeader}>
           <h3 className={styles.sidebarTitle}>Advanced Filters</h3>
           <button className={styles.closeSidebarBtn} onClick={() => setIsFilterSidebarOpen(false)}>
@@ -44,36 +84,65 @@ export function FilterSidebar({
           </button>
         </div>
         <div className={styles.sidebarBody}>
+          {groups && groups.length > 0 && (
+            <div className={styles.filterGroup}>
+              <label className={styles.filterLabel}>Filter by Group</label>
+              <GroupFilterDropdown
+                groups={groups}
+                selectedGroupIds={filterGroupIds}
+                onChange={(ids) => {
+                  setFilterGroupIds(ids)
+                  localStorage.setItem('filterGroupIds', JSON.stringify(ids))
+                }}
+              />
+            </div>
+          )}
+
           <div className={styles.filterGroup}>
             <label className={styles.filterLabel}>Screen Status</label>
-            <select className={styles.filterSelect} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-              <option value="all">All Statuses</option>
-              <option value="online">Online</option>
-              <option value="offline">Offline</option>
-              <option value="pairing">Pairing Mode</option>
-            </select>
+            <CustomSelect
+              id="filter-status"
+              value={filterStatus}
+              onChange={(val) => setFilterStatus(val)}
+              options={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'online', label: 'Online' },
+                { value: 'offline', label: 'Offline' },
+                { value: 'pairing', label: 'Pairing Mode' }
+              ]}
+            />
           </div>
           
           <div className={styles.filterGroup}>
             <label className={styles.filterLabel}>Orientation</label>
-            <select className={styles.filterSelect} value={filterOrientation} onChange={e => setFilterOrientation(e.target.value)}>
-              <option value="all">All Orientations</option>
-              <option value="0">0° (Landscape)</option>
-              <option value="90">90° (Portrait)</option>
-              <option value="180">180° (Landscape Flipped)</option>
-              <option value="270">270° (Portrait Flipped)</option>
-            </select>
+            <CustomSelect
+              id="filter-orientation"
+              value={filterOrientation}
+              onChange={(val) => setFilterOrientation(val)}
+              options={[
+                { value: 'all', label: 'All Orientations' },
+                { value: '0', label: '0° (Landscape)' },
+                { value: '90', label: '90° (Portrait)' },
+                { value: '180', label: '180° (Landscape Flipped)' },
+                { value: '270', label: '270° (Portrait Flipped)' }
+              ]}
+            />
           </div>
 
           <div className={styles.filterGroup}>
             <label className={styles.filterLabel}>Date Added</label>
-            <select className={styles.filterSelect} value={filterDatePreset} onChange={e => setFilterDatePreset(e.target.value)}>
-              <option value="all">Any time</option>
-              <option value="today">Today</option>
-              <option value="7days">Last 7 Days</option>
-              <option value="30days">Last 30 Days</option>
-              <option value="custom">Custom Date Range</option>
-            </select>
+            <CustomSelect
+              id="filter-date-preset"
+              value={filterDatePreset}
+              onChange={(val) => setFilterDatePreset(val)}
+              options={[
+                { value: 'all', label: 'Any time' },
+                { value: 'today', label: 'Today' },
+                { value: '7days', label: 'Last 7 Days' },
+                { value: '30days', label: 'Last 30 Days' },
+                { value: 'custom', label: 'Custom Date Range' }
+              ]}
+            />
           </div>
 
           {filterDatePreset === 'custom' && (
@@ -99,6 +168,8 @@ export function FilterSidebar({
               setFilterDatePreset('all');
               setFilterStartDate(''); 
               setFilterEndDate('');
+              setFilterGroupIds([]);
+              localStorage.setItem('filterGroupIds', JSON.stringify([]));
             }}
           >
             Reset All Filters

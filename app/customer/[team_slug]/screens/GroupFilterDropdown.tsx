@@ -14,12 +14,14 @@ interface GroupFilterDropdownProps {
   groups: Group[]
   selectedGroupIds: string[]
   onChange: (ids: string[]) => void
+  className?: string
 }
 
 export function GroupFilterDropdown({
   groups,
   selectedGroupIds,
   onChange,
+  className = '',
 }: GroupFilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -70,7 +72,7 @@ export function GroupFilterDropdown({
   }
 
   return (
-    <div className={styles.wrapper} ref={dropdownRef}>
+    <div className={`${styles.wrapper} ${className}`} ref={dropdownRef}>
       <button
         type="button"
         className={`${styles.trigger} ${selectedGroupIds.length > 0 ? styles.triggerActive : ''}`}

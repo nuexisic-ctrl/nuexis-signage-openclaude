@@ -1,9 +1,12 @@
 'use client'
 
+import React from 'react'
 import { X } from 'lucide-react'
+import CustomSelect from '../components/CustomSelect'
 import styles from './FilterSidebar.module.css'
 
 interface FilterSidebarProps {
+  isOpen: boolean
   filterType: string
   setFilterType: (val: string) => void
   filterDatePreset: string
@@ -19,9 +22,11 @@ interface FilterSidebarProps {
   filterMaxSize: string
   setFilterMaxSize: (val: string) => void
   onClose: () => void
+  isModal?: boolean
 }
 
 export function FilterSidebar({
+  isOpen,
   filterType,
   setFilterType,
   filterDatePreset,
@@ -37,11 +42,48 @@ export function FilterSidebar({
   filterMaxSize,
   setFilterMaxSize,
   onClose,
+  isModal = false,
 }: FilterSidebarProps) {
+  React.useEffect(() => {
+    if (!isOpen || isModal) return
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      
+      const rightSidebar = document.querySelector(`.${styles.filterSidebar}`)
+      const leftSidebar = document.querySelector('aside[class*="sidebar"]')
+      const filterBtn = document.querySelector('button[class*="filterBtn"]')
+
+      if (rightSidebar?.contains(target)) return
+      if (leftSidebar?.contains(target)) return
+      if (filterBtn?.contains(target)) return
+
+      if (target.closest('[class*="modal"]') || target.closest('[class*="dropdown"]') || target.closest('[class*="select"]')) {
+        return
+      }
+
+      onClose()
+    }
+
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleOutsideClick)
+    }, 50)
+
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('click', handleOutsideClick)
+    }
+  }, [isOpen, onClose, isModal])
+
   return (
     <>
-      <div className={styles.sidebarOverlay} onClick={onClose} />
-      <aside className={styles.filterSidebar}>
+      {!isModal && (
+        <div 
+          className={`${styles.sidebarOverlay} ${isOpen ? styles.overlayOpen : ''}`} 
+          onClick={onClose} 
+        />
+      )}
+      <aside className={`${styles.filterSidebar} ${isOpen ? styles.isOpen : ''} ${isModal ? styles.isModal : ''}`}>
         <div className={styles.sidebarHeader}>
           <h3 className={styles.sidebarTitle}>Advanced Filters</h3>
           <button className={styles.closeSidebarBtn} onClick={onClose}>
@@ -51,23 +93,33 @@ export function FilterSidebar({
         <div className={styles.sidebarBody}>
           <div className={styles.filterGroup}>
             <label className={styles.filterLabel}>File Type</label>
-            <select className={styles.filterSelect} value={filterType} onChange={e => setFilterType(e.target.value)}>
-              <option value="all">All Types</option>
-              <option value="image">Images</option>
-              <option value="video">Videos</option>
-              <option value="widget">Widgets</option>
-            </select>
+            <CustomSelect
+              id="asset-filter-file-type"
+              value={filterType}
+              onChange={(val) => setFilterType(val)}
+              options={[
+                { value: 'all', label: 'All Types' },
+                { value: 'image', label: 'Images' },
+                { value: 'video', label: 'Videos' },
+                { value: 'widget', label: 'Widgets' }
+              ]}
+            />
           </div>
           
           <div className={styles.filterGroup}>
             <label className={styles.filterLabel}>Date Added</label>
-            <select className={styles.filterSelect} value={filterDatePreset} onChange={e => setFilterDatePreset(e.target.value)}>
-              <option value="all">Any time</option>
-              <option value="today">Today</option>
-              <option value="7days">Last 7 Days</option>
-              <option value="30days">Last 30 Days</option>
-              <option value="custom">Custom Date Range</option>
-            </select>
+            <CustomSelect
+              id="asset-filter-date-pre"
+              value={filterDatePreset}
+              onChange={(val) => setFilterDatePreset(val)}
+              options={[
+                { value: 'all', label: 'Any time' },
+                { value: 'today', label: 'Today' },
+                { value: '7days', label: 'Last 7 Days' },
+                { value: '30days', label: 'Last 30 Days' },
+                { value: 'custom', label: 'Custom Date Range' }
+              ]}
+            />
           </div>
 
           {filterDatePreset === 'custom' && (
@@ -86,13 +138,18 @@ export function FilterSidebar({
 
           <div className={styles.filterGroup}>
             <label className={styles.filterLabel}>Storage Size</label>
-            <select className={styles.filterSelect} value={filterSizePreset} onChange={e => setFilterSizePreset(e.target.value)}>
-              <option value="all">Any size</option>
-              <option value="under1">Under 1 MB</option>
-              <option value="1to10">1 MB to 10 MB</option>
-              <option value="10to50">10 MB to 50 MB</option>
-              <option value="custom">Custom Size Range</option>
-            </select>
+            <CustomSelect
+              id="asset-filter-size-pre"
+              value={filterSizePreset}
+              onChange={(val) => setFilterSizePreset(val)}
+              options={[
+                { value: 'all', label: 'Any size' },
+                { value: 'under1', label: 'Under 1 MB' },
+                { value: '1to10', label: '1 MB to 10 MB' },
+                { value: '10to50', label: '10 MB to 50 MB' },
+                { value: 'custom', label: 'Custom Size Range' }
+              ]}
+            />
           </div>
 
           {filterSizePreset === 'custom' && (

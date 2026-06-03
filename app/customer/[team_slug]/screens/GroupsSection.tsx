@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { 
-  Users, Image as ImageIcon, ListVideo, Monitor, Edit3, Trash2, FolderTree
+  Users, Image as ImageIcon, ListVideo, Monitor, Edit3, Trash2, FolderTree, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import styles from './GroupsSection.module.css'
 import { Device } from './types'
@@ -31,6 +31,8 @@ interface GroupsSectionProps {
   teamSlug: string
   onSelectGroup: (group: Group) => void
   onDeleteGroup: (group: Group) => void
+  isRefreshing?: boolean
+  showSuccessPulse?: boolean
 }
 
 export function GroupsSection({
@@ -41,10 +43,15 @@ export function GroupsSection({
   playlists,
   teamSlug,
   onSelectGroup,
-  onDeleteGroup
+  onDeleteGroup,
+  isRefreshing = false,
+  showSuccessPulse = false
 }: GroupsSectionProps) {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [isMounted, setIsMounted] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 5
 
   useEffect(() => {
     const saved = localStorage.getItem('groupsViewMode')
@@ -59,15 +66,49 @@ export function GroupsSection({
     localStorage.setItem('groupsViewMode', mode)
   }
 
+  const filteredGroups = React.useMemo(() => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) return groups
+    return groups.filter(g => (g.name || '').toLowerCase().includes(q))
+  }, [groups, searchQuery])
+
+  const totalPages = Math.ceil(filteredGroups.length / pageSize) || 1
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [filteredGroups, currentPage, totalPages])
+
+  const paginatedGroups = React.useMemo(() => {
+    const from = (currentPage - 1) * pageSize
+    return filteredGroups.slice(from, from + pageSize)
+  }, [filteredGroups, currentPage])
+
+  const startItem = filteredGroups.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const endItem = Math.min(currentPage * pageSize, filteredGroups.length)
+
   return (
     <div className={styles.sectionContainer}>
       <div className={styles.mainBlockContainer}>
         <div className={styles.controlsBar}>
-          <div className={styles.headerTitleArea}>
-            <FolderTree size={18} className={styles.sectionIcon} />
-            <h2 className={styles.sectionTitle}>Groups</h2>
-            <span className={styles.groupCountBadge}>{groups.length}</span>
-          </div>
+          {isMounted && groups.length > 0 && (
+            <div className={styles.searchBox}>
+              <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <input 
+                type="text" 
+                className={styles.searchInput}
+                placeholder="Search groups..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setCurrentPage(1)
+                }}
+              />
+            </div>
+          )}
           {isMounted && groups.length > 0 && (
             <div className={styles.viewToggleGroup}>
               <button 
@@ -100,6 +141,10 @@ export function GroupsSection({
           )}
         </div>
 
+        <div className={`${styles.progressBarWrapper} ${isRefreshing ? styles.active : ''}`}>
+          <div className={styles.progressBarLine} />
+        </div>
+
         {groups.length === 0 ? (
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>
@@ -110,21 +155,30 @@ export function GroupsSection({
               Use the "+ New Group" button to organize your screens.
             </p>
           </div>
+        ) : filteredGroups.length === 0 ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>
+              <FolderTree size={20} />
+            </div>
+            <h3 className={styles.emptyTitle}>No groups found</h3>
+            <p className={styles.emptyText}>
+              No groups matched your search criteria.
+            </p>
+          </div>
         ) : viewMode === 'table' ? (
-          <div className={styles.tableContainer}>
+          <div className={`${styles.tableContainer} ${showSuccessPulse ? styles.successPulse : ''}`}>
             <table className={styles.table}>
             <thead>
               <tr>
-                <th>Group Name</th>
-                <th>Screens</th>
-                <th>Live Status</th>
-                <th>Content Assigned</th>
-                <th>Orientation</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <th style={{ width: '25%' }}>Group Name</th>
+                <th style={{ width: '15%' }}>Screens</th>
+                <th style={{ width: '20%' }}>Live Status</th>
+                <th style={{ width: '30%' }}>Content Assigned</th>
+                <th style={{ width: '10%', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {groups.map((group) => {
+              {paginatedGroups.map((group) => {
                 const groupMemberships = memberships.filter(m => m.group_id === group.id)
                 const memberIds = groupMemberships.map(m => m.device_id)
                 const memberDevices = devices.filter(d => memberIds.includes(d.id))
@@ -140,10 +194,7 @@ export function GroupsSection({
                   contentName = pl ? pl.name : 'Deleted Playlist'
                 }
 
-                let orientationText = 'Landscape (0°)'
-                if (group.orientation === 90) orientationText = 'Rotate 90°'
-                else if (group.orientation === 180) orientationText = 'Rotate 180°'
-                else if (group.orientation === 270) orientationText = 'Rotate 270°'
+
 
                 return (
                   <tr key={group.id} className={styles.tableRow} onClick={() => onSelectGroup(group)}>
@@ -198,9 +249,7 @@ export function GroupsSection({
                         )}
                       </div>
                     </td>
-                    <td>
-                      <span className={styles.orientationText}>{orientationText}</span>
-                    </td>
+
                     <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                       <div className={styles.actionsCell}>
                         <button 
@@ -226,8 +275,8 @@ export function GroupsSection({
           </table>
         </div>
       ) : (
-        <div className={styles.grid}>
-          {groups.map((group) => {
+        <div className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
+          {paginatedGroups.map((group) => {
             const groupMemberships = memberships.filter(m => m.group_id === group.id)
             const memberIds = groupMemberships.map(m => m.device_id)
             const memberDevices = devices.filter(d => memberIds.includes(d.id))
@@ -296,6 +345,35 @@ export function GroupsSection({
               </div>
             )
           })}
+        </div>
+      )}
+      
+      {groups.length > 0 && filteredGroups.length > 0 && (
+        <div className={styles.tableFooter}>
+          <div className={styles.paginationInfo}>
+            Showing {startItem} to {endItem} of {filteredGroups.length} groups
+          </div>
+          <div className={styles.pagination}>
+            <span className={styles.pageIndicator}>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button 
+              className={styles.pageBtn} 
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              style={{ opacity: currentPage > 1 ? 1 : 0.5, cursor: currentPage > 1 ? 'pointer' : 'not-allowed' }}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button 
+              className={styles.pageBtn} 
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              style={{ opacity: currentPage < totalPages ? 1 : 0.5, cursor: currentPage < totalPages ? 'pointer' : 'not-allowed' }}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       )}
       </div>

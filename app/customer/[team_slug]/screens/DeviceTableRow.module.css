@@ -127,6 +127,9 @@
 }
 
 .actionsGroup {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -158,9 +161,9 @@
 }
 
 .actionBtnBox {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
   border: 1px solid var(--outline-variant);
   background: var(--surface-low);
   color: var(--on-surface-muted);
@@ -168,11 +171,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: all var(--transition-base);
 }
 
 .actionBtnBox:hover, .actionBtnBox.active {
-  background: var(--surface-container);
-  color: var(--on-surface);
+  background: var(--surface-medium);
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
 .moreDropdown {

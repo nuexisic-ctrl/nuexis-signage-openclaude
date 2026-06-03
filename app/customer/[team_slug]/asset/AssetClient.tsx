@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, File, Plus, RefreshCw, Upload } from 'lucide-react'
+import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import { AssetPreviewModal } from './AssetPreviewModal'
@@ -233,7 +233,7 @@ export default function AssetClient({
 
   return (
     <div className={styles.assetArea}>
-      <div className={styles.topbar}>
+      <div className={`${styles.topbar} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
         <div>
           <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
           <p className={styles.pageSubtitle}>
@@ -432,7 +432,7 @@ export default function AssetClient({
             
             {assets.length > 0 && (
               <div className={styles.tableFooter}>
-                <div>
+                <div className={styles.paginationInfo}>
                   {searchQuery 
                     ? `${t('Showing')} ${filteredAssets.length} ${t('filtered assets')}` 
                     : `${t('Showing')} ${startItem} ${t('to')} ${endItem} ${t('of')} ${totalAssets} ${t('assets')}`
@@ -440,26 +440,24 @@ export default function AssetClient({
                 </div>
                 {!searchQuery && (
                   <div className={styles.pagination}>
+                    <span className={styles.pageIndicator}>
+                      Page {currentPage} of {totalPages}
+                    </span>
                     <button 
                       className={styles.pageBtn} 
                       onClick={() => router.push(`?page=${currentPage - 1}`)}
                       disabled={!hasPrevPage}
                       style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                      </svg>
+                      <ChevronLeft size={16} />
                     </button>
-                    <button className={`${styles.pageBtn} ${styles.active}`}>{currentPage}</button>
                     <button 
                       className={styles.pageBtn} 
                       onClick={() => router.push(`?page=${currentPage + 1}`)}
                       disabled={!hasNextPage}
                       style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                      </svg>
+                      <ChevronRight size={16} />
                     </button>
                   </div>
                 )}
@@ -468,25 +466,24 @@ export default function AssetClient({
           </div>
         </div>
 
-        {isFilterSidebarOpen && (
-          <FilterSidebar
-            filterType={filterType}
-            setFilterType={setFilterType}
-            filterDatePreset={filterDatePreset}
-            setFilterDatePreset={setFilterDatePreset}
-            filterStartDate={filterStartDate}
-            setFilterStartDate={setFilterStartDate}
-            filterEndDate={filterEndDate}
-            setFilterEndDate={setFilterEndDate}
-            filterSizePreset={filterSizePreset}
-            setFilterSizePreset={setFilterSizePreset}
-            filterMinSize={filterMinSize}
-            setFilterMinSize={setFilterMinSize}
-            filterMaxSize={filterMaxSize}
-            setFilterMaxSize={setFilterMaxSize}
-            onClose={() => setIsFilterSidebarOpen(false)}
-          />
-        )}
+        <FilterSidebar
+          isOpen={isFilterSidebarOpen}
+          filterType={filterType}
+          setFilterType={setFilterType}
+          filterDatePreset={filterDatePreset}
+          setFilterDatePreset={setFilterDatePreset}
+          filterStartDate={filterStartDate}
+          setFilterStartDate={setFilterStartDate}
+          filterEndDate={filterEndDate}
+          setFilterEndDate={setFilterEndDate}
+          filterSizePreset={filterSizePreset}
+          setFilterSizePreset={setFilterSizePreset}
+          filterMinSize={filterMinSize}
+          setFilterMinSize={setFilterMinSize}
+          filterMaxSize={filterMaxSize}
+          setFilterMaxSize={setFilterMaxSize}
+          onClose={() => setIsFilterSidebarOpen(false)}
+        />
       </div>
 
       {previewAsset && (

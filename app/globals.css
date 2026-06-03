@@ -368,3 +368,34 @@
   margin: 0 auto;
   padding: 0 24px;
 }
+
+/* ─── Scrollbar Customization ──────────────────────────────────────────────── */
+/* Improve scrollbars across the application for scrollable elements */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--on-surface-subtle);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Firefox compatibility */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline-variant) transparent;
+}
+

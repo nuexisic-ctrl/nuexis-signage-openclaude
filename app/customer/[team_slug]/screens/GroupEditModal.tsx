@@ -7,6 +7,8 @@ import { Asset, Playlist, Device } from './types'
 import { saveGroupChanges } from '../groups/actions'
 import { AssetBrowserModal } from './AssetBrowserModal'
 import { PlaylistBrowserModal } from './PlaylistBrowserModal'
+import { modalStack } from '@/lib/utils/modalStack'
+import CustomSelect from '../components/CustomSelect'
 
 interface Group {
   id: string
@@ -52,6 +54,8 @@ export function GroupEditModal({
 }: GroupEditModalProps) {
   const [name, setName] = useState(group.name)
   const [color, setColor] = useState(group.color || PRESET_COLORS[0])
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const colorPickerRef = useRef<HTMLDivElement>(null)
   const availableColors = React.useMemo(() => {
     if (group.color && !PRESET_COLORS.includes(group.color)) {
       return [...PRESET_COLORS, group.color]
@@ -95,28 +99,64 @@ export function GroupEditModal({
   const selectedAsset = assets.find(a => a.id === assetId)
   const selectedPlaylist = playlists.find(p => p.id === playlistId)
 
-  // Scroll containment - lock body scroll when modal is open
+  // Scroll containment & modalStack registration
   useEffect(() => {
+    modalStack.push('group-edit-modal')
     document.body.style.overflow = 'hidden'
     return () => {
+      modalStack.pop('group-edit-modal')
       document.body.style.overflow = ''
     }
   }, [])
 
-  // Close dropdown on outside click
+  // Close modal/dropdown on Escape key press based on stack priority
   useEffect(() => {
-    function handleOutsideClick(e: MouseEvent) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showScreensDropdown) {
+          setShowScreensDropdown(false)
+        } else if (modalStack.isTop('group-edit-modal')) {
+          onClose()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showScreensDropdown, onClose])
+
+  // Handle click-outside for screens dropdown on document level
+  useEffect(() => {
+    if (!showScreensDropdown) return
+
+    const handleOutsideClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowScreensDropdown(false)
       }
     }
-    if (showScreensDropdown) {
-      document.addEventListener('mousedown', handleOutsideClick)
-    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick)
     }
   }, [showScreensDropdown])
+
+  // Close color picker popover on outside click
+  useEffect(() => {
+    if (!showColorPicker) return
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setShowColorPicker(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [showColorPicker])
 
   function handleContentTypeChange(newType: 'Asset' | 'Playlist' | 'Schedule' | '') {
     if (newType === '') {
@@ -150,8 +190,26 @@ export function GroupEditModal({
     setSelectedDeviceIds(prev => prev.filter(id => id !== deviceId))
   }
 
+  const childWasActiveRef = useRef(false)
+
+  function handleOverlayMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) {
+      childWasActiveRef.current = showScreensDropdown || modalStack.hasActiveChildOf('group-edit-modal')
+    }
+  }
+
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) onClose()
+    if (e.target === overlayRef.current) {
+      if (showScreensDropdown) {
+        setShowScreensDropdown(false)
+        return
+      }
+      if (childWasActiveRef.current) {
+        childWasActiveRef.current = false
+        return
+      }
+      onClose()
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -200,7 +258,12 @@ export function GroupEditModal({
 
   return (
     <>
-      <div className={styles.overlay} ref={overlayRef} onClick={handleOverlayClick}>
+      <div 
+        className={styles.overlay} 
+        ref={overlayRef} 
+        onMouseDown={handleOverlayMouseDown} 
+        onClick={handleOverlayClick}
+      >
         <div className={styles.modal} role="dialog">
           <div className={styles.modalHeader}>
             <div>
@@ -212,36 +275,74 @@ export function GroupEditModal({
 
           <form className={styles.form} onSubmit={handleSubmit}>
             {/* Group Name & Color Tag */}
-            <div className={styles.fieldRow}>
-              <div className={styles.fieldGroup} style={{ flex: 2 }}>
-                <label className={styles.label}>Group Name</label>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Group Name</label>
+              <div className={styles.inputWithColorContainer}>
                 <input
                   type="text"
                   maxLength={60}
-                  className={styles.input}
+                  className={styles.inputWithColor}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={isPending}
                 />
-              </div>
-
-              <div className={styles.fieldGroup} style={{ flex: 1 }}>
-                <label className={styles.label}>Color Tag</label>
-                <div className={styles.colorPickerGrid}>
-                  {availableColors.map((c) => {
-                    const isSelected = color === c
-                    return (
-                      <div
-                        key={c}
-                        className={`${styles.colorOption} ${isSelected ? styles.colorOptionSelected : ''}`}
-                        style={{ backgroundColor: c }}
-                        onClick={() => setColor(c)}
+                <button
+                  type="button"
+                  className={styles.colorIndicatorDot}
+                  style={{ backgroundColor: color }}
+                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  title="Select Group Color"
+                  aria-label="Select Group Color"
+                />
+                {showColorPicker && (
+                  <div className={styles.colorPickerPopover} ref={colorPickerRef}>
+                    <div className={styles.popoverHeader}>
+                      <span className={styles.popoverTitle}>Select Color</span>
+                      <button 
+                        type="button" 
+                        className={styles.popoverCloseBtn} 
+                        onClick={() => setShowColorPicker(false)}
                       >
-                        {isSelected && <Check size={12} style={{ color: '#fff' }} />}
+                        <X size={12} />
+                      </button>
+                    </div>
+                    
+                    <div className={styles.predefinedColorsGrid}>
+                      {availableColors.map((c) => {
+                        const isSelected = color === c
+                        return (
+                          <button
+                            type="button"
+                            key={c}
+                            className={`${styles.colorOptionBubble} ${isSelected ? styles.colorOptionBubbleSelected : ''}`}
+                            style={{ backgroundColor: c }}
+                            onClick={() => setColor(c)}
+                          >
+                            {isSelected && <Check size={10} style={{ color: '#fff' }} />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    
+                    <div className={styles.customColorSection}>
+                      <label className={styles.customColorLabel}>Custom Color</label>
+                      <div className={styles.customColorRow}>
+                        <input
+                          type="color"
+                          className={styles.customColorInput}
+                          value={color}
+                          onChange={(e) => setColor(e.target.value)}
+                        />
+                        <input
+                          type="text"
+                          className={styles.customColorHexInput}
+                          value={color}
+                          onChange={(e) => setColor(e.target.value)}
+                        />
                       </div>
-                    )
-                  })}
-                </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -321,18 +422,17 @@ export function GroupEditModal({
             {/* Content Type */}
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Content Type</label>
-              <select 
-                className={styles.input} 
-                value={contentType || ''} 
-                onChange={(e) => handleContentTypeChange(e.target.value as any)}
-              >
-                {!contentType && (
-                  <option value="" disabled>no content</option>
-                )}
-                <option value="Asset">Asset</option>
-                <option value="Playlist">Playlist</option>
-                <option value="Schedule" disabled>Schedule (Coming Soon)</option>
-              </select>
+              <CustomSelect
+                id="group-edit-content-type"
+                value={contentType || ''}
+                onChange={(val) => handleContentTypeChange(val)}
+                options={[
+                  ...(!contentType ? [{ value: '', label: 'no content', disabled: true }] : []),
+                  { value: 'Asset', label: 'Asset' },
+                  { value: 'Playlist', label: 'Playlist' },
+                  { value: 'Schedule', label: 'Schedule (Coming Soon)', disabled: true }
+                ]}
+              />
             </div>
 
             {/* Content Selection Details */}
@@ -388,24 +488,34 @@ export function GroupEditModal({
             {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget'))) && (
               <div className={styles.fieldGroup}>
                 <label className={styles.label}>Scale Mode</label>
-                <select className={styles.input} value={scaleMode} onChange={(e) => setScaleMode(e.target.value as 'None' | 'Fit' | 'Stretch' | 'Zoom')}>
-                  <option value="None">None</option>
-                  <option value="Fit">Fit</option>
-                  <option value="Stretch">Stretch</option>
-                  <option value="Zoom">Zoom</option>
-                </select>
+                <CustomSelect
+                  id="group-edit-scale-mode"
+                  value={scaleMode}
+                  onChange={(val) => setScaleMode(val)}
+                  options={[
+                    { value: 'None', label: 'None' },
+                    { value: 'Fit', label: 'Fit' },
+                    { value: 'Stretch', label: 'Stretch' },
+                    { value: 'Zoom', label: 'Zoom' }
+                  ]}
+                />
               </div>
             )}
 
             {/* Orientation */}
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Orientation Override</label>
-              <select className={styles.input} value={orientation} onChange={(e) => setOrientation(Number(e.target.value) as 0 | 90 | 180 | 270)}>
-                <option value={0}>Landscape (0°)</option>
-                <option value={90}>Rotate 90°</option>
-                <option value={180}>Rotate 180°</option>
-                <option value={270}>Rotate 270°</option>
-              </select>
+              <CustomSelect
+                id="group-edit-orientation"
+                value={orientation}
+                onChange={(val) => setOrientation(Number(val) as 0 | 90 | 180 | 270)}
+                options={[
+                  { value: 0, label: 'Landscape (0°)' },
+                  { value: 90, label: 'Rotate 90°' },
+                  { value: 180, label: 'Rotate 180°' },
+                  { value: 270, label: 'Rotate 270°' }
+                ]}
+              />
             </div>
 
             {error && <div className={styles.errorMsg}><AlertTriangle size={16} />{error}</div>}

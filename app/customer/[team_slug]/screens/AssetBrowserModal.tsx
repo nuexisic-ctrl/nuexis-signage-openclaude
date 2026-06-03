@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { X, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, FileText, Video, Image as ImageIcon, Play, MoreVertical, Monitor, Link2, Code, Clock } from 'lucide-react'
 import styles from './AssetBrowserModal.module.css'
 import { FilterSidebar } from '../asset/FilterSidebar'
+import { modalStack } from '@/lib/utils/modalStack'
 
 const YoutubeIcon = ({ size = 20, ...props }: { size?: number } & React.SVGProps<SVGSVGElement>) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -53,15 +54,21 @@ export function AssetBrowserModal({
     localStorage.setItem('assetBrowserViewMode', mode)
   }
 
-  // Lock body scroll when modal is open, and handle Escape key to close
+  // Lock body scroll when modal is open, register with modalStack, and handle Escape key to close
   useEffect(() => {
+    modalStack.push('asset-browser-modal')
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        if (modalStack.isTop('asset-browser-modal')) {
+          onClose()
+        }
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     document.body.style.overflow = 'hidden'
 
     return () => {
+      modalStack.pop('asset-browser-modal')
       window.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = ''
     }
@@ -319,7 +326,7 @@ export function AssetBrowserModal({
   }
 
   return (
-    <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div className={styles.overlay} onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onClose() }}>
       <div className={styles.modal} role="dialog" aria-modal="true">
         
         <div className={styles.header}>
@@ -384,11 +391,11 @@ export function AssetBrowserModal({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>File Name</th>
-                    <th>Type</th>
-                    <th>Size</th>
-                    <th>Date Added</th>
-                    <th>Actions</th>
+                    <th style={{ width: '35%' }}>File Name</th>
+                    <th style={{ width: '15%' }}>Type</th>
+                    <th style={{ width: '15%' }}>Size</th>
+                    <th style={{ width: '25%' }}>Date Added</th>
+                    <th style={{ width: '10%', textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -468,8 +475,9 @@ export function AssetBrowserModal({
           )}
         </div>
 
-        {showFilters && (
           <FilterSidebar
+            isModal={true}
+            isOpen={showFilters}
             filterType={selectedType}
             setFilterType={(val) => { setSelectedType(val); setCurrentPage(1) }}
             filterDatePreset={filterDatePreset}
@@ -486,7 +494,6 @@ export function AssetBrowserModal({
             setFilterMaxSize={setFilterMaxSize}
             onClose={() => setShowFilters(false)}
           />
-        )}
       </div>
 
         <div className={styles.footer}>

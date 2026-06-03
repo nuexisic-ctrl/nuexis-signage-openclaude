@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { X, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ListVideo, Clock, Calendar } from 'lucide-react'
 import styles from './AssetBrowserModal.module.css'
 import { Playlist } from './types'
+import { modalStack } from '@/lib/utils/modalStack'
 
 export interface PlaylistBrowserModalProps {
   playlists: Playlist[]
@@ -32,15 +33,21 @@ export function PlaylistBrowserModal({
     localStorage.setItem('playlistBrowserViewMode', mode)
   }
 
-  // Lock body scroll when modal is open, and handle Escape key to close
+  // Lock body scroll when modal is open, register with modalStack, and handle Escape key to close
   useEffect(() => {
+    modalStack.push('playlist-browser-modal')
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        if (modalStack.isTop('playlist-browser-modal')) {
+          onClose()
+        }
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     document.body.style.overflow = 'hidden'
 
     return () => {
+      modalStack.pop('playlist-browser-modal')
       window.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = ''
     }
@@ -95,7 +102,7 @@ export function PlaylistBrowserModal({
   }
 
   return (
-    <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div className={styles.overlay} onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onClose() }}>
       <div className={styles.modal} role="dialog" aria-modal="true">
         
         <div className={styles.header}>

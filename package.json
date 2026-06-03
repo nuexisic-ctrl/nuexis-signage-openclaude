@@ -39,6 +39,7 @@
     "@types/sanitize-filename": "1.1.28",
     "@types/serviceworker": "0.0.197",
     "@vitejs/plugin-react": "5.2.0",
+    "agentation": "^3.0.2",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
     "jsdom": "29.1.1",

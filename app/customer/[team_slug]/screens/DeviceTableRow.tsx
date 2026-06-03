@@ -154,10 +154,10 @@ export function DeviceTableRow({
         </div>
       </td>
 
-      <td className={styles.tableCell}>
+      <td className={styles.tableCell} style={{ textAlign: 'right' }}>
         <div className={styles.actionsGroup}>
           <button className={styles.actionBtnBox} onClick={onEdit} aria-label="Edit">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
             </svg>
           </button>
@@ -180,7 +180,7 @@ export function DeviceTableRow({
               }}
               aria-label="More Actions"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
                 <circle cx="12" cy="12" r="1.5" />
                 <circle cx="12" cy="5" r="1.5" />
                 <circle cx="12" cy="19" r="1.5" />

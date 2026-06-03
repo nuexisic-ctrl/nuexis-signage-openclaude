@@ -5,6 +5,8 @@ import { Plus, ListVideo, Trash2, X, Clock, RefreshCw, LayoutGrid, List } from '
 import styles from './playlists.module.css'
 import { createPlaylist, deletePlaylist, updatePlaylist, getPlaylistItems } from './actions'
 import { createClient } from '@/lib/supabase/client'
+import CustomSelect from '../components/CustomSelect'
+import { modalStack } from '@/lib/utils/modalStack'
 
 interface PlaylistsClientProps {
   initialPlaylists: any[]
@@ -28,6 +30,31 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
   const [searchQuery, setSearchQuery] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showSuccessPulse, setShowSuccessPulse] = useState(false)
+
+  useEffect(() => {
+    if (isModalOpen) {
+      modalStack.push('playlist-editor-modal')
+    } else {
+      modalStack.pop('playlist-editor-modal')
+    }
+    return () => {
+      modalStack.pop('playlist-editor-modal')
+    }
+  }, [isModalOpen])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isModalOpen && modalStack.isTop('playlist-editor-modal')) {
+          handleCloseModal()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isModalOpen])
 
   useEffect(() => {
     const saved = localStorage.getItem('playlistsViewMode')
@@ -417,16 +444,16 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                           {idx + 1}.
                         </div>
                         <div className={styles.itemEditorControls}>
-                          <select 
-                            className={styles.itemSelect}
+                          <CustomSelect
+                            id={`playlist-item-${idx}`}
                             value={item.asset_id || ''}
-                            onChange={(e) => handleUpdateItem(idx, 'asset_id', e.target.value)}
-                          >
-                            <option value="">Select Asset...</option>
-                            {assets.map(a => (
-                              <option key={a.id} value={a.id}>{a.file_name}</option>
-                            ))}
-                          </select>
+                            onChange={(val) => handleUpdateItem(idx, 'asset_id', val)}
+                            options={[
+                              { value: '', label: 'Select Asset...' },
+                              ...assets.map(a => ({ value: a.id, label: a.file_name }))
+                            ]}
+                            className={styles.itemSelectCustom}
+                          />
                           
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Clock size={16} color="var(--on-surface-muted)" />

@@ -1,15 +1,52 @@
 .filterSidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  height: 100vh;
   width: 320px;
-  flex-shrink: 0;
+  z-index: 150;
   background: var(--surface-lowest);
-  border: 1px solid var(--outline-variant);
-  border-radius: 16px;
+  border: 0;
+  border-left: 1px solid var(--outline-variant);
+  border-radius: 0;
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 20px;
-  max-height: calc(100vh - 40px);
+  overflow: hidden;
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease;
+}
+
+.filterSidebar.isOpen {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
   overflow-y: auto;
+}
+
+.filterSidebar.isModal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  z-index: 10;
+  border-left: 1px solid var(--outline-variant);
+  border-radius: 0;
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease;
+}
+
+.filterSidebar.isModal.isOpen {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .sidebarOverlay {
@@ -17,11 +54,13 @@
 }
 
 .sidebarHeader {
-  padding: 16px 20px;
+  min-height: 72px;
+  padding: 12px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--outline-variant);
+  box-sizing: border-box;
 }
 
 .sidebarTitle {
@@ -150,8 +189,17 @@
     border: 0;
     border-left: 1px solid var(--outline-variant);
     box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+    width: 320px;
+    margin-left: 0;
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  }
+  .filterSidebar.isOpen {
     transform: translateX(0);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 1;
+    pointer-events: auto;
   }
   .sidebarOverlay {
     display: block;
@@ -160,5 +208,12 @@
     background: rgba(7, 17, 31, 0.64);
     backdrop-filter: blur(4px);
     z-index: 299;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .sidebarOverlay.overlayOpen {
+    opacity: 1;
+    pointer-events: auto;
   }
 }

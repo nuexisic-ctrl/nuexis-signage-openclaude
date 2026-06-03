@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import "./globals.css";
+import AgentationProvider from "./components/AgentationProvider";
 
 export const metadata: Metadata = {
   title: "NuExis | Multi-Tenant Digital Signage",
@@ -53,6 +54,7 @@ export default async function RootLayout({
       </head>
       <body className={sidebarCollapsed ? "sidebar-collapsed" : ""}>
         {children}
+        <AgentationProvider />
       </body>
     </html>
   );
