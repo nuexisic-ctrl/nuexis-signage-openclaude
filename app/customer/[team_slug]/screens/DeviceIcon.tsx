@@ -350,7 +350,30 @@ export function ContentIcon({ kind, size = 18 }: { kind: ContentKind; size?: num
   )
 }
 
-// ── Tooltip portal component ──────────────────────────────────────────────────
+// ── Content icon badge (shared wrapper matching DeviceTableRow's contentIconWrap style) ─
+// Use this whenever you need the icon in a table cell — it renders the same
+// 26px rounded badge with the surface-container background used in the Screens table.
+export function ContentIconBadge({ kind, size = 15 }: { kind: ContentKind; size?: number }) {
+  return (
+    <span style={{
+      width: 26,
+      height: 26,
+      borderRadius: 7,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      background: 'var(--surface-container, #f1f5f9)',
+      color: 'var(--on-surface, #0f172a)',
+      border: '1px solid var(--outline-variant)',
+      verticalAlign: 'middle',
+    }}>
+      <ContentIcon kind={kind} size={size} />
+    </span>
+  )
+}
+
+
 interface ContentTooltipProps {
   info: ContentTooltipInfo
   children: React.ReactNode
@@ -500,7 +523,16 @@ export function StatusBadge({ status }: { status: LiveStatus }) {
 export function formatLastSeen(dateStr: string | null | undefined, isOnline: boolean, nowMs = Date.now()): string {
   if (isOnline) return 'Active now'
   if (!dateStr) return 'Never'
-  const diff = nowMs - new Date(dateStr).getTime()
+  
+  // Format string for cross-browser parsing support (specifically Safari/Firefox compatibility with Postgres timestamps)
+  const cleanDateStr = dateStr.includes(' ') && !dateStr.includes('T')
+    ? dateStr.replace(' ', 'T')
+    : dateStr
+    
+  const timeMs = new Date(cleanDateStr).getTime()
+  if (isNaN(timeMs)) return 'Never'
+  
+  const diff = Math.max(0, nowMs - timeMs)
   const prefix = 'Seen'
   if (diff < 60000) return `${prefix} just now`
   const mins = Math.floor(diff / 60000)

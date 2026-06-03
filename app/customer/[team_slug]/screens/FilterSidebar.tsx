@@ -44,18 +44,15 @@ export function FilterSidebar({
 
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      
-      const rightSidebar = document.querySelector(`.${styles.filterSidebar}`)
-      const leftSidebar = document.querySelector('aside[class*="sidebar"]')
-      const filterBtn = document.querySelector('button[class*="filterBtn"]')
 
-      if (rightSidebar?.contains(target)) return
-      if (leftSidebar?.contains(target)) return
-      if (filterBtn?.contains(target)) return
-
-      if (target.closest('[class*="modal"]') || target.closest('[class*="dropdown"]') || target.closest('[class*="select"]')) {
-        return
-      }
+      // Stay open if click is inside the filter sidebar itself
+      if (target.closest('[data-filter-sidebar]')) return
+      // Stay open if click is on the filter toggle button
+      if (target.closest('[data-filter-toggle]')) return
+      // Stay open if click is anywhere inside the left nav sidebar
+      if (target.closest('[data-sidebar-nav]')) return
+      // Stay open if click is inside a modal, dropdown or select
+      if (target.closest('[class*="modal"]') || target.closest('[class*="dropdown"]') || target.closest('[class*="select"]')) return
 
       setIsFilterSidebarOpen(false)
     }
@@ -76,7 +73,7 @@ export function FilterSidebar({
         className={`${styles.sidebarOverlay} ${isFilterSidebarOpen ? styles.overlayOpen : ''}`} 
         onClick={() => setIsFilterSidebarOpen(false)} 
       />
-      <aside className={`${styles.filterSidebar} ${isFilterSidebarOpen ? styles.isOpen : ''}`}>
+      <aside data-filter-sidebar className={`${styles.filterSidebar} ${isFilterSidebarOpen ? styles.isOpen : ''}`}>
         <div className={styles.sidebarHeader}>
           <h3 className={styles.sidebarTitle}>Advanced Filters</h3>
           <button className={styles.closeSidebarBtn} onClick={() => setIsFilterSidebarOpen(false)}>

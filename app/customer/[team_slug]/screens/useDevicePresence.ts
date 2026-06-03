@@ -40,6 +40,7 @@ export function useDevicePresence(
 
   const teamChannelRef = useRef<any>(null)
   const presenceKeyRef = useRef<string>('')
+  const hasSyncedPresenceRef = useRef(false)
 
   // Sync state when initialDevices update
   useEffect(() => {
@@ -81,7 +82,10 @@ export function useDevicePresence(
             .filter(Boolean)
         )
         setOnlineDeviceIds(ids)
-        setHasSyncedPresence(true)
+        if (!hasSyncedPresenceRef.current) {
+          hasSyncedPresenceRef.current = true
+          setHasSyncedPresence(true)
+        }
       })
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
@@ -102,23 +106,42 @@ export function useDevicePresence(
   }, [teamId, presenceRefreshKey, supabase])
 
   // Handle presence shifts (side-effects for online/offline transitions)
+  // IMPORTANT: Do NOT add 'devices' to this dep array — that causes an infinite loop.
+  // We use functional setState to access the latest devices snapshot.
   useEffect(() => {
-    if (!hasSyncedPresence || devices.length === 0) return
+    if (!hasSyncedPresenceRef.current) return
 
-    const leftIds = devices
-      .filter(d => d.status === 'online' && !onlineDeviceIds.has(d.id))
-      .map(d => d.id)
+    setDevices(prev => {
+      if (prev.length === 0) return prev
 
-    if (leftIds.length > 0) {
+      // 1. Detect devices that went offline (were online, now absent from presence)
+      const leftIds = prev
+        .filter(d => d.status === 'online' && !onlineDeviceIds.has(d.id))
+        .map(d => d.id)
+
+      // 2. Detect devices that joined (were offline/pairing, now in presence)
+      const joinedIds = prev
+        .filter(d => d.status !== 'online' && onlineDeviceIds.has(d.id))
+        .map(d => d.id)
+
+      if (leftIds.length === 0 && joinedIds.length === 0) return prev
+
       const now = new Date().toISOString()
-      setDevices(prev => 
-        prev.map(d => leftIds.includes(d.id) ? { ...d, status: 'offline', last_seen_at: now } : d)
-      )
-      updateDeviceLastSeen(teamSlug, leftIds).catch(err => 
-        console.error('[Dashboard] Error updating last seen:', err)
-      )
-    }
-  }, [onlineDeviceIds, teamSlug, devices, hasSyncedPresence])
+
+      if (leftIds.length > 0) {
+        updateDeviceLastSeen(teamSlug, leftIds).catch(err =>
+          console.error('[Dashboard] Error updating last seen:', err)
+        )
+      }
+
+      return prev.map(d => {
+        if (leftIds.includes(d.id)) return { ...d, status: 'offline', last_seen_at: now }
+        if (joinedIds.includes(d.id)) return { ...d, status: 'online' }
+        return d
+      })
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlineDeviceIds, teamSlug])
 
   // ── Postgres Changes for device list (INSERT/UPDATE/DELETE) ───────────
   useEffect(() => {

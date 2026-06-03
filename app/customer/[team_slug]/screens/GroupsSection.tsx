@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import { 
-  Users, Image as ImageIcon, ListVideo, Monitor, Edit3, Trash2, FolderTree, ChevronLeft, ChevronRight
+  Users, Monitor, Edit3, Trash2, FolderTree, ChevronLeft, ChevronRight
 } from 'lucide-react'
+import { ContentIconBadge, ContentKind } from './DeviceIcon'
 import styles from './GroupsSection.module.css'
 import { Device } from './types'
 
@@ -29,10 +30,28 @@ interface GroupsSectionProps {
   assets: any[]
   playlists: any[]
   teamSlug: string
+  onlineDeviceIds?: Set<string>
   onSelectGroup: (group: Group) => void
   onDeleteGroup: (group: Group) => void
   isRefreshing?: boolean
   showSuccessPulse?: boolean
+}
+
+function getGroupContentKind(group: Group, assets: any[]): ContentKind {
+  if (group.content_type === 'Playlist') return 'playlist'
+  if (group.content_type === 'Asset' && group.asset_id) {
+    const asset = assets.find(a => a.id === group.asset_id)
+    if (asset?.mime_type) {
+      if (asset.mime_type === 'application/x-widget-youtube') return 'youtube'
+      if (asset.mime_type === 'application/x-widget-remote-url') return 'remote-url'
+      if (asset.mime_type === 'application/x-widget-html') return 'html-widget'
+      if (asset.mime_type === 'application/x-widget-flow') return 'clock'
+      if (asset.mime_type.startsWith('video/')) return 'video'
+      if (asset.mime_type.startsWith('image/')) return 'image'
+    }
+    return 'image'
+  }
+  return 'empty'
 }
 
 export function GroupsSection({
@@ -42,6 +61,7 @@ export function GroupsSection({
   assets,
   playlists,
   teamSlug,
+  onlineDeviceIds,
   onSelectGroup,
   onDeleteGroup,
   isRefreshing = false,
@@ -182,7 +202,7 @@ export function GroupsSection({
                 const groupMemberships = memberships.filter(m => m.group_id === group.id)
                 const memberIds = groupMemberships.map(m => m.device_id)
                 const memberDevices = devices.filter(d => memberIds.includes(d.id))
-                const onlineCount = memberDevices.filter(d => d.status === 'online').length
+                const onlineCount = memberDevices.filter(d => onlineDeviceIds ? onlineDeviceIds.has(d.id) : d.status === 'online').length
                 const offlineCount = memberDevices.length - onlineCount
 
                 let contentName = 'no content'
@@ -237,11 +257,7 @@ export function GroupsSection({
                       <div className={styles.contentCell}>
                         {group.content_type ? (
                           <>
-                            {group.content_type === 'Playlist' ? (
-                              <ListVideo size={14} className={styles.contentIcon} />
-                            ) : (
-                              <ImageIcon size={14} className={styles.contentIcon} />
-                            )}
+                            <ContentIconBadge kind={getGroupContentKind(group, assets)} size={14} />
                             <span className={styles.contentLabelText} title={contentName}>{contentName}</span>
                           </>
                         ) : (
@@ -280,7 +296,7 @@ export function GroupsSection({
             const groupMemberships = memberships.filter(m => m.group_id === group.id)
             const memberIds = groupMemberships.map(m => m.device_id)
             const memberDevices = devices.filter(d => memberIds.includes(d.id))
-            const onlineCount = memberDevices.filter(d => d.status === 'online').length
+            const onlineCount = memberDevices.filter(d => onlineDeviceIds ? onlineDeviceIds.has(d.id) : d.status === 'online').length
             const offlineCount = memberDevices.length - onlineCount
 
             let contentName = 'no content'
@@ -310,7 +326,9 @@ export function GroupsSection({
                 <div className={styles.cardBody}>
                   <div className={styles.cardContentPreview}>
                     <div className={styles.cardContentThumb}>
-                      {group.content_type === 'Playlist' ? <ListVideo size={16} /> : <ImageIcon size={16} />}
+                      {group.content_type === 'Playlist'
+                        ? <ContentIconBadge kind="playlist" size={15} />
+                        : <ContentIconBadge kind={getGroupContentKind(group, assets)} size={15} />}
                     </div>
                     <div className={styles.cardContentMeta}>
                       <div className={styles.cardContentLabel}>{group.content_type || 'no content'}</div>

@@ -33,7 +33,7 @@
 
 .sidebarHeader {
   min-height: 72px;
-  padding: 12px 20px;
+  padding: 12px 20px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;

@@ -55,7 +55,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
 
   return (
     <>
-      <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
+      <aside data-sidebar-nav className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
         <div className={styles.sidebarHeader}>
           <div className={styles.logoContainer}>
             <Link href="/" className={styles.logoLink} title="NuExis">

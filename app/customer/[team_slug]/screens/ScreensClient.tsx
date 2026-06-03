@@ -93,17 +93,7 @@ export default function ScreensClient({
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
-  const [filterGroupIds, setFilterGroupIds] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('filterGroupIds')
-      try {
-        return saved ? JSON.parse(saved) : []
-      } catch {
-        return []
-      }
-    }
-    return []
-  })
+  const [filterGroupIds, setFilterGroupIds] = useState<string[]>([])
   const [showCreateGroupFromSelection, setShowCreateGroupFromSelection] = useState(false)
 
   const [groups, setGroups] = useState<any[]>(initialGroups)
@@ -134,6 +124,14 @@ export default function ScreensClient({
     if (saved === 'grid' || saved === 'table') {
       setViewMode(saved)
     }
+    // Restore saved group filter — must be done client-side only to avoid hydration mismatch
+    try {
+      const savedGroups = localStorage.getItem('filterGroupIds')
+      if (savedGroups) {
+        const parsed = JSON.parse(savedGroups)
+        if (Array.isArray(parsed) && parsed.length > 0) setFilterGroupIds(parsed)
+      }
+    } catch {}
     setIsMounted(true)
   }, [])
 
@@ -362,6 +360,7 @@ export default function ScreensClient({
             assets={assets}
             playlists={playlists}
             teamSlug={teamSlug}
+            onlineDeviceIds={onlineDeviceIds}
             onSelectGroup={(g) => setEditGroup(g)}
             onDeleteGroup={handleDeleteGroup}
             isRefreshing={isRefreshing}
@@ -390,10 +389,10 @@ export default function ScreensClient({
                     setSelectedDeviceIds={setSelectedDeviceIds}
                     setShowCreateGroupFromSelection={setShowCreateGroupFromSelection}
                     setDeleteModalDevice={setDeleteModalDevice}
-                    setAssignModalDevice={setAssignModalDevice}
                   />
                 )}
                 <button 
+                  data-filter-toggle
                   className={`${styles.filterBtn} ${isFilterSidebarOpen || filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' || filterGroupIds.length > 0 ? styles.active : ''}`}
                   onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
                 >
