@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useCallback, useTransition, useEffect, useRef, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Check, File, Plus, RefreshCw, Upload } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import { AssetPreviewModal } from './AssetPreviewModal'
 import { AssetCard } from './AssetCard'
 import { FilterSidebar } from './FilterSidebar'
@@ -116,36 +117,23 @@ export default function AssetClient({
       const targetAssets = assets.filter(
         asset => (isImage(asset.mime_type) || isVideo(asset.mime_type)) && !asset.mime_type.startsWith('application/x-widget')
       )
-      // Sign in small batches to avoid overwhelming Supabase
-      const BATCH_SIZE = 10
-      const newUrls = new Map<string, string>()
-      for (let i = 0; i < targetAssets.length; i += BATCH_SIZE) {
-        if (cancelled) return
-        const batch = targetAssets.slice(i, i + BATCH_SIZE)
-        const results = await Promise.all(
-          batch.map(async (asset) => {
-            // Skip if we already have a cached URL for this path
-            const cachedVal = previewUrls.get(asset.file_path)
-            if (cachedVal) {
-              return { path: asset.file_path, url: cachedVal }
-            }
-            const { data } = await supabase.storage
-              .from('workspace-media')
-              .createSignedUrl(asset.file_path, 3600)
-            return { path: asset.file_path, url: data?.signedUrl || null }
-          })
-        )
-        for (const res of results) {
-          if (res.url) newUrls.set(res.path, res.url)
-        }
-      }
-      if (!cancelled) {
-        setPreviewUrls(prev => {
-          const next = new Map(prev)
-          newUrls.forEach((val, key) => next.set(key, val))
-          return next
+      const results = await Promise.all(
+        targetAssets.map(async (asset) => {
+          const url = await getCachedSignedUrl(supabase, asset.file_path, 3600)
+          return { path: asset.file_path, url }
         })
+      )
+      if (cancelled) return
+
+      const newUrls = new Map<string, string>()
+      for (const res of results) {
+        if (res.url) newUrls.set(res.path, res.url)
       }
+      setPreviewUrls(prev => {
+        const next = new Map(prev)
+        newUrls.forEach((val, key) => next.set(key, val))
+        return next
+      })
     }
     generateUrls()
     return () => { cancelled = true }

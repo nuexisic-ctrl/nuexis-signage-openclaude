@@ -87,7 +87,7 @@ export async function claimDevice(
 }
 
 export interface AssignmentData {
-  content_type: 'Asset' | 'Playlist' | 'Schedule'
+  content_type: 'Asset' | 'Playlist' | 'Schedule' | null
   asset_id: string | null
   playlist_id?: string | null
   orientation: 0 | 90 | 180 | 270

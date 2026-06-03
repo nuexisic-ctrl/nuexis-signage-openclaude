@@ -193,7 +193,7 @@ export default function GroupsClient({
               const offlineCount = memberDevices.length - onlineCount
 
               // Resolve content names
-              let contentName = 'Unassigned'
+              let contentName = 'no content'
               if (group.content_type === 'Asset') {
                 const ast = assets.find(a => a.id === group.asset_id)
                 contentName = ast ? ast.file_name : 'Deleted Asset'
@@ -247,13 +247,21 @@ export default function GroupsClient({
 
                   <div className={styles.cardBody}>
                     <div className={styles.contentPreview}>
-                      <div className={styles.contentThumb}>
-                        {group.content_type === 'Playlist' ? <ListVideo size={16} /> : <ImageIcon size={16} />}
-                      </div>
-                      <div className={styles.contentText}>
-                        <div className={styles.contentLabel}>{group.content_type || 'Content'}</div>
-                        <div className={styles.contentName} title={contentName}>{contentName}</div>
-                      </div>
+                      {group.content_type ? (
+                        <>
+                          <div className={styles.contentThumb}>
+                            {group.content_type === 'Playlist' ? <ListVideo size={16} /> : <ImageIcon size={16} />}
+                          </div>
+                          <div className={styles.contentText}>
+                            <div className={styles.contentLabel}>{group.content_type}</div>
+                            <div className={styles.contentName} title={contentName}>{contentName}</div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className={styles.contentText} style={{ fontStyle: 'italic', color: 'var(--on-surface-subtle)' }}>
+                          no content
+                        </div>
+                      )}
                     </div>
 
                     <div className={styles.statsMini}>

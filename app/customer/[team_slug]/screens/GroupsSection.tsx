@@ -131,7 +131,7 @@ export function GroupsSection({
                 const onlineCount = memberDevices.filter(d => d.status === 'online').length
                 const offlineCount = memberDevices.length - onlineCount
 
-                let contentName = 'Unassigned'
+                let contentName = 'no content'
                 if (group.content_type === 'Asset') {
                   const ast = assets.find(a => a.id === group.asset_id)
                   contentName = ast ? ast.file_name : 'Deleted Asset'
@@ -194,7 +194,7 @@ export function GroupsSection({
                             <span className={styles.contentLabelText} title={contentName}>{contentName}</span>
                           </>
                         ) : (
-                          <span className={styles.unassignedText}>Unassigned</span>
+                          <span className={styles.unassignedText}>no content</span>
                         )}
                       </div>
                     </td>
@@ -234,7 +234,7 @@ export function GroupsSection({
             const onlineCount = memberDevices.filter(d => d.status === 'online').length
             const offlineCount = memberDevices.length - onlineCount
 
-            let contentName = 'Unassigned'
+            let contentName = 'no content'
             if (group.content_type === 'Asset') {
               const ast = assets.find(a => a.id === group.asset_id)
               contentName = ast ? ast.file_name : 'Deleted Asset'
@@ -264,7 +264,7 @@ export function GroupsSection({
                       {group.content_type === 'Playlist' ? <ListVideo size={16} /> : <ImageIcon size={16} />}
                     </div>
                     <div className={styles.cardContentMeta}>
-                      <div className={styles.cardContentLabel}>{group.content_type || 'Unassigned'}</div>
+                      <div className={styles.cardContentLabel}>{group.content_type || 'no content'}</div>
                       <div className={styles.cardContentName} title={contentName}>{contentName}</div>
                     </div>
                   </div>

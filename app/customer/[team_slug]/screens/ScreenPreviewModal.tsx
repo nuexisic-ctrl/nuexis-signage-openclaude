@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Maximize, Minimize, Move, Tv } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import styles from './ScreenPreviewModal.module.css'
 import { Device, Asset, Playlist } from './types'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
@@ -124,11 +125,9 @@ export function ScreenPreviewModal({
       const urls: Record<string, string> = {}
       const promises = Array.from(new Set(pathsToSign)).map(async (filePath) => {
         try {
-          const { data } = await supabase.storage
-            .from('workspace-media')
-            .createSignedUrl(filePath, 3600)
-          if (data?.signedUrl) {
-            urls[filePath] = data.signedUrl
+          const url = await getCachedSignedUrl(supabase, filePath, 3600)
+          if (url) {
+            urls[filePath] = url
           }
         } catch (err) {
           console.error('Failed to sign asset path:', filePath, err)

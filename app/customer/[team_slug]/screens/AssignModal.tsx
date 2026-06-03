@@ -32,8 +32,8 @@ export function AssignModal({
   onSuccess,
   onPreview,
 }: AssignModalProps) {
-  const [contentType, setContentType] = useState<'Asset' | 'Playlist' | 'Schedule'>(
-    (device.content_type as 'Asset' | 'Playlist' | 'Schedule') || 'Asset'
+  const [contentType, setContentType] = useState<'Asset' | 'Playlist' | 'Schedule' | null>(
+    (device.content_type as 'Asset' | 'Playlist' | 'Schedule' | null) || null
   )
   const [assetId, setAssetId] = useState<string>(device.asset_id || '')
   const [playlistId, setPlaylistId] = useState<string>(device.playlist_id || '')
@@ -65,17 +65,23 @@ export function AssignModal({
   // Opens the appropriate browser when the user explicitly changes content type.
   // This is intentionally NOT a useEffect — effects fire on mount too (and twice
   // in React Strict Mode), which caused the browser to pop open immediately.
-  function handleContentTypeChange(newType: 'Asset' | 'Playlist' | 'Schedule') {
-    setContentType(newType)
-    if (newType === 'Asset') {
-      setShowAssetBrowser(true)
-      setShowPlaylistBrowser(false)
-    } else if (newType === 'Playlist') {
-      setShowPlaylistBrowser(true)
+  function handleContentTypeChange(newType: 'Asset' | 'Playlist' | 'Schedule' | '') {
+    if (newType === '') {
+      setContentType(null)
       setShowAssetBrowser(false)
+      setShowPlaylistBrowser(false)
     } else {
-      setShowAssetBrowser(false)
-      setShowPlaylistBrowser(false)
+      setContentType(newType as any)
+      if (newType === 'Asset') {
+        setShowAssetBrowser(true)
+        setShowPlaylistBrowser(false)
+      } else if (newType === 'Playlist') {
+        setShowPlaylistBrowser(true)
+        setShowAssetBrowser(false)
+      } else {
+        setShowAssetBrowser(false)
+        setShowPlaylistBrowser(false)
+      }
     }
   }
 
@@ -120,7 +126,10 @@ export function AssignModal({
           <form className={styles.form} onSubmit={handleSubmit}>
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Content Type</label>
-              <select className={styles.input} value={contentType} onChange={(e) => handleContentTypeChange(e.target.value as 'Asset' | 'Playlist' | 'Schedule')}>
+              <select className={styles.input} value={contentType || ''} onChange={(e) => handleContentTypeChange(e.target.value as any)}>
+                {!contentType && (
+                  <option value="" disabled>no content</option>
+                )}
                 <option value="Asset">Asset</option>
                 <option value="Playlist">Playlist</option>
                 <option value="Schedule" disabled>Schedule (Coming Soon)</option>
@@ -216,14 +225,16 @@ export function AssignModal({
                     fontFamily: 'var(--font-label)',
                     fontSize: '0.92rem',
                     fontWeight: 800,
-                    cursor: 'pointer',
+                    cursor: contentType ? 'pointer' : 'not-allowed',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
                     transition: 'all 0.2s ease',
+                    opacity: contentType ? 1 : 0.5
                   }}
-                  onClick={() => onPreview(device, contentType, assetId || null, playlistId || null, scaleMode, orientation)}
+                  onClick={() => contentType && onPreview(device, contentType, assetId || null, playlistId || null, scaleMode, orientation)}
+                  disabled={!contentType}
                 >
                   <Tv size={16} />
                   Preview Screen
@@ -233,7 +244,7 @@ export function AssignModal({
               <button 
                 className={styles.submitBtn} 
                 type="submit" 
-                disabled={isPending || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}
+                disabled={isPending || !contentType || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}
                 style={{ flex: 1.2 }}
               >
                 {isPending ? 'Saving…' : 'Save Assignment'}

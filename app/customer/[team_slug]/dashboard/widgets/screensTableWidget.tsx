@@ -94,7 +94,7 @@ export function ScreensTableWidget({ teamSlug, devices }: Props) {
                     {d.lastSeenAt ? timeAgo(new Date(d.lastSeenAt)) : '—'}
                   </td>
                   <td className={styles.screensCellContent}>
-                    <span className={styles.screensContentType}>{d.contentType || 'Unassigned'}</span>
+                    <span className={styles.screensContentType}>{d.contentType || 'no content'}</span>
                     <span className={styles.screensContentName}>{d.contentName || '—'}</span>
                   </td>
                   <td className={styles.screensCellUptime}>

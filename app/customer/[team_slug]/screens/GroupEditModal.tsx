@@ -118,13 +118,13 @@ export function GroupEditModal({
     }
   }, [showScreensDropdown])
 
-  function handleContentTypeChange(newType: 'Asset' | 'Playlist' | 'Schedule' | 'Unassigned') {
-    if (newType === 'Unassigned') {
+  function handleContentTypeChange(newType: 'Asset' | 'Playlist' | 'Schedule' | '') {
+    if (newType === '') {
       setContentType(null)
       setShowAssetBrowser(false)
       setShowPlaylistBrowser(false)
     } else {
-      setContentType(newType)
+      setContentType(newType as any)
       if (newType === 'Asset') {
         setShowAssetBrowser(true)
         setShowPlaylistBrowser(false)
@@ -323,10 +323,12 @@ export function GroupEditModal({
               <label className={styles.label}>Content Type</label>
               <select 
                 className={styles.input} 
-                value={contentType || 'Unassigned'} 
+                value={contentType || ''} 
                 onChange={(e) => handleContentTypeChange(e.target.value as any)}
               >
-                <option value="Unassigned">Unassigned (Idle pairing page)</option>
+                {!contentType && (
+                  <option value="" disabled>no content</option>
+                )}
                 <option value="Asset">Asset</option>
                 <option value="Playlist">Playlist</option>
                 <option value="Schedule" disabled>Schedule (Coming Soon)</option>

@@ -12,6 +12,7 @@ const YoutubeIcon = ({ size = 20, ...props }: { size?: number } & React.SVGProps
   </svg>
 )
 import { createClient } from '@/lib/supabase/client'
+import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import { Asset } from './types'
 
 export interface AssetBrowserModalProps {
@@ -74,10 +75,8 @@ export function AssetBrowserModal({
         asset => (asset.mime_type.startsWith('image/') || asset.mime_type.startsWith('video/')) && !asset.mime_type.startsWith('application/x-widget')
       )
       const promises = targetAssets.map(async (asset) => {
-        const { data } = await supabase.storage
-          .from('workspace-media')
-          .createSignedUrl(asset.file_path, 3600)
-        return { path: asset.file_path, url: data?.signedUrl || null }
+        const url = await getCachedSignedUrl(supabase, asset.file_path, 3600)
+        return { path: asset.file_path, url }
       })
       const results = await Promise.all(promises)
       if (isCancelled) return

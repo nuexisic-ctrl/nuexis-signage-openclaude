@@ -118,11 +118,11 @@ export function getClockStyleName(filePathOrConfig: string): string {
 // ── Human-readable label (column text) ────────────────────────────────────────
 export function getContentLabel(device: Device, assets: Asset[] = [], playlists: Playlist[] = []) {
   if (device.content_type === 'Playlist') {
-    if (!device.playlist_id) return 'No Playlist selected'
+    if (!device.playlist_id) return 'no content'
     const pl = playlists.find(p => p.id === device.playlist_id)
     return pl ? pl.name : 'Unknown Playlist'
   }
-  if (!device.asset_id) return 'No content assigned'
+  if (!device.asset_id) return 'no content'
   const asset = assets.find(a => a.id === device.asset_id)
   if (!asset) return 'Assigned Asset'
   if (asset.mime_type === 'application/x-widget-youtube') return 'YouTube'

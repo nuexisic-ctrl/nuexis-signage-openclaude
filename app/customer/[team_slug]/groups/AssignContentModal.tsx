@@ -23,8 +23,8 @@ export function AssignContentModal({
   onClose,
   router
 }: AssignContentProps) {
-  const [contentType, setContentType] = useState<'Asset' | 'Playlist' | 'Schedule'>(
-    (group.content_type as 'Asset' | 'Playlist' | 'Schedule') || 'Asset'
+  const [contentType, setContentType] = useState<'Asset' | 'Playlist' | 'Schedule' | null>(
+    (group.content_type as 'Asset' | 'Playlist' | 'Schedule' | null) || null
   )
   const [assetId, setAssetId] = useState<string>(group.asset_id || '')
   const [playlistId, setPlaylistId] = useState<string>(group.playlist_id || '')
@@ -41,17 +41,23 @@ export function AssignContentModal({
   const selectedAsset = assets.find(a => a.id === assetId)
   const selectedPlaylist = playlists.find(p => p.id === playlistId)
 
-  const handleContentTypeChange = (newType: 'Asset' | 'Playlist' | 'Schedule') => {
-    setContentType(newType)
-    if (newType === 'Asset') {
-      setShowAssetBrowser(true)
-      setShowPlaylistBrowser(false)
-    } else if (newType === 'Playlist') {
-      setShowPlaylistBrowser(true)
+  const handleContentTypeChange = (newType: 'Asset' | 'Playlist' | 'Schedule' | '') => {
+    if (newType === '') {
+      setContentType(null)
       setShowAssetBrowser(false)
+      setShowPlaylistBrowser(false)
     } else {
-      setShowAssetBrowser(false)
-      setShowPlaylistBrowser(false)
+      setContentType(newType as any)
+      if (newType === 'Asset') {
+        setShowAssetBrowser(true)
+        setShowPlaylistBrowser(false)
+      } else if (newType === 'Playlist') {
+        setShowPlaylistBrowser(true)
+        setShowAssetBrowser(false)
+      } else {
+        setShowAssetBrowser(false)
+        setShowPlaylistBrowser(false)
+      }
     }
   }
 
@@ -96,9 +102,12 @@ export function AssignContentModal({
                 <label className={styles.formLabel}>Content Type</label>
                 <select 
                   className={styles.formInput} 
-                  value={contentType} 
+                  value={contentType || ''} 
                   onChange={(e) => handleContentTypeChange(e.target.value as any)}
                 >
+                  {!contentType && (
+                    <option value="" disabled>no content</option>
+                  )}
                   <option value="Asset">Asset</option>
                   <option value="Playlist">Playlist</option>
                   <option value="Schedule" disabled>Schedule (Coming Soon)</option>
@@ -201,7 +210,7 @@ export function AssignContentModal({
               <button type="button" className={styles.btn} onClick={onClose}>Cancel</button>
               <button 
                 type="submit" 
-                disabled={isPending || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)} 
+                disabled={isPending || !contentType || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)} 
                 className={`${styles.btn} ${styles.btnPrimary}`}
               >
                 {isPending ? 'Saving…' : 'Save Assignment'}

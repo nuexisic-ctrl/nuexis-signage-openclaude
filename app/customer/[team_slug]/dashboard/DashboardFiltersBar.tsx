@@ -83,7 +83,7 @@ export default function DashboardFiltersBar({ playlistOptions, assetOptions, val
             <option value="all">All content</option>
             <option value="Playlist">Playlist</option>
             <option value="Asset">Asset</option>
-            <option value="None">Unassigned</option>
+            <option value="None">no content</option>
           </select>
 
           <select
