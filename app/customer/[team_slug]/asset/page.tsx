@@ -61,6 +61,14 @@ export default async function AssetPage({ params }: Props) {
   const assets = response.data ?? []
   const totalAssets = response.count ?? 0
 
+  const { data: screens } = profile?.team_id
+    ? await supabase
+        .from('devices')
+        .select('id, name, status, content_type, asset_id, playlist_id, content')
+        .eq('team_id', profile.team_id as string)
+        .order('created_at', { ascending: false })
+    : { data: [] }
+
   const cookieStore = await cookies();
   const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
 
@@ -77,6 +85,7 @@ export default async function AssetPage({ params }: Props) {
           teamId={profile?.team_id ?? ''}
           teamSlug={team_slug}
           totalAssets={totalAssets}
+          screens={(screens ?? []) as Parameters<typeof AssetClient>[0]['screens']}
         />
       </main>
     </div>

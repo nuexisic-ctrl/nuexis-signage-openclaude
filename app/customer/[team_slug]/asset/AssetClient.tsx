@@ -10,18 +10,20 @@ import { AssetCard } from './AssetCard'
 import { FilterSidebar } from './FilterSidebar'
 import { RenameAssetModal, DeleteAssetModal } from './ActionModals'
 import { AssetTableView } from './AssetTableView'
-import { Asset, isImage, isVideo, isWidget } from './types'
+import { Asset, ScreenDevice, isImage, isVideo, isWidget } from './types'
 import { BulkDeleteModal } from './BulkDeleteModal'
 import { useAssetUpload } from './useAssetUpload'
 import { UploadPanel } from './UploadPanel'
 import { WidgetModalsContainer } from './WidgetModalsContainer'
 import { CreateFolderModal } from './CreateFolderModal'
 import { BulkMoveModal } from './BulkMoveModal'
+import { PushToScreenModal } from './PushToScreenModal'
 import { t } from '@/lib/i18n'
 import styles from './asset.module.css'
 
 interface Props {
   initialAssets: Asset[]
+  screens: ScreenDevice[]
   teamId: string
   teamSlug: string
   totalAssets?: number
@@ -31,6 +33,7 @@ interface Props {
 
 export default function AssetClient({
   initialAssets,
+  screens,
   teamId,
   teamSlug,
   totalAssets = 0,
@@ -50,6 +53,7 @@ export default function AssetClient({
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [showCreateFolder, setShowCreateFolder] = useState(false)
   const [showBulkMoveModal, setShowBulkMoveModal] = useState(false)
+  const [pushModalAsset, setPushModalAsset] = useState<Asset | null>(null)
 
   const handleToggleSelect = useCallback((assetId: string) => {
     setSelectedAssetIds(prev => {
@@ -233,7 +237,7 @@ export default function AssetClient({
 
   const handlePreviewAsset = (asset: Asset) => {
     if (asset.mime_type === 'application/x-folder') {
-      router.push(`/customer/${teamSlug}/asset/folder/${asset.id.substring(0, 6)}`)
+      router.push(`/customer/${teamSlug}/asset/folder/${asset.id}`)
     } else {
       setPreviewAsset(asset)
     }
@@ -529,6 +533,10 @@ export default function AssetClient({
                       setOpenMenuId(null)
                       setRenameModalAsset(asset)
                     }}
+                    onPushToScreen={() => {
+                      setOpenMenuId(null)
+                      setPushModalAsset(asset)
+                    }}
                     isDeleting={deletingIds.has(asset.id)}
                     menuOpen={openMenuId === asset.id}
                     menuPosition={menuPosition}
@@ -559,6 +567,7 @@ export default function AssetClient({
                   setPreviewAsset={handlePreviewAsset}
                   setRenameModalAsset={setRenameModalAsset}
                   setDeleteModalAsset={setDeleteModalAsset}
+                  setPushModalAsset={setPushModalAsset}
                   deletingIds={deletingIds}
                   getPreviewUrl={getPreviewUrl}
                   selectedAssetIds={selectedAssetIds}
@@ -733,6 +742,19 @@ export default function AssetClient({
           onSuccess={() => {
             setSelectedAssetIds(new Set())
             setShowBulkMoveModal(false)
+            router.refresh()
+          }}
+        />
+      )}
+
+      {pushModalAsset && (
+        <PushToScreenModal
+          asset={pushModalAsset}
+          screens={screens}
+          teamSlug={teamSlug}
+          onClose={() => setPushModalAsset(null)}
+          onSuccess={() => {
+            setPushModalAsset(null)
             router.refresh()
           }}
         />

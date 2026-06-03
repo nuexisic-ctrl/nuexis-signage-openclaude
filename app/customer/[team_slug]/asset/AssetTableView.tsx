@@ -33,6 +33,7 @@ interface AssetTableViewProps {
   setPreviewAsset: (asset: Asset) => void
   setRenameModalAsset: (asset: Asset) => void
   setDeleteModalAsset: (asset: Asset) => void
+  setPushModalAsset: (asset: Asset) => void
   deletingIds: Set<string>
   getPreviewUrl: (filePath: string) => string | null
   selectedAssetIds: Set<string>
@@ -49,6 +50,7 @@ export function AssetTableView({
   setPreviewAsset,
   setRenameModalAsset,
   setDeleteModalAsset,
+  setPushModalAsset,
   deletingIds,
   getPreviewUrl,
   selectedAssetIds,
@@ -273,6 +275,17 @@ export function AssetTableView({
                                 }}
                               >
                                 {t('Download')}
+                              </button>
+                            )}
+                            {!isFolder && (
+                              <button
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                  setOpenMenuId(null)
+                                  setPushModalAsset(asset)
+                                }}
+                              >
+                                {t('Push to screen')}
                               </button>
                             )}
                             <button

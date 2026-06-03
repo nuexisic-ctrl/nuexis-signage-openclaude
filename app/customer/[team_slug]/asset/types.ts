@@ -9,6 +9,16 @@ export interface Asset {
   color?: string | null
 }
 
+export interface ScreenDevice {
+  id: string
+  name: string | null
+  status: 'online' | 'offline' | 'pairing'
+  content_type?: string | null
+  asset_id?: string | null
+  playlist_id?: string | null
+  content?: string | null
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
   const k = 1024

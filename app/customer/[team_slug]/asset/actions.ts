@@ -334,6 +334,86 @@ export async function pushWidgetToScreen(
   return { success: true }
 }
 
+function getAssetContentUrl(asset: { id: string; file_path: string; mime_type: string }) {
+  if (asset.mime_type === 'application/x-widget-remote-url') {
+    return asset.file_path
+  }
+
+  if (asset.mime_type.startsWith('application/x-widget')) {
+    return asset.file_path
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const encodedPath = asset.file_path
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/')
+
+  return `${baseUrl}/storage/v1/object/public/workspace-media/${encodedPath}`
+}
+
+export async function pushAssetToScreen(
+  teamSlug: string,
+  deviceId: string,
+  assetId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to push assets to a screen.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  const { data: asset, error: assetError } = await supabase
+    .from('assets')
+    .select('id, team_id, file_path, mime_type')
+    .eq('id', assetId)
+    .single()
+
+  if (assetError || !asset || asset.team_id !== teamId) {
+    return { success: false, error: 'Asset not found.' }
+  }
+
+  if (asset.mime_type === 'application/x-folder') {
+    return { success: false, error: 'Folders cannot be pushed to screens.' }
+  }
+
+  const content = getAssetContentUrl(asset)
+
+  const { data: updated, error: updateError } = await supabase
+    .from('devices')
+    .update({
+      content_type: 'Asset',
+      content,
+      asset_id: assetId,
+      playlist_id: null,
+    })
+    .eq('id', deviceId)
+    .eq('team_id', teamId)
+    .select('id')
+
+  if (updateError || !updated || updated.length === 0) {
+    console.error('[pushAssetToScreen] update error:', updateError ? { message: updateError.message, details: updateError.details, hint: updateError.hint } : 'No rows updated')
+    return { success: false, error: 'Failed to push asset to screen. Please try again later.' }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/screens`)
+  revalidatePath(`/customer/${teamSlug}/asset`)
+  return { success: true }
+}
+
 export async function deleteAssetsBulk(
   teamSlug: string,
   assetsToDelete: { id: string; filePath: string }[]

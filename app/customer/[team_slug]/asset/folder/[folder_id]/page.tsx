@@ -15,7 +15,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { team_slug, folder_id } = await params
   return {
-    title: `Folder ${folder_id} — ${team_slug} | NuExis`,
+    title: `Folder ${folder_id.substring(0, 6)} — ${team_slug} | NuExis`,
     description: 'Manage media assets inside this folder.',
   }
 }
@@ -24,7 +24,10 @@ export default async function FolderPage({ params }: Props) {
   const { team_slug, folder_id } = await params
 
   if (!/^[a-z0-9-]+$/.test(team_slug)) notFound()
-  if (!/^[a-f0-9]{6}$/i.test(folder_id)) notFound()
+  
+  const isShortId = /^[a-f0-9]{6}$/i.test(folder_id)
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(folder_id)
+  if (!isShortId && !isUuid) notFound()
 
   const supabase = await createClient()
   const user = await getCachedUser()
@@ -45,17 +48,37 @@ export default async function FolderPage({ params }: Props) {
   const fullName = user.user_metadata?.full_name as string | undefined
   const userRole = profile?.role || 'Owner'
 
-  // Fetch the folder using the 6-character short ID prefix
-  const { data: folder, error: folderError } = await supabase
-    .from('assets')
-    .select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color')
-    .eq('team_id', profile?.team_id as string)
-    .eq('mime_type', 'application/x-folder')
-    .ilike('id', `${folder_id}%`)
-    .single()
+  let folder
+  if (isUuid) {
+    // Optimized primary key lookup using UUID index (Scalable and Collision-free)
+    const { data, error } = await supabase
+      .from('assets')
+      .select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color')
+      .eq('team_id', profile?.team_id as string)
+      .eq('id', folder_id)
+      .eq('mime_type', 'application/x-folder')
+      .single()
 
-  if (folderError || !folder) {
-    notFound()
+    if (error || !data) {
+      notFound()
+    }
+    folder = data
+  } else {
+    // Fallback lookup using 6-character prefix for backward compatibility
+    const { data, error } = await supabase
+      .from('assets')
+      .select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color')
+      .eq('team_id', profile?.team_id as string)
+      .eq('mime_type', 'application/x-folder')
+      .filter('id::text', 'ilike', `${folder_id}%`)
+      .single()
+
+    if (error || !data) {
+      notFound()
+    }
+
+    // Redirect to the scalable, UUID-based folder page
+    redirect(`/customer/${team_slug}/asset/folder/${data.id}`)
   }
 
   // Fetch assets inside this folder

@@ -121,6 +121,7 @@ export async function updateDeviceAssignment(
     .from('devices')
     .update({
       content_type: data.content_type,
+      content: null,
       asset_id: data.asset_id,
       playlist_id: data.playlist_id,
       orientation: data.orientation,

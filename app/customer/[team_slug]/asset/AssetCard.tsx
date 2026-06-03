@@ -30,6 +30,7 @@ export function AssetCard({
   onDelete,
   onPreview,
   onRename,
+  onPushToScreen,
   isDeleting,
   menuOpen,
   onToggleMenu,
@@ -42,6 +43,7 @@ export function AssetCard({
   onDelete: () => void
   onPreview: (asset: Asset) => void
   onRename: () => void
+  onPushToScreen: () => void
   isDeleting: boolean
   menuOpen: boolean
   onToggleMenu: (e: React.MouseEvent) => void
@@ -190,6 +192,11 @@ export function AssetCard({
                 {!isWidget(asset.mime_type) && !isFolder && (
                   <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
                     {t('Download')}
+                  </button>
+                )}
+                {!isFolder && (
+                  <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onPushToScreen(); }}>
+                    {t('Push to screen')}
                   </button>
                 )}
                 <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onRename(); }}>
