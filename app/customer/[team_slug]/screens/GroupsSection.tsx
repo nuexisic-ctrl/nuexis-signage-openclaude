@@ -81,7 +81,7 @@ export function GroupsSection({
   const [isMounted, setIsMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState<number | 'All'>(5)
+  const [pageSize, setPageSize] = useState<number>(5)
 
   useEffect(() => {
     const saved = localStorage.getItem('groupsViewMode')
@@ -102,7 +102,7 @@ export function GroupsSection({
     return groups.filter(g => (g.name || '').toLowerCase().includes(q))
   }, [groups, searchQuery])
 
-  const totalPages = Math.ceil(filteredGroups.length / (pageSize === 'All' ? Math.max(1, filteredGroups.length) : pageSize)) || 1
+  const totalPages = Math.ceil(filteredGroups.length / pageSize) || 1
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -111,13 +111,12 @@ export function GroupsSection({
   }, [filteredGroups, currentPage, totalPages])
 
   const paginatedGroups = React.useMemo(() => {
-    if (pageSize === 'All') return filteredGroups
     const from = (currentPage - 1) * pageSize
     return filteredGroups.slice(from, from + pageSize)
   }, [filteredGroups, currentPage, pageSize])
 
-  const startItem = filteredGroups.length === 0 ? 0 : (pageSize === 'All' ? 1 : (currentPage - 1) * pageSize + 1)
-  const endItem = pageSize === 'All' ? filteredGroups.length : Math.min(currentPage * pageSize, filteredGroups.length)
+  const startItem = filteredGroups.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const endItem = Math.min(currentPage * pageSize, filteredGroups.length)
 
   return (
     <div className={styles.sectionContainer}>
@@ -403,7 +402,7 @@ export function GroupsSection({
                 value={pageSize}
                 onChange={(e) => {
                   const val = e.target.value
-                  setPageSize(val === 'All' ? 'All' : parseInt(val, 10))
+                  setPageSize(parseInt(val, 10))
                   setCurrentPage(1)
                 }}
                 style={{
@@ -421,32 +420,29 @@ export function GroupsSection({
                 <option value="25">25</option>
                 <option value="50">50</option>
                 <option value="100">100</option>
-                <option value="All">All</option>
               </select>
             </div>
-            {pageSize !== 'All' && (
-              <div className={styles.pagination}>
-                <span className={styles.pageIndicator}>
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button 
-                  className={styles.pageBtn} 
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  style={{ opacity: currentPage > 1 ? 1 : 0.5, cursor: currentPage > 1 ? 'pointer' : 'not-allowed' }}
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button 
-                  className={styles.pageBtn} 
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  style={{ opacity: currentPage < totalPages ? 1 : 0.5, cursor: currentPage < totalPages ? 'pointer' : 'not-allowed' }}
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            )}
+            <div className={styles.pagination}>
+              <span className={styles.pageIndicator}>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button 
+                className={styles.pageBtn} 
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                style={{ opacity: currentPage > 1 ? 1 : 0.5, cursor: currentPage > 1 ? 'pointer' : 'not-allowed' }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button 
+                className={styles.pageBtn} 
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                style={{ opacity: currentPage < totalPages ? 1 : 0.5, cursor: currentPage < totalPages ? 'pointer' : 'not-allowed' }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         </div>
       )}

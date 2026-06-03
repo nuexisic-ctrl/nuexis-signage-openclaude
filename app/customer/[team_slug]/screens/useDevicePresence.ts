@@ -26,8 +26,6 @@ export function useDevicePresence(
   initialDevices: Device[],
   teamId: string,
   teamSlug: string,
-  currentPage: number,
-  pageSize: number,
   isRefreshing: boolean,
   router: any
 ) {
@@ -135,7 +133,7 @@ export function useDevicePresence(
     // Safely fire side-effect here (in the useEffect body, not during the render/updater phase)
     if (leftIds.length > 0) {
       updateDeviceLastSeen(teamSlug, leftIds).catch(err =>
-        console.error('[Dashboard] Error updating last seen:', err)
+          console.error('[Dashboard] Error updating last seen:', err)
       )
     }
 
@@ -144,7 +142,7 @@ export function useDevicePresence(
       if (joinedIds.includes(d.id)) return { ...d, status: 'online' }
       return d
     }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onlineDeviceIds, teamSlug])
 
   // ── Postgres Changes for device list (INSERT/UPDATE/DELETE) ───────────
@@ -187,7 +185,7 @@ export function useDevicePresence(
     return () => {
       supabase.removeChannel(channel)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId])
 
   // ── Polling fallback (Heartbeat check) ────────────────────────────────
@@ -196,15 +194,12 @@ export function useDevicePresence(
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
-        const from = (currentPage - 1) * pageSize
-        const to = from + pageSize - 1
-
         const { data, error } = await supabase
           .from('devices')
           .select(DEVICE_SELECT_FIELDS)
           .eq('team_id', teamId)
           .order('created_at', { ascending: false })
-          .range(from, to)
+          .limit(1000)
         
         if (!error && data) {
           setDevices((data as any[]).map(mapDevice))
@@ -217,7 +212,7 @@ export function useDevicePresence(
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId])
 
   return {

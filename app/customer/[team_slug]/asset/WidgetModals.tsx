@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { AlertTriangle, Link, MonitorPlay, X, Code, Clock, QrCode, Check, ChevronDown } from 'lucide-react'
+import { AlertTriangle, Link, MonitorPlay, X, Code, Clock, QrCode, Check, ChevronDown, Search, History } from 'lucide-react'
 import styles from './Modal.module.css'
 import { validateHtml, validateCss } from './validators'
 import { t } from '@/lib/i18n'
@@ -21,6 +21,37 @@ interface WidgetSelectionModalProps {
   onSelectQRCode: () => void
 }
 
+const WIDGET_SEARCH_HISTORY_KEY = 'widget_search_history'
+const MAX_HISTORY_ITEMS = 8
+
+function sanitizeSearchQuery(q: string): string {
+  return q.trim().slice(0, 100).replace(/[<>"'`]/g, '')
+}
+
+function loadSearchHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(WIDGET_SEARCH_HISTORY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((s): s is string => typeof s === 'string').slice(0, MAX_HISTORY_ITEMS)
+  } catch {
+    return []
+  }
+}
+
+function saveSearchHistory(query: string, prev: string[]): string[] {
+  const sanitized = sanitizeSearchQuery(query)
+  if (!sanitized) return prev
+  const deduped = [sanitized, ...prev.filter(h => h.toLowerCase() !== sanitized.toLowerCase())].slice(0, MAX_HISTORY_ITEMS)
+  try {
+    localStorage.setItem(WIDGET_SEARCH_HISTORY_KEY, JSON.stringify(deduped))
+  } catch {
+    // storage quota exceeded or unavailable — silently ignore
+  }
+  return deduped
+}
+
 export function WidgetSelectionModal({
   onClose,
   onSelectYouTube,
@@ -29,16 +60,118 @@ export function WidgetSelectionModal({
   onSelectFlow,
   onSelectQRCode
 }: WidgetSelectionModalProps) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchHistory, setSearchHistory] = useState<string[]>([])
+  const [showHistory, setShowHistory] = useState(false)
   const dragStartRef = useRef(false)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const historyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
+    setSearchHistory(loadSearchHistory())
     return () => { document.body.style.overflow = '' }
   }, [])
 
+  // Close history dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        historyRef.current && !historyRef.current.contains(e.target as Node) &&
+        searchRef.current && !searchRef.current.contains(e.target as Node)
+      ) {
+        setShowHistory(false)
+      }
+    }
+    if (showHistory) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showHistory])
+
+  const ALL_WIDGETS = [
+    {
+      id: 'clock',
+      title: t('Clock'),
+      description: t('Show a live analog or digital clock with customizable time zone and style.'),
+      icon: Clock,
+      color: '#8b5cf6',
+      action: onSelectFlow
+    },
+    {
+      id: 'youtube',
+      title: t('YouTube Player'),
+      description: t('Embed and autoplay public YouTube videos or live streams on your screens.'),
+      icon: MonitorPlay,
+      color: '#ff0000',
+      action: onSelectYouTube
+    },
+    {
+      id: 'remote_url',
+      title: t('Remote URL'),
+      description: t('Display any live website or web app on your screens via a remote URL.'),
+      icon: Link,
+      color: '#4dabf7',
+      action: onSelectRemoteUrl
+    },
+    {
+      id: 'html',
+      title: t('Text / HTML'),
+      description: t('Design rich text, HTML layouts, and animated content with custom CSS.'),
+      icon: Code,
+      color: 'var(--primary)',
+      action: onSelectHtml
+    },
+    {
+      id: 'qrcode',
+      title: t('QR Code'),
+      description: t('Generate styled QR codes that link to URLs, contact info, or social profiles.'),
+      icon: QrCode,
+      color: '#a855f7',
+      action: onSelectQRCode
+    }
+  ]
+
+  const trimmedQuery = searchQuery.trim().toLowerCase()
+  const filteredWidgets = trimmedQuery
+    ? ALL_WIDGETS.filter(w =>
+        w.title.toLowerCase().includes(trimmedQuery) ||
+        w.description.toLowerCase().includes(trimmedQuery)
+      )
+    : ALL_WIDGETS
+
+  const handleSearchChange = (val: string) => {
+    const sanitized = sanitizeSearchQuery(val)
+    setSearchQuery(sanitized)
+    setShowHistory(false)
+  }
+
+  const handleSearchCommit = () => {
+    const sanitized = sanitizeSearchQuery(searchQuery)
+    if (!sanitized) return
+    setSearchHistory(prev => saveSearchHistory(sanitized, prev))
+    setShowHistory(false)
+  }
+
+  const handleHistorySelect = (h: string) => {
+    setSearchQuery(h)
+    setShowHistory(false)
+    searchRef.current?.focus()
+  }
+
+  const handleClearHistory = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try { localStorage.removeItem(WIDGET_SEARCH_HISTORY_KEY) } catch { /* ignore */ }
+    setSearchHistory([])
+    setShowHistory(false)
+  }
+
+  const handleWidgetActivate = (widget: typeof ALL_WIDGETS[0]) => {
+    onClose()
+    widget.action()
+  }
+
   return (
-    <div 
-      className={styles.modalOverlay} 
+    <div
+      className={styles.modalOverlay}
       onMouseDown={(e) => {
         dragStartRef.current = e.target === e.currentTarget
       }}
@@ -48,88 +181,130 @@ export function WidgetSelectionModal({
         }
       }}
     >
-      <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Select Widget')}</h2>
-          <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
+      <div
+        className={styles.modalContainer}
+        style={{ padding: '28px', maxWidth: '860px', width: '100%' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.4rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Select Widget')}</h2>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--on-surface-subtle)' }}>
+              {t('Choose a widget type to add custom dynamic content to your screens.')}
+            </p>
+          </div>
+          <button onClick={onClose} className={styles.modalCloseBtn} aria-label="Close"><X size={20} /></button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-          <button 
-            onClick={() => { onClose(); onSelectFlow(); }}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '16px',
-              background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
-              borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s',
-              color: 'var(--on-surface)', fontSize: '1rem', fontWeight: 600,
-              fontFamily: 'var(--font-label)'
-            }}
-            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
-            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--outline-variant)'}
-          >
-            <Clock color="#8b5cf6" size={28} />
-            {t('Clock')}
-          </button>
-          <button 
-            onClick={() => { onClose(); onSelectYouTube(); }}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '16px',
-              background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
-              borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s',
-              color: 'var(--on-surface)', fontSize: '1rem', fontWeight: 600,
-              fontFamily: 'var(--font-label)'
-            }}
-            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
-            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--outline-variant)'}
-          >
-            <MonitorPlay color="#ff0000" size={28} />
-            {t('YouTube Player')}
-          </button>
-          <button 
-            onClick={() => { onClose(); onSelectRemoteUrl(); }}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '16px',
-              background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
-              borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s',
-              color: 'var(--on-surface)', fontSize: '1rem', fontWeight: 600,
-              fontFamily: 'var(--font-label)'
-            }}
-            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
-            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--outline-variant)'}
-          >
-            <Link color="#4dabf7" size={28} />
-            {t('Remote URL')}
-          </button>
-          <button 
-            onClick={() => { onClose(); onSelectHtml(); }}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '16px',
-              background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
-              borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s',
-              color: 'var(--on-surface)', fontSize: '1rem', fontWeight: 600,
-              fontFamily: 'var(--font-label)'
-            }}
-            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
-            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--outline-variant)'}
-          >
-            <Code color="var(--primary)" size={28} />
-            {t('Text / HTML')}
-          </button>
-          <button 
-            onClick={() => { onClose(); onSelectQRCode(); }}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '12px', padding: '16px',
-              background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
-              borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s',
-              color: 'var(--on-surface)', fontSize: '1rem', fontWeight: 600,
-              fontFamily: 'var(--font-label)'
-            }}
-            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
-            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--outline-variant)'}
-          >
-            <QrCode color="#a855f7" size={28} />
-            {t('QR Code')}
-          </button>
+
+        {/* Search Bar */}
+        <div className={styles.widgetSearchWrapper}>
+          <div className={styles.widgetSearchBar}>
+            <Search size={16} className={styles.widgetSearchIcon} />
+            <input
+              ref={searchRef}
+              type="text"
+              className={styles.widgetSearchInput}
+              placeholder={t('Search widgets by name or description...')}
+              value={searchQuery}
+              autoComplete="off"
+              aria-label="Search widgets"
+              maxLength={100}
+              onChange={e => handleSearchChange(e.target.value)}
+              onFocus={() => { if (searchHistory.length > 0) setShowHistory(true) }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleSearchCommit()
+                if (e.key === 'Escape') { setSearchQuery(''); setShowHistory(false) }
+              }}
+            />
+            {searchQuery && (
+              <button
+                className={styles.widgetSearchClear}
+                onClick={() => { setSearchQuery(''); searchRef.current?.focus() }}
+                aria-label="Clear search"
+                tabIndex={0}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* History dropdown */}
+          {showHistory && searchHistory.length > 0 && (
+            <div ref={historyRef} className={styles.widgetSearchHistoryDropdown} role="listbox" aria-label="Recent searches">
+              <div className={styles.widgetSearchHistoryHeader}>
+                <span className={styles.widgetSearchHistoryLabel}>
+                  <History size={12} style={{ marginRight: '5px', flexShrink: 0 }} />
+                  {t('Recent Searches')}
+                </span>
+                <button
+                  className={styles.widgetSearchHistoryClear}
+                  onClick={handleClearHistory}
+                  tabIndex={0}
+                >
+                  {t('Clear all')}
+                </button>
+              </div>
+              {searchHistory.map((h, i) => (
+                <button
+                  key={i}
+                  className={styles.widgetSearchHistoryItem}
+                  role="option"
+                  onClick={() => handleHistorySelect(h)}
+                  tabIndex={0}
+                >
+                  <History size={13} style={{ color: 'var(--on-surface-subtle)', flexShrink: 0 }} />
+                  <span>{h}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Widget Grid */}
+        {filteredWidgets.length === 0 ? (
+          <div className={styles.widgetSearchEmpty}>
+            <Search size={28} style={{ opacity: 0.3, marginBottom: '10px' }} />
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--on-surface-subtle)' }}>
+              {t('No widgets match')} &ldquo;{searchQuery}&rdquo;
+            </p>
+            <button
+              style={{ marginTop: '8px', fontSize: '0.82rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+              onClick={() => setSearchQuery('')}
+            >
+              {t('Clear search')}
+            </button>
+          </div>
+        ) : (
+          <div className={styles.widgetGrid}>
+            {filteredWidgets.map((widget) => {
+              const Icon = widget.icon
+              return (
+                <div
+                  key={widget.id}
+                  className={styles.widgetCard}
+                  onClick={() => handleWidgetActivate(widget)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleWidgetActivate(widget) }
+                  }}
+                >
+                  <div
+                    className={styles.widgetIconContainer}
+                    style={{ backgroundColor: `color-mix(in srgb, ${widget.color} 10%, transparent)` }}
+                  >
+                    <Icon color={widget.color} size={34} />
+                  </div>
+                  <h3 className={styles.widgetTitle}>{widget.title}</h3>
+                  <p className={styles.widgetDescription}>{widget.description}</p>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+
       </div>
     </div>
   )

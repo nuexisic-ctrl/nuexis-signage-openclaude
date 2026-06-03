@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
@@ -33,7 +33,7 @@ export default function AssetClient({
   teamSlug,
   totalAssets = 0,
   currentPage = 1,
-  pageSize = 30
+  pageSize = 10
 }: Props) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets)
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
@@ -77,9 +77,25 @@ export default function AssetClient({
   const [isMounted, setIsMounted] = useState(false)
   const [showSuccessPulse, setShowSuccessPulse] = useState(false)
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(10)
+
   const [, startTransition] = useTransition()
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  useEffect(() => {
+    const savedLimit = localStorage.getItem('nuexis_assets_per_page')
+    if (savedLimit) {
+      setPageSize(Number(savedLimit) || 10)
+    }
+  }, [])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, filterType, filterDatePreset, filterSizePreset])
 
   // Use the extracted asset upload custom hook
   const {
@@ -109,6 +125,10 @@ export default function AssetClient({
     }
     setIsMounted(true)
   }, [])
+
+  useEffect(() => {
+    setAssets(initialAssets)
+  }, [initialAssets])
 
   useEffect(() => {
     const handleClick = () => {
@@ -249,11 +269,23 @@ export default function AssetClient({
     })
   }, [assets, filterType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery])
 
-  const totalPages = Math.ceil(totalAssets / pageSize)
+  const totalPages = Math.ceil(filteredAssets.length / pageSize) || 1
   const hasNextPage = currentPage < totalPages
   const hasPrevPage = currentPage > 1
-  const startItem = totalAssets === 0 ? 0 : (currentPage - 1) * pageSize + 1
-  const endItem = Math.min(currentPage * pageSize, totalAssets)
+  const startItem = filteredAssets.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const endItem = Math.min(currentPage * pageSize, filteredAssets.length)
+
+  // Navigate to a new page — update local state and localStorage
+  const navigatePage = (page: number, limit: number) => {
+    setPageSize(limit)
+    setCurrentPage(page)
+    localStorage.setItem('nuexis_assets_per_page', String(limit))
+  }
+
+  const paginatedAssets = useMemo(() => {
+    const from = (currentPage - 1) * pageSize
+    return filteredAssets.slice(from, from + pageSize)
+  }, [filteredAssets, currentPage, pageSize])
 
   const isFiltersActive = isFilterSidebarOpen || filterType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
   const showFilterDot = filterType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
@@ -426,7 +458,7 @@ export default function AssetClient({
               </div>
             ) : viewMode === 'grid' ? (
               <div className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
-                {filteredAssets.map((asset) => (
+                {paginatedAssets.map((asset) => (
                   <AssetCard
                     key={asset.id}
                     asset={asset}
@@ -462,7 +494,7 @@ export default function AssetClient({
             ) : (
               <div className={showSuccessPulse ? styles.successPulse : ''}>
                 <AssetTableView
-                  filteredAssets={filteredAssets}
+                  filteredAssets={paginatedAssets}
                   openMenuId={openMenuId}
                   menuPosition={menuPosition}
                   setOpenMenuId={setOpenMenuId}
@@ -484,26 +516,34 @@ export default function AssetClient({
                 <div className={styles.paginationInfo}>
                   {searchQuery 
                     ? `${t('Showing')} ${filteredAssets.length} ${t('filtered assets')}` 
-                    : `${t('Showing')} ${startItem} ${t('to')} ${endItem} ${t('of')} ${totalAssets} ${t('assets')}`
+                    : `${t('Showing')} ${startItem} ${t('to')} ${endItem} ${t('of')} ${assets.length} ${t('assets')}`
                   }
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div className={styles.perPageSelector} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', color: 'var(--on-surface-muted)' }}>
                     <span>{t('Per page:')}</span>
                     <select
-                      value={pageSize === 10000 ? 'All' : pageSize}
+                      value={String(pageSize)}
                       onChange={(e) => {
                         const val = e.target.value
-                        router.push(`?page=1&limit=${val === 'All' ? 'all' : val}`)
+                        navigatePage(1, Number(val))
                       }}
                       style={{
-                        padding: '4px 8px',
+                        padding: '4px 28px 4px 8px',
                         borderRadius: '6px',
                         border: '1px solid var(--outline-variant)',
                         background: 'var(--surface-low)',
                         color: 'var(--on-surface)',
                         cursor: 'pointer',
-                        fontWeight: 600
+                        fontWeight: 600,
+                        appearance: 'none',
+                        WebkitAppearance: 'none',
+                        MozAppearance: 'none',
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'right 7px center',
+                        backgroundSize: '12px 12px',
+                        minWidth: '56px'
                       }}
                     >
                       <option value="5">5</option>
@@ -511,7 +551,6 @@ export default function AssetClient({
                       <option value="25">25</option>
                       <option value="50">50</option>
                       <option value="100">100</option>
-                      <option value="All">{t('All')}</option>
                     </select>
                   </div>
                   {!searchQuery && (
@@ -521,7 +560,7 @@ export default function AssetClient({
                       </span>
                       <button 
                         className={styles.pageBtn} 
-                        onClick={() => router.push(`?page=${currentPage - 1}&limit=${pageSize === 10000 ? 'all' : pageSize}`)}
+                        onClick={() => navigatePage(currentPage - 1, pageSize)}
                         disabled={!hasPrevPage}
                         style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
                       >
@@ -529,7 +568,7 @@ export default function AssetClient({
                       </button>
                       <button 
                         className={styles.pageBtn} 
-                        onClick={() => router.push(`?page=${currentPage + 1}&limit=${pageSize === 10000 ? 'all' : pageSize}`)}
+                        onClick={() => navigatePage(currentPage + 1, pageSize)}
                         disabled={!hasNextPage}
                         style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
                       >

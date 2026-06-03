@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Plus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
@@ -68,9 +68,11 @@ export default function ScreensClient({
   teamId,
   totalScreens = 0,
   currentPage = 1,
-  pageSize = 30
+  pageSize = 10
 }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
   
   const [showPairModal, setShowPairModal] = useState(false)
@@ -302,6 +304,21 @@ export default function ScreensClient({
   const startItem = (currentPage - 1) * pageSize + 1
   const endItem = Math.min(currentPage * pageSize, totalScreens)
 
+  // Navigate to a new page — update URL pushState then refresh the server component
+  const navigatePage = (page: number, limit: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('page', String(page))
+    params.set('limit', String(limit))
+    
+    // Sync browser URL history
+    window.history.pushState(null, '', `${pathname}?${params.toString()}`)
+    
+    // Force re-fetch of server component
+    startTransition(() => {
+      router.refresh()
+    })
+  }
+
   return (
     <>
       <div className={`${styles.topbar} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
@@ -519,10 +536,10 @@ export default function ScreensClient({
                   <div className={styles.perPageSelector} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', color: 'var(--on-surface-muted)' }}>
                     <span>Per page:</span>
                     <select
-                      value={pageSize === 10000 ? 'All' : pageSize}
+                      value={String(pageSize)}
                       onChange={(e) => {
                         const val = e.target.value
-                        router.push(`?page=1&limit=${val === 'All' ? 'all' : val}`)
+                        navigatePage(1, Number(val))
                       }}
                       style={{
                         padding: '4px 8px',
@@ -539,7 +556,6 @@ export default function ScreensClient({
                       <option value="25">25</option>
                       <option value="50">50</option>
                       <option value="100">100</option>
-                      <option value="All">All</option>
                     </select>
                   </div>
                   {!searchQuery && (
@@ -549,7 +565,7 @@ export default function ScreensClient({
                       </span>
                       <button 
                         className={styles.pageBtn} 
-                        onClick={() => router.push(`?page=${currentPage - 1}&limit=${pageSize === 10000 ? 'all' : pageSize}`)}
+                        onClick={() => navigatePage(currentPage - 1, pageSize)}
                         disabled={!hasPrevPage}
                         style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
                       >
@@ -557,7 +573,7 @@ export default function ScreensClient({
                       </button>
                       <button 
                         className={styles.pageBtn} 
-                        onClick={() => router.push(`?page=${currentPage + 1}&limit=${pageSize === 10000 ? 'all' : pageSize}`)}
+                        onClick={() => navigatePage(currentPage + 1, pageSize)}
                         disabled={!hasNextPage}
                         style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
                       >

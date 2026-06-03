@@ -20,15 +20,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function AssetPage({ params, searchParams }: Props) {
+export default async function AssetPage({ params }: Props) {
   const { team_slug } = await params
-  const resolvedSearchParams = await searchParams
-  const pageStr = resolvedSearchParams.page
-  const limitStr = resolvedSearchParams.limit
-  const pageSize = typeof limitStr === 'string' ? (limitStr === 'all' ? 10000 : parseInt(limitStr, 10) || 30) : 30
-  const currentPage = typeof pageStr === 'string' ? parseInt(pageStr, 10) || 1 : 1
-  const from = (currentPage - 1) * pageSize
-  const to = from + pageSize - 1
 
   if (!/^[a-z0-9-]+$/.test(team_slug)) notFound()
 
@@ -59,7 +52,7 @@ export default async function AssetPage({ params, searchParams }: Props) {
     .select('id, file_name, file_path, mime_type, size_bytes, created_at', { count: 'exact' })
     .eq('team_id', profile?.team_id as string)
     .order('created_at', { ascending: false })
-    .range(from, to)
+    .limit(1000)
 
   const response = profile?.team_id
     ? await query
@@ -80,13 +73,10 @@ export default async function AssetPage({ params, searchParams }: Props) {
         <Header fullName={fullName} email={user.email} />
 
         <AssetClient
-          key={`${team_slug}-${currentPage}`}
           initialAssets={assets as Parameters<typeof AssetClient>[0]['initialAssets']}
           teamId={profile?.team_id ?? ''}
           teamSlug={team_slug}
           totalAssets={totalAssets}
-          currentPage={currentPage}
-          pageSize={pageSize}
         />
       </main>
     </div>

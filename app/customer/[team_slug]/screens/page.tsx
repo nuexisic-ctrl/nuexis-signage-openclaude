@@ -20,15 +20,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function ScreensPage({ params, searchParams }: Props) {
+export default async function ScreensPage({ params }: Props) {
   const { team_slug } = await params
-  const resolvedSearchParams = await searchParams
-  const pageStr = resolvedSearchParams.page
-  const limitStr = resolvedSearchParams.limit
-  const pageSize = typeof limitStr === 'string' ? (limitStr === 'all' ? 10000 : parseInt(limitStr, 10) || 30) : 30
-  const currentPage = typeof pageStr === 'string' ? parseInt(pageStr, 10) || 1 : 1
-  const from = (currentPage - 1) * pageSize
-  const to = from + pageSize - 1
 
   if (!/^[a-z0-9-]+$/.test(team_slug)) notFound()
 
@@ -60,7 +53,7 @@ export default async function ScreensPage({ params, searchParams }: Props) {
     .select('id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds', { count: 'exact' })
     .eq('team_id', profile?.team_id as string)
     .order('created_at', { ascending: false })
-    .range(from, to)
+    .limit(1000)
 
   const response = profile?.team_id
     ? await query
@@ -135,7 +128,6 @@ export default async function ScreensPage({ params, searchParams }: Props) {
         <Header fullName={fullName} email={user.email} />
         
         <ScreensClient
-          key={`${team_slug}-${currentPage}`}
           devices={devices}
           assets={assets}
           playlists={playlists}
@@ -144,8 +136,6 @@ export default async function ScreensPage({ params, searchParams }: Props) {
           teamSlug={team_slug}
           teamId={profile?.team_id as string}
           totalScreens={totalScreens}
-          currentPage={currentPage}
-          pageSize={pageSize}
         />
       </main>
     </div>

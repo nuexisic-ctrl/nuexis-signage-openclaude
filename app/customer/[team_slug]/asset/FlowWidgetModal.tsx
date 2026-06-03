@@ -9,7 +9,7 @@ import { modalStack } from '@/lib/utils/modalStack'
 interface FlowWidgetModalProps {
   onClose: () => void
   onSubmit: (name: string, config: {
-    style: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist'
+    style: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist' | 'neon-digital' | 'boardroom-serif'
     showSeconds: boolean
     showDate: boolean
     use24Hour: boolean
@@ -19,12 +19,16 @@ interface FlowWidgetModalProps {
   isSubmitting: boolean
 }
 
+const NAME_MAX_LENGTH = 100
+
 const STYLES_WHITELIST = [
-  { id: 'classic-digital', name: 'Classic Digital' },
-  { id: 'modern-digital', name: 'Modern Digital' },
-  { id: 'classic-analog', name: 'Classic Analog' },
-  { id: 'modern-analog', name: 'Modern Analog' },
-  { id: 'minimalist', name: 'Minimalist' }
+  { id: 'classic-digital',  name: 'Classic Digital',   desc: 'Serif time with uppercase date' },
+  { id: 'modern-digital',   name: 'Urban Digital',      desc: 'Bold sans-serif on dark glass' },
+  { id: 'classic-analog',   name: 'Heritage Analog',    desc: 'Traditional clock face with numerals' },
+  { id: 'modern-analog',    name: 'Precision Analog',   desc: 'Minimal hands on a card face' },
+  { id: 'minimalist',       name: 'Dashboard',          desc: 'Clock + live calendar side by side' },
+  { id: 'neon-digital',     name: 'Neon Pulse',         desc: 'Vivid neon glow on deep black' },
+  { id: 'boardroom-serif',  name: 'Boardroom Serif',    desc: 'Elegant gold-on-dark serif clock' },
 ] as const
 
 const DATE_FORMATS_WHITELIST = [
@@ -45,7 +49,7 @@ function HoverPreviewSelect<T extends string>({
   onHoverChange,
 }: {
   value: T
-  options: readonly { value: T; label: string }[]
+  options: readonly { value: T; label: string; subtitle?: string }[]
   onChange: (value: T) => void
   onHoverChange: (value: T | null) => void
 }) {
@@ -155,7 +159,12 @@ function HoverPreviewSelect<T extends string>({
               onMouseOver={e => { if (opt.value !== value) e.currentTarget.style.background = 'var(--surface-low)' }}
               onMouseOut={e => { if (opt.value !== value) e.currentTarget.style.background = 'transparent' }}
             >
-              {opt.label}
+              {opt.subtitle ? (
+                <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                  <span>{opt.label}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--on-surface-subtle)', fontWeight: 400 }}>{opt.subtitle}</span>
+                </span>
+              ) : opt.label}
             </button>
           ))}
         </div>
@@ -171,6 +180,7 @@ export default function FlowWidgetModal({
   isSubmitting
 }: FlowWidgetModalProps) {
   const [name, setName] = useState('')
+  const [nameError, setNameError] = useState('')
   const [style, setStyle] = useState<typeof STYLES_WHITELIST[number]['id']>('classic-digital')
   const [showSeconds, setShowSeconds] = useState(true)
   const [showDate, setShowDate] = useState(true)
@@ -316,27 +326,65 @@ export default function FlowWidgetModal({
                   required
                   type="text"
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  maxLength={NAME_MAX_LENGTH}
+                  onChange={e => {
+                    const val = e.target.value
+                    if (val.length > NAME_MAX_LENGTH) {
+                      setName(val.slice(0, NAME_MAX_LENGTH))
+                      setNameError(`Name cannot exceed ${NAME_MAX_LENGTH} characters.`)
+                    } else {
+                      setName(val)
+                      setNameError(val.length === NAME_MAX_LENGTH
+                        ? `Character limit reached (${NAME_MAX_LENGTH}/${NAME_MAX_LENGTH}).`
+                        : ''
+                      )
+                    }
+                  }}
                   placeholder="e.g. Lobby Central Clock"
+                  aria-describedby={nameError ? 'name-error' : undefined}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
                     borderRadius: '8px',
-                    border: '1.5px solid var(--outline-variant)',
+                    border: `1.5px solid ${nameError ? '#ef4444' : 'var(--outline-variant)'}`,
                     background: 'var(--surface-container-lowest)',
                     color: 'var(--on-surface)',
                     fontFamily: 'var(--font-body)',
                     fontSize: '0.92rem',
-                    outline: 'none'
+                    outline: 'none',
+                    transition: 'border-color 0.15s',
+                    boxSizing: 'border-box',
                   }}
                 />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', minHeight: '18px' }}>
+                  {nameError ? (
+                    <span
+                      id="name-error"
+                      role="alert"
+                      style={{ fontSize: '0.76rem', color: '#ef4444', fontFamily: 'var(--font-body)', fontWeight: 500 }}
+                    >
+                      {nameError}
+                    </span>
+                  ) : <span />}
+                  {name.length >= Math.floor(NAME_MAX_LENGTH * 0.8) && (
+                    <span style={{
+                      fontSize: '0.72rem',
+                      color: name.length >= NAME_MAX_LENGTH ? '#ef4444' : 'var(--on-surface-subtle)',
+                      fontFamily: 'var(--font-body)',
+                      fontWeight: 500,
+                      flexShrink: 0,
+                    }}>
+                      {name.length}/{NAME_MAX_LENGTH}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Clock Style*</label>
                 <HoverPreviewSelect
                   value={style}
-                  options={STYLES_WHITELIST.map(s => ({ value: s.id, label: s.name }))}
+                  options={STYLES_WHITELIST.map(s => ({ value: s.id, label: s.name, subtitle: s.desc }))}
                   onChange={val => { setStyle(val as any); setPreviewOverride(p => ({ ...p, style: undefined })) }}
                   onHoverChange={val => setPreviewOverride(p => ({ ...p, style: val ?? undefined }))}
                 />
@@ -392,16 +440,37 @@ export default function FlowWidgetModal({
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Theme*</label>
-                <HoverPreviewSelect
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Color Style*</label>
+                <select
                   value={theme}
-                  options={[
-                    { value: 'light', label: 'Light Mode' },
-                    { value: 'dark', label: 'Dark Mode' }
-                  ]}
-                  onChange={val => { setTheme(val as any); setPreviewOverride(p => ({ ...p, theme: undefined })) }}
-                  onHoverChange={val => setPreviewOverride(p => ({ ...p, theme: (val as any) ?? undefined }))}
-                />
+                  onChange={e => {
+                    setTheme(e.target.value as 'light' | 'dark')
+                    setPreviewOverride(p => ({ ...p, theme: undefined }))
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    paddingRight: '36px',
+                    borderRadius: '8px',
+                    border: '1.5px solid var(--outline-variant)',
+                    background: 'var(--surface-container-lowest)',
+                    color: 'var(--on-surface)',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.92rem',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2374777f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    backgroundSize: '16px',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <option value="light">☀️ Light — Clean white background</option>
+                  <option value="dark">🌙 Dark — Deep dark background</option>
+                </select>
               </div>
             </form>
 

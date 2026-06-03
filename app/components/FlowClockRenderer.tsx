@@ -120,6 +120,59 @@ const GLOBAL_CSS = `
     gap:16px!important;
   }
 }
+/* ─── Neon Pulse ─── */
+.fck-neon-root {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:100%;height:100%;padding:4cqmin;box-sizing:border-box;
+  background:#000000;text-align:center;
+  font-family:'Public Sans',sans-serif;
+}
+.fck-neon-time {
+  font-size:min(22cqmin,6.5rem);font-weight:700;margin:0;line-height:1;letter-spacing:-0.04em;
+  color:#00f0ff;
+  text-shadow:0 0 10px #00f0ff,0 0 30px #00f0ff,0 0 60px #00aaff;
+}
+.fck-neon-secs {
+  font-size:0.55em;color:#ff00cc;
+  text-shadow:0 0 8px #ff00cc,0 0 22px #ff00cc;
+  margin-left:0.1em;
+}
+.fck-neon-ampm {
+  font-size:min(5cqmin,1.4rem);color:#00f0ff;margin-left:10px;font-weight:600;
+  text-shadow:0 0 8px #00f0ff;
+}
+.fck-neon-date {
+  font-size:min(5cqmin,1.5rem);font-weight:500;margin-top:2cqmin;margin-bottom:0;
+  color:#ff00cc;letter-spacing:0.1em;text-transform:uppercase;
+  text-shadow:0 0 6px #ff00cc,0 0 16px #ff00cc;
+}
+
+/* ─── Boardroom Serif ─── */
+.fck-board-root {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:100%;height:100%;padding:6cqmin;box-sizing:border-box;
+  background:#0c0c0e;text-align:center;
+  font-family:'Noto Serif',Georgia,serif;
+}
+.fck-board-divider {
+  width:min(120px,20cqmin);height:1px;background:linear-gradient(90deg,transparent,#c9a84c,transparent);
+  margin:2cqmin auto;
+}
+.fck-board-time {
+  font-size:min(20cqmin,6rem);font-weight:300;margin:0;line-height:1.05;
+  letter-spacing:0.08em;color:#e8d5a3;
+  text-shadow:0 0 20px rgba(201,168,76,0.3);
+}
+.fck-board-secs {
+  font-size:0.45em;color:#c9a84c;margin-left:0.12em;font-weight:300;
+}
+.fck-board-ampm {
+  font-size:min(5cqmin,1.3rem);color:#c9a84c;margin-left:10px;font-weight:400;letter-spacing:0.2em;
+}
+.fck-board-date {
+  font-size:min(4.5cqmin,1.3rem);font-weight:400;margin:0;
+  letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;
+}
 `
 
 function ensureGlobalStyles() {
@@ -165,7 +218,7 @@ function formatDate(date: Date, format: string): string {
 // Props
 // ─────────────────────────────────────────────────────────────────────────────
 interface FlowClockRendererProps {
-  style?: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist'
+  style?: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist' | 'neon-digital' | 'boardroom-serif'
   showSeconds?: boolean
   showDate?: boolean
   use24Hour?: boolean
@@ -509,6 +562,35 @@ export default function FlowClockRenderer({
           </div>
         )
       })()}
+      {/* ── Neon Pulse ── */}
+      {style === 'neon-digital' && (
+        <div className="fck-neon-root">
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
+            <h1 className="fck-neon-time">
+              {hoursStr}:{minsStr}
+              {showSeconds && <span className="fck-neon-secs">:{secsStr}</span>}
+            </h1>
+            {!use24Hour && <span className="fck-neon-ampm">{ampm}</span>}
+          </div>
+          {showDate && <p className="fck-neon-date">{formatDate(time, dateFormat)}</p>}
+        </div>
+      )}
+
+      {/* ── Boardroom Serif ── */}
+      {style === 'boardroom-serif' && (
+        <div className="fck-board-root">
+          <div className="fck-board-divider" />
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
+            <h1 className="fck-board-time">
+              {hoursStr}:{minsStr}
+              {showSeconds && <span className="fck-board-secs">:{secsStr}</span>}
+            </h1>
+            {!use24Hour && <span className="fck-board-ampm">{ampm}</span>}
+          </div>
+          <div className="fck-board-divider" />
+          {showDate && <p className="fck-board-date">{formatDate(time, dateFormat)}</p>}
+        </div>
+      )}
 
     </div>
   )

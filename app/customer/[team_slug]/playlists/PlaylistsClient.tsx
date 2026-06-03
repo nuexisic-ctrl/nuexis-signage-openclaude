@@ -24,7 +24,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
   const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null)
   const [isLoadingItems, setIsLoadingItems] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState<number | 'All'>(10)
+  const [pageSize, setPageSize] = useState<number>(10)
 
   // Premium Dashboard States
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
@@ -221,7 +221,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     })
   }, [playlists, searchQuery])
 
-  const totalPages = Math.ceil(filteredPlaylists.length / (pageSize === 'All' ? Math.max(1, filteredPlaylists.length) : pageSize)) || 1
+  const totalPages = Math.ceil(filteredPlaylists.length / pageSize) || 1
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -230,13 +230,12 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
   }, [filteredPlaylists, currentPage, totalPages])
 
   const paginatedPlaylists = useMemo(() => {
-    if (pageSize === 'All') return filteredPlaylists
     const from = (currentPage - 1) * pageSize
     return filteredPlaylists.slice(from, from + pageSize)
   }, [filteredPlaylists, currentPage, pageSize])
 
-  const startItem = filteredPlaylists.length === 0 ? 0 : (pageSize === 'All' ? 1 : (currentPage - 1) * pageSize + 1)
-  const endItem = pageSize === 'All' ? filteredPlaylists.length : Math.min(currentPage * pageSize, filteredPlaylists.length)
+  const startItem = filteredPlaylists.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const endItem = Math.min(currentPage * pageSize, filteredPlaylists.length)
 
   return (
     <>
@@ -432,7 +431,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                   value={pageSize}
                   onChange={(e) => {
                     const val = e.target.value
-                    setPageSize(val === 'All' ? 'All' : parseInt(val, 10))
+                    setPageSize(parseInt(val, 10))
                     setCurrentPage(1)
                   }}
                   style={{
@@ -450,32 +449,29 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                   <option value="25">25</option>
                   <option value="50">50</option>
                   <option value="100">100</option>
-                  <option value="All">All</option>
                 </select>
               </div>
-              {pageSize !== 'All' && (
-                <div className={styles.pagination}>
-                  <span className={styles.pageIndicator}>
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button 
-                    className={styles.pageBtn} 
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    style={{ opacity: currentPage > 1 ? 1 : 0.5, cursor: currentPage > 1 ? 'pointer' : 'not-allowed' }}
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button 
-                    className={styles.pageBtn} 
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    style={{ opacity: currentPage < totalPages ? 1 : 0.5, cursor: currentPage < totalPages ? 'pointer' : 'not-allowed' }}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
+              <div className={styles.pagination}>
+                <span className={styles.pageIndicator}>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button 
+                  className={styles.pageBtn} 
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  style={{ opacity: currentPage > 1 ? 1 : 0.5, cursor: currentPage > 1 ? 'pointer' : 'not-allowed' }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button 
+                  className={styles.pageBtn} 
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  style={{ opacity: currentPage < totalPages ? 1 : 0.5, cursor: currentPage < totalPages ? 'pointer' : 'not-allowed' }}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
           </div>
         )}

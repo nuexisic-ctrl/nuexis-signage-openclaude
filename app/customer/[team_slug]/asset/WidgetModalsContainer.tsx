@@ -119,7 +119,7 @@ export function WidgetModalsContainer({
   }
 
   const handleCreateFlowWidget = async (name: string, config: {
-    style: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist'
+    style: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist' | 'neon-digital' | 'boardroom-serif'
     showSeconds: boolean
     showDate: boolean
     use24Hour: boolean
