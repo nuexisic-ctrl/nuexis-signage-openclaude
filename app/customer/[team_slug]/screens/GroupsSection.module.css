@@ -263,9 +263,42 @@
   max-width: 240px;
 }
 
-.contentIcon {
-  color: var(--primary);
+.contentIconWrap {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  background: var(--surface-low);
+  color: var(--on-surface-muted);
+  border: 1px solid var(--outline-variant);
+  transition: background 0.15s ease;
+}
+
+.contentIcon_clock,
+.contentIcon_image,
+.contentIcon_video,
+.contentIcon_youtube,
+.contentIcon_remote-url,
+.contentIcon_html-widget,
+.contentIcon_playlist {
+  background: var(--surface-container, #f1f5f9);
+  color: var(--on-surface, #0f172a);
+  border-color: var(--outline-variant);
+}
+
+[data-theme="dark"] .contentIcon_clock,
+[data-theme="dark"] .contentIcon_image,
+[data-theme="dark"] .contentIcon_video,
+[data-theme="dark"] .contentIcon_youtube,
+[data-theme="dark"] .contentIcon_remote-url,
+[data-theme="dark"] .contentIcon_html-widget,
+[data-theme="dark"] .contentIcon_playlist {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.85);
+  border-color: rgba(255,255,255,0.12);
 }
 
 .contentLabelText {
@@ -398,16 +431,23 @@
 }
 
 .cardContentThumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--surface-lowest);
-  border: 1px solid var(--outline-variant);
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--primary);
+  color: var(--on-surface, #0f172a);
+  background: var(--surface-container, #f1f5f9);
+  border: 1px solid var(--outline-variant);
   flex-shrink: 0;
+  transition: all var(--transition-base);
+}
+
+[data-theme="dark"] .cardContentThumb {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.85);
+  border-color: rgba(255,255,255,0.12);
 }
 
 .cardContentMeta {

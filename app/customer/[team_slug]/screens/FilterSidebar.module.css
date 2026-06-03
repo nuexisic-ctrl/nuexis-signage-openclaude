@@ -196,3 +196,52 @@
     pointer-events: auto;
   }
 }
+
+.infoBanner {
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.infoDisclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.infoIcon {
+  color: var(--primary);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.infoText {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--on-surface-muted);
+  margin: 0;
+}
+
+.headerTitleContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.headerMatchCount {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--on-surface-muted);
+  margin: 0;
+}
+
+.headerMatchCount strong {
+  color: var(--on-surface);
+  font-weight: 700;
+}
+
+

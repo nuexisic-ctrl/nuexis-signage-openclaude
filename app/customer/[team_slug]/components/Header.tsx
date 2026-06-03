@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Sun, Moon, Bell, LogOut, ChevronDown, ChevronLeft } from 'lucide-react'
+import { Search, Sun, Moon, Bell, LogOut, ChevronDown, ChevronLeft, Monitor } from 'lucide-react'
 import styles from './header.module.css'
 
 interface HeaderProps {
@@ -10,17 +10,41 @@ interface HeaderProps {
 }
 
 export default function Header({ fullName, email }: HeaderProps) {
-  const [isDark, setIsDark] = useState(false)
+  const [activeTheme, setActiveTheme] = useState<'light' | 'dark' | 'system'>('system')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const initial = fullName ? fullName.charAt(0).toUpperCase() : email?.charAt(0).toUpperCase() || 'U'
 
+  // Load theme state from localStorage on client mount
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsDark(document.documentElement.getAttribute('data-theme') === 'dark')
+    const saved = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null
+    if (saved === 'light' || saved === 'dark' || saved === 'system') {
+      setActiveTheme(saved)
+    } else {
+      setActiveTheme('system')
+    }
+  }, [])
 
+  // Apply selected theme to HTML document, listening to OS media changes if set to 'system'
+  useEffect(() => {
+    if (activeTheme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      const applySystemTheme = (e: MediaQueryListEvent | MediaQueryList) => {
+        const themeToApply = e.matches ? 'dark' : 'light'
+        document.documentElement.setAttribute('data-theme', themeToApply)
+      }
+      applySystemTheme(mediaQuery)
+
+      mediaQuery.addEventListener('change', applySystemTheme)
+      return () => mediaQuery.removeEventListener('change', applySystemTheme)
+    } else {
+      document.documentElement.setAttribute('data-theme', activeTheme)
+    }
+  }, [activeTheme])
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
@@ -42,9 +66,8 @@ export default function Header({ fullName, email }: HeaderProps) {
     }
   }, [])
 
-  const setTheme = (theme: 'light' | 'dark') => {
-    setIsDark(theme === 'dark')
-    document.documentElement.setAttribute('data-theme', theme)
+  const handleSetTheme = (theme: 'light' | 'dark' | 'system') => {
+    setActiveTheme(theme)
     localStorage.setItem('theme', theme)
     setIsDropdownOpen(false)
   }
@@ -91,25 +114,38 @@ export default function Header({ fullName, email }: HeaderProps) {
                   <div className={styles.themeItemLabel}>
                     <ChevronLeft size={14} className={styles.submenuArrow} style={{ marginRight: '8px' }} />
                     <div className={styles.dropdownItemContent}>
-                      {isDark ? <Moon size={16} /> : <Sun size={16} />}
+                      {activeTheme === 'system' ? (
+                        <Monitor size={16} />
+                      ) : activeTheme === 'dark' ? (
+                        <Moon size={16} />
+                      ) : (
+                        <Sun size={16} />
+                      )}
                       <span style={{ marginLeft: '8px' }}>Theme</span>
                     </div>
                   </div>
                   
                   <div className={styles.submenu}>
                     <button 
-                      className={`${styles.submenuItem} ${!isDark ? styles.activeSubmenu : ''}`}
-                      onClick={() => setTheme('light')}
+                      className={`${styles.submenuItem} ${activeTheme === 'light' ? styles.activeSubmenu : ''}`}
+                      onClick={() => handleSetTheme('light')}
                     >
                       <Sun size={14} />
                       <span>Light</span>
                     </button>
                     <button 
-                      className={`${styles.submenuItem} ${isDark ? styles.activeSubmenu : ''}`}
-                      onClick={() => setTheme('dark')}
+                      className={`${styles.submenuItem} ${activeTheme === 'dark' ? styles.activeSubmenu : ''}`}
+                      onClick={() => handleSetTheme('dark')}
                     >
                       <Moon size={14} />
                       <span>Dark</span>
+                    </button>
+                    <button 
+                      className={`${styles.submenuItem} ${activeTheme === 'system' ? styles.activeSubmenu : ''}`}
+                      onClick={() => handleSetTheme('system')}
+                    >
+                      <Monitor size={14} />
+                      <span>System</span>
                     </button>
                   </div>
                 </div>

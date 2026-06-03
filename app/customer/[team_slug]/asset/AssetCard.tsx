@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, LayoutTemplate, Link, Code, Clock } from 'lucide-react'
+import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -34,6 +34,8 @@ export function AssetCard({
   menuOpen,
   onToggleMenu,
   menuPosition,
+  selected = false,
+  onToggleSelect,
 }: {
   asset: Asset
   previewUrl: string | null
@@ -44,6 +46,8 @@ export function AssetCard({
   menuOpen: boolean
   onToggleMenu: (e: React.MouseEvent) => void
   menuPosition?: { top: number, right: number } | null
+  selected?: boolean
+  onToggleSelect?: () => void
 }) {
   const date = new Date(asset.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
@@ -67,7 +71,32 @@ export function AssetCard({
   }
 
   return (
-    <div className={`${styles.assetCard} ${isDeleting ? styles.assetCardDeleting : ''}`}>
+    <div className={`${styles.assetCard} ${isDeleting ? styles.assetCardDeleting : ''} ${selected ? styles.assetCardSelected : ''}`}>
+      {onToggleSelect && (
+        <div 
+          style={{ 
+            position: 'absolute', 
+            top: '9px', 
+            left: '9px', 
+            zIndex: 15, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            background: 'rgba(7, 17, 31, 0.72)', 
+            backdropFilter: 'blur(8px)',
+            borderRadius: '6px',
+            padding: '6px'
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <input 
+            type="checkbox" 
+            checked={selected} 
+            onChange={onToggleSelect} 
+            style={{ width: '16px', height: '16px', cursor: 'pointer', margin: 0 }}
+          />
+        </div>
+      )}
       <div 
         className={`${styles.assetThumb} ${styles.assetThumbInteractive}`}
         onClick={() => onPreview(asset)}
@@ -76,7 +105,7 @@ export function AssetCard({
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onPreview(asset) }}
         aria-label={`Preview ${asset.file_name}`}
       >
-        {isImage(asset.mime_type) && previewUrl ? (
+        {(isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode') && previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewUrl} alt={asset.file_name} className={styles.assetImg} />
         ) : isVideo(asset.mime_type) && previewUrl ? (
@@ -104,6 +133,8 @@ export function AssetCard({
                   <Code size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
                 ) : asset.mime_type === 'application/x-widget-flow' ? (
                   <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                ) : asset.mime_type === 'application/x-widget-qrcode' ? (
+                  <QrCode size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
                 ) : (
                   <LayoutTemplate size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
                 )}

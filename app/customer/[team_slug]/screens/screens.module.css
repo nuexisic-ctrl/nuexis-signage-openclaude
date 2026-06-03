@@ -674,49 +674,79 @@
 .selectedActionsContainer {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .selectedCountBadge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: color-mix(in srgb, var(--primary) 8%, var(--surface-low));
-  border: 1px solid color-mix(in srgb, var(--primary) 15%, var(--outline-variant));
-  border-radius: 9999px;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--outline-variant));
+  border-radius: 10px;
   font-family: var(--font-label);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--on-surface);
+  height: 42px;
+  box-sizing: border-box;
 }
 
 .selectedCountNumber {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
   background: var(--primary);
   color: var(--on-primary);
-  border-radius: 9999px;
-  font-size: 0.72rem;
+  border-radius: 50%;
+  font-size: 0.75rem;
   font-weight: 800;
   line-height: 1;
+  box-sizing: border-box;
 }
 
-.selectedCountLabel {
-  color: var(--on-surface-subtle);
-  text-transform: uppercase;
-  font-size: 0.65rem;
+.selectedCountText {
+  color: var(--on-surface-muted);
+  font-size: 0.825rem;
+  font-weight: 700;
+  font-family: var(--font-label);
+  white-space: nowrap;
+}
+
+.bulkActionBtn {
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  background: var(--surface-low);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  font-family: var(--font-label);
+  font-size: 0.85rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bulkActionBtn:hover {
+  background: var(--surface-medium);
+  color: var(--on-surface-high);
+  border-color: color-mix(in srgb, var(--primary) 20%, var(--outline-variant));
+}
+
+.bulkActionBtnIcon {
+  flex-shrink: 0;
+  color: var(--primary);
 }
 
 .bulkActionIconBtn {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -745,4 +775,5 @@
   border-color: rgba(239, 68, 68, 0.3);
   color: #ef4444;
 }
+
 

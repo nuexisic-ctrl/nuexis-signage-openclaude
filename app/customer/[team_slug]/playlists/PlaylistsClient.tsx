@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, ListVideo, Trash2, X, Clock, RefreshCw, LayoutGrid, List } from 'lucide-react'
+import { Plus, ListVideo, Trash2, X, Clock, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
 import styles from './playlists.module.css'
 import { createPlaylist, deletePlaylist, updatePlaylist, getPlaylistItems } from './actions'
 import { createClient } from '@/lib/supabase/client'
@@ -23,6 +23,8 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
   const [isSaving, setIsSaving] = useState(false)
   const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null)
   const [isLoadingItems, setIsLoadingItems] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number | 'All'>(10)
 
   // Premium Dashboard States
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
@@ -219,6 +221,23 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     })
   }, [playlists, searchQuery])
 
+  const totalPages = Math.ceil(filteredPlaylists.length / (pageSize === 'All' ? Math.max(1, filteredPlaylists.length) : pageSize)) || 1
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [filteredPlaylists, currentPage, totalPages])
+
+  const paginatedPlaylists = useMemo(() => {
+    if (pageSize === 'All') return filteredPlaylists
+    const from = (currentPage - 1) * pageSize
+    return filteredPlaylists.slice(from, from + pageSize)
+  }, [filteredPlaylists, currentPage, pageSize])
+
+  const startItem = filteredPlaylists.length === 0 ? 0 : (pageSize === 'All' ? 1 : (currentPage - 1) * pageSize + 1)
+  const endItem = pageSize === 'All' ? filteredPlaylists.length : Math.min(currentPage * pageSize, filteredPlaylists.length)
+
   return (
     <>
       <div className={styles.topbar}>
@@ -303,7 +322,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
           </div>
         ) : viewMode === 'grid' ? (
           <div className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
-            {filteredPlaylists.map((playlist) => {
+            {paginatedPlaylists.map((playlist) => {
               const playlistItems = playlist.playlist_items || []
               const totalItems = playlistItems.length
               const totalDuration = playlistItems.reduce((acc: number, item: any) => acc + (item.duration_seconds || 0), 0)
@@ -364,7 +383,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                 </tr>
               </thead>
               <tbody>
-                {filteredPlaylists.map((playlist) => {
+                {paginatedPlaylists.map((playlist) => {
                   const playlistItems = playlist.playlist_items || []
                   const totalItems = playlistItems.length
                   const totalDuration = playlistItems.reduce((acc: number, item: any) => acc + (item.duration_seconds || 0), 0)
@@ -398,6 +417,66 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {playlists.length > 0 && filteredPlaylists.length > 0 && (
+          <div className={styles.tableFooter}>
+            <div className={styles.paginationInfo}>
+              Showing {startItem} to {endItem} of {filteredPlaylists.length} playlists
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div className={styles.perPageSelector} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', color: 'var(--on-surface-muted)' }}>
+                <span>Per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setPageSize(val === 'All' ? 'All' : parseInt(val, 10))
+                    setCurrentPage(1)
+                  }}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--outline-variant)',
+                    background: 'var(--surface-low)',
+                    color: 'var(--on-surface)',
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                >
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                  <option value="All">All</option>
+                </select>
+              </div>
+              {pageSize !== 'All' && (
+                <div className={styles.pagination}>
+                  <span className={styles.pageIndicator}>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button 
+                    className={styles.pageBtn} 
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    style={{ opacity: currentPage > 1 ? 1 : 0.5, cursor: currentPage > 1 ? 'pointer' : 'not-allowed' }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button 
+                    className={styles.pageBtn} 
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    style={{ opacity: currentPage < totalPages ? 1 : 0.5, cursor: currentPage < totalPages ? 'pointer' : 'not-allowed' }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

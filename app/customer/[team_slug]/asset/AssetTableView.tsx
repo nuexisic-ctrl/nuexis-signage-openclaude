@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, Image as ImageIcon, Link, Code, Clock } from 'lucide-react'
+import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -35,6 +35,9 @@ interface AssetTableViewProps {
   setDeleteModalAsset: (asset: Asset) => void
   deletingIds: Set<string>
   getPreviewUrl: (filePath: string) => string | null
+  selectedAssetIds: Set<string>
+  setSelectedAssetIds: (ids: Set<string>) => void
+  handleToggleSelect: (id: string) => void
 }
 
 export function AssetTableView({
@@ -48,6 +51,9 @@ export function AssetTableView({
   setDeleteModalAsset,
   deletingIds,
   getPreviewUrl,
+  selectedAssetIds,
+  setSelectedAssetIds,
+  handleToggleSelect,
 }: AssetTableViewProps) {
   const supabase = createClient()
 
@@ -71,6 +77,20 @@ export function AssetTableView({
       <table className={styles.screensTable}>
         <thead className={styles.tableHeader}>
           <tr>
+            <th style={{ width: '40px', textAlign: 'center' }}>
+              <input 
+                type="checkbox" 
+                checked={filteredAssets.length > 0 && filteredAssets.every(a => selectedAssetIds.has(a.id))}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
+                  } else {
+                    setSelectedAssetIds(new Set())
+                  }
+                }}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+            </th>
             <th style={{ width: '35%' }}>{t('File Name')}</th>
             <th style={{ width: '15%' }}>{t('Type')}</th>
             <th style={{ width: '15%' }}>{t('Size')}</th>
@@ -88,7 +108,15 @@ export function AssetTableView({
             })
 
             return (
-              <tr key={asset.id} className={styles.tableRow}>
+              <tr key={asset.id} className={`${styles.tableRow} ${selectedAssetIds.has(asset.id) ? styles.rowSelected : ''}`}>
+                <td className={styles.tableCell} style={{ width: '40px', textAlign: 'center' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={selectedAssetIds.has(asset.id)} 
+                    onChange={() => handleToggleSelect(asset.id)} 
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                </td>
                 <td
                   className={styles.tableCell}
                   onClick={() => setPreviewAsset(asset)}
@@ -96,10 +124,12 @@ export function AssetTableView({
                 >
                   <div className={styles.nameCellContent}>
                     <div className={styles.deviceIconWrapper}>
-                      {isImage(asset.mime_type) ? (
+                      {isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode' ? (
                         getPreviewUrl(asset.file_path) ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={getPreviewUrl(asset.file_path)!} className={styles.tableThumbnail} alt="" />
+                        ) : asset.mime_type === 'application/x-widget-qrcode' ? (
+                          <QrCode size={20} style={{ stroke: '#a855f7', color: '#a855f7' }} />
                         ) : (
                           <ImageIcon size={20} />
                         )
@@ -117,6 +147,8 @@ export function AssetTableView({
                         <Code size={20} style={{ stroke: '#10b981', color: '#10b981' }} />
                       ) : asset.mime_type === 'application/x-widget-flow' ? (
                         <Clock size={20} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                      ) : asset.mime_type === 'application/x-widget-qrcode' ? (
+                        <QrCode size={20} style={{ stroke: '#a855f7', color: '#a855f7' }} />
                       ) : (
                         <File size={20} />
                       )}

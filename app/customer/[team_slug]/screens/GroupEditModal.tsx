@@ -32,14 +32,31 @@ interface GroupEditModalProps {
 }
 
 const PRESET_COLORS = [
+  '#000000', // black
+  '#ffffff', // white
+  '#ef4444', // red
+  '#f97316', // orange
+  '#f59e0b', // amber
+  '#eab308', // yellow
+  '#84cc16', // lime
+  '#22c55e', // green
+  '#10b981', // emerald
+  '#14b8a6', // teal
+  '#06b6d4', // cyan
+  '#0ea5e9', // sky
   '#3b82f6', // blue
   '#6366f1', // indigo
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#f43f5e', // rose/red
+  '#8b5cf6', // violet
   '#a855f7', // purple
-  '#06b6d4', // cyan
+  '#d946ef', // fuchsia
+  '#ec4899', // pink
+  '#f43f5e', // rose
+  '#78716c', // stone
+  '#737373', // neutral
+  '#525252', // neutral-dark
   '#64748b', // slate
+  '#475569', // slate-dark
+  '#334155', // slate-deep
 ]
 
 export function GroupEditModal({
@@ -56,12 +73,7 @@ export function GroupEditModal({
   const [color, setColor] = useState(group.color || PRESET_COLORS[0])
   const [showColorPicker, setShowColorPicker] = useState(false)
   const colorPickerRef = useRef<HTMLDivElement>(null)
-  const availableColors = React.useMemo(() => {
-    if (group.color && !PRESET_COLORS.includes(group.color)) {
-      return [...PRESET_COLORS, group.color]
-    }
-    return PRESET_COLORS
-  }, [group.color])
+  const availableColors = PRESET_COLORS
 
   // Memberships: start with device IDs already in this group
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>(() => {
@@ -191,17 +203,28 @@ export function GroupEditModal({
   }
 
   const childWasActiveRef = useRef(false)
+  const startedOnOverlayRef = useRef(false)
 
   function handleOverlayMouseDown(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) {
-      childWasActiveRef.current = showScreensDropdown || modalStack.hasActiveChildOf('group-edit-modal')
+      startedOnOverlayRef.current = true
+      childWasActiveRef.current = showScreensDropdown || showColorPicker || modalStack.hasActiveChildOf('group-edit-modal')
+    } else {
+      startedOnOverlayRef.current = false
     }
   }
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) {
+      if (!startedOnOverlayRef.current) {
+        return
+      }
       if (showScreensDropdown) {
         setShowScreensDropdown(false)
+        return
+      }
+      if (showColorPicker) {
+        setShowColorPicker(false)
         return
       }
       if (childWasActiveRef.current) {
@@ -318,7 +341,7 @@ export function GroupEditModal({
                             style={{ backgroundColor: c }}
                             onClick={() => setColor(c)}
                           >
-                            {isSelected && <Check size={10} style={{ color: '#fff' }} />}
+                            {isSelected && <Check size={10} style={{ color: c === '#ffffff' ? '#000' : '#fff' }} />}
                           </button>
                         )
                       })}
@@ -485,7 +508,7 @@ export function GroupEditModal({
             )}
 
             {/* Scale Mode */}
-            {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget'))) && (
+            {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget') && selectedAsset?.mime_type !== 'application/x-widget-qrcode')) && (
               <div className={styles.fieldGroup}>
                 <label className={styles.label}>Scale Mode</label>
                 <CustomSelect

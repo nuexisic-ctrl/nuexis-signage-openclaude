@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { SupabaseClient } from '@supabase/supabase-js'
 import { getPlaylistItems, getSignedMediaUrl } from './actions'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 
@@ -10,13 +11,29 @@ interface PlaylistItem {
   type: string
   asset_id: string | null
   widget_type: string | null
-  widget_config: any
+  widget_config: unknown
   duration_seconds: number
   sort_order: number
   assets?: {
     file_path: string
     mime_type: string
   } | null
+}
+
+function getAssetPathAndMime(assets: { file_path: string; mime_type: string } | null | undefined) {
+  if (!assets) return null
+  let filePath = assets.file_path
+  let mimeType = assets.mime_type
+  if (mimeType === 'application/x-widget-qrcode') {
+    try {
+      const config = JSON.parse(filePath)
+      if (config.png_path) {
+        filePath = config.png_path
+        mimeType = 'image/png'
+      }
+    } catch {}
+  }
+  return { filePath, mimeType }
 }
 
 export default function PlaylistEngine({ 
@@ -28,7 +45,7 @@ export default function PlaylistEngine({
   secret
 }: { 
   playlistId: string
-  supabase: any
+  supabase: SupabaseClient
   scaleMode: string
   isMuted: boolean
   hardwareId: string
@@ -45,8 +62,95 @@ export default function PlaylistEngine({
   // by both cacheAssets() and PlayableItem, which caused 4-6x duplicate sign requests
   const signingPromisesRef = useRef<Record<string, Promise<string>>>({})
 
+  const getSignedMediaUrlDeduped = useCallback((filePath: string): Promise<string> => {
+    if (filePath in signingPromisesRef.current) {
+      return signingPromisesRef.current[filePath]
+    }
+    const promise = getSignedMediaUrl(filePath, hardwareId, secret).finally(() => {
+      delete signingPromisesRef.current[filePath]
+    })
+    signingPromisesRef.current[filePath] = promise
+    return promise
+  }, [hardwareId, secret])
+
   useEffect(() => {
     let mounted = true
+
+    const cacheAssets = async (playlistItems: PlaylistItem[]) => {
+      if (typeof window === 'undefined' || !('caches' in window)) {
+        console.warn('[PlaylistEngine] Cache Storage API is not supported in this browser context.')
+        return
+      }
+      try {
+        const cache = await caches.open('nuexis-playlist-cache')
+        for (const item of playlistItems) {
+          if ((item.type === 'image' || item.type === 'video') && item.assets) {
+            const resolved = getAssetPathAndMime(item.assets)
+            if (!resolved) continue
+            const { filePath, mimeType } = resolved
+
+            // Skip widget types
+            if (mimeType.startsWith('application/x-widget')) continue
+            
+            // Use a consistent filepath cache key instead of the expiring signed URL (H-03)
+            const cacheKey = `https://local-media-cache/${filePath}`
+            
+            let response = await cache.match(cacheKey)
+            if (!response) {
+              // Use deduplicated signing to prevent concurrent duplicate requests
+              const url = await getSignedMediaUrlDeduped(filePath)
+              response = await fetch(url, { mode: 'cors' })
+              if (response.ok) {
+                await cache.put(cacheKey, response.clone())
+              }
+            }
+            
+            if (response && response.ok && !cacheMap.current[filePath]) {
+              const blob = await response.blob()
+              cacheMap.current[filePath] = URL.createObjectURL(blob)
+            }
+          }
+        }
+
+        // Evict stale assets from Cache Storage (H-19)
+        const keys = await cache.keys()
+        const activeCacheKeys = new Set<string>()
+        playlistItems.forEach(item => {
+          if ((item.type === 'image' || item.type === 'video') && item.assets) {
+            const resolved = getAssetPathAndMime(item.assets)
+            if (resolved && !resolved.mimeType.startsWith('application/x-widget')) {
+              activeCacheKeys.add(`https://local-media-cache/${resolved.filePath}`)
+            }
+          }
+        })
+
+        for (const request of keys) {
+          if (!activeCacheKeys.has(request.url)) {
+            await cache.delete(request)
+          }
+        }
+
+        // Evict stale blob URLs from memory (H-14)
+        const activeFilePaths = new Set<string>()
+        playlistItems.forEach(item => {
+          if ((item.type === 'image' || item.type === 'video') && item.assets) {
+            const resolved = getAssetPathAndMime(item.assets)
+            if (resolved) {
+              activeFilePaths.add(resolved.filePath)
+            }
+          }
+        })
+
+        Object.keys(cacheMap.current).forEach((filePath) => {
+          if (!activeFilePaths.has(filePath)) {
+            URL.revokeObjectURL(cacheMap.current[filePath])
+            delete cacheMap.current[filePath]
+          }
+        })
+      } catch (err) {
+        console.error('[PlaylistEngine] Failed to cache assets:', err)
+      }
+    }
 
     const fetchItems = async (showLoading = true) => {
       if (showLoading && mounted) setIsLoading(true)
@@ -74,8 +178,7 @@ export default function PlaylistEngine({
       }
     }
 
-    setIsLoading(true)
-    fetchItems(true)
+    fetchItems(false)
 
     // Realtime listener for broadcast refresh signals
     const channel = supabase
@@ -107,88 +210,7 @@ export default function PlaylistEngine({
       cacheMap.current = {}
       signingPromisesRef.current = {}
     }
-  }, [playlistId, supabase, hardwareId, secret])
-
-  /**
-   * Deduplicating signed URL getter — if a sign request is already in-flight for
-   * a given filePath, returns that same promise rather than firing a new RPC call.
-   * This prevents the storm of duplicate sign requests seen when cacheAssets() and
-   * PlayableItem both try to sign the same asset at the same time.
-   */
-  const getSignedMediaUrlDeduped = (filePath: string): Promise<string> => {
-    if (filePath in signingPromisesRef.current) {
-      return signingPromisesRef.current[filePath]
-    }
-    const promise = getSignedMediaUrl(filePath, hardwareId, secret).finally(() => {
-      // Remove from in-flight map once resolved or rejected so future calls
-      // (e.g. on next playlist refresh) can re-sign after the 1h URL expires
-      delete signingPromisesRef.current[filePath]
-    })
-    signingPromisesRef.current[filePath] = promise
-    return promise
-  }
-
-  const cacheAssets = async (playlistItems: PlaylistItem[]) => {
-    if (typeof window === 'undefined' || !('caches' in window)) {
-      console.warn('[PlaylistEngine] Cache Storage API is not supported in this browser context.')
-      return
-    }
-    try {
-      const cache = await caches.open('nuexis-playlist-cache')
-      for (const item of playlistItems) {
-        if ((item.type === 'image' || item.type === 'video') && item.assets) {
-          // Skip widget types
-          if (item.assets.mime_type.startsWith('application/x-widget')) continue
-          
-          // Use a consistent filepath cache key instead of the expiring signed URL (H-03)
-          const cacheKey = `https://local-media-cache/${item.assets.file_path}`
-          
-          let response = await cache.match(cacheKey)
-          if (!response) {
-            // Use deduplicated signing to prevent concurrent duplicate requests
-            const url = await getSignedMediaUrlDeduped(item.assets.file_path)
-            response = await fetch(url, { mode: 'cors' })
-            if (response.ok) {
-              await cache.put(cacheKey, response.clone())
-            }
-          }
-          
-          if (response && response.ok && !cacheMap.current[item.assets.file_path]) {
-            const blob = await response.blob()
-            cacheMap.current[item.assets.file_path] = URL.createObjectURL(blob)
-          }
-        }
-      }
-
-      // Evict stale assets from Cache Storage (H-19)
-      const keys = await cache.keys()
-      const activeCacheKeys = new Set(
-        playlistItems
-          .filter((item) => (item.type === 'image' || item.type === 'video') && item.assets && !item.assets.mime_type.startsWith('application/x-widget'))
-          .map((item) => `https://local-media-cache/${item.assets!.file_path}`)
-      )
-      for (const request of keys) {
-        if (!activeCacheKeys.has(request.url)) {
-          await cache.delete(request)
-        }
-      }
-
-      // Evict stale blob URLs from memory (H-14)
-      const activeFilePaths = new Set(
-        playlistItems
-          .filter((item) => (item.type === 'image' || item.type === 'video') && item.assets)
-          .map((item) => item.assets!.file_path)
-      )
-      Object.keys(cacheMap.current).forEach((filePath) => {
-        if (!activeFilePaths.has(filePath)) {
-          URL.revokeObjectURL(cacheMap.current[filePath])
-          delete cacheMap.current[filePath]
-        }
-      })
-    } catch (err) {
-      console.error('[PlaylistEngine] Failed to cache assets:', err)
-    }
-  }
+  }, [playlistId, supabase, hardwareId, secret, getSignedMediaUrlDeduped])
 
   const handleNext = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % items.length)
@@ -211,19 +233,18 @@ export default function PlaylistEngine({
       {/* Background/Next item (Preloading) */}
       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 1, opacity: 0 }}>
         {items.length > 1 && (
-           <PlayableItem 
-             key={`preload-${nextItem.id}-${nextIndex}`} 
-             item={nextItem} 
-             supabase={supabase} 
-             scaleMode={scaleMode} 
-             isMuted={isMuted} 
-             hardwareId={hardwareId}
-             secret={secret}
-             cacheMap={cacheMap.current}
-             getSignedUrl={getSignedMediaUrlDeduped}
-             onComplete={() => {}} // Preload doesn't trigger advance
-             isActive={false}
-           />
+            <PlayableItem 
+              key={`preload-${nextItem.id}-${nextIndex}`} 
+              item={nextItem} 
+              scaleMode={scaleMode} 
+              isMuted={isMuted} 
+              hardwareId={hardwareId}
+              secret={secret}
+              cacheMap={cacheMap}
+              getSignedUrl={getSignedMediaUrlDeduped}
+              onComplete={() => {}} // Preload doesn't trigger advance
+              isActive={false}
+            />
         )}
       </div>
 
@@ -232,10 +253,9 @@ export default function PlaylistEngine({
         <PlayableItem 
           key={`active-${currentItem.id}-${currentIndex}`} 
           item={currentItem} 
-          supabase={supabase} 
           scaleMode={scaleMode} 
           isMuted={isMuted} 
-          cacheMap={cacheMap.current}
+          cacheMap={cacheMap}
           hardwareId={hardwareId}
           secret={secret}
           getSignedUrl={getSignedMediaUrlDeduped}
@@ -247,9 +267,74 @@ export default function PlaylistEngine({
   )
 }
 
-function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId, secret, getSignedUrl, onComplete, isActive }: any) {
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null)
-  const [isLoaded, setIsLoaded] = useState(false)
+interface PlayableItemProps {
+  item: PlaylistItem
+  scaleMode: string
+  isMuted: boolean
+  cacheMap: React.MutableRefObject<Record<string, string>>
+  hardwareId: string
+  secret: string
+  getSignedUrl: (filePath: string) => Promise<string>
+  onComplete: () => void
+  isActive: boolean
+}
+
+function PlayableItem({ 
+  item, 
+  scaleMode, 
+  isMuted, 
+  cacheMap, 
+  hardwareId, 
+  secret, 
+  getSignedUrl, 
+  onComplete, 
+  isActive 
+}: PlayableItemProps) {
+  const getInitialMediaUrl = () => {
+    if (item.assets) {
+      const resolved = getAssetPathAndMime(item.assets)
+      if (resolved) {
+        const { filePath, mimeType } = resolved
+        if (
+          mimeType === 'application/x-widget-youtube' || 
+          mimeType === 'application/x-widget-remote-url' ||
+          mimeType === 'application/x-widget-html' ||
+          mimeType === 'application/x-widget-flow'
+        ) {
+          return filePath
+        }
+        
+        // Return cached URL from ref if exists
+        const cached = cacheMap.current[filePath]
+        if (cached) {
+          return cached
+        }
+      }
+    }
+    return null
+  }
+
+  const getInitialIsLoaded = () => {
+    if (!item.assets) {
+      return true
+    }
+    const resolved = getAssetPathAndMime(item.assets)
+    if (resolved) {
+      const { mimeType } = resolved
+      if (
+        mimeType === 'application/x-widget-youtube' || 
+        mimeType === 'application/x-widget-remote-url' ||
+        mimeType === 'application/x-widget-html' ||
+        mimeType === 'application/x-widget-flow'
+      ) {
+        return true
+      }
+    }
+    return false
+  }
+
+  const [mediaUrl, setMediaUrl] = useState<string | null>(getInitialMediaUrl)
+  const [isLoaded, setIsLoaded] = useState(getInitialIsLoaded)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   
   useEffect(() => {
@@ -257,29 +342,26 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
     let safetyTimeout: NodeJS.Timeout
 
     if (item.assets) {
-      if (
-        item.assets.mime_type === 'application/x-widget-youtube' || 
-        item.assets.mime_type === 'application/x-widget-remote-url' ||
-        item.assets.mime_type === 'application/x-widget-html' ||
-        item.assets.mime_type === 'application/x-widget-flow'
-      ) {
-        if (mounted) {
-          setMediaUrl(item.assets.file_path)
-        }
-      } else if (item.type === 'image' || item.type === 'video') {
-        // Use cached blob if available, otherwise get a deduplicated signed URL
-        const cached = cacheMap[item.assets.file_path]
-        if (cached) {
-          if (mounted) setMediaUrl(cached)
-        } else {
-          // Use the parent's deduplicating getter so concurrent PlayableItem renders
-          // (active + preload) for the same asset don't fire two sign requests.
-          ;(getSignedUrl
-            ? getSignedUrl(item.assets.file_path)
-            : getSignedMediaUrl(item.assets.file_path, hardwareId, secret)
-          ).then((url: string) => {
-            if (mounted) setMediaUrl(url)
-          }).catch(console.error)
+      const resolved = getAssetPathAndMime(item.assets)
+      if (resolved) {
+        const { filePath, mimeType } = resolved
+
+        if (
+          mimeType !== 'application/x-widget-youtube' &&
+          mimeType !== 'application/x-widget-remote-url' &&
+          mimeType !== 'application/x-widget-html' &&
+          mimeType !== 'application/x-widget-flow' &&
+          (item.type === 'image' || item.type === 'video' || mimeType === 'image/png')
+        ) {
+          // Use cached blob if available, otherwise get a deduplicated signed URL
+          const cached = cacheMap.current[filePath]
+          if (!cached) {
+            // Use the parent's deduplicating getter so concurrent PlayableItem renders
+            // (active + preload) for the same asset don't fire two sign requests.
+            getSignedUrl(filePath).then((url: string) => {
+              if (mounted) setMediaUrl(url)
+            }).catch(console.error)
+          }
         }
       }
 
@@ -287,15 +369,13 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
       safetyTimeout = setTimeout(() => {
         if (mounted) setIsLoaded(true)
       }, 5000)
-    } else if (item.type === 'widget') {
-      if (mounted) setIsLoaded(true)
     }
 
     return () => {
       mounted = false
       if (safetyTimeout) clearTimeout(safetyTimeout)
     }
-  }, [item, cacheMap, hardwareId, secret])
+  }, [item, cacheMap, hardwareId, secret, getSignedUrl])
 
   useEffect(() => {
     if (isActive && isLoaded) {
@@ -365,64 +445,75 @@ function PlayableItem({ item, supabase, scaleMode, isMuted, cacheMap, hardwareId
   }
 
   if (item.assets?.mime_type === 'application/x-widget-html') {
+    let parsedConfig: { html?: string; css?: string } | null = null
     try {
-      const { html = '', css = '' } = JSON.parse(mediaUrl)
-      const iframeSrcDoc = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <style>
-              body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
-              ${css}
-            </style>
-          </head>
-          <body>
-            ${html}
-          </body>
-        </html>
-      `
-      return (
-        <iframe
-          title="widget-html-playlist"
-          srcDoc={iframeSrcDoc}
-          style={{ ...mediaStyle, border: 'none' }}
-          onLoad={() => setIsLoaded(true)}
-          sandbox=""
-        />
-      )
+      parsedConfig = JSON.parse(mediaUrl)
     } catch (err) {
       console.error('Failed to parse custom html widget in playlist engine:', err)
+    }
+
+    if (!parsedConfig) {
       return (
         <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
           Error rendering custom HTML widget
         </div>
       )
     }
+
+    const { html = '', css = '' } = parsedConfig
+    const iframeSrcDoc = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
+            ${css}
+          </style>
+        </head>
+        <body>
+          ${html}
+        </body>
+      </html>
+    `
+    return (
+      <iframe
+        title="widget-html-playlist"
+        srcDoc={iframeSrcDoc}
+        style={{ ...mediaStyle, border: 'none' }}
+        onLoad={() => setIsLoaded(true)}
+        sandbox=""
+      />
+    )
   }
 
   if (item.assets?.mime_type === 'application/x-widget-flow') {
+    let parsedConfig: { style: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist'; showSeconds: boolean; showDate: boolean; use24Hour: boolean; dateFormat: string; theme?: 'light' | 'dark' } | null = null
     try {
-      const config = JSON.parse(mediaUrl)
-      return (
-        <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
-          <FlowClockRenderer
-            style={config.style}
-            showSeconds={config.showSeconds}
-            showDate={config.showDate}
-            use24Hour={config.use24Hour}
-            dateFormat={config.dateFormat}
-            theme={config.theme}
-          />
-        </div>
-      )
+      parsedConfig = JSON.parse(mediaUrl)
     } catch (err) {
       console.error('Failed to render Clock widget in playlist engine:', err)
+    }
+
+    if (!parsedConfig) {
       return (
         <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
           Error rendering Clock widget
         </div>
       )
     }
+
+    return (
+      <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+        <FlowClockRenderer
+          style={parsedConfig.style}
+          showSeconds={parsedConfig.showSeconds}
+          showDate={parsedConfig.showDate}
+          use24Hour={parsedConfig.use24Hour}
+          dateFormat={parsedConfig.dateFormat}
+          theme={parsedConfig.theme}
+        />
+      </div>
+    )
   }
 
   if (item.type === 'video' || item.assets?.mime_type?.startsWith('video/')) {

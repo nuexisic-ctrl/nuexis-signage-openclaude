@@ -143,7 +143,7 @@ function HoverPreviewSelect<T extends string>({
         <ChevronDown size={14} style={{ opacity: 0.6, flexShrink: 0 }} />
       </button>
       {open && (
-        <div style={menuStyle}>
+        <div data-dropdown="flow-select" style={menuStyle}>
           {options.map(opt => (
             <button
               key={opt.value}
@@ -177,6 +177,8 @@ export default function FlowWidgetModal({
   const [use24Hour, setUse24Hour] = useState(false)
   const [dateFormat, setDateFormat] = useState<typeof DATE_FORMATS_WHITELIST[number]>('January 01, 2024')
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const dragStartRef = useRef(false)
+  const wasDropdownOpenRef = useRef(false)
 
   // Hover preview overrides — applied to live preview while hovering, cleared on revert
   const [previewOverride, setPreviewOverride] = useState<{ style?: string; dateFormat?: string; theme?: 'light' | 'dark' }>({})
@@ -233,7 +235,23 @@ export default function FlowWidgetModal({
     <>
       <div 
         className={styles.modalOverlay} 
-        onClick={() => {
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) {
+            dragStartRef.current = true
+            wasDropdownOpenRef.current = !!document.querySelector(
+              '[class*="colorPickerPopover"], [data-dropdown]'
+            )
+          } else {
+            dragStartRef.current = false
+          }
+        }}
+        onClick={(e) => {
+          if (e.target !== e.currentTarget) return
+          if (!dragStartRef.current) return
+          if (wasDropdownOpenRef.current) {
+            wasDropdownOpenRef.current = false
+            return
+          }
           if (modalStack.hasActiveChildOf('flow-widget-modal')) {
             return
           }
@@ -247,7 +265,7 @@ export default function FlowWidgetModal({
             maxWidth: '1000px',
             width: '95vw',
             height: 'auto',
-            maxHeight: '92vh',
+            maxHeight: 'none',
             display: 'flex',
             flexDirection: 'column',
             padding: 0
@@ -258,9 +276,11 @@ export default function FlowWidgetModal({
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '18px 24px',
+            padding: '16px 24px',
             borderBottom: '1px solid var(--outline-variant)',
-            background: 'rgba(7, 17, 31, 0.4)'
+            background: 'rgba(7, 17, 31, 0.4)',
+            borderTopLeftRadius: '16px',
+            borderTopRightRadius: '16px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Clock size={22} color="var(--primary)" />
@@ -278,7 +298,7 @@ export default function FlowWidgetModal({
             flexDirection: 'row',
             flexWrap: 'wrap',
             flex: 1,
-            overflowY: 'auto',
+            overflow: 'visible',
             background: 'var(--surface-lowest)'
           }}>
             {/* Left: Configuration Inputs */}
@@ -291,7 +311,7 @@ export default function FlowWidgetModal({
               borderRight: '1px solid var(--outline-variant)'
             }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Widget Name</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Widget Name*</label>
                 <input
                   required
                   type="text"
@@ -313,7 +333,7 @@ export default function FlowWidgetModal({
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Clock Style</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Clock Style*</label>
                 <HoverPreviewSelect
                   value={style}
                   options={STYLES_WHITELIST.map(s => ({ value: s.id, label: s.name }))}
@@ -323,7 +343,7 @@ export default function FlowWidgetModal({
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Date Format</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Date Format*</label>
                 <HoverPreviewSelect
                   value={dateFormat}
                   options={DATE_FORMATS_WHITELIST.map(f => ({ value: f, label: f }))}
@@ -372,7 +392,7 @@ export default function FlowWidgetModal({
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Theme</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Theme*</label>
                 <HoverPreviewSelect
                   value={theme}
                   options={[
@@ -480,7 +500,9 @@ export default function FlowWidgetModal({
             justifyContent: 'flex-end',
             alignItems: 'center',
             background: 'rgba(7, 17, 31, 0.4)',
-            gap: '12px'
+            gap: '12px',
+            borderBottomLeftRadius: '16px',
+            borderBottomRightRadius: '16px'
           }}>
             <button
               type="button"

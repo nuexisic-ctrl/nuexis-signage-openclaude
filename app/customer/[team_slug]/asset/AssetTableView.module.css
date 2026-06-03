@@ -176,3 +176,7 @@
     align-items: stretch;
   }
 }
+
+.rowSelected {
+  background: var(--surface-medium) !important;
+}

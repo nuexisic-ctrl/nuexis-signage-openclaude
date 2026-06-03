@@ -33,6 +33,7 @@ export function useDevicePresence(
 ) {
   const supabase = createClient()
   const [devices, setDevices] = useState<Device[]>(initialDevices)
+  const devicesRef = useRef<Device[]>(devices)
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
   const [hasSyncedPresence, setHasSyncedPresence] = useState(false)
   const [presenceRefreshKey, setPresenceRefreshKey] = useState(0)
@@ -46,6 +47,11 @@ export function useDevicePresence(
   useEffect(() => {
     setDevices(initialDevices)
   }, [initialDevices])
+
+  // Track devices in a ref to avoid stale closure or render phase side-effects
+  useEffect(() => {
+    devicesRef.current = devices
+  }, [devices])
 
   // Setup tick relative timestamps
   useEffect(() => {
@@ -106,40 +112,38 @@ export function useDevicePresence(
   }, [teamId, presenceRefreshKey, supabase])
 
   // Handle presence shifts (side-effects for online/offline transitions)
-  // IMPORTANT: Do NOT add 'devices' to this dep array — that causes an infinite loop.
-  // We use functional setState to access the latest devices snapshot.
   useEffect(() => {
     if (!hasSyncedPresenceRef.current) return
 
-    setDevices(prev => {
-      if (prev.length === 0) return prev
+    const currentDevices = devicesRef.current
+    if (currentDevices.length === 0) return
 
-      // 1. Detect devices that went offline (were online, now absent from presence)
-      const leftIds = prev
-        .filter(d => d.status === 'online' && !onlineDeviceIds.has(d.id))
-        .map(d => d.id)
+    // 1. Detect devices that went offline (were online, now absent from presence)
+    const leftIds = currentDevices
+      .filter(d => d.status === 'online' && !onlineDeviceIds.has(d.id))
+      .map(d => d.id)
 
-      // 2. Detect devices that joined (were offline/pairing, now in presence)
-      const joinedIds = prev
-        .filter(d => d.status !== 'online' && onlineDeviceIds.has(d.id))
-        .map(d => d.id)
+    // 2. Detect devices that joined (were offline/pairing, now in presence)
+    const joinedIds = currentDevices
+      .filter(d => d.status !== 'online' && onlineDeviceIds.has(d.id))
+      .map(d => d.id)
 
-      if (leftIds.length === 0 && joinedIds.length === 0) return prev
+    if (leftIds.length === 0 && joinedIds.length === 0) return
 
-      const now = new Date().toISOString()
+    const now = new Date().toISOString()
 
-      if (leftIds.length > 0) {
-        updateDeviceLastSeen(teamSlug, leftIds).catch(err =>
-          console.error('[Dashboard] Error updating last seen:', err)
-        )
-      }
+    // Safely fire side-effect here (in the useEffect body, not during the render/updater phase)
+    if (leftIds.length > 0) {
+      updateDeviceLastSeen(teamSlug, leftIds).catch(err =>
+        console.error('[Dashboard] Error updating last seen:', err)
+      )
+    }
 
-      return prev.map(d => {
-        if (leftIds.includes(d.id)) return { ...d, status: 'offline', last_seen_at: now }
-        if (joinedIds.includes(d.id)) return { ...d, status: 'online' }
-        return d
-      })
-    })
+    setDevices(prev => prev.map(d => {
+      if (leftIds.includes(d.id)) return { ...d, status: 'offline', last_seen_at: now }
+      if (joinedIds.includes(d.id)) return { ...d, status: 'online' }
+      return d
+    }))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onlineDeviceIds, teamSlug])
 

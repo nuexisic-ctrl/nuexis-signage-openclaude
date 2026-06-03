@@ -180,6 +180,12 @@
   border-color: var(--primary);
 }
 
+.actionBtnDanger:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
 .moreDropdown {
   position: absolute;
   top: calc(100% + 6px);

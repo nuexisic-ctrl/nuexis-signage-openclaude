@@ -334,3 +334,76 @@ export async function pushWidgetToScreen(
   return { success: true }
 }
 
+export async function deleteAssetsBulk(
+  teamSlug: string,
+  assetsToDelete: { id: string; filePath: string }[]
+): Promise<DeleteAssetResult> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team. Please try again.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  const assetIds = assetsToDelete.map(a => a.id)
+
+  // 1. Verify ownership of all assets
+  const { data: assets, error: assetsError } = await supabase
+    .from('assets')
+    .select('id, team_id, file_path, mime_type')
+    .in('id', assetIds)
+
+  if (assetsError || !assets || assets.length === 0) {
+    return { success: false, error: 'Assets not found.' }
+  }
+
+  // Double check that every asset belongs to the caller's team
+  const unauthorized = assets.some(a => a.team_id !== teamId)
+  if (unauthorized) {
+    return { success: false, error: 'You do not have permission to delete these assets.' }
+  }
+
+  // 2. Remove files from storage
+  const storageFiles = assets
+    .filter(a => !a.mime_type.startsWith('application/x-widget'))
+    .map(a => a.file_path)
+
+  if (storageFiles.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from('workspace-media')
+      .remove(storageFiles)
+
+    if (storageError) {
+      console.error('[deleteAssetsBulk] storage error:', storageError)
+      return { success: false, error: 'An unexpected error occurred while deleting assets from storage.' }
+    }
+  }
+
+  // 3. Delete records from DB
+  const { error: dbError } = await supabase
+    .from('assets')
+    .delete()
+    .in('id', assetIds)
+    .eq('team_id', teamId)
+
+  if (dbError) {
+    console.error('[deleteAssetsBulk] db error:', { message: dbError.message, details: dbError.details, hint: dbError.hint })
+    return { success: false, error: 'An unexpected error occurred while removing asset database records.' }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/asset`)
+  return { success: true }
+}
+

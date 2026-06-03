@@ -10,6 +10,8 @@ export interface UploadItem {
   progress: number
   status: 'waiting' | 'uploading' | 'completed' | 'failed'
   error?: string
+  startTime?: number
+  size?: number
 }
 
 interface UploadPanelProps {
@@ -43,6 +45,52 @@ export function UploadPanel({
 
   const isUploading = uploadQueue.some(item => item.status === 'uploading' || item.status === 'waiting')
 
+  const getRemainingTimeText = () => {
+    const uploadingItem = uploadQueue.find(item => item.status === 'uploading')
+    if (!uploadingItem || !uploadingItem.startTime) {
+      return ''
+    }
+
+    const elapsedSeconds = (Date.now() - uploadingItem.startTime) / 1000
+    const progress = uploadingItem.progress || 5
+    const size = uploadingItem.size || 0
+
+    // Determine speed in bytes/sec
+    let speed = 0
+    if (elapsedSeconds >= 1 && progress > 5) {
+      const bytesUploaded = size * (progress / 100)
+      speed = bytesUploaded / elapsedSeconds
+    }
+
+    // Fallback speed: 2 MB/s
+    const fallbackSpeed = 2 * 1024 * 1024
+    const effectiveSpeed = speed > 1024 ? speed : fallbackSpeed
+
+    // Current item remaining time
+    const currentRemaining = (size * (1 - progress / 100)) / effectiveSpeed
+
+    // Queued items remaining time
+    const waitingItems = uploadQueue.filter(item => item.status === 'waiting')
+    const waitingSize = waitingItems.reduce((acc, item) => acc + (item.size || 0), 0)
+    const waitingRemaining = waitingSize / effectiveSpeed
+
+    const totalRemainingSeconds = Math.max(0, currentRemaining + waitingRemaining)
+
+    if (totalRemainingSeconds === 0) return ''
+
+    if (elapsedSeconds < 1.5 || progress <= 5) {
+      return ' - Calculating remaining time...'
+    }
+
+    const minutes = Math.floor(totalRemainingSeconds / 60)
+    const seconds = Math.round(totalRemainingSeconds % 60)
+
+    if (minutes > 0) {
+      return ` - About ${minutes}m ${seconds}s remaining`
+    }
+    return ` - About ${seconds}s remaining`
+  }
+
   return (
     <div className={styles.uploadPanel}>
       <div className={styles.uploadPanelHeader}>
@@ -58,7 +106,8 @@ export function UploadPanel({
             const failed = uploadQueue.filter(item => item.status === 'failed').length
             const uploading = uploadQueue.filter(item => item.status === 'uploading').length
             if (uploading > 0) {
-              return `Uploading ${uploading} file${uploading > 1 ? 's' : ''}... (${Math.round(uploadQueue.reduce((acc, x) => acc + x.progress, 0) / total)}%)`
+              const pct = Math.round(uploadQueue.reduce((acc, x) => acc + x.progress, 0) / total)
+              return `Uploading ${uploading} file${uploading > 1 ? 's' : ''}... (${pct}%)${getRemainingTimeText()}`
             }
             return `Uploads: ${completed} done${failed > 0 ? `, ${failed} failed` : ''}`
           })()}

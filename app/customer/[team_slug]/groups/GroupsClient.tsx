@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useTransition } from 'react'
+import React, { useState, useEffect, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   FolderTree, Plus, X, MoreVertical, Edit, Trash2, Users, Tv, 
@@ -24,8 +24,31 @@ interface Props {
 }
 
 const PRESET_COLORS = [
-  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
-  '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'
+  '#000000', // black
+  '#ffffff', // white
+  '#ef4444', // red
+  '#f97316', // orange
+  '#f59e0b', // amber
+  '#eab308', // yellow
+  '#84cc16', // lime
+  '#22c55e', // green
+  '#10b981', // emerald
+  '#14b8a6', // teal
+  '#06b6d4', // cyan
+  '#0ea5e9', // sky
+  '#3b82f6', // blue
+  '#6366f1', // indigo
+  '#8b5cf6', // violet
+  '#a855f7', // purple
+  '#d946ef', // fuchsia
+  '#ec4899', // pink
+  '#f43f5e', // rose
+  '#78716c', // stone
+  '#737373', // neutral
+  '#525252', // neutral-dark
+  '#64748b', // slate
+  '#475569', // slate-dark
+  '#334155', // slate-deep
 ]
 
 export default function GroupsClient({
@@ -39,6 +62,13 @@ export default function GroupsClient({
 }: Props) {
   const router = useRouter()
   const supabase = createClient()
+
+  const createBackdropRef = useRef<HTMLDivElement>(null)
+  const createStartedRef = useRef(false)
+  const renameBackdropRef = useRef<HTMLDivElement>(null)
+  const renameStartedRef = useRef(false)
+  const deleteBackdropRef = useRef<HTMLDivElement>(null)
+  const deleteStartedRef = useRef(false)
 
   const [groups, setGroups] = useState<Group[]>(initialGroups)
   const [devices, setDevices] = useState<Device[]>(initialDevices)
@@ -297,7 +327,18 @@ export default function GroupsClient({
 
       {/* CREATE MODAL */}
       {showCreateModal && (
-        <div className={styles.modalBackdrop} onClick={() => setShowCreateModal(false)}>
+        <div 
+          ref={createBackdropRef}
+          className={styles.modalBackdrop} 
+          onMouseDown={(e) => {
+            createStartedRef.current = e.target === createBackdropRef.current
+          }}
+          onClick={() => {
+            if (createStartedRef.current) {
+              setShowCreateModal(false)
+            }
+          }}
+        >
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>New Screen Group</h2>
@@ -347,7 +388,18 @@ export default function GroupsClient({
 
       {/* RENAME MODAL */}
       {renameGroupItem && (
-        <div className={styles.modalBackdrop} onClick={() => setRenameGroupItem(null)}>
+        <div 
+          ref={renameBackdropRef}
+          className={styles.modalBackdrop} 
+          onMouseDown={(e) => {
+            renameStartedRef.current = e.target === renameBackdropRef.current
+          }}
+          onClick={() => {
+            if (renameStartedRef.current) {
+              setRenameGroupItem(null)
+            }
+          }}
+        >
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Rename Screen Group</h2>
@@ -383,7 +435,18 @@ export default function GroupsClient({
 
       {/* DELETE MODAL */}
       {deleteGroupItem && (
-        <div className={styles.modalBackdrop} onClick={() => setDeleteGroupItem(null)}>
+        <div 
+          ref={deleteBackdropRef}
+          className={styles.modalBackdrop} 
+          onMouseDown={(e) => {
+            deleteStartedRef.current = e.target === deleteBackdropRef.current
+          }}
+          onClick={() => {
+            if (deleteStartedRef.current) {
+              setDeleteGroupItem(null)
+            }
+          }}
+        >
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>Delete Screen Group</h2>

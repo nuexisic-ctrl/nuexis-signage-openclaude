@@ -253,3 +253,9 @@
     transform: none;
   }
 }
+
+.assetCardSelected {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px var(--primary-container) !important;
+  background-color: var(--surface-low) !important;
+}

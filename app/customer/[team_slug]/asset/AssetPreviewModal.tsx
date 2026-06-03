@@ -46,7 +46,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
     }
   }
 
-  const isImg = isImage(asset.mime_type)
+  const isImg = isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode'
   const isVid = isVideo(asset.mime_type)
   const isYouTube = asset.mime_type === 'application/x-widget-youtube'
   const isRemoteUrl = asset.mime_type === 'application/x-widget-remote-url'
@@ -63,7 +63,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
         <div className={styles.modalHeader}>
           <div className={styles.modalMeta}>
             <span className={styles.modalTitle} title={asset.file_name}>{asset.file_name}</span>
-            <span className={styles.modalMime}>{isYouTube ? 'YouTube Widget' : isRemoteUrl ? 'Remote URL Widget' : isHtml ? 'Text/HTML Widget' : asset.mime_type === 'application/x-widget-flow' ? 'Clock Widget' : asset.mime_type}</span>
+            <span className={styles.modalMime}>{isYouTube ? 'YouTube Widget' : isRemoteUrl ? 'Remote URL Widget' : isHtml ? 'Text/HTML Widget' : asset.mime_type === 'application/x-widget-flow' ? 'Clock Widget' : asset.mime_type === 'application/x-widget-qrcode' ? 'QR Code Widget' : asset.mime_type}</span>
           </div>
           <button className={styles.modalCloseBtn} onClick={onClose} aria-label="Close preview">
             <X size={24} />

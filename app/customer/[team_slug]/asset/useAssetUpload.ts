@@ -53,7 +53,8 @@ export function useAssetUpload({
       id: `${file.name}-${Date.now()}-${idx}`,
       fileName: file.name,
       progress: 0,
-      status: 'waiting'
+      status: 'waiting',
+      size: file.size
     }))
     
     setShowQueuePanel(true)
@@ -69,7 +70,7 @@ export function useAssetUpload({
       if (!file || !queueItem) continue
 
       // Set status to uploading and initial progress
-      setUploadQueue(prev => prev.map(item => item.id === queueItem.id ? { ...item, status: 'uploading', progress: 5 } : item))
+      setUploadQueue(prev => prev.map(item => item.id === queueItem.id ? { ...item, status: 'uploading', progress: 5, startTime: Date.now() } : item))
 
       // Simulate smooth progress
       let simulatedProgress = 5

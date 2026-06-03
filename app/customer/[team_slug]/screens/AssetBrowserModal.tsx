@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
-import { X, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, FileText, Video, Image as ImageIcon, Play, MoreVertical, Monitor, Link2, Code, Clock } from 'lucide-react'
+import { X, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, FileText, Video, Image as ImageIcon, Play, MoreVertical, Monitor, Link2, Code, Clock, QrCode } from 'lucide-react'
 import styles from './AssetBrowserModal.module.css'
 import { FilterSidebar } from '../asset/FilterSidebar'
 import { modalStack } from '@/lib/utils/modalStack'
@@ -74,16 +74,28 @@ export function AssetBrowserModal({
     }
   }, [onClose])
 
-  // Generate signed URLs for Images & Videos in real-time
+  // Generate signed URLs for Images, Videos, and QR Codes in real-time
   useEffect(() => {
     let isCancelled = false
     const generateUrls = async () => {
-      const targetAssets = assets.filter(
-        asset => (asset.mime_type.startsWith('image/') || asset.mime_type.startsWith('video/')) && !asset.mime_type.startsWith('application/x-widget')
-      )
-      const promises = targetAssets.map(async (asset) => {
-        const url = await getCachedSignedUrl(supabase, asset.file_path, 3600)
-        return { path: asset.file_path, url }
+      const targetAssets = assets.map(asset => {
+        if (asset.mime_type === 'application/x-widget-qrcode') {
+          try {
+            const config = JSON.parse(asset.file_path)
+            return { originalPath: asset.file_path, filePathToSign: config.png_path }
+          } catch {
+            return null
+          }
+        }
+        if ((asset.mime_type.startsWith('image/') || asset.mime_type.startsWith('video/')) && !asset.mime_type.startsWith('application/x-widget')) {
+          return { originalPath: asset.file_path, filePathToSign: asset.file_path }
+        }
+        return null
+      }).filter(Boolean) as { originalPath: string, filePathToSign: string }[]
+
+      const promises = targetAssets.map(async (item) => {
+        const url = await getCachedSignedUrl(supabase, item.filePathToSign, 3600)
+        return { path: item.originalPath, url }
       })
       const results = await Promise.all(promises)
       if (isCancelled) return
@@ -230,6 +242,15 @@ export function AssetBrowserModal({
     const isImage = asset.mime_type.startsWith('image/')
     const previewUrl = previewUrls[asset.file_path]
 
+    if (asset.mime_type === 'application/x-widget-qrcode' && previewUrl) {
+      return (
+        <div className={styles.cardPreviewBox}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={previewUrl} alt={asset.file_name} className={styles.cardThumbnail} />
+        </div>
+      )
+    }
+
     if (isWidget) {
       return (
         <div className={styles.cardPreviewBox} style={{ background: 'var(--surface-low)', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -241,6 +262,8 @@ export function AssetBrowserModal({
             <Code size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
           ) : asset.mime_type === 'application/x-widget-flow' ? (
             <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+          ) : asset.mime_type === 'application/x-widget-qrcode' ? (
+            <QrCode size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
           ) : (
             <LayoutGrid size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
           )}
@@ -295,6 +318,10 @@ export function AssetBrowserModal({
     const isImage = asset.mime_type.startsWith('image/')
     const previewUrl = previewUrls[asset.file_path]
 
+    if (asset.mime_type === 'application/x-widget-qrcode' && previewUrl) {
+      return <img src={previewUrl} className={styles.tableThumbnail} alt="" />
+    }
+
     if (isWidget) {
       if (asset.mime_type === 'application/x-widget-youtube') {
         return <YoutubeIcon size={18} style={{ stroke: '#ff0000', color: '#ff0000' }} />
@@ -307,6 +334,9 @@ export function AssetBrowserModal({
       }
       if (asset.mime_type === 'application/x-widget-flow') {
         return <Clock size={18} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+      }
+      if (asset.mime_type === 'application/x-widget-qrcode') {
+        return <QrCode size={18} style={{ stroke: '#a855f7', color: '#a855f7' }} />
       }
       return <LayoutGrid size={18} style={{ stroke: '#a855f7', color: '#a855f7' }} />
     }

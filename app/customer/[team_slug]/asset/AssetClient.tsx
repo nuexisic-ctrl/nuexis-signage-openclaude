@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight } from 'lucide-react'
+import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import { AssetPreviewModal } from './AssetPreviewModal'
@@ -11,6 +11,7 @@ import { FilterSidebar } from './FilterSidebar'
 import { RenameAssetModal, DeleteAssetModal } from './ActionModals'
 import { AssetTableView } from './AssetTableView'
 import { Asset, isImage, isVideo, isWidget } from './types'
+import { BulkDeleteModal } from './BulkDeleteModal'
 import { useAssetUpload } from './useAssetUpload'
 import { UploadPanel } from './UploadPanel'
 import { WidgetModalsContainer } from './WidgetModalsContainer'
@@ -43,6 +44,20 @@ export default function AssetClient({
   const [renameModalAsset, setRenameModalAsset] = useState<Asset | null>(null)
   const [deleteModalAsset, setDeleteModalAsset] = useState<Asset | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+
+  const handleToggleSelect = useCallback((assetId: string) => {
+    setSelectedAssetIds(prev => {
+      const next = new Set(prev)
+      if (next.has(assetId)) {
+        next.delete(assetId)
+      } else {
+        next.add(assetId)
+      }
+      return next
+    })
+  }, [])
   
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
@@ -114,13 +129,25 @@ export default function AssetClient({
   useEffect(() => {
     let cancelled = false
     const generateUrls = async () => {
-      const targetAssets = assets.filter(
-        asset => (isImage(asset.mime_type) || isVideo(asset.mime_type)) && !asset.mime_type.startsWith('application/x-widget')
-      )
+      const targetAssets = assets.map(asset => {
+        if (asset.mime_type === 'application/x-widget-qrcode') {
+          try {
+            const config = JSON.parse(asset.file_path)
+            return { originalPath: asset.file_path, filePathToSign: config.png_path }
+          } catch {
+            return null
+          }
+        }
+        if ((isImage(asset.mime_type) || isVideo(asset.mime_type)) && !asset.mime_type.startsWith('application/x-widget')) {
+          return { originalPath: asset.file_path, filePathToSign: asset.file_path }
+        }
+        return null
+      }).filter(Boolean) as { originalPath: string, filePathToSign: string }[]
+
       const results = await Promise.all(
-        targetAssets.map(async (asset) => {
-          const url = await getCachedSignedUrl(supabase, asset.file_path, 3600)
-          return { path: asset.file_path, url }
+        targetAssets.map(async (item) => {
+          const url = await getCachedSignedUrl(supabase, item.filePathToSign, 3600)
+          return { path: item.originalPath, url }
         })
       )
       if (cancelled) return
@@ -322,6 +349,23 @@ export default function AssetClient({
                 />
               </div>
               <div className={styles.controlsRight}>
+                {selectedAssetIds.size > 0 && (
+                  <div className={styles.selectedActionsContainer}>
+                    <div className={styles.selectedCountBadge}>
+                      <span className={styles.selectedCountNumber}>{selectedAssetIds.size}</span>
+                      <span className={styles.selectedCountText}>
+                        {selectedAssetIds.size === 1 ? t('asset selected') : t('assets selected')}
+                      </span>
+                    </div>
+                    <button
+                      className={`${styles.bulkActionIconBtn} ${styles.bulkActionIconBtnDanger}`}
+                      onClick={() => setShowBulkDeleteModal(true)}
+                      title={t('Delete Selected Assets')}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
                 <button 
                   className={`${styles.filterBtn} ${isFiltersActive ? styles.active : ''}`}
                   onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
@@ -386,7 +430,7 @@ export default function AssetClient({
                   <AssetCard
                     key={asset.id}
                     asset={asset}
-                    previewUrl={isImage(asset.mime_type) || isVideo(asset.mime_type) ? getPreviewUrl(asset.file_path) : null}
+                    previewUrl={(isImage(asset.mime_type) || isVideo(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode') ? getPreviewUrl(asset.file_path) : null}
                     onDelete={() => {
                       setOpenMenuId(null)
                       setDeleteModalAsset(asset)
@@ -410,6 +454,8 @@ export default function AssetClient({
                         setOpenMenuId(asset.id)
                       }
                     }}
+                    selected={selectedAssetIds.has(asset.id)}
+                    onToggleSelect={() => handleToggleSelect(asset.id)}
                   />
                 ))}
               </div>
@@ -426,6 +472,9 @@ export default function AssetClient({
                   setDeleteModalAsset={setDeleteModalAsset}
                   deletingIds={deletingIds}
                   getPreviewUrl={getPreviewUrl}
+                  selectedAssetIds={selectedAssetIds}
+                  setSelectedAssetIds={setSelectedAssetIds}
+                  handleToggleSelect={handleToggleSelect}
                 />
               </div>
             )}
@@ -438,29 +487,57 @@ export default function AssetClient({
                     : `${t('Showing')} ${startItem} ${t('to')} ${endItem} ${t('of')} ${totalAssets} ${t('assets')}`
                   }
                 </div>
-                {!searchQuery && (
-                  <div className={styles.pagination}>
-                    <span className={styles.pageIndicator}>
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button 
-                      className={styles.pageBtn} 
-                      onClick={() => router.push(`?page=${currentPage - 1}`)}
-                      disabled={!hasPrevPage}
-                      style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div className={styles.perPageSelector} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', color: 'var(--on-surface-muted)' }}>
+                    <span>{t('Per page:')}</span>
+                    <select
+                      value={pageSize === 10000 ? 'All' : pageSize}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        router.push(`?page=1&limit=${val === 'All' ? 'all' : val}`)
+                      }}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--outline-variant)',
+                        background: 'var(--surface-low)',
+                        color: 'var(--on-surface)',
+                        cursor: 'pointer',
+                        fontWeight: 600
+                      }}
                     >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <button 
-                      className={styles.pageBtn} 
-                      onClick={() => router.push(`?page=${currentPage + 1}`)}
-                      disabled={!hasNextPage}
-                      style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
-                    >
-                      <ChevronRight size={16} />
-                    </button>
+                      <option value="5">5</option>
+                      <option value="10">10</option>
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                      <option value="All">{t('All')}</option>
+                    </select>
                   </div>
-                )}
+                  {!searchQuery && (
+                    <div className={styles.pagination}>
+                      <span className={styles.pageIndicator}>
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button 
+                        className={styles.pageBtn} 
+                        onClick={() => router.push(`?page=${currentPage - 1}&limit=${pageSize === 10000 ? 'all' : pageSize}`)}
+                        disabled={!hasPrevPage}
+                        style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button 
+                        className={styles.pageBtn} 
+                        onClick={() => router.push(`?page=${currentPage + 1}&limit=${pageSize === 10000 ? 'all' : pageSize}`)}
+                        disabled={!hasNextPage}
+                        style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -489,7 +566,7 @@ export default function AssetClient({
       {previewAsset && (
         <AssetPreviewModal
           asset={previewAsset}
-          previewUrl={isWidget(previewAsset.mime_type) ? null : getPreviewUrl(previewAsset.file_path)}
+          previewUrl={previewAsset.mime_type === 'application/x-widget-qrcode' ? getPreviewUrl(previewAsset.file_path) : (isWidget(previewAsset.mime_type) ? null : getPreviewUrl(previewAsset.file_path))}
           onClose={() => setPreviewAsset(null)}
         />
       )}
@@ -498,6 +575,7 @@ export default function AssetClient({
         showWidgetSelection={showWidgetSelection}
         setShowWidgetSelection={setShowWidgetSelection}
         teamSlug={teamSlug}
+        assets={assets}
         setAssets={setAssets}
         setShowSuccess={setShowSuccess}
       />
@@ -520,6 +598,20 @@ export default function AssetClient({
           teamSlug={teamSlug}
           onClose={() => setDeleteModalAsset(null)}
           onSuccess={handleDeleteSuccess}
+        />
+      )}
+
+      {showBulkDeleteModal && (
+        <BulkDeleteModal
+          assetsToDelete={assets.filter(a => selectedAssetIds.has(a.id))}
+          teamSlug={teamSlug}
+          onClose={() => setShowBulkDeleteModal(false)}
+          onSuccess={() => {
+            setAssets(prev => prev.filter(a => !selectedAssetIds.has(a.id)))
+            setSelectedAssetIds(new Set())
+            setShowBulkDeleteModal(false)
+            router.refresh()
+          }}
         />
       )}
 

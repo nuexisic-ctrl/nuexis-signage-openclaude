@@ -442,7 +442,7 @@ export default function ScreensClient({
             </div>
 
             {filteredDevices.length === 0 ? (
-              <div className={styles.emptyState}>
+              <div key="screens-empty-state-view" className={styles.emptyState}>
                 <div className={styles.emptyIcon}>NX</div>
                 <h3 className={styles.emptyTitle}>No screens found</h3>
                 <p className={styles.emptyText}>
@@ -453,7 +453,7 @@ export default function ScreensClient({
                 </p>
               </div>
             ) : viewMode === 'grid' ? (
-              <div className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
+              <div key="screens-grid-layout-view" className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
                 {filteredDevices.map((device) => (
                   <DeviceCard
                     key={device.id}
@@ -485,6 +485,7 @@ export default function ScreensClient({
               </div>
             ) : (
               <DeviceTable
+                key="screens-table-layout-view"
                 filteredDevices={filteredDevices}
                 selectedDeviceIds={selectedDeviceIds}
                 setSelectedDeviceIds={setSelectedDeviceIds}
@@ -514,29 +515,57 @@ export default function ScreensClient({
                     : `Showing ${startItem} to ${endItem} of ${totalScreens} screens`
                   }
                 </div>
-                {!searchQuery && (
-                  <div className={styles.pagination}>
-                    <span className={styles.pageIndicator}>
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button 
-                      className={styles.pageBtn} 
-                      onClick={() => router.push(`?page=${currentPage - 1}`)}
-                      disabled={!hasPrevPage}
-                      style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div className={styles.perPageSelector} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', color: 'var(--on-surface-muted)' }}>
+                    <span>Per page:</span>
+                    <select
+                      value={pageSize === 10000 ? 'All' : pageSize}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        router.push(`?page=1&limit=${val === 'All' ? 'all' : val}`)
+                      }}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--outline-variant)',
+                        background: 'var(--surface-low)',
+                        color: 'var(--on-surface)',
+                        cursor: 'pointer',
+                        fontWeight: 600
+                      }}
                     >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <button 
-                      className={styles.pageBtn} 
-                      onClick={() => router.push(`?page=${currentPage + 1}`)}
-                      disabled={!hasNextPage}
-                      style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
-                    >
-                      <ChevronRight size={16} />
-                    </button>
+                      <option value="5">5</option>
+                      <option value="10">10</option>
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                      <option value="All">All</option>
+                    </select>
                   </div>
-                )}
+                  {!searchQuery && (
+                    <div className={styles.pagination}>
+                      <span className={styles.pageIndicator}>
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button 
+                        className={styles.pageBtn} 
+                        onClick={() => router.push(`?page=${currentPage - 1}&limit=${pageSize === 10000 ? 'all' : pageSize}`)}
+                        disabled={!hasPrevPage}
+                        style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button 
+                        className={styles.pageBtn} 
+                        onClick={() => router.push(`?page=${currentPage + 1}&limit=${pageSize === 10000 ? 'all' : pageSize}`)}
+                        disabled={!hasNextPage}
+                        style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -552,6 +581,8 @@ export default function ScreensClient({
           groups={groups}
           filterGroupIds={filterGroupIds}
           setFilterGroupIds={setFilterGroupIds}
+          filteredCount={filteredDevices.length}
+          totalCount={devices.length}
         />
       </div>
 

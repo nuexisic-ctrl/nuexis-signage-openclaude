@@ -227,7 +227,7 @@ export function AssignModal({
               </div>
             )}
 
-            {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget'))) && (
+            {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget') && selectedAsset?.mime_type !== 'application/x-widget-qrcode')) && (
               <div className={styles.fieldGroup}>
                 <label className={styles.label}>Scale Mode</label>
                 <CustomSelect

@@ -1,5 +1,5 @@
 import React from 'react'
-import { X } from 'lucide-react'
+import { X, Info } from 'lucide-react'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
 import CustomSelect from '../components/CustomSelect'
 import styles from './FilterSidebar.module.css'
@@ -20,6 +20,8 @@ export interface FilterSidebarProps {
   groups: any[]
   filterGroupIds: string[]
   setFilterGroupIds: (ids: string[]) => void
+  filteredCount: number
+  totalCount: number
 }
 
 export function FilterSidebar({
@@ -38,34 +40,76 @@ export function FilterSidebar({
   groups,
   filterGroupIds,
   setFilterGroupIds,
+  filteredCount,
+  totalCount,
 }: FilterSidebarProps) {
   React.useEffect(() => {
     if (!isFilterSidebarOpen) return
 
-    const handleOutsideClick = (e: MouseEvent) => {
+    let startedInside = false
+    let hadDropdownOpen = false
+
+    const handleMouseDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement
 
-      // Stay open if click is inside the filter sidebar itself
-      if (target.closest('[data-filter-sidebar]')) return
-      // Stay open if click is on the filter toggle button
-      if (target.closest('[data-filter-toggle]')) return
-      // Stay open if click is anywhere inside the left nav sidebar
-      if (target.closest('[data-sidebar-nav]')) return
-      // Stay open if click is inside a modal, dropdown or select
-      if (target.closest('[class*="modal"]') || target.closest('[class*="dropdown"]') || target.closest('[class*="select"]')) return
+      // Check if click started inside the filter sidebar or other allowed containers
+      startedInside = !!(
+        target.closest('[data-filter-sidebar]') ||
+        target.closest('[data-filter-toggle]') ||
+        target.closest('[data-sidebar-nav]') ||
+        target.closest('[class*="modal"]') ||
+        target.closest('[class*="dropdown"]') ||
+        target.closest('[class*="select"]')
+      )
 
-      setIsFilterSidebarOpen(false)
+      // Check if there is currently any open dropdown inside the sidebar
+      const openDropdown = document.querySelector(
+        '[data-filter-sidebar] [class*="dropdown"], [data-filter-sidebar] [class*="optionsList"]'
+      )
+      hadDropdownOpen = !!openDropdown
     }
 
+    const handleMouseUp = (e: MouseEvent) => {
+      if (startedInside) {
+        // Ignored because user clicked inside (could be text selection dragging out)
+        return
+      }
+
+      if (hadDropdownOpen) {
+        // First step: closed the dropdown, so consume this click and prevent sidebar close
+        hadDropdownOpen = false
+        return
+      }
+
+      const target = e.target as HTMLElement
+      const endedInside = !!(
+        target.closest('[data-filter-sidebar]') ||
+        target.closest('[data-filter-toggle]') ||
+        target.closest('[data-sidebar-nav]') ||
+        target.closest('[class*="modal"]') ||
+        target.closest('[class*="dropdown"]') ||
+        target.closest('[class*="select"]')
+      )
+
+      if (!endedInside) {
+        setIsFilterSidebarOpen(false)
+      }
+    }
+
+    // Delay slightly to avoid catching the click that opened the sidebar
     const timer = setTimeout(() => {
-      document.addEventListener('click', handleOutsideClick)
+      document.addEventListener('mousedown', handleMouseDown)
+      document.addEventListener('mouseup', handleMouseUp)
     }, 50)
 
     return () => {
       clearTimeout(timer)
-      document.removeEventListener('click', handleOutsideClick)
+      document.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('mouseup', handleMouseUp)
     }
   }, [isFilterSidebarOpen, setIsFilterSidebarOpen])
+
+  const isFilterActive = filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' || filterGroupIds.length > 0
 
   return (
     <>
@@ -75,14 +119,34 @@ export function FilterSidebar({
       />
       <aside data-filter-sidebar className={`${styles.filterSidebar} ${isFilterSidebarOpen ? styles.isOpen : ''}`}>
         <div className={styles.sidebarHeader}>
-          <h3 className={styles.sidebarTitle}>Advanced Filters</h3>
+          <div className={styles.headerTitleContainer}>
+            <h3 className={styles.sidebarTitle}>Advanced Filters</h3>
+            <p className={styles.headerMatchCount}>
+              {isFilterActive ? (
+                <>Showing <strong>{filteredCount}</strong> of <strong>{totalCount}</strong> screens</>
+              ) : (
+                <>Showing all <strong>{totalCount}</strong> screens</>
+              )}
+            </p>
+          </div>
           <button className={styles.closeSidebarBtn} onClick={() => setIsFilterSidebarOpen(false)}>
             <X size={20} />
           </button>
         </div>
         <div className={styles.sidebarBody}>
+          {groups && groups.length >= 1 && (
+            <div key="filter-disclaimer-banner" className={styles.infoBanner}>
+              <div className={styles.infoDisclaimer}>
+                <Info size={16} className={styles.infoIcon} />
+                <p className={styles.infoText}>
+                  Filters apply to screens only and do not affect groups.
+                </p>
+              </div>
+            </div>
+          )}
+
           {groups && groups.length > 0 && (
-            <div className={styles.filterGroup}>
+            <div key="group-filter-container" className={styles.filterGroup}>
               <label className={styles.filterLabel}>Filter by Group</label>
               <GroupFilterDropdown
                 groups={groups}
@@ -95,7 +159,7 @@ export function FilterSidebar({
             </div>
           )}
 
-          <div className={styles.filterGroup}>
+          <div key="status-filter-container" className={styles.filterGroup}>
             <label className={styles.filterLabel}>Screen Status</label>
             <CustomSelect
               id="filter-status"
@@ -110,7 +174,7 @@ export function FilterSidebar({
             />
           </div>
           
-          <div className={styles.filterGroup}>
+          <div key="orientation-filter-container" className={styles.filterGroup}>
             <label className={styles.filterLabel}>Orientation</label>
             <CustomSelect
               id="filter-orientation"
@@ -126,7 +190,7 @@ export function FilterSidebar({
             />
           </div>
 
-          <div className={styles.filterGroup}>
+          <div key="date-preset-filter-container" className={styles.filterGroup}>
             <label className={styles.filterLabel}>Date Added</label>
             <CustomSelect
               id="filter-date-preset"
@@ -143,17 +207,17 @@ export function FilterSidebar({
           </div>
 
           {filterDatePreset === 'custom' && (
-            <>
-              <div className={styles.filterGroup}>
+            <React.Fragment key="custom-date-inputs">
+              <div key="custom-date-start-container" className={styles.filterGroup}>
                 <label className={styles.filterLabel}>Added After</label>
                 <input type="date" className={styles.filterInput} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
               </div>
               
-              <div className={styles.filterGroup}>
+              <div key="custom-date-end-container" className={styles.filterGroup}>
                 <label className={styles.filterLabel}>Added Before</label>
                 <input type="date" className={styles.filterInput} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
               </div>
-            </>
+            </React.Fragment>
           )}
         </div>
         <div className={styles.sidebarFooter}>
@@ -176,3 +240,5 @@ export function FilterSidebar({
     </>
   )
 }
+
+

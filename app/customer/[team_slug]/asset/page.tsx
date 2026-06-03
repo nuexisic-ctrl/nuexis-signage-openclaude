@@ -24,8 +24,9 @@ export default async function AssetPage({ params, searchParams }: Props) {
   const { team_slug } = await params
   const resolvedSearchParams = await searchParams
   const pageStr = resolvedSearchParams.page
+  const limitStr = resolvedSearchParams.limit
+  const pageSize = typeof limitStr === 'string' ? (limitStr === 'all' ? 10000 : parseInt(limitStr, 10) || 30) : 30
   const currentPage = typeof pageStr === 'string' ? parseInt(pageStr, 10) || 1 : 1
-  const pageSize = 30
   const from = (currentPage - 1) * pageSize
   const to = from + pageSize - 1
 

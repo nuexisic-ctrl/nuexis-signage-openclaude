@@ -695,3 +695,80 @@
   }
 }
 
+.selectedActionsContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.selectedCountBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--outline-variant));
+  border-radius: 10px;
+  font-family: var(--font-label);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--on-surface);
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.selectedCountNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.selectedCountText {
+  color: var(--on-surface-muted);
+  font-size: 0.825rem;
+  font-weight: 700;
+  font-family: var(--font-label);
+  white-space: nowrap;
+}
+
+.bulkActionIconBtn {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bulkActionIconBtn:hover {
+  background: var(--surface-medium);
+  color: var(--on-surface);
+  border-color: color-mix(in srgb, var(--primary) 20%, var(--outline-variant));
+}
+
+.bulkActionIconBtnDanger {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.bulkActionIconBtnDanger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+

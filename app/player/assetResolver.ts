@@ -46,6 +46,18 @@ export async function resolveAsset({
       return
     }
 
+    if (asset.mime_type === 'application/x-widget-qrcode') {
+      try {
+        const config = JSON.parse(asset.file_path)
+        if (config.png_path) {
+          asset.file_path = config.png_path
+          asset.mime_type = 'image/png'
+        }
+      } catch (err) {
+        console.error('Failed to parse qrcode widget path in resolver:', err)
+      }
+    }
+
     const isWidget =
       asset.mime_type === 'application/x-widget-youtube' ||
       asset.mime_type === 'application/x-widget-remote-url' ||

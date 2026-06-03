@@ -24,15 +24,18 @@ export function SelectedActions({
     <div className={styles.selectedActionsContainer}>
       <div className={styles.selectedCountBadge}>
         <span className={styles.selectedCountNumber}>{selectedDeviceIds.size}</span>
-        <span className={styles.selectedCountLabel}>selected</span>
+        <span className={styles.selectedCountText}>
+          {selectedDeviceIds.size === 1 ? 'screen selected' : 'screens selected'}
+        </span>
       </div>
       
       <button
-        className={styles.bulkActionIconBtn}
+        className={styles.bulkActionBtn}
         onClick={() => setShowCreateGroupFromSelection(true)}
-        title="Create Group from Selection"
+        title="Create a new screen group from selection"
       >
-        <FolderPlus size={16} />
+        <FolderPlus size={16} className={styles.bulkActionBtnIcon} />
+        <span>Create Group</span>
       </button>
       
       <button
@@ -53,3 +56,4 @@ export function SelectedActions({
     </div>
   )
 }
+
