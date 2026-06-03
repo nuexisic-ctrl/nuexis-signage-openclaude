@@ -17,11 +17,11 @@ interface NewGroupModalProps {
 
 const PRESET_COLORS = [
   '#3b82f6', // blue
-  '#ef4444', // red
+  '#6366f1', // indigo
   '#10b981', // emerald
   '#f59e0b', // amber
-  '#8b5cf6', // purple
-  '#ec4899', // pink
+  '#f43f5e', // rose/red
+  '#a855f7', // purple
   '#06b6d4', // cyan
   '#64748b', // slate
 ]
@@ -36,13 +36,11 @@ export default function NewGroupModal({
 }: NewGroupModalProps) {
   const [groupName, setGroupName] = useState('')
   const [groupColor, setGroupColor] = useState(PRESET_COLORS[0])
-  const [isCustomColorSelected, setIsCustomColorSelected] = useState(false)
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>(initialSelectedDeviceIds)
   const [screenSearch, setScreenSearch] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   
   const [isPending, startTransition] = useTransition()
-  const customColorInputRef = useRef<HTMLInputElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
 
   if (!isOpen) return null
@@ -72,7 +70,6 @@ export default function NewGroupModal({
         }
         setGroupName('')
         setGroupColor(PRESET_COLORS[0])
-        setIsCustomColorSelected(false)
         setSelectedDeviceIds([])
         onSuccess(result.groupId)
       } else {
@@ -113,7 +110,7 @@ export default function NewGroupModal({
             <label className={styles.label}>Group Color Tag</label>
             <div className={styles.colorPickerGrid}>
               {PRESET_COLORS.map((c) => {
-                const isSelected = groupColor === c && !isCustomColorSelected
+                const isSelected = groupColor === c
                 return (
                   <div
                     key={c}
@@ -126,70 +123,12 @@ export default function NewGroupModal({
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
-                    onClick={() => {
-                      setGroupColor(c)
-                      setIsCustomColorSelected(false)
-                    }}
+                    onClick={() => setGroupColor(c)}
                   >
                     {isSelected && <Check size={14} style={{ color: '#fff' }} />}
                   </div>
                 )
               })}
-
-              {/* Custom Color Selector Trigger */}
-              <div style={{ position: 'relative', width: '32px', height: '32px' }}>
-                <div
-                  onClick={() => customColorInputRef.current?.click()}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    cursor: 'pointer',
-                    border: '2px solid transparent',
-                    background: isCustomColorSelected
-                      ? groupColor
-                      : 'linear-gradient(45deg, red, orange, yellow, green, blue, purple)',
-                    borderColor: isCustomColorSelected ? 'var(--on-surface)' : 'transparent',
-                    boxShadow: isCustomColorSelected
-                      ? '0 0 0 2px var(--surface-lowest) inset'
-                      : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'transform 0.1s ease',
-                  }}
-                  title="Custom Color"
-                >
-                  {!isCustomColorSelected && (
-                    <span style={{ fontSize: '8px', color: '#fff', fontWeight: 'bold' }}>Custom</span>
-                  )}
-                  {isCustomColorSelected && (
-                    <Check
-                      size={14}
-                      style={{ color: '#fff', filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.5))' }}
-                    />
-                  )}
-                </div>
-                <input
-                  ref={customColorInputRef}
-                  type="color"
-                  value={isCustomColorSelected ? groupColor : '#3b82f6'}
-                  onChange={(e) => {
-                    setGroupColor(e.target.value)
-                    setIsCustomColorSelected(true)
-                  }}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: 0,
-                    cursor: 'pointer',
-                    pointerEvents: 'none',
-                  }}
-                />
-              </div>
             </div>
           </div>
 

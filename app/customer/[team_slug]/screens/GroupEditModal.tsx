@@ -31,11 +31,11 @@ interface GroupEditModalProps {
 
 const PRESET_COLORS = [
   '#3b82f6', // blue
-  '#ef4444', // red
+  '#6366f1', // indigo
   '#10b981', // emerald
   '#f59e0b', // amber
-  '#8b5cf6', // purple
-  '#ec4899', // pink
+  '#f43f5e', // rose/red
+  '#a855f7', // purple
   '#06b6d4', // cyan
   '#64748b', // slate
 ]
@@ -52,9 +52,12 @@ export function GroupEditModal({
 }: GroupEditModalProps) {
   const [name, setName] = useState(group.name)
   const [color, setColor] = useState(group.color || PRESET_COLORS[0])
-  const [isCustomColorSelected, setIsCustomColorSelected] = useState(() => {
-    return !PRESET_COLORS.includes(group.color)
-  })
+  const availableColors = React.useMemo(() => {
+    if (group.color && !PRESET_COLORS.includes(group.color)) {
+      return [...PRESET_COLORS, group.color]
+    }
+    return PRESET_COLORS
+  }, [group.color])
 
   // Memberships: start with device IDs already in this group
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>(() => {
@@ -87,7 +90,6 @@ export function GroupEditModal({
 
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const customColorInputRef = useRef<HTMLInputElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
 
   const selectedAsset = assets.find(a => a.id === assetId)
@@ -226,40 +228,19 @@ export function GroupEditModal({
               <div className={styles.fieldGroup} style={{ flex: 1 }}>
                 <label className={styles.label}>Color Tag</label>
                 <div className={styles.colorPickerGrid}>
-                  {PRESET_COLORS.slice(0, 4).map((c) => {
-                    const isSelected = color === c && !isCustomColorSelected
+                  {availableColors.map((c) => {
+                    const isSelected = color === c
                     return (
                       <div
                         key={c}
                         className={`${styles.colorOption} ${isSelected ? styles.colorOptionSelected : ''}`}
                         style={{ backgroundColor: c }}
-                        onClick={() => {
-                          setColor(c)
-                          setIsCustomColorSelected(false)
-                        }}
+                        onClick={() => setColor(c)}
                       >
                         {isSelected && <Check size={12} style={{ color: '#fff' }} />}
                       </div>
                     )
                   })}
-                  {/* Custom Trigger */}
-                  <div 
-                    onClick={() => customColorInputRef.current?.click()}
-                    className={`${styles.customColorBtn} ${isCustomColorSelected ? styles.customColorBtnSelected : ''}`}
-                    style={{ backgroundColor: isCustomColorSelected ? color : '#2e3a4e' }}
-                  >
-                    {isCustomColorSelected && <Check size={12} style={{ color: '#fff' }} />}
-                  </div>
-                  <input
-                    ref={customColorInputRef}
-                    type="color"
-                    value={isCustomColorSelected ? color : '#3b82f6'}
-                    onChange={(e) => {
-                      setColor(e.target.value)
-                      setIsCustomColorSelected(true)
-                    }}
-                    style={{ display: 'none' }}
-                  />
                 </div>
               </div>
             </div>

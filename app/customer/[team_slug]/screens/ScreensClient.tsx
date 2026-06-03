@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, RefreshCw, FolderTree } from 'lucide-react'
+import { Plus, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { GroupFilterDropdown } from './GroupFilterDropdown'
 import { updateDeviceLastSeen } from './actions'
 import styles from './screens.module.css'
 
@@ -92,7 +93,17 @@ export default function ScreensClient({
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
-  const [filterGroupId, setFilterGroupId] = useState<string>('all')
+  const [filterGroupIds, setFilterGroupIds] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('filterGroupIds')
+      try {
+        return saved ? JSON.parse(saved) : []
+      } catch {
+        return []
+      }
+    }
+    return []
+  })
   const [showCreateGroupFromSelection, setShowCreateGroupFromSelection] = useState(false)
 
   const [groups, setGroups] = useState<any[]>(initialGroups)
@@ -122,10 +133,6 @@ export default function ScreensClient({
     const saved = localStorage.getItem('screensViewMode')
     if (saved === 'grid' || saved === 'table') {
       setViewMode(saved)
-    }
-    const savedGroup = localStorage.getItem('filterGroupId')
-    if (savedGroup) {
-      setFilterGroupId(savedGroup)
     }
     setIsMounted(true)
   }, [])
@@ -233,8 +240,9 @@ export default function ScreensClient({
   }
 
   const handleGroupBadgeClick = (groupId: string) => {
-    setFilterGroupId(groupId)
-    localStorage.setItem('filterGroupId', groupId)
+    const nextIds = [groupId]
+    setFilterGroupIds(nextIds)
+    localStorage.setItem('filterGroupIds', JSON.stringify(nextIds))
   }
 
   function getLiveStatus(device: Device): LiveStatus {
@@ -246,8 +254,8 @@ export default function ScreensClient({
     const liveStatus = getLiveStatus(d)
     if (filterStatus !== 'all' && liveStatus !== filterStatus) return false
     if (filterOrientation !== 'all' && (d.orientation ?? 0).toString() !== filterOrientation) return false
-    if (filterGroupId !== 'all') {
-      const isMember = memberships.some(m => m.group_id === filterGroupId && m.device_id === d.id)
+    if (filterGroupIds.length > 0) {
+      const isMember = memberships.some(m => filterGroupIds.includes(m.group_id) && m.device_id === d.id)
       if (!isMember) return false
     }
     if (filterDatePreset !== 'all') {
@@ -303,7 +311,6 @@ export default function ScreensClient({
               border: '1px solid var(--outline-variant)' 
             }}
           >
-            <FolderTree className={styles.addBtnIcon} size={18} />
             New Group
           </button>
           <button
@@ -365,31 +372,14 @@ export default function ScreensClient({
                 )}
 
                 {groups.length > 0 && (
-                  <select
-                    value={filterGroupId}
-                    onChange={(e) => {
-                      setFilterGroupId(e.target.value)
-                      localStorage.setItem('filterGroupId', e.target.value)
+                  <GroupFilterDropdown
+                    groups={groups}
+                    selectedGroupIds={filterGroupIds}
+                    onChange={(ids) => {
+                      setFilterGroupIds(ids)
+                      localStorage.setItem('filterGroupIds', JSON.stringify(ids))
                     }}
-                    style={{
-                      height: '42px',
-                      padding: '0 14px',
-                      borderRadius: '10px',
-                      border: '1px solid var(--outline-variant)',
-                      background: 'var(--surface-low)',
-                      color: 'var(--on-surface)',
-                      fontSize: '0.84rem',
-                      fontFamily: 'var(--font-label)',
-                      fontWeight: 800,
-                      outline: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="all">All Groups</option>
-                    {groups.map(g => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
+                  />
                 )}
                 <button 
                   className={`${styles.filterBtn} ${isFilterSidebarOpen || filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' ? styles.active : ''}`}
@@ -399,7 +389,7 @@ export default function ScreensClient({
                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                   </svg>
                   Filters
-                  {(filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' || filterGroupId !== 'all') && (
+                  {(filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' || filterGroupIds.length > 0) && (
                     <span className={styles.filterDot} />
                   )}
                 </button>

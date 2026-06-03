@@ -59,65 +59,60 @@ export function GroupsSection({
     localStorage.setItem('groupsViewMode', mode)
   }
 
-  if (groups.length === 0) {
-    return (
-      <div className={styles.emptyContainer}>
-        <div className={styles.emptyIcon}>
-          <FolderTree size={20} />
-        </div>
-        <div>
-          <h3 className={styles.emptyTitle}>No groups created yet</h3>
-          <p className={styles.emptyText}>
-            Use the "New Group" button in the toolbar to organize your screens.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className={styles.sectionContainer}>
-      <div className={styles.sectionHeader}>
-        <div className={styles.headerTitleArea}>
-          <FolderTree size={20} className={styles.sectionIcon} />
-          <h2 className={styles.sectionTitle}>Groups</h2>
-          <span className={styles.groupCountBadge}>{groups.length}</span>
-        </div>
-        {isMounted && (
-          <div className={styles.viewToggleGroup}>
-            <button 
-              className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
-              onClick={() => handleSetViewMode('table')}
-              title="Table View"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="8" y1="6" x2="21" y2="6"></line>
-                <line x1="8" y1="12" x2="21" y2="12"></line>
-                <line x1="8" y1="18" x2="21" y2="18"></line>
-                <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                <line x1="3" y1="18" x2="3.01" y2="18"></line>
-              </svg>
-            </button>
-            <button 
-              className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-              onClick={() => handleSetViewMode('grid')}
-              title="Grid View"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
-                <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
-                <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
-                <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
-              </svg>
-            </button>
+      <div className={styles.mainBlockContainer}>
+        <div className={styles.controlsBar}>
+          <div className={styles.headerTitleArea}>
+            <FolderTree size={18} className={styles.sectionIcon} />
+            <h2 className={styles.sectionTitle}>Groups</h2>
+            <span className={styles.groupCountBadge}>{groups.length}</span>
           </div>
-        )}
-      </div>
+          {isMounted && groups.length > 0 && (
+            <div className={styles.viewToggleGroup}>
+              <button 
+                className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
+                onClick={() => handleSetViewMode('table')}
+                title="Table View"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </button>
+              <button 
+                className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                onClick={() => handleSetViewMode('grid')}
+                title="Grid View"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                  <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                  <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                  <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
 
-      {viewMode === 'table' ? (
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
+        {groups.length === 0 ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>
+              <FolderTree size={20} />
+            </div>
+            <h3 className={styles.emptyTitle}>No groups created yet</h3>
+            <p className={styles.emptyText}>
+              Use the "+ New Group" button to organize your screens.
+            </p>
+          </div>
+        ) : viewMode === 'table' ? (
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
             <thead>
               <tr>
                 <th>Group Name</th>
@@ -303,6 +298,7 @@ export function GroupsSection({
           })}
         </div>
       )}
+      </div>
     </div>
   )
 }

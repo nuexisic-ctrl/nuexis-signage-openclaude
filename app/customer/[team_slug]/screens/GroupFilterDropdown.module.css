@@ -1,0 +1,227 @@
+.wrapper {
+  position: relative;
+  display: inline-block;
+  font-family: var(--font-label);
+}
+
+.trigger {
+  height: 42px;
+  min-width: 160px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
+  color: var(--on-surface);
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  outline: none;
+  transition: all var(--transition-base);
+}
+
+.trigger:hover {
+  background: var(--surface-medium);
+  border-color: var(--primary);
+}
+
+.triggerActive {
+  border-color: var(--primary);
+  background: var(--primary-container);
+  color: var(--primary);
+}
+
+.triggerContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.colorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.triggerText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  color: var(--on-surface-subtle);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.triggerActive .chevron {
+  color: var(--primary);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* Dropdown popover */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 240px;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  box-shadow: var(--shadow-modal);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow: hidden;
+  animation: slideDown 0.15s ease-out;
+}
+
+.searchWrapper {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--outline-variant);
+  padding: 0 10px;
+  background: var(--surface-low);
+}
+
+.searchIcon {
+  color: var(--on-surface-subtle);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  width: 100%;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  padding: 0 8px;
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  outline: none;
+}
+
+.clearSearch {
+  background: transparent;
+  border: 0;
+  color: var(--on-surface-subtle);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.clearSearch:hover {
+  background: var(--surface-medium);
+  color: var(--on-surface-high);
+}
+
+.actionRow {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-lowest);
+}
+
+.actionBtn {
+  flex: 1;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 0;
+  cursor: pointer;
+  color: var(--on-surface-muted);
+  transition: all 0.15s ease;
+}
+
+.actionBtn:hover {
+  background: var(--surface-medium);
+  color: var(--on-surface);
+}
+
+.list {
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.noResults {
+  padding: 16px;
+  text-align: center;
+  color: var(--on-surface-subtle);
+  font-size: 0.8125rem;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  min-width: 0;
+}
+
+.item:hover {
+  background-color: var(--surface-low);
+}
+
+.itemSelected {
+  background-color: var(--primary-container);
+}
+
+.itemSelected:hover {
+  background-color: var(--primary-container);
+  opacity: 0.9;
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.itemContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 1;
+  min-width: 0;
+  flex-grow: 1;
+}
+
+.itemName {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.checkIcon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-4px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
