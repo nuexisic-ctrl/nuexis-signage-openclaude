@@ -150,8 +150,23 @@
 .tableThumbnail {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background: var(--surface-low);
   border-radius: 11px;
+}
+
+.contentIconWrap {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--surface-container, #f1f5f9);
+  color: var(--on-surface, #0f172a);
+  border: 1px solid var(--outline-variant);
+  transition: background 0.15s ease;
 }
 
 .mimeChip {

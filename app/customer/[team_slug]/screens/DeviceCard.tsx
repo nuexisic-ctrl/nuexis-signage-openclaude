@@ -56,12 +56,31 @@ export function DeviceCard({
       <div className={styles.deviceCardHeaderTop}>
         <div className={styles.deviceCardHeaderLeft}>
           {onToggleSelect && (
-            <input 
-              type="checkbox" 
-              checked={selected} 
-              onChange={onToggleSelect} 
-              style={{ marginRight: '10px', width: '16px', height: '16px', cursor: 'pointer', flexShrink: 0 }}
-            />
+            <div 
+              style={{
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                background: 'rgba(7, 17, 31, 0.72)', 
+                backdropFilter: 'blur(8px)',
+                borderRadius: '4px',
+                padding: '4px',
+                marginRight: '10px',
+                cursor: 'pointer',
+                flexShrink: 0
+              }}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleSelect()
+              }}
+            >
+              <input 
+                type="checkbox" 
+                checked={selected} 
+                onChange={(e) => {}} 
+                style={{ width: '16px', height: '16px', cursor: 'pointer', margin: 0, pointerEvents: 'none' }}
+              />
+            </div>
           )}
           <div className={styles.deviceCardIcon}>
             <DeviceIcon name={device.name || ''} orientation={device.orientation} />

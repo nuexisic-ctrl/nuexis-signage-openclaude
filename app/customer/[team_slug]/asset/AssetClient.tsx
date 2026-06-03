@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import { AssetPreviewModal } from './AssetPreviewModal'
@@ -15,6 +15,8 @@ import { BulkDeleteModal } from './BulkDeleteModal'
 import { useAssetUpload } from './useAssetUpload'
 import { UploadPanel } from './UploadPanel'
 import { WidgetModalsContainer } from './WidgetModalsContainer'
+import { CreateFolderModal } from './CreateFolderModal'
+import { BulkMoveModal } from './BulkMoveModal'
 import { t } from '@/lib/i18n'
 import styles from './asset.module.css'
 
@@ -32,8 +34,8 @@ export default function AssetClient({
   teamId,
   teamSlug,
   totalAssets = 0,
-  currentPage = 1,
-  pageSize = 10
+  currentPage: initialCurrentPage = 1,
+  pageSize: initialPageSize = 10
 }: Props) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets)
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
@@ -46,6 +48,8 @@ export default function AssetClient({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [showCreateFolder, setShowCreateFolder] = useState(false)
+  const [showBulkMoveModal, setShowBulkMoveModal] = useState(false)
 
   const handleToggleSelect = useCallback((assetId: string) => {
     setSelectedAssetIds(prev => {
@@ -77,8 +81,8 @@ export default function AssetClient({
   const [isMounted, setIsMounted] = useState(false)
   const [showSuccessPulse, setShowSuccessPulse] = useState(false)
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState<number>(10)
+  const [currentPage, setCurrentPage] = useState(initialCurrentPage)
+  const [pageSize, setPageSize] = useState<number>(initialPageSize)
 
   const [, startTransition] = useTransition()
   const router = useRouter()
@@ -218,17 +222,38 @@ export default function AssetClient({
     })
   }
 
-  const handleRenameAssetSuccess = (newName: string) => {
-    setAssets(prev => prev.map(a => a.id === renameModalAsset?.id ? { ...a, file_name: newName } : a))
+  const handleRenameAssetSuccess = (newName: string, newColor?: string) => {
+    setAssets(prev => prev.map(a => 
+      a.id === renameModalAsset?.id 
+        ? { ...a, file_name: newName, ...(newColor ? { color: newColor } : {}) } 
+        : a
+    ))
     setRenameModalAsset(null)
   }
+
+  const handlePreviewAsset = (asset: Asset) => {
+    if (asset.mime_type === 'application/x-folder') {
+      router.push(`/customer/${teamSlug}/asset/folder/${asset.id.substring(0, 6)}`)
+    } else {
+      setPreviewAsset(asset)
+    }
+  }
+
+  useEffect(() => {
+    const folderList = assets.filter(a => a.mime_type === 'application/x-folder')
+    const cachedFolders: Record<string, { name: string; color: string }> = {}
+    folderList.forEach(f => {
+      cachedFolders[f.id] = { name: f.file_name, color: f.color || '#78716c' }
+    })
+    localStorage.setItem('nuexis_folders_cache', JSON.stringify(cachedFolders))
+  }, [assets])
 
   const filteredAssets = useMemo(() => {
     // eslint-disable-next-line react-hooks/purity
     const now = Date.now()
     const today = new Date().setHours(0,0,0,0)
     
-    return assets.filter(a => {
+    const filtered = assets.filter(a => {
       if (filterType !== 'all') {
         if (filterType === 'image' && !isImage(a.mime_type)) return false
         if (filterType === 'video' && !isVideo(a.mime_type)) return false
@@ -264,8 +289,21 @@ export default function AssetClient({
         }
       }
 
-      if (!searchQuery) return true
-      return a.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+      if (searchQuery) {
+        return a.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+      }
+      
+      // Root level assets (or folders) when no search is active
+      return !a.folder_id
+    })
+
+    // Sort folders at the top, then by created_at descending
+    return filtered.sort((a, b) => {
+      const aIsFolder = a.mime_type === 'application/x-folder'
+      const bIsFolder = b.mime_type === 'application/x-folder'
+      if (aIsFolder && !bIsFolder) return -1
+      if (!aIsFolder && bIsFolder) return 1
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
   }, [assets, filterType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery])
 
@@ -336,6 +374,18 @@ export default function AssetClient({
             {t('Upload Media')}
           </button>
           <button 
+            onClick={() => setShowCreateFolder(true)}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
+              background: 'var(--surface-low)', color: 'var(--on-surface)', borderRadius: '8px', 
+              border: '1px solid var(--outline-variant)', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-label)',
+              minHeight: '42px'
+            }}
+          >
+            <FolderPlus size={16} />
+            {t('New Folder')}
+          </button>
+          <button 
             onClick={() => setShowWidgetSelection(true)}
             style={{ 
               display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
@@ -389,6 +439,13 @@ export default function AssetClient({
                         {selectedAssetIds.size === 1 ? t('asset selected') : t('assets selected')}
                       </span>
                     </div>
+                    <button
+                      className={styles.bulkActionIconBtn}
+                      onClick={() => setShowBulkMoveModal(true)}
+                      title={t('Move to Folder')}
+                    >
+                      <FolderInput size={16} />
+                    </button>
                     <button
                       className={`${styles.bulkActionIconBtn} ${styles.bulkActionIconBtnDanger}`}
                       onClick={() => setShowBulkDeleteModal(true)}
@@ -467,7 +524,7 @@ export default function AssetClient({
                       setOpenMenuId(null)
                       setDeleteModalAsset(asset)
                     }}
-                    onPreview={setPreviewAsset}
+                    onPreview={handlePreviewAsset}
                     onRename={() => {
                       setOpenMenuId(null)
                       setRenameModalAsset(asset)
@@ -499,7 +556,7 @@ export default function AssetClient({
                   menuPosition={menuPosition}
                   setOpenMenuId={setOpenMenuId}
                   setMenuPosition={setMenuPosition}
-                  setPreviewAsset={setPreviewAsset}
+                  setPreviewAsset={handlePreviewAsset}
                   setRenameModalAsset={setRenameModalAsset}
                   setDeleteModalAsset={setDeleteModalAsset}
                   deletingIds={deletingIds}
@@ -624,6 +681,8 @@ export default function AssetClient({
           currentName={renameModalAsset.file_name}
           teamSlug={teamSlug}
           assetId={renameModalAsset.id}
+          mimeType={renameModalAsset.mime_type}
+          currentColor={renameModalAsset.color}
           onClose={() => setRenameModalAsset(null)}
           onSuccess={handleRenameAssetSuccess}
         />
@@ -649,6 +708,31 @@ export default function AssetClient({
             setAssets(prev => prev.filter(a => !selectedAssetIds.has(a.id)))
             setSelectedAssetIds(new Set())
             setShowBulkDeleteModal(false)
+            router.refresh()
+          }}
+        />
+      )}
+
+      {showCreateFolder && (
+        <CreateFolderModal
+          teamSlug={teamSlug}
+          onClose={() => setShowCreateFolder(false)}
+          onSuccess={(id) => {
+            setShowCreateFolder(false)
+            router.refresh()
+          }}
+        />
+      )}
+
+      {showBulkMoveModal && (
+        <BulkMoveModal
+          selectedAssets={assets.filter(a => selectedAssetIds.has(a.id))}
+          folders={assets.filter(a => a.mime_type === 'application/x-folder')}
+          teamSlug={teamSlug}
+          onClose={() => setShowBulkMoveModal(false)}
+          onSuccess={() => {
+            setSelectedAssetIds(new Set())
+            setShowBulkMoveModal(false)
             router.refresh()
           }}
         />

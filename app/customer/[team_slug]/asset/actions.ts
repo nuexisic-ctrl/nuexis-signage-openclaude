@@ -407,3 +407,157 @@ export async function deleteAssetsBulk(
   return { success: true }
 }
 
+export async function createFolder(
+  teamSlug: string,
+  folderName: string,
+  color: string
+): Promise<InsertAssetResult> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to create folders.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team. Please try again.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  const { data, error } = await supabase
+    .from('assets')
+    .insert({
+      team_id: teamId,
+      file_name: folderName.trim(),
+      file_path: 'folder',
+      mime_type: 'application/x-folder',
+      size_bytes: 0,
+      color: color,
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    console.error('[createFolder] error:', error)
+    return { success: false, error: 'An unexpected error occurred while creating your folder.' }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/asset`)
+  return { success: true, id: data.id }
+}
+
+export async function updateAssetFolder(
+  teamSlug: string,
+  assetId: string,
+  newName: string,
+  color: string
+): Promise<InsertAssetResult> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to rename a folder.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from('assets')
+    .update({ file_name: newName.trim(), color: color })
+    .eq('id', assetId)
+    .eq('team_id', teamId)
+    .select('id')
+
+  if (updateError || !updated || updated.length === 0) {
+    console.error('[updateAssetFolder] update error:', updateError)
+    return { success: false, error: 'Failed to update folder. Please try again later.' }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/asset`)
+  return { success: true, id: assetId }
+}
+
+export async function moveAssetsToFolder(
+  teamSlug: string,
+  assetIds: string[],
+  folderId: string | null
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team. Please try again.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  // 1. Verify ownership of all target assets
+  const { data: targetAssets, error: selectError } = await supabase
+    .from('assets')
+    .select('id, team_id')
+    .in('id', assetIds)
+
+  if (selectError || !targetAssets || targetAssets.length === 0) {
+    return { success: false, error: 'Assets not found.' }
+  }
+
+  const unauthorized = targetAssets.some(a => a.team_id !== teamId)
+  if (unauthorized) {
+    return { success: false, error: 'You do not have permission to modify these assets.' }
+  }
+
+  // 2. If a folderId is provided, check that the folder also exists and belongs to this team
+  if (folderId) {
+    const { data: folderAsset, error: folderError } = await supabase
+      .from('assets')
+      .select('id, team_id, mime_type')
+      .eq('id', folderId)
+      .single()
+
+    if (folderError || !folderAsset || folderAsset.team_id !== teamId || folderAsset.mime_type !== 'application/x-folder') {
+      return { success: false, error: 'Target folder not found.' }
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from('assets')
+    .update({ folder_id: folderId })
+    .in('id', assetIds)
+    .eq('team_id', teamId)
+
+  if (updateError) {
+    console.error('[moveAssetsToFolder] error:', updateError)
+    return { success: false, error: 'Failed to move assets to folder.' }
+  }
+
+  revalidatePath(`/customer/${teamSlug}/asset`)
+  return { success: true }
+}
+

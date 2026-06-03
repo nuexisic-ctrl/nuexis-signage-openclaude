@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode } from 'lucide-react'
+import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -70,30 +70,36 @@ export function AssetCard({
     }
   }
 
+  const isFolder = asset.mime_type === 'application/x-folder'
+
   return (
     <div className={`${styles.assetCard} ${isDeleting ? styles.assetCardDeleting : ''} ${selected ? styles.assetCardSelected : ''}`}>
       {onToggleSelect && (
         <div 
           style={{ 
             position: 'absolute', 
-            top: '9px', 
-            left: '9px', 
+            top: '8px', 
+            left: '8px', 
             zIndex: 15, 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center', 
             background: 'rgba(7, 17, 31, 0.72)', 
             backdropFilter: 'blur(8px)',
-            borderRadius: '6px',
-            padding: '6px'
+            borderRadius: '4px',
+            padding: '4px',
+            cursor: 'pointer'
           }}
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleSelect()
+          }}
         >
           <input 
             type="checkbox" 
             checked={selected} 
-            onChange={onToggleSelect} 
-            style={{ width: '16px', height: '16px', cursor: 'pointer', margin: 0 }}
+            onChange={(e) => {}} 
+            style={{ width: '16px', height: '16px', cursor: 'pointer', margin: 0, pointerEvents: 'none' }}
           />
         </div>
       )}
@@ -103,9 +109,15 @@ export function AssetCard({
         role="button"
         tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onPreview(asset) }}
-        aria-label={`Preview ${asset.file_name}`}
+        aria-label={isFolder ? `Open ${asset.file_name}` : `Preview ${asset.file_name}`}
       >
-        {(isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode') && previewUrl ? (
+        {isFolder ? (
+          <div className={styles.videoThumbWrapper} style={{ position: 'relative', width: '100%', height: '100%' }}>
+             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-low)' }}>
+               <Folder size={72} style={{ stroke: asset.color || '#78716c', fill: asset.color || '#78716c', fillOpacity: 0.15 }} />
+             </div>
+          </div>
+        ) : (isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode') && previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewUrl} alt={asset.file_name} className={styles.assetImg} />
         ) : isVideo(asset.mime_type) && previewUrl ? (
@@ -147,7 +159,7 @@ export function AssetCard({
         )}
         
         <div className={styles.mimeChip}>
-          {asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+          {isFolder ? t('FOLDER') : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
         </div>
       </div>
 
@@ -173,9 +185,9 @@ export function AssetCard({
                 onClick={e => e.stopPropagation()}
               >
                 <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
-                  {t('Preview')}
+                  {isFolder ? t('Open') : t('Preview')}
                 </button>
-                {!isWidget(asset.mime_type) && (
+                {!isWidget(asset.mime_type) && !isFolder && (
                   <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
                     {t('Download')}
                   </button>
@@ -192,7 +204,7 @@ export function AssetCard({
           </div>
         </div>
         <div className={styles.assetMeta}>
-          <span>{formatBytes(asset.size_bytes)}</span>
+          <span>{isFolder ? '—' : formatBytes(asset.size_bytes)}</span>
           <span className={styles.metaDot}>·</span>
           <span>{date}</span>
         </div>

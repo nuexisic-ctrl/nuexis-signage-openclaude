@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode } from 'lucide-react'
+import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -106,15 +106,23 @@ export function AssetTableView({
               day: 'numeric',
               year: 'numeric',
             })
+            const isFolder = asset.mime_type === 'application/x-folder'
 
             return (
               <tr key={asset.id} className={`${styles.tableRow} ${selectedAssetIds.has(asset.id) ? styles.rowSelected : ''}`}>
-                <td className={styles.tableCell} style={{ width: '40px', textAlign: 'center' }}>
+                <td 
+                  className={styles.tableCell} 
+                  style={{ width: '40px', textAlign: 'center', cursor: 'pointer' }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleToggleSelect(asset.id)
+                  }}
+                >
                   <input 
                     type="checkbox" 
                     checked={selectedAssetIds.has(asset.id)} 
-                    onChange={() => handleToggleSelect(asset.id)} 
-                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                    onChange={(e) => {}} 
+                    style={{ width: '16px', height: '16px', cursor: 'pointer', pointerEvents: 'none' }}
                   />
                 </td>
                 <td
@@ -124,7 +132,9 @@ export function AssetTableView({
                 >
                   <div className={styles.nameCellContent}>
                     <div className={styles.deviceIconWrapper}>
-                      {isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode' ? (
+                      {isFolder ? (
+                        <Folder size={20} style={{ stroke: asset.color || '#78716c', color: asset.color || '#78716c' }} />
+                      ) : isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode' ? (
                         getPreviewUrl(asset.file_path) ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={getPreviewUrl(asset.file_path)!} className={styles.tableThumbnail} alt="" />
@@ -157,27 +167,39 @@ export function AssetTableView({
                   </div>
                 </td>
                 <td className={styles.tableCell}>
-                  <div
-                    className={styles.mimeChip}
-                    style={{
-                      position: 'relative',
-                      bottom: 'auto',
-                      left: 'auto',
-                      display: 'inline-block',
-                    }}
+                  <div 
+                    className={styles.contentIconWrap}
+                    title={isFolder ? 'FOLDER' : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+                    style={{ cursor: 'help' }}
                   >
-                    {asset.mime_type === 'application/x-widget-flow'
-                      ? 'CLOCK'
-                      : isWidget(asset.mime_type)
-                      ? 'WIDGET'
-                      : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+                    {isFolder ? (
+                      <Folder size={15} />
+                    ) : isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode' ? (
+                      asset.mime_type === 'application/x-widget-qrcode' ? (
+                        <QrCode size={15} />
+                      ) : (
+                        <ImageIcon size={15} />
+                      )
+                    ) : isVideo(asset.mime_type) ? (
+                      <Play size={15} />
+                    ) : asset.mime_type === 'application/x-widget-youtube' ? (
+                      <YoutubeIcon size={15} />
+                    ) : asset.mime_type === 'application/x-widget-remote-url' ? (
+                      <Link size={15} />
+                    ) : asset.mime_type === 'application/x-widget-html' ? (
+                      <Code size={15} />
+                    ) : asset.mime_type === 'application/x-widget-flow' ? (
+                      <Clock size={15} />
+                    ) : (
+                      <File size={15} />
+                    )}
                   </div>
                 </td>
                 <td
                   className={styles.tableCell}
                   style={{ fontSize: '0.88rem', color: 'var(--on-surface)' }}
                 >
-                  {formatBytes(asset.size_bytes)}
+                  {isFolder ? '—' : formatBytes(asset.size_bytes)}
                 </td>
                 <td className={styles.tableCell}>
                   <div className={styles.cellLastSeen}>{date}</div>
@@ -242,7 +264,7 @@ export function AssetTableView({
                             >
                               {t('Rename')}
                             </button>
-                            {!isWidget(asset.mime_type) && (
+                            {!isWidget(asset.mime_type) && !isFolder && (
                               <button
                                 className={styles.dropdownItem}
                                 onClick={() => {

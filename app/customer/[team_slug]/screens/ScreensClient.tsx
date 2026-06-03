@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useTransition } from 'react'
+import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Plus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -66,15 +66,22 @@ export default function ScreensClient({
   memberships: initialMemberships = [],
   teamSlug,
   teamId,
-  totalScreens = 0,
-  currentPage = 1,
-  pageSize = 10
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [isPending, startTransition] = useTransition()
-  
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(10)
+
+  useEffect(() => {
+    const savedLimit = localStorage.getItem('nuexis_screens_per_page')
+    if (savedLimit) {
+      setPageSize(Number(savedLimit) || 10)
+    }
+  }, [])
+
   const [showPairModal, setShowPairModal] = useState(false)
   const [assignModalDevice, setAssignModalDevice] = useState<Device | null>(null)
   const [deleteModalDevice, setDeleteModalDevice] = useState<Device | null>(null)
@@ -115,8 +122,6 @@ export default function ScreensClient({
     initialDevices,
     teamId,
     teamSlug,
-    currentPage,
-    pageSize,
     isRefreshing,
     router
   )
@@ -152,6 +157,10 @@ export default function ScreensClient({
   const [filterDatePreset, setFilterDatePreset] = useState<string>('all')
   const [filterStartDate, setFilterStartDate] = useState<string>('')
   const [filterEndDate, setFilterEndDate] = useState<string>('')
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, filterStatus, filterOrientation, filterDatePreset, filterGroupIds])
 
   const handleSetViewMode = (mode: 'grid' | 'table') => {
     setViewMode(mode)
@@ -298,26 +307,25 @@ export default function ScreensClient({
   const offlineCount = devices.length - onlineCount;
   const totalPlaytimeSeconds = devices.reduce((acc, d) => acc + (Number(d.total_playtime_seconds) || 0), 0);
 
-  const totalPages = Math.ceil(totalScreens / pageSize)
+  const totalPages = Math.ceil(filteredDevices.length / pageSize) || 1
   const hasNextPage = currentPage < totalPages
   const hasPrevPage = currentPage > 1
-  const startItem = (currentPage - 1) * pageSize + 1
-  const endItem = Math.min(currentPage * pageSize, totalScreens)
+  const startItem = filteredDevices.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const endItem = Math.min(currentPage * pageSize, filteredDevices.length)
 
-  // Navigate to a new page — update URL pushState then refresh the server component
+  // Navigate to a new page — update local state and localStorage
   const navigatePage = (page: number, limit: number) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('page', String(page))
-    params.set('limit', String(limit))
-    
-    // Sync browser URL history
-    window.history.pushState(null, '', `${pathname}?${params.toString()}`)
-    
-    // Force re-fetch of server component
-    startTransition(() => {
-      router.refresh()
-    })
+    setPageSize(limit)
+    setCurrentPage(page)
+    localStorage.setItem('nuexis_screens_per_page', String(limit))
   }
+
+  const paginatedDevices = useMemo(() => {
+    const from = (currentPage - 1) * pageSize
+    return filteredDevices.slice(from, from + pageSize)
+  }, [filteredDevices, currentPage, pageSize])
+
+
 
   return (
     <>
@@ -471,7 +479,7 @@ export default function ScreensClient({
               </div>
             ) : viewMode === 'grid' ? (
               <div key="screens-grid-layout-view" className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
-                {filteredDevices.map((device) => (
+                {paginatedDevices.map((device) => (
                   <DeviceCard
                     key={device.id}
                     device={device}
@@ -503,7 +511,7 @@ export default function ScreensClient({
             ) : (
               <DeviceTable
                 key="screens-table-layout-view"
-                filteredDevices={filteredDevices}
+                filteredDevices={paginatedDevices}
                 selectedDeviceIds={selectedDeviceIds}
                 setSelectedDeviceIds={setSelectedDeviceIds}
                 assets={assets}
@@ -529,7 +537,7 @@ export default function ScreensClient({
                 <div className={styles.paginationInfo}>
                   {searchQuery 
                     ? `Showing ${filteredDevices.length} filtered screens` 
-                    : `Showing ${startItem} to ${endItem} of ${totalScreens} screens`
+                    : `Showing ${startItem} to ${endItem} of ${devices.length} screens`
                   }
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

@@ -84,6 +84,13 @@ export function GroupsSection({
   const [pageSize, setPageSize] = useState<number>(5)
 
   useEffect(() => {
+    const savedLimit = localStorage.getItem('nuexis_groups_per_page')
+    if (savedLimit) {
+      setPageSize(Number(savedLimit) || 5)
+    }
+  }, [])
+
+  useEffect(() => {
     const saved = localStorage.getItem('groupsViewMode')
     if (saved === 'grid' || saved === 'table') {
       setViewMode(saved)
@@ -402,8 +409,10 @@ export function GroupsSection({
                 value={pageSize}
                 onChange={(e) => {
                   const val = e.target.value
-                  setPageSize(parseInt(val, 10))
+                  const newLimit = parseInt(val, 10)
+                  setPageSize(newLimit)
                   setCurrentPage(1)
+                  localStorage.setItem('nuexis_groups_per_page', String(newLimit))
                 }}
                 style={{
                   padding: '4px 8px',

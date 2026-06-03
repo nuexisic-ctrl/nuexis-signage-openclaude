@@ -26,6 +26,13 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(10)
 
+  useEffect(() => {
+    const savedLimit = localStorage.getItem('nuexis_playlists_per_page')
+    if (savedLimit) {
+      setPageSize(Number(savedLimit) || 10)
+    }
+  }, [])
+
   // Premium Dashboard States
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [isMounted, setIsMounted] = useState(false)
@@ -431,8 +438,10 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                   value={pageSize}
                   onChange={(e) => {
                     const val = e.target.value
-                    setPageSize(parseInt(val, 10))
+                    const newLimit = parseInt(val, 10)
+                    setPageSize(newLimit)
                     setCurrentPage(1)
+                    localStorage.setItem('nuexis_playlists_per_page', String(newLimit))
                   }}
                   style={{
                     padding: '4px 8px',

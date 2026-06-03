@@ -73,12 +73,19 @@ export function DeviceTableRow({
   return (
     <tr className={`${styles.tableRow} ${selected ? styles.rowSelected : ''}`}>
       {onToggleSelect && (
-        <td className={styles.tableCell} style={{ width: '40px', textAlign: 'center' }}>
+        <td 
+          className={styles.tableCell} 
+          style={{ width: '40px', textAlign: 'center', cursor: 'pointer' }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleSelect()
+          }}
+        >
           <input 
             type="checkbox" 
             checked={selected} 
-            onChange={onToggleSelect} 
-            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            onChange={(e) => {}} 
+            style={{ width: '16px', height: '16px', cursor: 'pointer', pointerEvents: 'none' }}
           />
         </td>
       )}

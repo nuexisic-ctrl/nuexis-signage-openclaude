@@ -5,6 +5,8 @@ export interface Asset {
   mime_type: string
   size_bytes: number
   created_at: string
+  folder_id?: string | null
+  color?: string | null
 }
 
 export function formatBytes(bytes: number): string {

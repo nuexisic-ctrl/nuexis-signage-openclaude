@@ -765,9 +765,7 @@
 }
 
 .bulkActionIconBtnDanger {
-  background: rgba(239, 68, 68, 0.05);
-  border-color: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  /* Default styles inherited from .bulkActionIconBtn */
 }
 
 .bulkActionIconBtnDanger:hover {
