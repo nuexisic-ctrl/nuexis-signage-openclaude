@@ -4,7 +4,7 @@ import { useState, useMemo, useTransition, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Folder, X, ChevronLeft, ChevronRight, ArrowUpLeft, Trash2, Play, Image as ImageIcon, File, QrCode, Link as LinkIcon, Code, Clock, Eye, Download } from 'lucide-react'
+import { Folder, X, ChevronLeft, ChevronRight, ArrowUpLeft, Trash2, Play, Image as ImageIcon, File, QrCode, Link as LinkIcon, Code, Clock, Eye, Download, Hourglass } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from '../../types'
@@ -386,6 +386,8 @@ export default function FolderClient({
                                     <Code size={20} style={{ stroke: '#10b981', color: '#10b981' }} />
                                   ) : asset.mime_type === 'application/x-widget-flow' ? (
                                     <Clock size={20} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                                  ) : asset.mime_type === 'application/x-widget-countdown' ? (
+                                    <Hourglass size={20} style={{ stroke: '#eab308', color: '#eab308' }} />
                                   ) : asset.mime_type === 'application/x-widget-qrcode' ? (
                                     <QrCode size={20} style={{ stroke: '#a855f7', color: '#a855f7' }} />
                                   ) : (
@@ -398,7 +400,7 @@ export default function FolderClient({
                             <td className={tableStyles.tableCell}>
                               <div 
                                 className={tableStyles.contentIconWrap}
-                                title={asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+                                title={asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
                                 style={{ cursor: 'help' }}
                               >
                                 {isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode' ? (
@@ -417,6 +419,8 @@ export default function FolderClient({
                                   <Code size={15} />
                                 ) : asset.mime_type === 'application/x-widget-flow' ? (
                                   <Clock size={15} />
+                                ) : asset.mime_type === 'application/x-widget-countdown' ? (
+                                  <Hourglass size={15} />
                                 ) : (
                                   <File size={15} />
                                 )}

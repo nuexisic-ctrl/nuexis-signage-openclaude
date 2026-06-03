@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder } from 'lucide-react'
+import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -159,6 +159,8 @@ export function AssetTableView({
                         <Code size={20} style={{ stroke: '#10b981', color: '#10b981' }} />
                       ) : asset.mime_type === 'application/x-widget-flow' ? (
                         <Clock size={20} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                      ) : asset.mime_type === 'application/x-widget-countdown' ? (
+                        <Hourglass size={20} style={{ stroke: '#eab308', color: '#eab308' }} />
                       ) : asset.mime_type === 'application/x-widget-qrcode' ? (
                         <QrCode size={20} style={{ stroke: '#a855f7', color: '#a855f7' }} />
                       ) : (
@@ -171,7 +173,7 @@ export function AssetTableView({
                 <td className={styles.tableCell}>
                   <div 
                     className={styles.contentIconWrap}
-                    title={isFolder ? 'FOLDER' : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+                    title={isFolder ? 'FOLDER' : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
                     style={{ cursor: 'help' }}
                   >
                     {isFolder ? (
@@ -192,6 +194,8 @@ export function AssetTableView({
                       <Code size={15} />
                     ) : asset.mime_type === 'application/x-widget-flow' ? (
                       <Clock size={15} />
+                    ) : asset.mime_type === 'application/x-widget-countdown' ? (
+                      <Hourglass size={15} />
                     ) : (
                       <File size={15} />
                     )}

@@ -62,6 +62,7 @@ export function DeviceTableRow({
 
   const kindClassMap: Record<string, string> = {
     clock:        styles.contentIcon_clock,
+    countdown:    styles.contentIcon_countdown,
     image:        styles.contentIcon_image,
     video:        styles.contentIcon_video,
     youtube:      styles.contentIcon_youtube,

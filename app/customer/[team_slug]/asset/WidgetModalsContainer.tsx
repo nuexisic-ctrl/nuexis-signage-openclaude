@@ -4,6 +4,7 @@ import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { WidgetSelectionModal, YouTubeWidgetModal, RemoteUrlWidgetModal, HtmlWidgetModal, QRCodeWidgetModal } from './WidgetModals'
 import FlowWidgetModal from './FlowWidgetModal'
+import CountdownWidgetModal from './CountdownWidgetModal'
 import { insertAsset, getUploadUrl } from './actions'
 import { createClient } from '@/lib/supabase/client'
 import { Asset } from './types'
@@ -31,6 +32,7 @@ export function WidgetModalsContainer({
   const [showHtmlConfig, setShowHtmlConfig] = useState(false)
   const [showFlowConfig, setShowFlowConfig] = useState(false)
   const [showQRCodeConfig, setShowQRCodeConfig] = useState(false)
+  const [showCountdownConfig, setShowCountdownConfig] = useState(false)
   const [isSubmittingWidget, setIsSubmittingWidget] = useState(false)
   
   const [, startTransition] = useTransition()
@@ -153,6 +155,49 @@ export function WidgetModalsContainer({
     setIsSubmittingWidget(false)
   }
 
+  const handleCreateCountdownWidget = async (name: string, config: {
+    text: string
+    endTime: string
+    endMessage: string
+    timerStyle: 'flip' | 'digital' | 'modern' | 'minimal' | 'card'
+    daysOnly: boolean
+    theme: 'light' | 'dark' | 'sunset' | 'neon' | 'ocean' | 'custom'
+    themeSettings: {
+      primaryColor?: string
+      secondaryColor?: string
+      backgroundColor?: string
+      textColor?: string
+      backgroundImage?: string
+    }
+    advancedSettings?: any
+  }) => {
+    setIsSubmittingWidget(true)
+    const serialized = JSON.stringify(config)
+    const result = await insertAsset(teamSlug, {
+      file_name: name,
+      file_path: serialized,
+      mime_type: 'application/x-widget-countdown',
+      size_bytes: 0,
+    })
+
+    if (result.success) {
+      const newAsset: Asset = {
+        id: result.id!,
+        file_name: name,
+        file_path: serialized,
+        mime_type: 'application/x-widget-countdown',
+        size_bytes: 0,
+        created_at: new Date().toISOString(),
+      }
+      setAssets(prev => [newAsset, ...prev])
+      setShowCountdownConfig(false)
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 5000)
+      startTransition(() => { router.refresh() })
+    }
+    setIsSubmittingWidget(false)
+  }
+
   return (
     <>
       {showWidgetSelection && (
@@ -163,6 +208,7 @@ export function WidgetModalsContainer({
           onSelectHtml={() => setShowHtmlConfig(true)}
           onSelectFlow={() => setShowFlowConfig(true)}
           onSelectQRCode={() => setShowQRCodeConfig(true)}
+          onSelectCountdown={() => setShowCountdownConfig(true)}
         />
       )}
 
@@ -195,6 +241,14 @@ export function WidgetModalsContainer({
         <FlowWidgetModal
           onClose={() => setShowFlowConfig(false)}
           onSubmit={handleCreateFlowWidget}
+          isSubmitting={isSubmittingWidget}
+        />
+      )}
+
+      {showCountdownConfig && (
+        <CountdownWidgetModal
+          onClose={() => setShowCountdownConfig(false)}
+          onSubmit={handleCreateCountdownWidget}
           isSubmitting={isSubmittingWidget}
         />
       )}

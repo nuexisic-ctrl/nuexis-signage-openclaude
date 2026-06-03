@@ -62,7 +62,8 @@ export async function resolveAsset({
       asset.mime_type === 'application/x-widget-youtube' ||
       asset.mime_type === 'application/x-widget-remote-url' ||
       asset.mime_type === 'application/x-widget-html' ||
-      asset.mime_type === 'application/x-widget-flow'
+      asset.mime_type === 'application/x-widget-flow' ||
+      asset.mime_type === 'application/x-widget-countdown'
 
     if (isWidget) {
       onResolve(asset.file_path, asset.mime_type, null)

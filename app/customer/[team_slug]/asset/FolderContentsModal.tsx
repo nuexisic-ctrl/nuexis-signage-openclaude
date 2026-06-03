@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Folder, X, Play, Image as ImageIcon, File, QrCode, Link, Code, Clock, ArrowUpLeft, Eye, Trash2, Edit2, AlertTriangle } from 'lucide-react'
+import { Folder, X, Play, Image as ImageIcon, File, QrCode, Link, Code, Clock, ArrowUpLeft, Eye, Trash2, Edit2, AlertTriangle, Hourglass } from 'lucide-react'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 import { moveAssetsToFolder } from './actions'
 import { t } from '@/lib/i18n'
@@ -159,6 +159,8 @@ export function FolderContentsModal({
                           <Code size={18} style={{ stroke: '#10b981', color: '#10b981' }} />
                         ) : asset.mime_type === 'application/x-widget-flow' ? (
                           <Clock size={18} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                        ) : asset.mime_type === 'application/x-widget-countdown' ? (
+                          <Hourglass size={18} style={{ stroke: '#eab308', color: '#eab308' }} />
                         ) : (
                           <File size={18} />
                         )}
@@ -171,7 +173,7 @@ export function FolderContentsModal({
                         <div style={{ fontSize: '0.72rem', color: 'var(--on-surface-subtle)', display: 'flex', gap: '8px', marginTop: '2px' }}>
                           <span>{formatBytes(asset.size_bytes)}</span>
                           <span>•</span>
-                          <span>{asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}</span>
+                          <span>{asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}</span>
                         </div>
                       </div>
                     </div>

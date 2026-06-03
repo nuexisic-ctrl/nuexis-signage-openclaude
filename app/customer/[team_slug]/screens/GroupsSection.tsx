@@ -46,6 +46,7 @@ function getGroupContentKind(group: Group, assets: any[]): ContentKind {
       if (asset.mime_type === 'application/x-widget-remote-url') return 'remote-url'
       if (asset.mime_type === 'application/x-widget-html') return 'html-widget'
       if (asset.mime_type === 'application/x-widget-flow') return 'clock'
+      if (asset.mime_type === 'application/x-widget-countdown') return 'countdown'
       if (asset.mime_type.startsWith('video/')) return 'video'
       if (asset.mime_type.startsWith('image/')) return 'image'
     }
@@ -69,6 +70,7 @@ export function GroupsSection({
 }: GroupsSectionProps) {
   const kindClassMap: Record<string, string> = {
     clock:        styles.contentIcon_clock,
+    countdown:    styles.contentIcon_countdown,
     image:        styles.contentIcon_image,
     video:        styles.contentIcon_video,
     youtube:      styles.contentIcon_youtube,

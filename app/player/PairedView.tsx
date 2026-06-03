@@ -4,6 +4,7 @@ import { useState } from 'react'
 import PlaylistEngine from './PlaylistEngine'
 import styles from './player.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
+import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import { X, Monitor, RefreshCw, Volume2, VolumeX, Unlink } from 'lucide-react'
 
 interface PairedViewProps {
@@ -148,6 +149,25 @@ export default function PairedView({
       } catch (err) {
         console.error('Failed to parse Clock widget config in PairedView:', err)
         content = <div style={{ color: 'red', padding: '10px' }}>Error rendering Clock widget</div>
+      }
+    } else if (mimeType === 'application/x-widget-countdown') {
+      try {
+        const config = JSON.parse(assetUrl)
+        content = (
+          <FlowCountdownRenderer
+            text={config.text}
+            endTime={config.endTime}
+            endMessage={config.endMessage}
+            timerStyle={config.timerStyle}
+            daysOnly={config.daysOnly}
+            theme={config.theme}
+            themeSettings={config.themeSettings}
+            advancedSettings={config.advancedSettings}
+          />
+        )
+      } catch (err) {
+        console.error('Failed to parse Countdown widget config in PairedView:', err)
+        content = <div style={{ color: 'red', padding: '10px' }}>Error rendering Countdown widget</div>
       }
     } else if (mimeType?.startsWith('video/')) {
       content = (

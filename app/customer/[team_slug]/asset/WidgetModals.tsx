@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { AlertTriangle, Link, MonitorPlay, X, Code, Clock, QrCode, Check, ChevronDown, Search, History } from 'lucide-react'
+import { AlertTriangle, Link, MonitorPlay, X, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass } from 'lucide-react'
 import styles from './Modal.module.css'
 import { validateHtml, validateCss } from './validators'
 import { t } from '@/lib/i18n'
@@ -19,6 +19,7 @@ interface WidgetSelectionModalProps {
   onSelectHtml: () => void
   onSelectFlow: () => void
   onSelectQRCode: () => void
+  onSelectCountdown: () => void
 }
 
 const WIDGET_SEARCH_HISTORY_KEY = 'widget_search_history'
@@ -58,7 +59,8 @@ export function WidgetSelectionModal({
   onSelectRemoteUrl,
   onSelectHtml,
   onSelectFlow,
-  onSelectQRCode
+  onSelectQRCode,
+  onSelectCountdown
 }: WidgetSelectionModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchHistory, setSearchHistory] = useState<string[]>([])
@@ -88,6 +90,14 @@ export function WidgetSelectionModal({
   }, [showHistory])
 
   const ALL_WIDGETS = [
+    {
+      id: 'countdown',
+      title: t('Countdown'),
+      description: t('Display a custom countdown timer to an event with various themes and styles.'),
+      icon: Hourglass,
+      color: '#eab308',
+      action: onSelectCountdown
+    },
     {
       id: 'clock',
       title: t('Clock'),

@@ -97,6 +97,7 @@
 
 /* All content-kind icons are monochrome — uniform B&W look */
 .contentIcon_clock,
+.contentIcon_countdown,
 .contentIcon_image,
 .contentIcon_video,
 .contentIcon_youtube,
@@ -109,6 +110,7 @@
 }
 
 [data-theme="dark"] .contentIcon_clock,
+[data-theme="dark"] .contentIcon_countdown,
 [data-theme="dark"] .contentIcon_image,
 [data-theme="dark"] .contentIcon_video,
 [data-theme="dark"] .contentIcon_youtube,

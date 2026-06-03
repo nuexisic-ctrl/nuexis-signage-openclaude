@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useEffect } from 'react'
-import { X, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, FileText, Video, Image as ImageIcon, Play, MoreVertical, Monitor, Link2, Code, Clock, QrCode } from 'lucide-react'
+import { X, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, FileText, Video, Image as ImageIcon, Play, MoreVertical, Monitor, Link2, Code, Clock, QrCode, Hourglass } from 'lucide-react'
 import styles from './AssetBrowserModal.module.css'
 import { FilterSidebar } from '../asset/FilterSidebar'
 import { modalStack } from '@/lib/utils/modalStack'
@@ -262,6 +262,8 @@ export function AssetBrowserModal({
             <Code size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
           ) : asset.mime_type === 'application/x-widget-flow' ? (
             <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+          ) : asset.mime_type === 'application/x-widget-countdown' ? (
+            <Hourglass size={72} style={{ stroke: '#eab308', color: '#eab308' }} />
           ) : asset.mime_type === 'application/x-widget-qrcode' ? (
             <QrCode size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
           ) : (
@@ -334,6 +336,9 @@ export function AssetBrowserModal({
       }
       if (asset.mime_type === 'application/x-widget-flow') {
         return <Clock size={18} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+      }
+      if (asset.mime_type === 'application/x-widget-countdown') {
+        return <Hourglass size={18} style={{ stroke: '#eab308', color: '#eab308' }} />
       }
       if (asset.mime_type === 'application/x-widget-qrcode') {
         return <QrCode size={18} style={{ stroke: '#a855f7', color: '#a855f7' }} />

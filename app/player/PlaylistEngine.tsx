@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { getPlaylistItems, getSignedMediaUrl } from './actions'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
+import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 
 interface PlaylistItem {
   id: string
@@ -299,7 +300,8 @@ function PlayableItem({
           mimeType === 'application/x-widget-youtube' || 
           mimeType === 'application/x-widget-remote-url' ||
           mimeType === 'application/x-widget-html' ||
-          mimeType === 'application/x-widget-flow'
+          mimeType === 'application/x-widget-flow' ||
+          mimeType === 'application/x-widget-countdown'
         ) {
           return filePath
         }
@@ -325,7 +327,8 @@ function PlayableItem({
         mimeType === 'application/x-widget-youtube' || 
         mimeType === 'application/x-widget-remote-url' ||
         mimeType === 'application/x-widget-html' ||
-        mimeType === 'application/x-widget-flow'
+        mimeType === 'application/x-widget-flow' ||
+        mimeType === 'application/x-widget-countdown'
       ) {
         return true
       }
@@ -511,6 +514,38 @@ function PlayableItem({
           use24Hour={parsedConfig.use24Hour}
           dateFormat={parsedConfig.dateFormat}
           theme={parsedConfig.theme}
+        />
+      </div>
+    )
+  }
+
+  if (item.assets?.mime_type === 'application/x-widget-countdown') {
+    let parsedConfig: any = null
+    try {
+      parsedConfig = JSON.parse(mediaUrl)
+    } catch (err) {
+      console.error('Failed to parse Countdown widget config in playlist engine:', err)
+    }
+
+    if (!parsedConfig) {
+      return (
+        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+          Error rendering Countdown widget
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+        <FlowCountdownRenderer
+          text={parsedConfig.text}
+          endTime={parsedConfig.endTime}
+          endMessage={parsedConfig.endMessage}
+          timerStyle={parsedConfig.timerStyle}
+          daysOnly={parsedConfig.daysOnly}
+          theme={parsedConfig.theme}
+          themeSettings={parsedConfig.themeSettings}
+          advancedSettings={parsedConfig.advancedSettings}
         />
       </div>
     )

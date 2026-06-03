@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder } from 'lucide-react'
+import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -147,6 +147,8 @@ export function AssetCard({
                   <Code size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
                 ) : asset.mime_type === 'application/x-widget-flow' ? (
                   <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                ) : asset.mime_type === 'application/x-widget-countdown' ? (
+                  <Hourglass size={72} style={{ stroke: '#eab308', color: '#eab308' }} />
                 ) : asset.mime_type === 'application/x-widget-qrcode' ? (
                   <QrCode size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
                 ) : (
@@ -161,7 +163,7 @@ export function AssetCard({
         )}
         
         <div className={styles.mimeChip}>
-          {isFolder ? t('FOLDER') : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+          {isFolder ? t('FOLDER') : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
         </div>
       </div>
 

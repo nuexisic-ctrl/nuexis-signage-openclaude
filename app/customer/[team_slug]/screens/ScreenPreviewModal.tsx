@@ -7,6 +7,7 @@ import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import styles from './ScreenPreviewModal.module.css'
 import { Device, Asset, Playlist } from './types'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
+import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 
 interface Props {
   device: Device
@@ -354,6 +355,27 @@ export function ScreenPreviewModal({
       } catch (err) {
         console.error('Failed to render Clock widget in simulator:', err)
         return <div style={{ color: 'red', padding: '10px' }}>Error rendering Clock widget</div>
+      }
+    }
+
+    if (itemMime === 'application/x-widget-countdown') {
+      try {
+        const config = JSON.parse(itemPath)
+        return (
+          <FlowCountdownRenderer
+            text={config.text}
+            endTime={config.endTime}
+            endMessage={config.endMessage}
+            timerStyle={config.timerStyle}
+            daysOnly={config.daysOnly}
+            theme={config.theme}
+            themeSettings={config.themeSettings}
+            advancedSettings={config.advancedSettings}
+          />
+        )
+      } catch (err) {
+        console.error('Failed to render Countdown widget in simulator:', err)
+        return <div style={{ color: 'red', padding: '10px' }}>Error rendering Countdown widget</div>
       }
     }
 

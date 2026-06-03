@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { X, File } from 'lucide-react'
 import styles from './Modal.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
+import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 
 interface Asset {
   id: string
@@ -63,7 +64,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
         <div className={styles.modalHeader}>
           <div className={styles.modalMeta}>
             <span className={styles.modalTitle} title={asset.file_name}>{asset.file_name}</span>
-            <span className={styles.modalMime}>{isYouTube ? 'YouTube Widget' : isRemoteUrl ? 'Remote URL Widget' : isHtml ? 'Text/HTML Widget' : asset.mime_type === 'application/x-widget-flow' ? 'Clock Widget' : asset.mime_type === 'application/x-widget-qrcode' ? 'QR Code Widget' : asset.mime_type}</span>
+            <span className={styles.modalMime}>{isYouTube ? 'YouTube Widget' : isRemoteUrl ? 'Remote URL Widget' : isHtml ? 'Text/HTML Widget' : asset.mime_type === 'application/x-widget-flow' ? 'Clock Widget' : asset.mime_type === 'application/x-widget-countdown' ? 'Countdown Widget' : asset.mime_type === 'application/x-widget-qrcode' ? 'QR Code Widget' : asset.mime_type}</span>
           </div>
           <button className={styles.modalCloseBtn} onClick={onClose} aria-label="Close preview">
             <X size={24} />
@@ -118,6 +119,27 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
             } catch (err) {
               console.error('Failed to parse HTML widget contents in preview:', err)
               return <div style={{ color: 'red', padding: '20px' }}>Error rendering custom HTML widget</div>
+            }
+          })() : asset.mime_type === 'application/x-widget-countdown' ? (() => {
+            try {
+              const config = JSON.parse(asset.file_path)
+              return (
+                <div style={{ width: '100%', height: '100%', minHeight: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FlowCountdownRenderer
+                    text={config.text}
+                    endTime={config.endTime}
+                    endMessage={config.endMessage}
+                    timerStyle={config.timerStyle}
+                    daysOnly={config.daysOnly}
+                    theme={config.theme}
+                    themeSettings={config.themeSettings}
+                    advancedSettings={config.advancedSettings}
+                  />
+                </div>
+              )
+            } catch (err) {
+              console.error('Failed to parse Countdown widget config in preview:', err)
+              return <div style={{ color: 'red', padding: '20px' }}>Error rendering Countdown widget</div>
             }
           })() : asset.mime_type === 'application/x-widget-flow' ? (() => {
             try {

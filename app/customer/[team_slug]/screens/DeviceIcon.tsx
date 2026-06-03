@@ -9,6 +9,7 @@ export type ContentKind =
   | 'image'
   | 'video'
   | 'clock'
+  | 'countdown'
   | 'youtube'
   | 'remote-url'
   | 'html-widget'
@@ -74,12 +75,14 @@ export function getContentKind(
     if (!item) return 'playlist'
     
     if (item.widget_type === 'flow-clock' || item.assets?.mime_type === 'application/x-widget-flow') return 'clock'
+    if (item.widget_type === 'flow-countdown' || item.assets?.mime_type === 'application/x-widget-countdown') return 'countdown'
     if (item.assets) {
       const mime = item.assets.mime_type
       if (mime === 'application/x-widget-youtube') return 'youtube'
       if (mime === 'application/x-widget-remote-url') return 'remote-url'
       if (mime === 'application/x-widget-html') return 'html-widget'
       if (mime === 'application/x-widget-flow') return 'clock'
+      if (mime === 'application/x-widget-countdown') return 'countdown'
       if (mime.startsWith('video/')) return 'video'
       if (mime.startsWith('image/')) return 'image'
     }
@@ -92,6 +95,7 @@ export function getContentKind(
   if (asset.mime_type === 'application/x-widget-remote-url') return 'remote-url'
   if (asset.mime_type === 'application/x-widget-html') return 'html-widget'
   if (asset.mime_type === 'application/x-widget-flow') return 'clock'
+  if (asset.mime_type === 'application/x-widget-countdown') return 'countdown'
   if (asset.mime_type.startsWith('video/')) return 'video'
   if (asset.mime_type.startsWith('image/')) return 'image'
   return 'empty'
@@ -131,6 +135,9 @@ export function getContentLabel(device: Device, assets: Asset[] = [], playlists:
   if (asset.mime_type === 'application/x-widget-flow') {
     return `${asset.file_name} (${getClockStyleName(asset.file_path)})`
   }
+  if (asset.mime_type === 'application/x-widget-countdown') {
+    return `${asset.file_name} (Countdown)`
+  }
   return asset.file_name
 }
 
@@ -167,6 +174,7 @@ function describePrimaryPlaylistContent(items: Playlist['playlist_items']): stri
   for (const item of items) {
     let kind = 'Other'
     if (item.widget_type === 'flow-clock' || item.assets?.mime_type === 'application/x-widget-flow') kind = 'Clock'
+    else if (item.widget_type === 'flow-countdown' || item.assets?.mime_type === 'application/x-widget-countdown') kind = 'Countdown'
     else if (item.assets?.mime_type?.startsWith('video/')) kind = 'Video'
     else if (item.assets?.mime_type?.startsWith('image/')) kind = 'Image'
     else if (item.assets?.mime_type === 'application/x-widget-youtube') kind = 'YouTube'
@@ -250,6 +258,17 @@ export function buildTooltipInfo(
     }
   }
 
+  // ── Countdown Widget ──
+  if (kind === 'countdown') {
+    return {
+      headline: 'Showing a Countdown',
+      meta: [
+        { label: 'Event', value: asset.file_name },
+      ],
+      note: 'This countdown updates every second on the player device.',
+    }
+  }
+
   // ── YouTube ──
   if (kind === 'youtube') {
     return {
@@ -298,6 +317,14 @@ export function ContentIcon({ kind, size = 18 }: { kind: ContentKind; size?: num
     <svg {...s} {...base}>
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
+    </svg>
+  )
+  if (kind === 'countdown') return (
+    <svg {...s} {...base}>
+      <path d="M5 2h14" />
+      <path d="M5 22h14" />
+      <path d="M19 2v4c0 3.3-2.7 6-6 6h-2c-3.3 0-6-2.7-6-6V2" />
+      <path d="M5 22v-4c0-3.3 2.7-6 6-6h2c3.3 0 6 2.7 6 6v4" />
     </svg>
   )
   if (kind === 'image') return (
