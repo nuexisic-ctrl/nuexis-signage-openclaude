@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
@@ -29,6 +30,7 @@ interface Props {
   totalAssets?: number
   currentPage?: number
   pageSize?: number
+  folder?: Asset
 }
 
 export default function AssetClient({
@@ -38,7 +40,8 @@ export default function AssetClient({
   teamSlug,
   totalAssets = 0,
   currentPage: initialCurrentPage = 1,
-  pageSize: initialPageSize = 10
+  pageSize: initialPageSize = 10,
+  folder,
 }: Props) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets)
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
@@ -124,6 +127,7 @@ export default function AssetClient({
     setAssets,
     startTransition,
     router,
+    folderId: folder?.id,
   })
 
   useEffect(() => {
@@ -294,11 +298,15 @@ export default function AssetClient({
       }
 
       if (searchQuery) {
-        return a.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+        const matchesSearch = a.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+        if (folder) {
+          return matchesSearch && a.folder_id === folder.id
+        }
+        return matchesSearch
       }
       
-      // Root level assets (or folders) when no search is active
-      return !a.folder_id
+      // Root level assets (or folders) when no search is active, or assets within the active folder
+      return folder ? a.folder_id === folder.id : !a.folder_id
     })
 
     // Sort folders at the top, then by created_at descending
@@ -309,7 +317,7 @@ export default function AssetClient({
       if (!aIsFolder && bIsFolder) return 1
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
-  }, [assets, filterType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery])
+  }, [assets, filterType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery, folder])
 
   const totalPages = Math.ceil(filteredAssets.length / pageSize) || 1
   const hasNextPage = currentPage < totalPages
@@ -336,12 +344,30 @@ export default function AssetClient({
     <div className={styles.assetArea}>
       <div className={`${styles.topbar} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
         <div>
-          <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
-          <p className={styles.pageSubtitle}>
-            {totalAssets > 0
-              ? `${totalAssets} ${totalAssets === 1 ? t('asset') : t('assets')} ${t('in your library.')}`
-              : t('Upload images and videos to get started.')}
-          </p>
+          {folder ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.94rem', color: 'var(--on-surface-subtle)', fontWeight: 600 }}>
+                <Link href={`/customer/${teamSlug}/asset`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+                  {t('All items')}
+                </Link>
+                <span style={{ opacity: 0.5 }}>/</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--on-surface)' }}>
+                  <Folder size={16} style={{ stroke: folder.color || '#78716c', fill: folder.color || '#78716c', fillOpacity: 0.15 }} />
+                  {folder.file_name}
+                </span>
+              </div>
+              <h1 className={styles.pageTitle} style={{ marginTop: '6px' }}>{folder.file_name}</h1>
+            </div>
+          ) : (
+            <>
+              <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
+              <p className={styles.pageSubtitle}>
+                {totalAssets > 0
+                  ? `${totalAssets} ${totalAssets === 1 ? t('asset') : t('assets')} ${t('in your library.')}`
+                  : t('Upload images and videos to get started.')}
+              </p>
+            </>
+          )}
         </div>
         <div className={styles.topbarActions}>
           <button
@@ -683,6 +709,7 @@ export default function AssetClient({
         assets={assets}
         setAssets={setAssets}
         setShowSuccess={setShowSuccess}
+        folderId={folder?.id}
       />
 
       {renameModalAsset && (
@@ -730,13 +757,14 @@ export default function AssetClient({
             setShowCreateFolder(false)
             router.refresh()
           }}
+          parentFolderId={folder?.id}
         />
       )}
 
       {showBulkMoveModal && (
         <BulkMoveModal
           selectedAssets={assets.filter(a => selectedAssetIds.has(a.id))}
-          folders={assets.filter(a => a.mime_type === 'application/x-folder')}
+          folders={assets.filter(a => a.mime_type === 'application/x-folder' && (!folder || a.id !== folder.id))}
           teamSlug={teamSlug}
           onClose={() => setShowBulkMoveModal(false)}
           onSuccess={() => {

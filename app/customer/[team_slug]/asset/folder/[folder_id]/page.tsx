@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import { createClient, getCachedUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
-import FolderClient from './FolderClient'
+import AssetClient from '../../AssetClient'
 import styles from '../../asset.module.css'
 import Header from '../../../components/Header'
 import Sidebar from '../../../components/Sidebar'
@@ -81,15 +81,29 @@ export default async function FolderPage({ params }: Props) {
     redirect(`/customer/${team_slug}/asset/folder/${data.id}`)
   }
 
-  // Fetch assets inside this folder
-  const { data: assets } = await supabase
+  // Fetch all assets for the team
+  const query = supabase
     .from('assets')
-    .select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color')
+    .select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color', { count: 'exact' })
     .eq('team_id', profile?.team_id as string)
-    .eq('folder_id', folder.id)
     .order('created_at', { ascending: false })
+    .limit(1000)
 
-  const folderAssets = assets ?? []
+  const response = profile?.team_id
+    ? await query
+    : { data: [], count: 0 }
+
+  const assets = response.data ?? []
+  const totalAssets = response.count ?? 0
+
+  // Fetch all screens for the team
+  const { data: screens } = profile?.team_id
+    ? await supabase
+        .from('devices')
+        .select('id, name, status, content_type, asset_id, playlist_id, content')
+        .eq('team_id', profile.team_id as string)
+        .order('created_at', { ascending: false })
+    : { data: [] }
 
   const cookieStore = await cookies();
   const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
@@ -102,11 +116,13 @@ export default async function FolderPage({ params }: Props) {
       <main className={styles.main}>
         <Header fullName={fullName} email={user.email} />
 
-        <FolderClient
-          folder={folder as Asset}
-          initialAssets={folderAssets as Asset[]}
+        <AssetClient
+          initialAssets={assets as Parameters<typeof AssetClient>[0]['initialAssets']}
           teamId={profile?.team_id ?? ''}
           teamSlug={team_slug}
+          totalAssets={totalAssets}
+          screens={(screens ?? []) as Parameters<typeof AssetClient>[0]['screens']}
+          folder={folder as Asset}
         />
       </main>
     </div>

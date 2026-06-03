@@ -50,9 +50,31 @@ export function DeviceCard({
   // Resolve content from group if device has no explicit content set
   const resolvedDevice = resolveDeviceContent(device, groups, memberships)
   const isInherited = !device.content_type && resolvedDevice.content_type
+  const handleCardClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('select') ||
+      target.closest('span[onClick]') ||
+      target.closest('a') ||
+      target.closest('[data-noclick]') ||
+      target.closest(`.${styles.moreDropdown}`)
+    ) {
+      return;
+    }
+    const selection = window.getSelection();
+    if (selection && selection.toString()) {
+      return;
+    }
+    onEdit();
+  };
 
   return (
-    <div className={`${styles.deviceCard} ${selected ? styles.deviceCardSelected : ''}`}>
+    <div 
+      className={`${styles.deviceCard} ${selected ? styles.deviceCardSelected : ''}`}
+      onClick={handleCardClick}
+    >
       <div className={styles.deviceCardHeaderTop}>
         <div className={styles.deviceCardHeaderLeft}>
           {onToggleSelect && (
@@ -144,7 +166,7 @@ export function DeviceCard({
           </div>
         </div>
       </div>
-      <div className={styles.deviceMeta} onClick={onEdit} style={{ cursor: 'pointer' }}>
+      <div className={styles.deviceMeta}>
         <div className={styles.deviceMetaRow}>
           <span className={styles.deviceMetaLabel}>ADDED</span>
           <span className={styles.deviceMetaValue}>{createdAt}</span>

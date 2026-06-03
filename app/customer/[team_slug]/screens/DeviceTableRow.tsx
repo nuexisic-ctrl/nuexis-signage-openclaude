@@ -71,8 +71,31 @@ export function DeviceTableRow({
     playlist:     styles.contentIcon_playlist,
   }
 
+  const handleRowClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('select') ||
+      target.closest('span[onClick]') ||
+      target.closest('a') ||
+      target.closest('[data-noclick]') ||
+      target.closest(`.${styles.moreDropdown}`)
+    ) {
+      return;
+    }
+    const selection = window.getSelection();
+    if (selection && selection.toString()) {
+      return;
+    }
+    onEdit();
+  };
+
   return (
-    <tr className={`${styles.tableRow} ${selected ? styles.rowSelected : ''}`}>
+    <tr 
+      className={`${styles.tableRow} ${selected ? styles.rowSelected : ''}`}
+      onClick={handleRowClick}
+    >
       {onToggleSelect && (
         <td 
           className={styles.tableCell} 
@@ -144,11 +167,7 @@ export function DeviceTableRow({
 
       {/* ── Playing Now cell ── */}
       <td className={styles.tableCell}>
-        <div 
-          className={`${styles.playlistCell} ${isEmpty ? styles.playlistCellEmpty : ''}`}
-          onClick={onEdit}
-          style={{ cursor: 'pointer' }}
-        >
+        <div className={`${styles.playlistCell} ${isEmpty ? styles.playlistCellEmpty : ''}`}>
           <span className={`${styles.contentIconWrap} ${kindClassMap[kind] ?? ''}`}>
             <ContentIcon kind={kind} size={16} />
           </span>

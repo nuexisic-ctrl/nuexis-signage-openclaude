@@ -15,6 +15,7 @@ export interface AssetInput {
   file_path: string
   mime_type: string
   size_bytes: number
+  folder_id?: string | null
 }
 
 export async function insertAsset(
@@ -80,6 +81,7 @@ export async function insertAsset(
       file_path: asset.file_path,
       mime_type: asset.mime_type,
       size_bytes: asset.size_bytes,
+      folder_id: asset.folder_id || null,
     })
     .select('id')
     .single()
@@ -490,7 +492,8 @@ export async function deleteAssetsBulk(
 export async function createFolder(
   teamSlug: string,
   folderName: string,
-  color: string
+  color: string,
+  parentFolderId?: string | null
 ): Promise<InsertAssetResult> {
   const supabase = await createClient()
 
@@ -520,6 +523,7 @@ export async function createFolder(
       mime_type: 'application/x-folder',
       size_bytes: 0,
       color: color,
+      folder_id: parentFolderId || null,
     })
     .select('id')
     .single()

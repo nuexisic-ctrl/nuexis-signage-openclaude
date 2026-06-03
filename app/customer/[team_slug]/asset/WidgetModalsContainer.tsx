@@ -16,6 +16,7 @@ interface WidgetModalsContainerProps {
   assets: Asset[]
   setAssets: React.Dispatch<React.SetStateAction<Asset[]>>
   setShowSuccess: (val: boolean) => void
+  folderId?: string | null
 }
 
 export function WidgetModalsContainer({
@@ -25,6 +26,7 @@ export function WidgetModalsContainer({
   assets,
   setAssets,
   setShowSuccess,
+  folderId,
 }: WidgetModalsContainerProps) {
   const supabase = createClient()
   const [showYouTubeConfig, setShowYouTubeConfig] = useState(false)
@@ -45,6 +47,7 @@ export function WidgetModalsContainer({
       file_path: url,
       mime_type: 'application/x-widget-youtube',
       size_bytes: 0,
+      folder_id: folderId || null,
     })
 
     if (result.success) {
@@ -55,6 +58,7 @@ export function WidgetModalsContainer({
         mime_type: 'application/x-widget-youtube',
         size_bytes: 0,
         created_at: new Date().toISOString(),
+        folder_id: folderId || null,
       }
       setAssets(prev => [newAsset, ...prev])
       setShowYouTubeConfig(false)
@@ -72,6 +76,7 @@ export function WidgetModalsContainer({
       file_path: url,
       mime_type: 'application/x-widget-remote-url',
       size_bytes: 0,
+      folder_id: folderId || null,
     })
 
     if (result.success) {
@@ -82,6 +87,7 @@ export function WidgetModalsContainer({
         mime_type: 'application/x-widget-remote-url',
         size_bytes: 0,
         created_at: new Date().toISOString(),
+        folder_id: folderId || null,
       }
       setAssets(prev => [newAsset, ...prev])
       setShowRemoteUrlConfig(false)
@@ -100,6 +106,7 @@ export function WidgetModalsContainer({
       file_path: serialized,
       mime_type: 'application/x-widget-html',
       size_bytes: 0,
+      folder_id: folderId || null,
     })
 
     if (result.success) {
@@ -110,6 +117,7 @@ export function WidgetModalsContainer({
         mime_type: 'application/x-widget-html',
         size_bytes: 0,
         created_at: new Date().toISOString(),
+        folder_id: folderId || null,
       }
       setAssets(prev => [newAsset, ...prev])
       setShowHtmlConfig(false)
@@ -135,6 +143,7 @@ export function WidgetModalsContainer({
       file_path: serialized,
       mime_type: 'application/x-widget-flow',
       size_bytes: 0,
+      folder_id: folderId || null,
     })
 
     if (result.success) {
@@ -145,6 +154,7 @@ export function WidgetModalsContainer({
         mime_type: 'application/x-widget-flow',
         size_bytes: 0,
         created_at: new Date().toISOString(),
+        folder_id: folderId || null,
       }
       setAssets(prev => [newAsset, ...prev])
       setShowFlowConfig(false)
@@ -178,6 +188,7 @@ export function WidgetModalsContainer({
       file_path: serialized,
       mime_type: 'application/x-widget-countdown',
       size_bytes: 0,
+      folder_id: folderId || null,
     })
 
     if (result.success) {
@@ -188,6 +199,7 @@ export function WidgetModalsContainer({
         mime_type: 'application/x-widget-countdown',
         size_bytes: 0,
         created_at: new Date().toISOString(),
+        folder_id: folderId || null,
       }
       setAssets(prev => [newAsset, ...prev])
       setShowCountdownConfig(false)
@@ -289,6 +301,7 @@ export function WidgetModalsContainer({
                 file_path: serialized,
                 mime_type: 'application/x-widget-qrcode',
                 size_bytes: file.size,
+                folder_id: folderId || null,
               })
 
               if (result.success) {
@@ -299,6 +312,7 @@ export function WidgetModalsContainer({
                   mime_type: 'application/x-widget-qrcode',
                   size_bytes: file.size,
                   created_at: new Date().toISOString(),
+                  folder_id: folderId || null,
                 }
                 setAssets(prev => [newAsset, ...prev])
                 setShowQRCodeConfig(false)

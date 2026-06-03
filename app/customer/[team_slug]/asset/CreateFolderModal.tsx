@@ -28,10 +28,12 @@ export function CreateFolderModal({
   teamSlug,
   onClose,
   onSuccess,
+  parentFolderId,
 }: {
   teamSlug: string
   onClose: () => void
   onSuccess: (id: string) => void
+  parentFolderId?: string | null
 }) {
   const [name, setName] = useState('')
   const [color, setColor] = useState('#78716c')
@@ -63,7 +65,7 @@ export function CreateFolderModal({
     }
     setError(null)
     startTransition(async () => {
-      const result = await createFolder(teamSlug, trimmed, color)
+      const result = await createFolder(teamSlug, trimmed, color, parentFolderId)
       if (result.success) {
         onSuccess(result.id)
       } else {

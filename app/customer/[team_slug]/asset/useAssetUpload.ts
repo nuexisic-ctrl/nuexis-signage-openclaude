@@ -25,6 +25,7 @@ interface UseAssetUploadProps {
   setAssets: React.Dispatch<React.SetStateAction<Asset[]>>
   startTransition: React.TransitionStartFunction
   router: any
+  folderId?: string | null
 }
 
 export function useAssetUpload({
@@ -34,6 +35,7 @@ export function useAssetUpload({
   setAssets,
   startTransition,
   router,
+  folderId,
 }: UseAssetUploadProps) {
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([])
   const [isQueueCollapsed, setIsQueueCollapsed] = useState(false)
@@ -116,6 +118,7 @@ export function useAssetUpload({
           file_path: filePath,
           mime_type: file.type,
           size_bytes: file.size,
+          folder_id: folderId || null,
         })
 
         clearInterval(progressInterval)
@@ -133,6 +136,7 @@ export function useAssetUpload({
             mime_type: file.type,
             size_bytes: file.size,
             created_at: new Date().toISOString(),
+            folder_id: folderId || null,
           }
           uploadedAssets.push(newAsset)
           // Add directly to local assets list so it renders instantly
@@ -150,7 +154,7 @@ export function useAssetUpload({
     }
 
     startTransition(() => { router.refresh() })
-  }, [teamId, teamSlug, supabase, router, setAssets])
+  }, [teamId, teamSlug, supabase, router, setAssets, folderId])
 
   return {
     uploadQueue,
