@@ -8,6 +8,7 @@ import styles from './ScreenPreviewModal.module.css'
 import { Device, Asset, Playlist } from './types'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
+import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
 
 interface Props {
   device: Device
@@ -376,6 +377,28 @@ export function ScreenPreviewModal({
       } catch (err) {
         console.error('Failed to render Countdown widget in simulator:', err)
         return <div style={{ color: 'red', padding: '10px' }}>Error rendering Countdown widget</div>
+      }
+    }
+
+    if (itemMime === 'application/x-widget-countup') {
+      try {
+        const config = JSON.parse(itemPath)
+        return (
+          <FlowCountUpRenderer
+            text={config.text}
+            startTime={config.startTime}
+            endTime={config.endTime}
+            endMessage={config.endMessage}
+            timerStyle={config.timerStyle}
+            daysOnly={config.daysOnly}
+            theme={config.theme}
+            themeSettings={config.themeSettings}
+            advancedSettings={config.advancedSettings}
+          />
+        )
+      } catch (err) {
+        console.error('Failed to render CountUp widget in simulator:', err)
+        return <div style={{ color: 'red', padding: '10px' }}>Error rendering CountUp widget</div>
       }
     }
 

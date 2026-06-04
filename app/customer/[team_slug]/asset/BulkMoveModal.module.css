@@ -1,0 +1,82 @@
+.list {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  background: var(--surface-low);
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.listButton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.listButton:last-child {
+  border-bottom: 0;
+}
+
+.listButton:hover {
+  background: var(--surface-medium);
+}
+
+.listButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.folderLabel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.folderName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderHint {
+  font-size: 0.78rem;
+  color: var(--on-surface-subtle);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.secondaryBtn {
+  padding: 10px 16px;
+  background: var(--surface-low);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: var(--font-label);
+}
+
+.secondaryBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+

@@ -41,6 +41,69 @@ export async function insertAsset(
     return { success: false, error: err.message }
   }
 
+  const trimmedName = asset.file_name.trim()
+  if (!trimmedName || trimmedName.length > 100) {
+    return { success: false, error: 'Asset name must be between 1 and 100 characters.' }
+  }
+  asset.file_name = trimmedName
+
+  if (asset.mime_type === 'application/x-widget-countup' || asset.mime_type === 'application/x-widget-countdown') {
+    try {
+      const config = JSON.parse(asset.file_path)
+      if (typeof config.text !== 'string' || config.text.trim().length === 0 || config.text.length > 150) {
+        return { success: false, error: 'Heading text is invalid or exceeds 150 characters.' }
+      }
+      if (config.endMessage && (typeof config.endMessage !== 'string' || config.endMessage.length > 200)) {
+        return { success: false, error: 'End message exceeds 200 characters.' }
+      }
+      if (config.themeSettings) {
+        const hexRegex = /^#([0-9a-fA-F]{3}){1,2}$/
+        if (config.themeSettings.primaryColor && !hexRegex.test(config.themeSettings.primaryColor)) {
+          return { success: false, error: 'Invalid primary color format.' }
+        }
+        if (config.themeSettings.secondaryColor && !hexRegex.test(config.themeSettings.secondaryColor)) {
+          return { success: false, error: 'Invalid secondary color format.' }
+        }
+        if (config.themeSettings.textColor && !hexRegex.test(config.themeSettings.textColor)) {
+          return { success: false, error: 'Invalid text color format.' }
+        }
+        const bg = config.themeSettings.backgroundColor
+        if (bg && !hexRegex.test(bg) && !bg.startsWith('linear-gradient')) {
+          return { success: false, error: 'Invalid background color format.' }
+        }
+        if (config.themeSettings.backgroundImage) {
+          try {
+            const parsed = new URL(config.themeSettings.backgroundImage)
+            if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+              return { success: false, error: 'Background image URL must use HTTP or HTTPS.' }
+            }
+          } catch {
+            return { success: false, error: 'Invalid background image URL.' }
+          }
+        }
+      }
+    } catch {
+      return { success: false, error: 'Invalid widget configuration.' }
+    }
+  }
+
+  if (asset.mime_type === 'application/x-widget-youtube') {
+    if (typeof asset.file_path !== 'string' || (!asset.file_path.includes('youtube.com') && !asset.file_path.includes('youtu.be'))) {
+      return { success: false, error: 'Invalid YouTube URL.' }
+    }
+  }
+
+  if (asset.mime_type === 'application/x-widget-qrcode') {
+    try {
+      const config = JSON.parse(asset.file_path)
+      if (typeof config.url !== 'string' || config.url.trim().length === 0 || config.url.length > 2000) {
+        return { success: false, error: 'Invalid QR Code URL or URL exceeds 2000 characters.' }
+      }
+    } catch {
+      return { success: false, error: 'Invalid QR Code configuration.' }
+    }
+  }
+
   if (!asset.mime_type.startsWith('application/x-widget') && !asset.file_path.startsWith(`${teamId}/`)) {
     return { success: false, error: 'Invalid file path.' }
   }
@@ -276,9 +339,14 @@ export async function updateAssetName(
     return { success: false, error: err.message }
   }
 
+  const trimmedName = newName.trim()
+  if (!trimmedName || trimmedName.length > 100) {
+    return { success: false, error: 'Asset name must be between 1 and 100 characters.' }
+  }
+
   const { data: updated, error: updateError } = await supabase
     .from('assets')
-    .update({ file_name: newName.trim() })
+    .update({ file_name: trimmedName })
     .eq('id', assetId)
     .eq('team_id', teamId)
     .select('id')
@@ -514,11 +582,16 @@ export async function createFolder(
     return { success: false, error: err.message }
   }
 
+  const trimmedName = folderName.trim()
+  if (!trimmedName || trimmedName.length > 100) {
+    return { success: false, error: 'Folder name must be between 1 and 100 characters.' }
+  }
+
   const { data, error } = await supabase
     .from('assets')
     .insert({
       team_id: teamId,
-      file_name: folderName.trim(),
+      file_name: trimmedName,
       file_path: 'folder',
       mime_type: 'application/x-folder',
       size_bytes: 0,
@@ -562,9 +635,14 @@ export async function updateAssetFolder(
     return { success: false, error: err.message }
   }
 
+  const trimmedName = newName.trim()
+  if (!trimmedName || trimmedName.length > 100) {
+    return { success: false, error: 'Folder name must be between 1 and 100 characters.' }
+  }
+
   const { data: updated, error: updateError } = await supabase
     .from('assets')
-    .update({ file_name: newName.trim(), color: color })
+    .update({ file_name: trimmedName, color: color })
     .eq('id', assetId)
     .eq('team_id', teamId)
     .select('id')

@@ -167,7 +167,7 @@ export function AssignModal({
               <CustomSelect
                 id="assign-content-type"
                 value={contentType || ''}
-                onChange={(val) => handleContentTypeChange(val)}
+                onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | 'Schedule' | '')}
                 options={[
                   ...(!contentType ? [{ value: '', label: 'no content', disabled: true }] : []),
                   { value: 'Asset', label: 'Asset' },

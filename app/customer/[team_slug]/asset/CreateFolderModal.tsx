@@ -5,6 +5,8 @@ import { X, Check, AlertTriangle } from 'lucide-react'
 import { createFolder } from './actions'
 import { t } from '@/lib/i18n'
 import styles from './Modal.module.css'
+import { modalStack } from '@/lib/utils/modalStack'
+import { useA11yModal } from '@/lib/utils/useA11yModal'
 
 const PRESET_COLORS = [
   '#78716c', // stone (default gray)
@@ -43,6 +45,11 @@ export function CreateFolderModal({
   
   const colorPickerRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useA11yModal({
+    id: 'create-folder-modal',
+    onClose,
+    initialFocusSelector: 'input[name="folder-name"]',
+  })
 
   // Handle click outside for color picker popover
   useEffect(() => {
@@ -54,6 +61,16 @@ export function CreateFolderModal({
     }
     document.addEventListener('mousedown', handleOutsideClick)
     return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [showColorPicker])
+
+  // Register the color picker as a "child" modal so ESC closes it before closing the modal.
+  useEffect(() => {
+    if (showColorPicker) {
+      modalStack.push('create-folder-color-picker')
+    } else {
+      modalStack.pop('create-folder-color-picker')
+    }
+    return () => modalStack.pop('create-folder-color-picker')
   }, [showColorPicker])
 
   function handleSubmit(e: React.FormEvent) {
@@ -79,26 +96,46 @@ export function CreateFolderModal({
   }
 
   return (
-    <div className={styles.modalOverlay} ref={overlayRef} onClick={handleOverlayClick}>
+    <div className={styles.modalOverlay} ref={overlayRef} onClick={handleOverlayClick} role="presentation">
       <div 
         className={styles.modalContainer} 
         style={{ padding: '24px', maxWidth: '400px', width: '100%', overflow: 'visible' }} 
         onClick={e => e.stopPropagation()}
+        ref={dialogRef as any}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-folder-title"
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>
+          <h2
+            id="create-folder-title"
+            style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}
+          >
             {t('New Folder')}
           </h2>
-          <button onClick={onClose} className={styles.modalCloseBtn} aria-label="Close modal"><X size={20} /></button>
+          <button
+            onClick={onClose}
+            className={styles.modalCloseBtn}
+            aria-label="Close modal"
+            type="button"
+            data-modal-close="true"
+          >
+            <X size={20} />
+          </button>
         </div>
         
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>
+            <label
+              htmlFor="create-folder-name"
+              style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}
+            >
               {t('Folder Name')}
             </label>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
               <input
+                id="create-folder-name"
+                name="folder-name"
                 required
                 maxLength={60}
                 value={name}
@@ -148,6 +185,7 @@ export function CreateFolderModal({
                           className={`${styles.colorOptionBubble} ${isSelected ? styles.colorOptionBubbleSelected : ''}`}
                           style={{ backgroundColor: c }}
                           onClick={() => setColor(c)}
+                          aria-label={`${t('Select color')} ${c}`}
                         >
                           {isSelected && <Check size={10} style={{ color: c === '#ffffff' ? '#000' : '#fff' }} />}
                         </button>

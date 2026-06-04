@@ -38,6 +38,13 @@ export function AssetCard({
   menuPosition,
   selected = false,
   onToggleSelect,
+  isSelectionActive = false,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
+  isDropTarget = false,
 }: {
   asset: Asset
   previewUrl: string | null
@@ -52,6 +59,13 @@ export function AssetCard({
   menuPosition?: { top: number, right: number } | null
   selected?: boolean
   onToggleSelect?: () => void
+  isSelectionActive?: boolean
+  draggable?: boolean
+  onDragStart?: (e: React.DragEvent) => void
+  onDragEnd?: (e: React.DragEvent) => void
+  onDragOver?: (e: React.DragEvent) => void
+  onDrop?: (e: React.DragEvent) => void
+  isDropTarget?: boolean
 }) {
   const date = new Date(asset.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
@@ -77,42 +91,56 @@ export function AssetCard({
   const isFolder = asset.mime_type === 'application/x-folder'
 
   return (
-    <div className={`${styles.assetCard} ${isDeleting ? styles.assetCardDeleting : ''} ${selected ? styles.assetCardSelected : ''}`}>
+    <div
+      className={`${styles.assetCard} ${isDeleting ? styles.assetCardDeleting : ''} ${selected ? styles.assetCardSelected : ''} ${isDropTarget ? styles.dropTarget : ''}`}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       {onToggleSelect && (
         <div 
-          style={{ 
-            position: 'absolute', 
-            top: '8px', 
-            left: '8px', 
-            zIndex: 15, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            background: 'rgba(7, 17, 31, 0.72)', 
-            backdropFilter: 'blur(8px)',
-            borderRadius: '4px',
-            padding: '4px',
-            cursor: 'pointer'
-          }}
+          className={`${styles.selectionToggle} ${(isSelectionActive || selected) ? styles.selectionToggleVisible : ''}`}
           onClick={(e) => {
             e.stopPropagation()
             onToggleSelect()
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label={selected ? t('Deselect') : t('Select')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              e.stopPropagation()
+              onToggleSelect()
+            }
           }}
         >
           <input 
             type="checkbox" 
             checked={selected} 
-            onChange={(e) => {}} 
+            readOnly
             style={{ width: '16px', height: '16px', cursor: 'pointer', margin: 0, pointerEvents: 'none' }}
           />
         </div>
       )}
-      <div 
+      <div
         className={`${styles.assetThumb} ${styles.assetThumbInteractive}`}
-        onClick={() => onPreview(asset)}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (isSelectionActive && onToggleSelect) onToggleSelect()
+          else onPreview(asset)
+        }}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onPreview(asset) }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.stopPropagation()
+            if (isSelectionActive && onToggleSelect) onToggleSelect()
+            else onPreview(asset)
+          }
+        }}
         aria-label={isFolder ? `Open ${asset.file_name}` : `Preview ${asset.file_name}`}
       >
         {isFolder ? (
@@ -182,6 +210,7 @@ export function AssetCard({
                 }}
                 title={t('Push to screen')}
                 aria-label="Push to screen"
+                type="button"
               >
                 <Tv size={14} />
               </button>
@@ -191,6 +220,7 @@ export function AssetCard({
                 className={`${styles.actionBtnBox} ${menuOpen ? styles.active : ''}`}
                 onClick={onToggleMenu}
                 aria-label="More Actions"
+                type="button"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                   <circle cx="12" cy="12" r="1.5"></circle>
@@ -204,19 +234,19 @@ export function AssetCard({
                 style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 100000 }}
                 onClick={e => e.stopPropagation()}
               >
-                <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
+                <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
                   {isFolder ? t('Open') : t('Preview')}
                 </button>
                 {!isWidget(asset.mime_type) && !isFolder && (
-                  <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
+                  <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
                     {t('Download')}
                   </button>
                 )}
 
-                <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onRename(); }}>
+                <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onRename(); }}>
                   {t('Rename')}
                 </button>
-                <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+                <button className={`${styles.dropdownItem} ${styles.danger}`} type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
                   {t('Delete')}
                 </button>
               </div>,

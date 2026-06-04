@@ -6,57 +6,73 @@ import { moveAssetsToFolder } from './actions'
 import { Asset } from './types'
 import { t } from '@/lib/i18n'
 import styles from './Modal.module.css'
+import listStyles from './BulkMoveModal.module.css'
+import { useA11yModal } from '@/lib/utils/useA11yModal'
 
 export function BulkMoveModal({
   selectedAssets,
   folders,
   teamSlug,
   onClose,
-  onSuccess,
+  onMoveAssets,
 }: {
   selectedAssets: Asset[]
   folders: Asset[]
   teamSlug: string
   onClose: () => void
-  onSuccess: () => void
+  onMoveAssets: (assetIds: string[], targetFolderId: string | null, targetFolderName: string) => void
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useA11yModal({
+    id: 'bulk-move-modal',
+    onClose,
+    initialFocusSelector: 'button[data-modal-close="true"]',
+  })
 
   function handleOverlayClick(e: React.MouseEvent) {
     if (e.target === overlayRef.current) onClose()
   }
 
-  function handleMove(folderId: string | null) {
-    startTransition(async () => {
-      const assetIds = selectedAssets.map(a => a.id)
-      const result = await moveAssetsToFolder(teamSlug, assetIds, folderId)
-      if (result.success) {
-        onSuccess()
-      } else {
-        setError(result.error || t('Failed to move assets.'))
-      }
-    })
+  function handleMove(folderId: string | null, folderName: string) {
+    const assetIds = selectedAssets.map(a => a.id)
+    onMoveAssets(assetIds, folderId, folderName)
+    onClose()
   }
 
   return (
-    <div className={styles.modalOverlay} ref={overlayRef} onClick={handleOverlayClick}>
+    <div className={styles.modalOverlay} ref={overlayRef} onClick={handleOverlayClick} role="presentation">
       <div 
         className={styles.modalContainer} 
         style={{ padding: '24px', maxWidth: '440px', width: '100%' }} 
         onClick={e => e.stopPropagation()}
+        ref={dialogRef as any}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bulk-move-title"
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>
+            <h2
+              id="bulk-move-title"
+              style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}
+            >
               {t('Move to Folder')}
             </h2>
             <p style={{ margin: '6px 0 0', fontSize: '0.86rem', color: 'var(--on-surface-subtle)' }}>
               {t('Select target folder for')} <strong>{selectedAssets.length}</strong> {selectedAssets.length === 1 ? t('asset') : t('assets')}.
             </p>
           </div>
-          <button onClick={onClose} className={styles.modalCloseBtn} aria-label="Close modal"><X size={18} /></button>
+          <button
+            data-modal-close="true"
+            onClick={onClose}
+            className={styles.modalCloseBtn}
+            aria-label="Close modal"
+            type="button"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {error && (
@@ -66,45 +82,20 @@ export function BulkMoveModal({
           </div>
         )}
 
-        <div 
-          style={{ 
-            maxHeight: '260px', 
-            overflowY: 'auto', 
-            border: '1px solid var(--outline-variant)', 
-            borderRadius: '10px', 
-            background: 'var(--surface-low)', 
-            marginBottom: '20px',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
+        <div className={listStyles.list}>
           {/* Root Level Option */}
           <button
             type="button"
             disabled={isPending}
-            onClick={() => handleMove(null)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: '1px solid var(--outline-variant)',
-              color: 'var(--on-surface)',
-              fontFamily: 'var(--font-body)',
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              textAlign: 'left',
-              cursor: isPending ? 'not-allowed' : 'pointer',
-              width: '100%',
-              transition: 'background 0.15s ease'
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-medium)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            onClick={() => handleMove(null, t('Root (No Folder)'))}
+            className={listStyles.listButton}
+            aria-label={t('Move to Root (No Folder)')}
           >
             <Folder size={18} style={{ stroke: '#78716c', color: '#78716c' }} />
-            <span>{t('Root (No Folder)')}</span>
+            <span className={listStyles.folderLabel}>
+              <span className={listStyles.folderName}>{t('Root (No Folder)')}</span>
+              <span className={listStyles.folderHint}>{t('Move selected items out of folders')}</span>
+            </span>
           </button>
 
           {folders.length === 0 ? (
@@ -117,49 +108,21 @@ export function BulkMoveModal({
                 key={f.id}
                 type="button"
                 disabled={isPending}
-                onClick={() => handleMove(f.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 16px',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: '1px solid var(--outline-variant)',
-                  color: 'var(--on-surface)',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  textAlign: 'left',
-                  cursor: isPending ? 'not-allowed' : 'pointer',
-                  width: '100%',
-                  transition: 'background 0.15s ease'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-medium)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onClick={() => handleMove(f.id, f.file_name)}
+                className={listStyles.listButton}
+                aria-label={`${t('Move to folder')} ${f.file_name}`}
               >
                 <Folder size={18} style={{ stroke: f.color || '#78716c', fill: f.color || '#78716c', fillOpacity: 0.15 }} />
-                <span>{f.file_name}</span>
+                <span className={listStyles.folderLabel}>
+                  <span className={listStyles.folderName}>{f.file_name}</span>
+                </span>
               </button>
             ))
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button 
-            style={{ 
-              padding: '10px 16px', 
-              background: 'var(--surface-low)', 
-              color: 'var(--on-surface)', 
-              border: '1px solid var(--outline-variant)', 
-              borderRadius: '8px', 
-              cursor: 'pointer', 
-              fontWeight: 600, 
-              fontFamily: 'var(--font-label)' 
-            }} 
-            onClick={onClose} 
-            disabled={isPending}
-          >
+        <div className={listStyles.footer}>
+          <button className={listStyles.secondaryBtn} onClick={onClose} disabled={isPending} type="button">
             {t('Cancel')}
           </button>
         </div>

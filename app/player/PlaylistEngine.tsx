@@ -5,6 +5,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { getPlaylistItems, getSignedMediaUrl } from './actions'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
+import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
 
 interface PlaylistItem {
   id: string
@@ -301,7 +302,8 @@ function PlayableItem({
           mimeType === 'application/x-widget-remote-url' ||
           mimeType === 'application/x-widget-html' ||
           mimeType === 'application/x-widget-flow' ||
-          mimeType === 'application/x-widget-countdown'
+          mimeType === 'application/x-widget-countdown' ||
+          mimeType === 'application/x-widget-countup'
         ) {
           return filePath
         }
@@ -328,7 +330,8 @@ function PlayableItem({
         mimeType === 'application/x-widget-remote-url' ||
         mimeType === 'application/x-widget-html' ||
         mimeType === 'application/x-widget-flow' ||
-        mimeType === 'application/x-widget-countdown'
+        mimeType === 'application/x-widget-countdown' ||
+        mimeType === 'application/x-widget-countup'
       ) {
         return true
       }
@@ -539,6 +542,39 @@ function PlayableItem({
       <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
         <FlowCountdownRenderer
           text={parsedConfig.text}
+          endTime={parsedConfig.endTime}
+          endMessage={parsedConfig.endMessage}
+          timerStyle={parsedConfig.timerStyle}
+          daysOnly={parsedConfig.daysOnly}
+          theme={parsedConfig.theme}
+          themeSettings={parsedConfig.themeSettings}
+          advancedSettings={parsedConfig.advancedSettings}
+        />
+      </div>
+    )
+  }
+
+  if (item.assets?.mime_type === 'application/x-widget-countup') {
+    let parsedConfig: any = null
+    try {
+      parsedConfig = JSON.parse(mediaUrl)
+    } catch (err) {
+      console.error('Failed to parse CountUp widget config in playlist engine:', err)
+    }
+
+    if (!parsedConfig) {
+      return (
+        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+          Error rendering CountUp widget
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+        <FlowCountUpRenderer
+          text={parsedConfig.text}
+          startTime={parsedConfig.startTime}
           endTime={parsedConfig.endTime}
           endMessage={parsedConfig.endMessage}
           timerStyle={parsedConfig.timerStyle}

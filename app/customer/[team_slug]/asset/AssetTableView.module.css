@@ -195,3 +195,8 @@
 .rowSelected {
   background: var(--surface-medium) !important;
 }
+
+.dropTargetRow {
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-low)) !important;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
+}

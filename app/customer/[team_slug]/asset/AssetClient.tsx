@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from 'react'
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder } from 'lucide-react'
+import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
+import { moveAssetsToFolder } from './actions'
 import { AssetPreviewModal } from './AssetPreviewModal'
 import { AssetCard } from './AssetCard'
 import { FilterSidebar } from './FilterSidebar'
@@ -93,8 +94,6 @@ export default function AssetClient({
 
   const [, startTransition] = useTransition()
   const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
   const supabase = createClient()
 
   useEffect(() => {
@@ -157,6 +156,71 @@ export default function AssetClient({
   }
 
   const [previewUrls, setPreviewUrls] = useState<Map<string, string>>(() => new Map())
+  const previewUrlsRef = useRef(previewUrls)
+  useEffect(() => {
+    previewUrlsRef.current = previewUrls
+  }, [previewUrls])
+
+  const [actionBanner, setActionBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const actionBannerTimer = useRef<number | null>(null)
+  const showActionBanner = useCallback((type: 'success' | 'error', message: string) => {
+    if (actionBannerTimer.current) window.clearTimeout(actionBannerTimer.current)
+    setActionBanner({ type, message })
+    actionBannerTimer.current = window.setTimeout(() => setActionBanner(null), 3200)
+  }, [])
+
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null)
+  const [isBreadcrumbDragOver, setIsBreadcrumbDragOver] = useState(false)
+
+  const moveAssetsOptimistically = useCallback(async (assetIds: string[], targetFolderId: string | null, targetFolderName: string) => {
+    const previousAssets = [...assets]
+    const previousSelected = new Set(selectedAssetIds)
+
+    setAssets(prev => prev.map(a => {
+      if (assetIds.includes(a.id)) {
+        return { ...a, folder_id: targetFolderId }
+      }
+      return a
+    }))
+    setSelectedAssetIds(new Set())
+
+    showActionBanner(
+      'success',
+      `${t('Moved')} ${assetIds.length} ${assetIds.length === 1 ? t('item') : t('items')} ${t('to')} ${targetFolderName}`
+    )
+
+    try {
+      const result = await moveAssetsToFolder(teamSlug, assetIds, targetFolderId)
+      if (result.success) {
+        router.refresh()
+        return true
+      } else {
+        setAssets(previousAssets)
+        setSelectedAssetIds(previousSelected)
+        showActionBanner('error', result.error || t('Failed to move assets.'))
+        return false
+      }
+    } catch (err) {
+      setAssets(previousAssets)
+      setSelectedAssetIds(previousSelected)
+      showActionBanner('error', t('Failed to move assets due to a network error.'))
+      return false
+    }
+  }, [assets, selectedAssetIds, teamSlug, router, showActionBanner])
+
+  const handleMoveDrop = useCallback((draggedId: string, targetFolderId: string | null, targetFolderName: string) => {
+    const draggedIds = draggedId.split(',').map(x => x.trim()).filter(Boolean)
+    let finalIds = [...draggedIds]
+    const hasSelection = draggedIds.some(id => selectedAssetIds.has(id))
+    if (hasSelection) {
+      finalIds = Array.from(selectedAssetIds)
+    }
+
+    const sanitized = finalIds.filter(id => id && id !== targetFolderId)
+    if (sanitized.length === 0) return
+
+    moveAssetsOptimistically(sanitized, targetFolderId, targetFolderName)
+  }, [selectedAssetIds, moveAssetsOptimistically])
 
   useEffect(() => {
     let cancelled = false
@@ -176,21 +240,29 @@ export default function AssetClient({
         return null
       }).filter(Boolean) as { originalPath: string, filePathToSign: string }[]
 
-      const results = await Promise.all(
-        targetAssets.map(async (item) => {
-          const url = await getCachedSignedUrl(supabase, item.filePathToSign, 3600)
-          return { path: item.originalPath, url }
-        })
-      )
+      const existing = previewUrlsRef.current
+      const missing = targetAssets.filter(item => !existing.has(item.originalPath))
+      const existingKeys = new Set(targetAssets.map(item => item.originalPath))
+
+      const results = missing.length === 0
+        ? []
+        : await Promise.all(
+            missing.map(async (item) => {
+              const url = await getCachedSignedUrl(supabase, item.filePathToSign, 3600)
+              return { path: item.originalPath, url }
+            })
+          )
       if (cancelled) return
 
-      const newUrls = new Map<string, string>()
-      for (const res of results) {
-        if (res.url) newUrls.set(res.path, res.url)
-      }
       setPreviewUrls(prev => {
         const next = new Map(prev)
-        newUrls.forEach((val, key) => next.set(key, val))
+        // Prune URLs for assets that no longer exist (keeps memory bounded).
+        Array.from(next.keys()).forEach(key => {
+          if (!existingKeys.has(key)) next.delete(key)
+        })
+        for (const res of results) {
+          if (res.url) next.set(res.path, res.url)
+        }
         return next
       })
     }
@@ -325,6 +397,13 @@ export default function AssetClient({
   const startItem = filteredAssets.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
   const endItem = Math.min(currentPage * pageSize, filteredAssets.length)
 
+  // Clamp current page when filters reduce results.
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
   // Navigate to a new page — update local state and localStorage
   const navigatePage = (page: number, limit: number) => {
     setPageSize(limit)
@@ -342,10 +421,6 @@ export default function AssetClient({
     return assets.filter(a => a.folder_id === folder.id && a.mime_type !== 'application/x-folder').length
   }, [assets, folder])
 
-  const libraryAssetsCount = useMemo(() => {
-    return assets.filter(a => a.mime_type !== 'application/x-folder').length
-  }, [assets])
-
   const isFiltersActive = isFilterSidebarOpen || filterType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
   const showFilterDot = filterType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
 
@@ -357,7 +432,29 @@ export default function AssetClient({
             <div>
               <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
               <div className={styles.breadcrumbContainer} style={{ marginTop: '6px' }}>
-                <Link href={`/customer/${teamSlug}/asset`} className={styles.breadcrumbLink}>
+                <Link 
+                  href={`/customer/${teamSlug}/asset`} 
+                  className={`${styles.breadcrumbLink} ${isBreadcrumbDragOver ? styles.breadcrumbDragOver : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault()
+                    setIsBreadcrumbDragOver(true)
+                  }}
+                  onDragLeave={() => {
+                    setIsBreadcrumbDragOver(false)
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setIsBreadcrumbDragOver(false)
+                    const draggedId = e.dataTransfer.getData('text/plain')
+                    if (draggedId) {
+                      handleMoveDrop(draggedId, null, t('Root (No Folder)'))
+                    }
+                  }}
+                >
                   {t('Asset Library')}
                 </Link>
                 <span className={styles.breadcrumbSeparator}>/</span>
@@ -390,6 +487,7 @@ export default function AssetClient({
             disabled={isRefreshing}
             aria-label="Refresh Status"
             title="Refresh Status"
+            type="button"
           >
             <RefreshCw size={20} className={isRefreshing ? styles.spin : ''} />
           </button>
@@ -405,44 +503,43 @@ export default function AssetClient({
               e.target.value = ''
             }}
           />
-          <button 
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
-              background: 'var(--surface-low)', color: 'var(--on-surface)', borderRadius: '8px', 
-              border: '1px solid var(--outline-variant)', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-label)',
-              minHeight: '42px'
-            }}
+            className={styles.topbarActionBtn}
           >
             <Upload size={16} />
             {t('Upload Media')}
           </button>
-          <button 
+          <button
+            type="button"
             onClick={() => setShowCreateFolder(true)}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
-              background: 'var(--surface-low)', color: 'var(--on-surface)', borderRadius: '8px', 
-              border: '1px solid var(--outline-variant)', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-label)',
-              minHeight: '42px'
-            }}
+            className={styles.topbarActionBtn}
           >
             <FolderPlus size={16} />
             {t('New Folder')}
           </button>
-          <button 
+          <button
+            type="button"
             onClick={() => setShowWidgetSelection(true)}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', 
-              background: 'var(--primary)', color: 'var(--on-primary)', borderRadius: '8px', 
-              border: 'none', cursor: 'pointer', fontWeight: 600, fontFamily: 'var(--font-label)',
-              minHeight: '42px'
-            }}
+            className={`${styles.topbarActionBtn} ${styles.topbarPrimaryBtn}`}
           >
             <Plus size={16} />
             {t('Create Widget')}
           </button>
         </div>
       </div>
+
+      {actionBanner && (
+        <div className={actionBanner.type === 'error' ? styles.errorBanner : styles.successBanner} role="status">
+          {actionBanner.type === 'error' ? (
+            <AlertTriangle className={styles.errorIcon} size={17} />
+          ) : (
+            <Check className={styles.successIcon} size={17} />
+          )}
+          {actionBanner.message}
+        </div>
+      )}
 
       {uploadError && (
         <div className={styles.errorBanner} role="alert">
@@ -472,7 +569,22 @@ export default function AssetClient({
                   placeholder={t('Search by file name...')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label={t('Search assets')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' && searchQuery) setSearchQuery('')
+                  }}
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className={styles.searchClearBtn}
+                    onClick={() => setSearchQuery('')}
+                    aria-label={t('Clear search')}
+                    title={t('Clear search')}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
               <div className={styles.controlsRight}>
                 {selectedAssetIds.size > 0 && (
@@ -487,6 +599,8 @@ export default function AssetClient({
                       className={styles.bulkActionIconBtn}
                       onClick={() => setShowBulkMoveModal(true)}
                       title={t('Move to Folder')}
+                      aria-label={t('Move to Folder')}
+                      type="button"
                     >
                       <FolderInput size={16} />
                     </button>
@@ -494,14 +608,27 @@ export default function AssetClient({
                       className={`${styles.bulkActionIconBtn} ${styles.bulkActionIconBtnDanger}`}
                       onClick={() => setShowBulkDeleteModal(true)}
                       title={t('Delete Selected Assets')}
+                      aria-label={t('Delete Selected Assets')}
+                      type="button"
                     >
                       <Trash2 size={16} />
+                    </button>
+                    <button
+                      className={styles.bulkActionIconBtn}
+                      onClick={() => setSelectedAssetIds(new Set())}
+                      title={t('Clear selection')}
+                      aria-label={t('Clear selection')}
+                      type="button"
+                    >
+                      <X size={16} />
                     </button>
                   </div>
                 )}
                 <button 
                   className={`${styles.filterBtn} ${isFiltersActive ? styles.active : ''}`}
                   onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
+                  id="assets-filter-button"
+                  type="button"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
@@ -515,6 +642,8 @@ export default function AssetClient({
                       className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
                       onClick={() => handleSetViewMode('table')}
                       title={t('Table View')}
+                      aria-label={t('Table View')}
+                      type="button"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -529,6 +658,8 @@ export default function AssetClient({
                       className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
                       onClick={() => handleSetViewMode('grid')}
                       title={t('Grid View')}
+                      aria-label={t('Grid View')}
+                      type="button"
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
@@ -588,13 +719,54 @@ export default function AssetClient({
                         setMenuPosition(null)
                       } else {
                         const rect = e.currentTarget.getBoundingClientRect()
-                        setMenuPosition({ top: rect.bottom + window.scrollY + 6, right: window.innerWidth - rect.right })
+                        const right = Math.max(8, window.innerWidth - rect.right)
+                        setMenuPosition({ top: rect.bottom + window.scrollY + 6, right })
                         setOpenMenuId(asset.id)
                       }
                     }}
                     selected={selectedAssetIds.has(asset.id)}
-                    onToggleSelect={() => handleToggleSelect(asset.id)}
-                  />
+                      onToggleSelect={() => handleToggleSelect(asset.id)}
+                      isSelectionActive={selectedAssetIds.size > 0}
+                    draggable={!deletingIds.has(asset.id)}
+                    isDropTarget={dragOverFolderId === asset.id && asset.mime_type === 'application/x-folder'}
+                    onDragStart={(e) => {
+                      if (deletingIds.has(asset.id)) return
+                      const ids = (selectedAssetIds.size > 0 && selectedAssetIds.has(asset.id))
+                        ? Array.from(selectedAssetIds)
+                        : [asset.id]
+                      e.dataTransfer.setData('application/x-nuexis-asset-ids', JSON.stringify(ids))
+                      e.dataTransfer.setData('text/plain', ids.join(','))
+                      e.dataTransfer.effectAllowed = 'move'
+                    }}
+                    onDragEnd={() => {
+                      setDragOverFolderId(null)
+                    }}
+                    onDragOver={(e) => {
+                      if (asset.mime_type !== 'application/x-folder') return
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                      setDragOverFolderId(asset.id)
+                    }}
+                    onDrop={(e) => {
+                      if (asset.mime_type !== 'application/x-folder') return
+                      e.preventDefault()
+                      setDragOverFolderId(null)
+                      let ids: string[] = []
+                      try {
+                        const raw = e.dataTransfer.getData('application/x-nuexis-asset-ids') || '[]'
+                        ids = JSON.parse(raw)
+                      } catch {
+                        ids = (e.dataTransfer.getData('text/plain') || '')
+                          .split(',')
+                          .map(x => x.trim())
+                          .filter(Boolean)
+                      }
+                      const sanitized = ids.filter(id => id && id !== asset.id)
+                      if (sanitized.length === 0) return
+
+                      moveAssetsOptimistically(sanitized, asset.id, asset.file_name)
+                    }}
+                    />
                 ))}
               </div>
             ) : (
@@ -615,19 +787,22 @@ export default function AssetClient({
                   selectedAssetIds={selectedAssetIds}
                   setSelectedAssetIds={setSelectedAssetIds}
                   handleToggleSelect={handleToggleSelect}
+                  dragOverFolderId={dragOverFolderId}
+                  setDragOverFolderId={setDragOverFolderId}
+                  onDropOnFolder={(targetFolder, draggedIds) => {
+                    moveAssetsOptimistically(draggedIds, targetFolder.id, targetFolder.file_name)
+                  }}
                 />
               </div>
             )}
             
-            {assets.length > 0 && (
+            {filteredAssets.length > 0 && (
               <div className={styles.tableFooter}>
                 <div className={styles.paginationInfo}>
-                  {searchQuery 
-                    ? `${t('Showing')} ${filteredAssets.filter(a => a.mime_type !== 'application/x-folder').length} ${t('filtered assets')}` 
-                    : `${t('Showing')} ${startItem} ${t('to')} ${endItem} ${t('of')} ${
-                        folder ? folderAssetsCount : libraryAssetsCount
-                      } ${t('assets')}`
-                  }
+                  {`${t('Showing')} ${startItem} ${t('to')} ${endItem} ${t('of')} ${filteredAssets.length} ${t('items')}`}
+                  {viewMode === 'grid' && filteredAssets.some(a => a.mime_type === 'application/x-folder') && (
+                    <span className={styles.dragHint}>{t('Tip: drag items onto a folder to move them')}</span>
+                  )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div className={styles.perPageSelector} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', color: 'var(--on-surface-muted)' }}>
@@ -663,29 +838,31 @@ export default function AssetClient({
                       <option value="100">100</option>
                     </select>
                   </div>
-                  {!searchQuery && (
-                    <div className={styles.pagination}>
-                      <span className={styles.pageIndicator}>
-                        Page {currentPage} of {totalPages}
-                      </span>
-                      <button 
-                        className={styles.pageBtn} 
-                        onClick={() => navigatePage(currentPage - 1, pageSize)}
-                        disabled={!hasPrevPage}
-                        style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button 
-                        className={styles.pageBtn} 
-                        onClick={() => navigatePage(currentPage + 1, pageSize)}
-                        disabled={!hasNextPage}
-                        style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  )}
+                  <div className={styles.pagination}>
+                    <span className={styles.pageIndicator}>
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button 
+                      className={styles.pageBtn} 
+                      onClick={() => navigatePage(currentPage - 1, pageSize)}
+                      disabled={!hasPrevPage}
+                      type="button"
+                      aria-label={t('Previous page')}
+                      style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button 
+                      className={styles.pageBtn} 
+                      onClick={() => navigatePage(currentPage + 1, pageSize)}
+                      disabled={!hasNextPage}
+                      type="button"
+                      aria-label={t('Next page')}
+                      style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -709,6 +886,7 @@ export default function AssetClient({
           filterMaxSize={filterMaxSize}
           setFilterMaxSize={setFilterMaxSize}
           onClose={() => setIsFilterSidebarOpen(false)}
+          triggerId="assets-filter-button"
         />
       </div>
 
@@ -785,10 +963,8 @@ export default function AssetClient({
           folders={assets.filter(a => a.mime_type === 'application/x-folder' && (!folder || a.id !== folder.id))}
           teamSlug={teamSlug}
           onClose={() => setShowBulkMoveModal(false)}
-          onSuccess={() => {
-            setSelectedAssetIds(new Set())
-            setShowBulkMoveModal(false)
-            router.refresh()
+          onMoveAssets={(assetIds, targetFolderId, targetFolderName) => {
+            moveAssetsOptimistically(assetIds, targetFolderId, targetFolderName)
           }}
         />
       )}

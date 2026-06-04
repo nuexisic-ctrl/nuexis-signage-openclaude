@@ -3,6 +3,8 @@ import { X, File } from 'lucide-react'
 import styles from './Modal.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
+import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
+import { useA11yModal } from '@/lib/utils/useA11yModal'
 
 interface Asset {
   id: string
@@ -28,18 +30,11 @@ function isVideo(mimeType: string) {
 }
 
 export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    document.body.style.overflow = 'hidden'
-    
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = ''
-    }
-  }, [onClose])
+  const dialogRef = useA11yModal({
+    id: 'asset-preview-modal',
+    onClose,
+    initialFocusSelector: 'button[data-modal-close="true"]',
+  })
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -59,19 +54,60 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
   }
 
   return (
-    <div className={styles.modalOverlay} onClick={handleBackdropClick} role="dialog" aria-modal="true">
-      <div className={styles.modalContainer} style={{ maxWidth: '900px', width: '90vw' }}>
+    <div className={styles.modalOverlay} onClick={handleBackdropClick} role="presentation">
+      <div
+        ref={dialogRef as any}
+        className={styles.modalContainer}
+        style={{ maxWidth: '900px', width: '90vw' }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="asset-preview-title"
+        aria-describedby="asset-preview-type"
+      >
         <div className={styles.modalHeader}>
           <div className={styles.modalMeta}>
-            <span className={styles.modalTitle} title={asset.file_name}>{asset.file_name}</span>
-            <span className={styles.modalMime}>{isYouTube ? 'YouTube Widget' : isRemoteUrl ? 'Remote URL Widget' : isHtml ? 'Text/HTML Widget' : asset.mime_type === 'application/x-widget-flow' ? 'Clock Widget' : asset.mime_type === 'application/x-widget-countdown' ? 'Countdown Widget' : asset.mime_type === 'application/x-widget-qrcode' ? 'QR Code Widget' : asset.mime_type}</span>
+            <span id="asset-preview-title" className={styles.modalTitle} title={asset.file_name}>{asset.file_name}</span>
+            <span id="asset-preview-type" className={styles.modalMime}>
+              {isYouTube
+                ? 'YouTube Widget'
+                : isRemoteUrl
+                  ? 'Remote URL Widget'
+                  : isHtml
+                    ? 'Text/HTML Widget'
+                    : asset.mime_type === 'application/x-widget-flow'
+                      ? 'Clock Widget'
+                      : asset.mime_type === 'application/x-widget-countdown'
+                        ? 'Countdown Widget'
+                        : asset.mime_type === 'application/x-widget-countup'
+                          ? 'CountUp Widget'
+                        : asset.mime_type === 'application/x-widget-qrcode'
+                          ? 'QR Code Widget'
+                          : asset.mime_type}
+            </span>
           </div>
-          <button className={styles.modalCloseBtn} onClick={onClose} aria-label="Close preview">
+          <button
+            data-modal-close="true"
+            className={styles.modalCloseBtn}
+            onClick={onClose}
+            aria-label="Close preview"
+            type="button"
+          >
             <X size={24} />
           </button>
         </div>
         
-        <div className={styles.modalContent} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', background: '#000', borderRadius: '0 0 16px 16px', overflow: 'hidden' }}>
+        <div
+          className={styles.modalContent}
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            minHeight: '300px',
+            background: '#000',
+            borderRadius: '0 0 16px 16px',
+            overflow: 'hidden',
+          }}
+        >
           {isImg && previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={previewUrl} alt={asset.file_name} className={styles.modalMedia} style={{ maxHeight: '70vh', objectFit: 'contain' }} />
@@ -140,6 +176,28 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
             } catch (err) {
               console.error('Failed to parse Countdown widget config in preview:', err)
               return <div style={{ color: 'red', padding: '20px' }}>Error rendering Countdown widget</div>
+            }
+          })() : asset.mime_type === 'application/x-widget-countup' ? (() => {
+            try {
+              const config = JSON.parse(asset.file_path)
+              return (
+                <div style={{ width: '100%', height: '100%', minHeight: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FlowCountUpRenderer
+                    text={config.text}
+                    startTime={config.startTime}
+                    endTime={config.endTime}
+                    endMessage={config.endMessage}
+                    timerStyle={config.timerStyle}
+                    daysOnly={config.daysOnly}
+                    theme={config.theme}
+                    themeSettings={config.themeSettings}
+                    advancedSettings={config.advancedSettings}
+                  />
+                </div>
+              )
+            } catch (err) {
+              console.error('Failed to parse CountUp widget config in preview:', err)
+              return <div style={{ color: 'red', padding: '20px' }}>Error rendering CountUp widget</div>
             }
           })() : asset.mime_type === 'application/x-widget-flow' ? (() => {
             try {

@@ -40,6 +40,9 @@ interface AssetTableViewProps {
   selectedAssetIds: Set<string>
   setSelectedAssetIds: (ids: Set<string>) => void
   handleToggleSelect: (id: string) => void
+  dragOverFolderId?: string | null
+  setDragOverFolderId?: (id: string | null) => void
+  onDropOnFolder?: (folder: Asset, draggedAssetIds: string[]) => void
 }
 
 export function AssetTableView({
@@ -58,8 +61,32 @@ export function AssetTableView({
   selectedAssetIds,
   setSelectedAssetIds,
   handleToggleSelect,
+  dragOverFolderId,
+  setDragOverFolderId,
+  onDropOnFolder,
 }: AssetTableViewProps) {
   const supabase = createClient()
+
+  const getDraggedIds = (asset: Asset, dataTransfer: DataTransfer | null) => {
+    // Prefer explicit payload
+    if (dataTransfer) {
+      try {
+        const raw = dataTransfer.getData('application/x-nuexis-asset-ids')
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) return parsed.filter(Boolean)
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // Fallback to current selection or single
+    if (selectedAssetIds.size > 0 && selectedAssetIds.has(asset.id)) {
+      return Array.from(selectedAssetIds)
+    }
+    return [asset.id]
+  }
 
   const handleDownload = async (asset: Asset) => {
     try {
@@ -92,6 +119,7 @@ export function AssetTableView({
                     setSelectedAssetIds(new Set())
                   }
                 }}
+                aria-label={t('Select all items on this page')}
                 style={{ width: '16px', height: '16px', cursor: 'pointer' }}
               />
             </th>
@@ -113,7 +141,54 @@ export function AssetTableView({
             const isFolder = asset.mime_type === 'application/x-folder'
 
             return (
-              <tr key={asset.id} className={`${styles.tableRow} ${selectedAssetIds.has(asset.id) ? styles.rowSelected : ''}`}>
+              <tr
+                key={asset.id}
+                className={`${styles.tableRow} ${selectedAssetIds.has(asset.id) ? styles.rowSelected : ''} ${
+                  isFolder && dragOverFolderId === asset.id ? styles.dropTargetRow : ''
+                }`}
+                draggable={!isFolder && !deletingIds.has(asset.id)}
+                onDragStart={(e) => {
+                  if (isFolder || deletingIds.has(asset.id)) return
+                  const ids = getDraggedIds(asset, e.dataTransfer)
+                  e.dataTransfer.setData('application/x-nuexis-asset-ids', JSON.stringify(ids))
+                  e.dataTransfer.setData('text/plain', ids.join(','))
+                  e.dataTransfer.effectAllowed = 'move'
+                }}
+                onDragEnd={() => setDragOverFolderId?.(null)}
+                onDragOver={(e) => {
+                  if (!isFolder) return
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                  setDragOverFolderId?.(asset.id)
+                }}
+                onDrop={(e) => {
+                  if (!isFolder) return
+                  e.preventDefault()
+                  setDragOverFolderId?.(null)
+                  if (!onDropOnFolder) return
+
+                  let ids: string[] = []
+                  try {
+                    const raw = e.dataTransfer.getData('application/x-nuexis-asset-ids') || '[]'
+                    ids = JSON.parse(raw)
+                  } catch {
+                    ids = (e.dataTransfer.getData('text/plain') || '')
+                      .split(',')
+                      .map(x => x.trim())
+                      .filter(Boolean)
+                  }
+                  const sanitized = ids.filter(id => id && id !== asset.id)
+                  if (sanitized.length === 0) return
+                  onDropOnFolder(asset, sanitized)
+                }}
+                onClick={() => {
+                  if (selectedAssetIds.size > 0) {
+                    handleToggleSelect(asset.id)
+                  } else {
+                    setPreviewAsset(asset)
+                  }
+                }}
+              >
                 <td 
                   className={styles.tableCell} 
                   style={{ width: '40px', textAlign: 'center', cursor: 'pointer' }}
@@ -125,7 +200,8 @@ export function AssetTableView({
                   <input 
                     type="checkbox" 
                     checked={selectedAssetIds.has(asset.id)} 
-                    onChange={(e) => {}} 
+                    readOnly
+                    aria-label={`${selectedAssetIds.has(asset.id) ? t('Deselect') : t('Select')} ${asset.file_name}`}
                     style={{ width: '16px', height: '16px', cursor: 'pointer', pointerEvents: 'none' }}
                   />
                 </td>
@@ -139,7 +215,7 @@ export function AssetTableView({
                       setPreviewAsset(asset)
                     }
                   }}
-                  style={{ cursor: selectedAssetIds.size > 0 ? 'pointer' : 'pointer' }}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div className={styles.nameCellContent}>
                     <div className={styles.deviceIconWrapper}>
@@ -239,6 +315,7 @@ export function AssetTableView({
                         }}
                         title={t('Push to screen')}
                         aria-label="Push to screen"
+                        type="button"
                       >
                         <Tv size={16} />
                       </button>
@@ -255,15 +332,17 @@ export function AssetTableView({
                             setMenuPosition(null)
                           } else {
                             const rect = e.currentTarget.getBoundingClientRect()
+                            const right = Math.max(8, window.innerWidth - rect.right)
                             setMenuPosition({
                               top: rect.bottom + window.scrollY + 6,
-                              right: window.innerWidth - rect.right,
+                              right,
                             })
                             setOpenMenuId(asset.id)
                           }
                         }}
                         disabled={deletingIds.has(asset.id)}
                         aria-label="More Actions"
+                        type="button"
                       >
                         <svg
                           viewBox="0 0 24 24"
@@ -294,6 +373,7 @@ export function AssetTableView({
                           >
                             <button
                               className={styles.dropdownItem}
+                              type="button"
                               onClick={() => {
                                 setOpenMenuId(null)
                                 setRenameModalAsset(asset)
@@ -304,6 +384,7 @@ export function AssetTableView({
                             {!isWidget(asset.mime_type) && !isFolder && (
                               <button
                                 className={styles.dropdownItem}
+                                type="button"
                                 onClick={() => {
                                   setOpenMenuId(null)
                                   handleDownload(asset)
@@ -315,6 +396,7 @@ export function AssetTableView({
 
                             <button
                               className={`${styles.dropdownItem} ${styles.danger}`}
+                              type="button"
                               onClick={() => {
                                 setOpenMenuId(null)
                                 setDeleteModalAsset(asset)

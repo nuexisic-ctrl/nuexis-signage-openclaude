@@ -448,7 +448,7 @@ export function GroupEditModal({
               <CustomSelect
                 id="group-edit-content-type"
                 value={contentType || ''}
-                onChange={(val) => handleContentTypeChange(val)}
+                onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | 'Schedule' | '')}
                 options={[
                   ...(!contentType ? [{ value: '', label: 'no content', disabled: true }] : []),
                   { value: 'Asset', label: 'Asset' },

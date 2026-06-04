@@ -3,6 +3,7 @@
 import React from 'react'
 import { X } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
+import { t } from '@/lib/i18n'
 import styles from './FilterSidebar.module.css'
 
 interface FilterSidebarProps {
@@ -23,6 +24,7 @@ interface FilterSidebarProps {
   setFilterMaxSize: (val: string) => void
   onClose: () => void
   isModal?: boolean
+  triggerId?: string
 }
 
 export function FilterSidebar({
@@ -43,6 +45,7 @@ export function FilterSidebar({
   setFilterMaxSize,
   onClose,
   isModal = false,
+  triggerId = 'assets-filter-button',
 }: FilterSidebarProps) {
   React.useEffect(() => {
     if (!isOpen || isModal) return
@@ -52,7 +55,7 @@ export function FilterSidebar({
       
       const rightSidebar = document.querySelector(`.${styles.filterSidebar}`)
       const leftSidebar = document.querySelector('aside[class*="sidebar"]')
-      const filterBtn = document.querySelector('button[class*="filterBtn"]')
+      const filterBtn = document.getElementById(triggerId)
 
       if (rightSidebar?.contains(target)) return
       if (leftSidebar?.contains(target)) return
@@ -73,7 +76,7 @@ export function FilterSidebar({
       clearTimeout(timer)
       document.removeEventListener('click', handleOutsideClick)
     }
-  }, [isOpen, onClose, isModal])
+  }, [isOpen, onClose, isModal, triggerId])
 
   return (
     <>
@@ -83,41 +86,45 @@ export function FilterSidebar({
           onClick={onClose} 
         />
       )}
-      <aside className={`${styles.filterSidebar} ${isOpen ? styles.isOpen : ''} ${isModal ? styles.isModal : ''}`}>
+      <aside
+        className={`${styles.filterSidebar} ${isOpen ? styles.isOpen : ''} ${isModal ? styles.isModal : ''}`}
+        aria-hidden={!isOpen}
+        aria-labelledby="assets-filter-sidebar-title"
+      >
         <div className={styles.sidebarHeader}>
-          <h3 className={styles.sidebarTitle}>Advanced Filters</h3>
-          <button className={styles.closeSidebarBtn} onClick={onClose}>
+          <h3 id="assets-filter-sidebar-title" className={styles.sidebarTitle}>{t('Advanced Filters')}</h3>
+          <button className={styles.closeSidebarBtn} onClick={onClose} type="button" aria-label={t('Close filters')}>
             <X size={20} />
           </button>
         </div>
         <div className={styles.sidebarBody}>
           <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>File Type</label>
+            <label className={styles.filterLabel} htmlFor="asset-filter-file-type">{t('File Type')}</label>
             <CustomSelect
               id="asset-filter-file-type"
               value={filterType}
               onChange={(val) => setFilterType(val)}
               options={[
-                { value: 'all', label: 'All Types' },
-                { value: 'image', label: 'Images' },
-                { value: 'video', label: 'Videos' },
-                { value: 'widget', label: 'Widgets' }
+                { value: 'all', label: t('All Types') },
+                { value: 'image', label: t('Images') },
+                { value: 'video', label: t('Videos') },
+                { value: 'widget', label: t('Widgets') }
               ]}
             />
           </div>
           
           <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Date Added</label>
+            <label className={styles.filterLabel} htmlFor="asset-filter-date-pre">{t('Date Added')}</label>
             <CustomSelect
               id="asset-filter-date-pre"
               value={filterDatePreset}
               onChange={(val) => setFilterDatePreset(val)}
               options={[
-                { value: 'all', label: 'Any time' },
-                { value: 'today', label: 'Today' },
-                { value: '7days', label: 'Last 7 Days' },
-                { value: '30days', label: 'Last 30 Days' },
-                { value: 'custom', label: 'Custom Date Range' }
+                { value: 'all', label: t('Any time') },
+                { value: 'today', label: t('Today') },
+                { value: '7days', label: t('Last 7 Days') },
+                { value: '30days', label: t('Last 30 Days') },
+                { value: 'custom', label: t('Custom Date Range') }
               ]}
             />
           </div>
@@ -125,29 +132,29 @@ export function FilterSidebar({
           {filterDatePreset === 'custom' && (
             <>
               <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Added After</label>
-                <input type="date" className={styles.filterInput} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+                <label className={styles.filterLabel} htmlFor="asset-filter-start-date">{t('Added After')}</label>
+                <input id="asset-filter-start-date" type="date" className={styles.filterInput} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
               </div>
               
               <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Added Before</label>
-                <input type="date" className={styles.filterInput} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
+                <label className={styles.filterLabel} htmlFor="asset-filter-end-date">{t('Added Before')}</label>
+                <input id="asset-filter-end-date" type="date" className={styles.filterInput} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
               </div>
             </>
           )}
 
           <div className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Storage Size</label>
+            <label className={styles.filterLabel} htmlFor="asset-filter-size-pre">{t('Storage Size')}</label>
             <CustomSelect
               id="asset-filter-size-pre"
               value={filterSizePreset}
               onChange={(val) => setFilterSizePreset(val)}
               options={[
-                { value: 'all', label: 'Any size' },
-                { value: 'under1', label: 'Under 1 MB' },
-                { value: '1to10', label: '1 MB to 10 MB' },
-                { value: '10to50', label: '10 MB to 50 MB' },
-                { value: 'custom', label: 'Custom Size Range' }
+                { value: 'all', label: t('Any size') },
+                { value: 'under1', label: t('Under 1 MB') },
+                { value: '1to10', label: t('1 MB to 10 MB') },
+                { value: '10to50', label: t('10 MB to 50 MB') },
+                { value: 'custom', label: t('Custom Size Range') }
               ]}
             />
           </div>
@@ -155,13 +162,13 @@ export function FilterSidebar({
           {filterSizePreset === 'custom' && (
             <>
               <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Min Size (MB)</label>
-                <input type="number" step="any" min="0" placeholder="e.g. 0.5" className={styles.filterInput} value={filterMinSize} onChange={e => setFilterMinSize(e.target.value)} />
+                <label className={styles.filterLabel} htmlFor="asset-filter-min-size">{t('Min Size (MB)')}</label>
+                <input id="asset-filter-min-size" type="number" step="any" min="0" placeholder={t('e.g. 0.5')} className={styles.filterInput} value={filterMinSize} onChange={e => setFilterMinSize(e.target.value)} />
               </div>
               
               <div className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Max Size (MB)</label>
-                <input type="number" step="any" min="0" placeholder="e.g. 15" className={styles.filterInput} value={filterMaxSize} onChange={e => setFilterMaxSize(e.target.value)} />
+                <label className={styles.filterLabel} htmlFor="asset-filter-max-size">{t('Max Size (MB)')}</label>
+                <input id="asset-filter-max-size" type="number" step="any" min="0" placeholder={t('e.g. 15')} className={styles.filterInput} value={filterMaxSize} onChange={e => setFilterMaxSize(e.target.value)} />
               </div>
             </>
           )}
@@ -178,8 +185,9 @@ export function FilterSidebar({
               setFilterMinSize('');
               setFilterMaxSize('');
             }}
+            type="button"
           >
-            Reset All Filters
+            {t('Reset All Filters')}
           </button>
         </div>
       </aside>

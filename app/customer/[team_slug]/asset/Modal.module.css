@@ -26,6 +26,64 @@
   width: auto;
 }
 
+.countdownWidgetOverlay {
+  inset: 0 0 0 260px;
+  padding: 16px;
+}
+
+:global(.sidebar-collapsed) .countdownWidgetOverlay {
+  inset: 0 0 0 80px;
+}
+
+.countupWidgetOverlay {
+  inset: 0 0 0 260px;
+  padding: 16px;
+}
+
+:global(.sidebar-collapsed) .countupWidgetOverlay {
+  inset: 0 0 0 80px;
+}
+
+.countdownWidgetModal {
+  width: min(100%, 1440px);
+  max-width: min(100%, 1440px);
+  height: min(920px, calc(100vh - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+}
+
+.countupWidgetModal {
+  width: min(100%, 1440px);
+  max-width: min(100%, 1440px);
+  height: min(920px, calc(100vh - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .countdownWidgetOverlay {
+    inset: 0;
+    padding: 12px;
+  }
+
+  .countdownWidgetModal {
+    width: 100%;
+    height: calc(100vh - 24px);
+    max-height: calc(100vh - 24px);
+  }
+
+  .countupWidgetOverlay {
+    inset: 0;
+    padding: 12px;
+  }
+
+  .countupWidgetModal {
+    width: 100%;
+    height: calc(100vh - 24px);
+    max-height: calc(100vh - 24px);
+  }
+}
+
 .modalHeader {
   display: flex;
   align-items: center;
@@ -339,33 +397,46 @@
 }
 
 /* Extra utility classes for collapsible sections and picker styling */
-.styleCollapsibleHeader,
-.advancedCollapsibleHeader {
+.collapsibleContainer {
+  border: 1px solid var(--outline-variant);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  margin-bottom: 8px;
+}
+
+.collapsibleContainerActive {
+  border-color: var(--outline-variant);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.collapsibleHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  background: var(--surface-low);
-  border: 1px solid var(--outline-variant);
-  border-radius: 8px;
   cursor: pointer;
   user-select: none;
   font-family: var(--font-label);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 700;
+  color: var(--on-surface);
+  transition: color 0.15s ease;
+}
+
+.collapsibleHeader:hover {
   color: var(--on-surface);
 }
 
-.styleCollapsibleContent,
-.advancedCollapsibleContent {
-  padding: 14px;
-  border: 1px solid var(--outline-variant);
-  border-top: none;
-  border-radius: 0 0 8px 8px;
+.collapsibleContent {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: var(--surface-lowest);
+  padding-top: 10px;
+  border-top: 1px solid var(--outline-variant);
 }
 
 .colorPickerFieldRow {
@@ -437,9 +508,21 @@
 
 .widgetGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 1024px) {
+  .widgetGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .widgetGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .widgetCard {
@@ -447,7 +530,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 20px;
+  padding: 14px 10px;
   background: var(--surface-low);
   border: 1px solid var(--outline-variant);
   border-radius: 12px;
@@ -470,13 +553,13 @@
 }
 
 .widgetIconContainer {
-  width: 80px;
-  height: 80px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   transition: transform 0.2s ease;
 }
 
@@ -485,15 +568,15 @@
 }
 
 .widgetTitle {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--on-surface);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-family: var(--font-label);
 }
 
 .widgetDescription {
-  font-size: 0.8125rem;
+  font-size: 0.76rem;
   color: var(--on-surface-subtle);
   line-height: 1.4;
   margin: 0;

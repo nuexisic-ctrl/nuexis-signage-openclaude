@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { AlertTriangle, Link, MonitorPlay, X, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass } from 'lucide-react'
+import { AlertTriangle, Link, MonitorPlay, X, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass, Timer } from 'lucide-react'
 import styles from './Modal.module.css'
 import { validateHtml, validateCss } from './validators'
 import { t } from '@/lib/i18n'
@@ -20,6 +20,7 @@ interface WidgetSelectionModalProps {
   onSelectFlow: () => void
   onSelectQRCode: () => void
   onSelectCountdown: () => void
+  onSelectCountUp: () => void
 }
 
 const WIDGET_SEARCH_HISTORY_KEY = 'widget_search_history'
@@ -60,7 +61,8 @@ export function WidgetSelectionModal({
   onSelectHtml,
   onSelectFlow,
   onSelectQRCode,
-  onSelectCountdown
+  onSelectCountdown,
+  onSelectCountUp
 }: WidgetSelectionModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchHistory, setSearchHistory] = useState<string[]>([])
@@ -90,6 +92,14 @@ export function WidgetSelectionModal({
   }, [showHistory])
 
   const ALL_WIDGETS = [
+    {
+      id: 'countup',
+      title: t('Count Up'),
+      description: t('Display a live count up timer showing time elapsed since a start time.'),
+      icon: Timer,
+      color: '#22c55e',
+      action: onSelectCountUp
+    },
     {
       id: 'countdown',
       title: t('Countdown'),
@@ -193,7 +203,7 @@ export function WidgetSelectionModal({
     >
       <div
         className={styles.modalContainer}
-        style={{ padding: '28px', maxWidth: '860px', width: '100%' }}
+        style={{ padding: '28px', maxWidth: '1200px', width: '100%' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -271,48 +281,50 @@ export function WidgetSelectionModal({
           )}
         </div>
 
-        {/* Widget Grid */}
-        {filteredWidgets.length === 0 ? (
-          <div className={styles.widgetSearchEmpty}>
-            <Search size={28} style={{ opacity: 0.3, marginBottom: '10px' }} />
-            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--on-surface-subtle)' }}>
-              {t('No widgets match')} &ldquo;{searchQuery}&rdquo;
-            </p>
-            <button
-              style={{ marginTop: '8px', fontSize: '0.82rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
-              onClick={() => setSearchQuery('')}
-            >
-              {t('Clear search')}
-            </button>
-          </div>
-        ) : (
-          <div className={styles.widgetGrid}>
-            {filteredWidgets.map((widget) => {
-              const Icon = widget.icon
-              return (
-                <div
-                  key={widget.id}
-                  className={styles.widgetCard}
-                  onClick={() => handleWidgetActivate(widget)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleWidgetActivate(widget) }
-                  }}
-                >
+        {/* Scrollable Container for Widgets */}
+        <div style={{ overflowY: 'auto', maxHeight: 'calc(90vh - 180px)', paddingRight: '6px', margin: '4px -6px 0 0' }}>
+          {filteredWidgets.length === 0 ? (
+            <div className={styles.widgetSearchEmpty}>
+              <Search size={28} style={{ opacity: 0.3, marginBottom: '10px' }} />
+              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--on-surface-subtle)' }}>
+                {t('No widgets match')} &ldquo;{searchQuery}&rdquo;
+              </p>
+              <button
+                style={{ marginTop: '8px', fontSize: '0.82rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+                onClick={() => setSearchQuery('')}
+              >
+                {t('Clear search')}
+              </button>
+            </div>
+          ) : (
+            <div className={styles.widgetGrid}>
+              {filteredWidgets.map((widget) => {
+                const Icon = widget.icon
+                return (
                   <div
-                    className={styles.widgetIconContainer}
-                    style={{ backgroundColor: `color-mix(in srgb, ${widget.color} 10%, transparent)` }}
+                    key={widget.id}
+                    className={styles.widgetCard}
+                    onClick={() => handleWidgetActivate(widget)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleWidgetActivate(widget) }
+                    }}
                   >
-                    <Icon color={widget.color} size={34} />
+                    <div
+                      className={styles.widgetIconContainer}
+                      style={{ backgroundColor: `color-mix(in srgb, ${widget.color} 10%, transparent)` }}
+                    >
+                      <Icon color={widget.color} size={26} />
+                    </div>
+                    <h3 className={styles.widgetTitle}>{widget.title}</h3>
+                    <p className={styles.widgetDescription}>{widget.description}</p>
                   </div>
-                  <h3 className={styles.widgetTitle}>{widget.title}</h3>
-                  <p className={styles.widgetDescription}>{widget.description}</p>
-                </div>
-              )
-            })}
-          </div>
-        )}
+                )
+              })}
+            </div>
+          )}
+        </div>
 
 
       </div>
@@ -1732,17 +1744,17 @@ export function QRCodeWidgetModal({
                 </div>
               )}
 
-              {/* Style Section */}
-              <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
+              {/* Style Section Container */}
+              <div className={`${styles.collapsibleContainer} ${showStyle ? styles.collapsibleContainerActive : ''}`}>
                 <div 
-                  className={styles.styleCollapsibleHeader}
+                  className={styles.collapsibleHeader}
                   onClick={() => setShowStyle(!showStyle)}
                 >
-                  <span>{t('Style')}</span>
+                  <span>{t('Theme Settings')}</span>
                   <span>{showStyle ? '▲' : '▼'}</span>
                 </div>
                 {showStyle && (
-                  <div className={styles.styleCollapsibleContent}>
+                  <div className={styles.collapsibleContent}>
                     <div className={styles.colorPickerFieldRow}>
                       <span style={{ fontSize: '0.86rem', color: 'var(--on-surface-subtle)' }}>{t('Text Color')}</span>
                       <div className={styles.colorPickerInputWrapper}>
@@ -1800,17 +1812,17 @@ export function QRCodeWidgetModal({
                 )}
               </div>
 
-              {/* Advanced Section */}
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {/* Advanced Section Container */}
+              <div className={`${styles.collapsibleContainer} ${showAdvanced ? styles.collapsibleContainerActive : ''}`}>
                 <div 
-                  className={styles.advancedCollapsibleHeader}
+                  className={styles.collapsibleHeader}
                   onClick={() => setShowAdvanced(!showAdvanced)}
                 >
-                  <span>{t('Advanced')}</span>
+                  <span>{t('Advanced Settings')}</span>
                   <span>{showAdvanced ? '▲' : '▼'}</span>
                 </div>
                 {showAdvanced && (
-                  <div className={styles.advancedCollapsibleContent}>
+                  <div className={styles.collapsibleContent}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.8rem', color: 'var(--on-surface-subtle)' }}>{t('Error Correction Level')}</label>
                       <select
@@ -2128,4 +2140,3 @@ const PRESET_COLORS = [
   '#475569', // slate-dark
   '#334155', // slate-deep
 ]
-

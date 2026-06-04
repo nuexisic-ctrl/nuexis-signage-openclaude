@@ -24,15 +24,14 @@
   overflow: hidden;
 }
 
-.trigger:focus,
-.triggerActive {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(9, 76, 178, 0.1);
+.trigger:hover {
+  border-color: var(--on-surface-subtle);
 }
 
-.trigger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.trigger:focus,
+.triggerActive {
+  border-color: var(--on-surface-subtle);
+  box-shadow: 0 0 0 1px var(--on-surface-subtle);
 }
 
 .valueText {
@@ -56,23 +55,43 @@
   transform: rotate(180deg);
 }
 
-.optionsList {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
+/* Color Dot swivel swatches */
+.colorDotContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--outline-variant);
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.colorDotInner {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+/* Popover Dropdown */
+.popoverMenu {
   background: var(--surface-lowest);
   border: 1px solid var(--outline-variant);
   border-radius: 8px;
   box-shadow: var(--shadow-modal);
-  z-index: 1000;
-  max-height: 220px;
-  overflow-y: auto;
+  overflow: hidden;
+  animation: slideDown 0.15s ease-out;
+}
+
+.optionsList {
   padding: 4px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  animation: slideDown 0.15s ease-out;
+  max-height: 260px;
+  overflow-y: auto;
 }
 
 .optionBtn {
@@ -84,40 +103,41 @@
   color: var(--on-surface);
   font-family: var(--font-body);
   font-size: 0.8125rem;
-  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   cursor: pointer;
   transition: background-color 0.1s ease;
+  box-sizing: border-box;
 }
 
 .optionBtn:hover {
   background-color: var(--surface-low);
 }
 
-.optionFocused {
-  background-color: var(--surface-low);
-}
-
 .optionActive {
-  background-color: var(--primary-container);
-  color: var(--primary);
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--on-surface);
   font-weight: 700;
 }
 
 .optionActive:hover {
-  background-color: var(--primary-container);
-  opacity: 0.9;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.optionLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.checkIcon {
+  color: var(--on-surface);
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
 @keyframes slideDown {
   from { transform: translateY(-4px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
-}
-
-.optionDisabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.optionDisabled:hover {
-  background: transparent;
 }

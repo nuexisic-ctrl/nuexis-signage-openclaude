@@ -260,3 +260,41 @@
   box-shadow: 0 0 0 2px var(--primary-container) !important;
   background-color: var(--surface-low) !important;
 }
+
+.selectionToggle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 15;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 17, 31, 0.72);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease, transform 150ms ease;
+  transform: scale(0.96);
+}
+
+.assetCard:hover .selectionToggle,
+.selectionToggleVisible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.dropTarget {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 35%, transparent) !important;
+}
+
+.dropTarget::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 12px;
+  border: 2px dashed color-mix(in srgb, var(--primary) 55%, transparent);
+  pointer-events: none;
+}

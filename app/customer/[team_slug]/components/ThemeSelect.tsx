@@ -2,55 +2,87 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Check } from 'lucide-react'
 import { modalStack } from '@/lib/utils/modalStack'
-import styles from './CustomSelect.module.css'
+import styles from './ThemeSelect.module.css'
 
-type SelectValue = string | number
+type ThemeValue = 'light' | 'dark' | 'sunset' | 'neon' | 'ocean' | 'custom'
 
-interface Option<T extends SelectValue = SelectValue> {
-  value: T
+interface ThemeOption {
+  value: ThemeValue
   label: string
-  disabled?: boolean
 }
 
-interface CustomSelectProps<T extends SelectValue> {
-  value: T
-  onChange: (value: T) => void
-  options: ReadonlyArray<Option<T>>
-  disabled?: boolean
-  className?: string
-  placeholder?: string
+interface ThemeSelectProps {
+  value: ThemeValue
+  onChange: (value: ThemeValue) => void
+  options: ReadonlyArray<ThemeOption>
   id: string
-  onPreviewChange?: (value: T | null) => void
+  onPreviewChange?: (value: ThemeValue | null) => void
   previewDelay?: number
+  primaryColor?: string
+  secondaryColor?: string
+  backgroundColor?: string
 }
 
-export default function CustomSelect<T extends SelectValue>({
+function ThemeColorDot({
+  theme,
+  primaryColor,
+  backgroundColor
+}: {
+  theme: ThemeValue
+  primaryColor?: string
+  backgroundColor?: string
+}) {
+  let bg = backgroundColor || '#090d16'
+  let p = primaryColor || '#38bdf8'
+
+  if (theme === 'dark') {
+    bg = '#090d16'
+    p = '#38bdf8'
+  } else if (theme === 'light') {
+    bg = '#f8fafc'
+    p = '#4f46e5'
+  } else if (theme === 'sunset') {
+    bg = '#e11d48'
+    p = '#fca5a5'
+  } else if (theme === 'neon') {
+    bg = '#000000'
+    p = '#00f0ff'
+  } else if (theme === 'ocean') {
+    bg = '#0f172a'
+    p = '#22d3ee'
+  }
+
+  return (
+    <div 
+      className={styles.colorDotContainer}
+      style={{ background: bg }}
+    >
+      <div 
+        className={styles.colorDotInner} 
+        style={{ background: p }} 
+      />
+    </div>
+  )
+}
+
+export default function ThemeSelect({
   value,
   onChange,
   options,
-  disabled = false,
-  className = '',
-  placeholder = '',
   id,
   onPreviewChange,
-  previewDelay = 1000
-}: CustomSelectProps<T>) {
+  previewDelay = 200,
+  primaryColor,
+  secondaryColor,
+  backgroundColor
+}: ThemeSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const optionsRef = useRef<HTMLDivElement>(null)
   const hoverTimeoutRef = useRef<number | null>(null)
   const selectedOption = options.find(opt => opt.value === value)
-  const selectedIndex = options.findIndex(opt => opt.value === value && !opt.disabled)
-  const firstEnabledIndex = options.findIndex(opt => !opt.disabled)
-  const effectiveActiveIndex =
-    activeIndex >= 0 && activeIndex < options.length && !options[activeIndex]?.disabled
-      ? activeIndex
-      : selectedIndex >= 0
-        ? selectedIndex
-        : Math.max(0, firstEnabledIndex)
 
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
 
@@ -94,10 +126,10 @@ export default function CustomSelect<T extends SelectValue>({
     onPreviewChangeRef.current?.(null)
     setIsOpen(false)
   }, [clearPreviewTimer])
-  
+
   // Register with modalStack when open
   useEffect(() => {
-    const stackId = `custom-select-${id}`
+    const stackId = `theme-select-${id}`
     if (isOpen) {
       modalStack.push(stackId)
     } else {
@@ -134,14 +166,14 @@ export default function CustomSelect<T extends SelectValue>({
     }
   }, [isOpen, closeDropdown])
 
-  const handleSelect = (val: T) => {
+  const handleSelect = (val: ThemeValue) => {
     clearPreviewTimer()
     onPreviewChangeRef.current?.(null)
     onChange(val)
     setIsOpen(false)
   }
 
-  const previewOption = (val: T | null) => {
+  const previewOption = (val: ThemeValue | null) => {
     clearPreviewTimer()
     if (!onPreviewChangeRef.current) return
     hoverTimeoutRef.current = window.setTimeout(() => {
@@ -149,71 +181,40 @@ export default function CustomSelect<T extends SelectValue>({
     }, previewDelay)
   }
 
-  const moveActiveIndex = (direction: 1 | -1) => {
-    if (!options.length) return
-    let nextIndex = effectiveActiveIndex
-    for (let i = 0; i < options.length; i++) {
-      nextIndex = (nextIndex + direction + options.length) % options.length
-      if (!options[nextIndex].disabled) {
-        setActiveIndex(nextIndex)
-        return
-      }
-    }
-  }
-
-  const handleTriggerKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (disabled) return
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault()
-      if (!isOpen) {
-        setIsOpen(true)
-      } else {
-        moveActiveIndex(e.key === 'ArrowDown' ? 1 : -1)
-      }
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      if (!isOpen) {
-        setIsOpen(true)
-      } else {
-        const activeOption = options[effectiveActiveIndex]
-        if (activeOption && !activeOption.disabled) handleSelect(activeOption.value)
-      }
-    } else if (e.key === 'Escape' && isOpen) {
-      e.preventDefault()
-      closeDropdown()
-    }
-  }
-
   return (
-    <div className={`${styles.container} ${className}`} ref={containerRef}>
+    <div className={styles.container} ref={containerRef}>
       <button
         type="button"
         className={`${styles.trigger} ${isOpen ? styles.triggerActive : ''}`}
         onClick={() => {
-          if (disabled) return
           if (isOpen) {
             closeDropdown()
           } else {
             setIsOpen(true)
           }
         }}
-        onKeyDown={handleTriggerKeyDown}
-        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className={styles.valueText}>
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+          <ThemeColorDot 
+            theme={value} 
+            primaryColor={primaryColor}
+            backgroundColor={backgroundColor}
+          />
+          <span className={styles.valueText}>
+            {selectedOption ? selectedOption.label : 'Select Theme...'}
+          </span>
+        </div>
         <ChevronDown size={14} className={`${styles.arrow} ${isOpen ? styles.arrowOpen : ''}`} />
       </button>
 
       {isOpen && typeof document !== 'undefined' && createPortal(
         <div 
           ref={optionsRef} 
-          className={styles.optionsList} 
+          className={styles.popoverMenu} 
           role="listbox" 
-          data-dropdown={`custom-select-${id}`}
+          data-dropdown={`theme-select-${id}`}
           style={{
             position: 'absolute',
             top: `${coords.top + 4}px`,
@@ -222,24 +223,32 @@ export default function CustomSelect<T extends SelectValue>({
             zIndex: 99999,
           }}
         >
-          {options.map((opt, index) => (
-            <button
-              key={opt.value}
-              type="button"
-              className={`${styles.optionBtn} ${opt.value === value ? styles.optionActive : ''} ${index === effectiveActiveIndex ? styles.optionFocused : ''} ${opt.disabled ? styles.optionDisabled : ''}`}
-              onClick={() => !opt.disabled && handleSelect(opt.value)}
-              onMouseEnter={() => {
-                setActiveIndex(index)
-                if (!opt.disabled) previewOption(opt.value)
-              }}
-              onMouseLeave={() => previewOption(null)}
-              disabled={opt.disabled}
-              role="option"
-              aria-selected={opt.value === value}
-            >
-              {opt.label}
-            </button>
-          ))}
+          <div className={styles.optionsList}>
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`${styles.optionBtn} ${opt.value === value ? styles.optionActive : ''}`}
+                onClick={() => handleSelect(opt.value)}
+                onMouseEnter={() => previewOption(opt.value)}
+                onMouseLeave={() => previewOption(null)}
+                role="option"
+                aria-selected={opt.value === value}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                  <ThemeColorDot 
+                    theme={opt.value} 
+                    primaryColor={opt.value === 'custom' ? primaryColor : undefined}
+                    backgroundColor={opt.value === 'custom' ? backgroundColor : undefined}
+                  />
+                  <span className={styles.optionLabel}>{opt.label}</span>
+                </div>
+                {opt.value === value && (
+                  <Check size={14} className={styles.checkIcon} />
+                )}
+              </button>
+            ))}
+          </div>
         </div>,
         document.body
       )}

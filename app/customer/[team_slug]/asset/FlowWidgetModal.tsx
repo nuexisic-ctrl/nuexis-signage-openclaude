@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Monitor, Smartphone, Maximize, Clock, ChevronDown } from 'lucide-react'
 import styles from './Modal.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
@@ -22,13 +23,12 @@ interface FlowWidgetModalProps {
 const NAME_MAX_LENGTH = 100
 
 const STYLES_WHITELIST = [
-  { id: 'classic-digital',  name: 'Classic Digital',   desc: 'Serif time with uppercase date' },
-  { id: 'modern-digital',   name: 'Urban Digital',      desc: 'Bold sans-serif on dark glass' },
-  { id: 'classic-analog',   name: 'Heritage Analog',    desc: 'Traditional clock face with numerals' },
-  { id: 'modern-analog',    name: 'Precision Analog',   desc: 'Minimal hands on a card face' },
-  { id: 'minimalist',       name: 'Dashboard',          desc: 'Clock + live calendar side by side' },
-  { id: 'neon-digital',     name: 'Neon Pulse',         desc: 'Vivid neon glow on deep black' },
-  { id: 'boardroom-serif',  name: 'Boardroom Serif',    desc: 'Elegant gold-on-dark serif clock' },
+  { id: 'classic-digital',  name: 'Classic Digital' },
+  { id: 'modern-digital',   name: 'Urban Digital' },
+  { id: 'classic-analog',   name: 'Heritage Analog' },
+  { id: 'modern-analog',    name: 'Precision Analog' },
+  { id: 'minimalist',       name: 'Dashboard' },
+  { id: 'boardroom-serif',  name: 'Boardroom Serif' },
 ] as const
 
 const DATE_FORMATS_WHITELIST = [
@@ -49,13 +49,39 @@ function HoverPreviewSelect<T extends string>({
   onHoverChange,
 }: {
   value: T
-  options: readonly { value: T; label: string; subtitle?: string }[]
+  options: readonly { value: T; label: string }[]
   onChange: (value: T) => void
   onHoverChange: (value: T | null) => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const optionsRef = useRef<HTMLDivElement>(null)
   const hoverTimeoutRef = useRef<number | null>(null)
+
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 })
+
+  const updateCoords = useCallback(() => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect()
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      updateCoords()
+      window.addEventListener('resize', updateCoords)
+      window.addEventListener('scroll', updateCoords, true)
+    }
+    return () => {
+      window.removeEventListener('resize', updateCoords)
+      window.removeEventListener('scroll', updateCoords, true)
+    }
+  }, [open, updateCoords])
 
   useEffect(() => {
     if (open) {
@@ -71,7 +97,10 @@ function HoverPreviewSelect<T extends string>({
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      if (
+        ref.current && !ref.current.contains(e.target as Node) &&
+        (!optionsRef.current || !optionsRef.current.contains(e.target as Node))
+      ) {
         onHoverChange(null)
         setOpen(false)
       }
@@ -117,14 +146,14 @@ function HoverPreviewSelect<T extends string>({
   }
   const menuStyle: React.CSSProperties = {
     position: 'absolute',
-    top: 'calc(100% + 4px)',
-    left: 0,
-    right: 0,
+    top: `${coords.top + 4}px`,
+    left: `${coords.left}px`,
+    width: `${coords.width}px`,
     background: 'var(--surface-lowest)',
     border: '1px solid var(--outline-variant)',
     borderRadius: '10px',
     boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-    zIndex: 50,
+    zIndex: 99999,
     overflow: 'hidden',
   }
   const itemStyle = (isSelected: boolean): React.CSSProperties => ({
@@ -146,8 +175,8 @@ function HoverPreviewSelect<T extends string>({
         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedLabel}</span>
         <ChevronDown size={14} style={{ opacity: 0.6, flexShrink: 0 }} />
       </button>
-      {open && (
-        <div data-dropdown="flow-select" style={menuStyle}>
+      {open && typeof document !== 'undefined' && createPortal(
+        <div ref={optionsRef} data-dropdown="flow-select" style={menuStyle}>
           {options.map(opt => (
             <button
               key={opt.value}
@@ -159,15 +188,11 @@ function HoverPreviewSelect<T extends string>({
               onMouseOver={e => { if (opt.value !== value) e.currentTarget.style.background = 'var(--surface-low)' }}
               onMouseOut={e => { if (opt.value !== value) e.currentTarget.style.background = 'transparent' }}
             >
-              {opt.subtitle ? (
-                <span style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                  <span>{opt.label}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--on-surface-subtle)', fontWeight: 400 }}>{opt.subtitle}</span>
-                </span>
-              ) : opt.label}
+              {opt.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -384,7 +409,7 @@ export default function FlowWidgetModal({
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Clock Style*</label>
                 <HoverPreviewSelect
                   value={style}
-                  options={STYLES_WHITELIST.map(s => ({ value: s.id, label: s.name, subtitle: s.desc }))}
+                  options={STYLES_WHITELIST.map(s => ({ value: s.id, label: s.name }))}
                   onChange={val => { setStyle(val as any); setPreviewOverride(p => ({ ...p, style: undefined })) }}
                   onHoverChange={val => setPreviewOverride(p => ({ ...p, style: val ?? undefined }))}
                 />
@@ -468,8 +493,8 @@ export default function FlowWidgetModal({
                     boxSizing: 'border-box',
                   }}
                 >
-                  <option value="light">☀️ Light — Clean white background</option>
-                  <option value="dark">🌙 Dark — Deep dark background</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
                 </select>
               </div>
             </form>

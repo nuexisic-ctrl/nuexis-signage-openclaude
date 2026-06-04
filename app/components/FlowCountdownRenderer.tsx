@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 
 const STYLE_ID = 'flow-countdown-styles-v1'
 
@@ -26,6 +26,13 @@ const GLOBAL_CSS = `
   position: relative;
 }
 
+.fcd-stage {
+  width: 100%;
+  height: 100%;
+  container-type: size;
+  overflow: hidden;
+}
+
 .fcd-bg-overlay {
   position: absolute;
   inset: 0;
@@ -38,6 +45,8 @@ const GLOBAL_CSS = `
   z-index: 2;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -47,7 +56,7 @@ const GLOBAL_CSS = `
 .fcd-heading {
   font-family: 'Public Sans', sans-serif;
   font-weight: 700;
-  font-size: min(7cqmin, 3.2rem);
+  font-size: min(6cqmin, 3.2rem);
   margin-bottom: 5cqmin;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -59,7 +68,7 @@ const GLOBAL_CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: min(4cqw, 40px);
+  gap: min(3cqw, 40px);
   width: 100%;
   flex-wrap: wrap;
 }
@@ -113,7 +122,7 @@ const GLOBAL_CSS = `
 }
 .fcd-digital-text {
   font-family: 'Share Tech Mono', monospace;
-  font-size: min(16cqmin, 9.5rem);
+  font-size: min(13cqmin, 8cqw, 9.5rem);
   color: var(--fcd-primary, #00f0ff);
   text-shadow: 0 0 15px var(--fcd-primary, #00f0ff), 0 0 30px rgba(0,240,255,0.2);
   letter-spacing: 0.04em;
@@ -528,11 +537,13 @@ export default function FlowCountdownRenderer({
   }
 
   return (
-    <div className="fcd-container" style={containerStyle}>
-      {backgroundImage && <div className="fcd-bg-overlay" />}
-      <div className="fcd-content">
-        {!timeLeft.isZero && text && <h2 className="fcd-heading">{text}</h2>}
-        {renderTimerContent()}
+    <div className="fcd-stage">
+      <div className="fcd-container" style={containerStyle}>
+        {backgroundImage && <div className="fcd-bg-overlay" />}
+        <div className="fcd-content">
+          {!timeLeft.isZero && text && <h2 className="fcd-heading">{text}</h2>}
+          {renderTimerContent()}
+        </div>
       </div>
     </div>
   )
