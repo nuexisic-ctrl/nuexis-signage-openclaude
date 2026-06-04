@@ -337,6 +337,15 @@ export default function AssetClient({
     return filteredAssets.slice(from, from + pageSize)
   }, [filteredAssets, currentPage, pageSize])
 
+  const folderAssetsCount = useMemo(() => {
+    if (!folder) return 0
+    return assets.filter(a => a.folder_id === folder.id && a.mime_type !== 'application/x-folder').length
+  }, [assets, folder])
+
+  const libraryAssetsCount = useMemo(() => {
+    return assets.filter(a => a.mime_type !== 'application/x-folder').length
+  }, [assets])
+
   const isFiltersActive = isFilterSidebarOpen || filterType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
   const showFilterDot = filterType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
 
@@ -346,17 +355,22 @@ export default function AssetClient({
         <div>
           {folder ? (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.94rem', color: 'var(--on-surface-subtle)', fontWeight: 600 }}>
-                <Link href={`/customer/${teamSlug}/asset`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
-                  {t('All items')}
+              <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
+              <div className={styles.breadcrumbContainer} style={{ marginTop: '6px' }}>
+                <Link href={`/customer/${teamSlug}/asset`} className={styles.breadcrumbLink}>
+                  {t('Asset Library')}
                 </Link>
-                <span style={{ opacity: 0.5 }}>/</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--on-surface)' }}>
+                <span className={styles.breadcrumbSeparator}>/</span>
+                <span className={styles.breadcrumbActive}>
                   <Folder size={16} style={{ stroke: folder.color || '#78716c', fill: folder.color || '#78716c', fillOpacity: 0.15 }} />
                   {folder.file_name}
                 </span>
               </div>
-              <h1 className={styles.pageTitle} style={{ marginTop: '6px' }}>{folder.file_name}</h1>
+              <p className={styles.pageSubtitle} style={{ marginTop: '6px' }}>
+                {folderAssetsCount > 0
+                  ? `${folderAssetsCount} ${folderAssetsCount === 1 ? t('asset') : t('assets')} ${t('in this folder.')}`
+                  : t('This folder is empty.')}
+              </p>
             </div>
           ) : (
             <>
@@ -549,6 +563,7 @@ export default function AssetClient({
                   <AssetCard
                     key={asset.id}
                     asset={asset}
+                    screens={screens}
                     previewUrl={(isImage(asset.mime_type) || isVideo(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode') ? getPreviewUrl(asset.file_path) : null}
                     onDelete={() => {
                       setOpenMenuId(null)
@@ -586,6 +601,7 @@ export default function AssetClient({
               <div className={showSuccessPulse ? styles.successPulse : ''}>
                 <AssetTableView
                   filteredAssets={paginatedAssets}
+                  screens={screens}
                   openMenuId={openMenuId}
                   menuPosition={menuPosition}
                   setOpenMenuId={setOpenMenuId}
@@ -607,8 +623,10 @@ export default function AssetClient({
               <div className={styles.tableFooter}>
                 <div className={styles.paginationInfo}>
                   {searchQuery 
-                    ? `${t('Showing')} ${filteredAssets.length} ${t('filtered assets')}` 
-                    : `${t('Showing')} ${startItem} ${t('to')} ${endItem} ${t('of')} ${assets.length} ${t('assets')}`
+                    ? `${t('Showing')} ${filteredAssets.filter(a => a.mime_type !== 'application/x-folder').length} ${t('filtered assets')}` 
+                    : `${t('Showing')} ${startItem} ${t('to')} ${endItem} ${t('of')} ${
+                        folder ? folderAssetsCount : libraryAssetsCount
+                      } ${t('assets')}`
                   }
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

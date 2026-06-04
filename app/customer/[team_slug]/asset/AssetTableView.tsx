@@ -1,9 +1,9 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass } from 'lucide-react'
+import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass, Tv } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
+import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
 import styles from './AssetTableView.module.css'
 
@@ -26,6 +26,7 @@ const YoutubeIcon = ({ size = 20, style }: { size?: number; style?: React.CSSPro
 
 interface AssetTableViewProps {
   filteredAssets: Asset[]
+  screens: ScreenDevice[]
   openMenuId: string | null
   menuPosition: { top: number; right: number } | null
   setOpenMenuId: (id: string | null) => void
@@ -43,6 +44,7 @@ interface AssetTableViewProps {
 
 export function AssetTableView({
   filteredAssets,
+  screens,
   openMenuId,
   menuPosition,
   setOpenMenuId,
@@ -95,7 +97,7 @@ export function AssetTableView({
             </th>
             <th style={{ width: '35%' }}>{t('File Name')}</th>
             <th style={{ width: '15%' }}>{t('Type')}</th>
-            <th style={{ width: '15%' }}>{t('Size')}</th>
+            <th style={{ width: '15%' }}>{t('Screens')}</th>
             <th style={{ width: '25%' }}>{t('Date Added')}</th>
             <th style={{ width: '10%', textAlign: 'right' }}>{t('Actions')}</th>
           </tr>
@@ -129,8 +131,15 @@ export function AssetTableView({
                 </td>
                 <td
                   className={styles.tableCell}
-                  onClick={() => setPreviewAsset(asset)}
-                  style={{ cursor: 'pointer' }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (selectedAssetIds.size > 0) {
+                      handleToggleSelect(asset.id)
+                    } else {
+                      setPreviewAsset(asset)
+                    }
+                  }}
+                  style={{ cursor: selectedAssetIds.size > 0 ? 'pointer' : 'pointer' }}
                 >
                   <div className={styles.nameCellContent}>
                     <div className={styles.deviceIconWrapper}>
@@ -203,15 +212,37 @@ export function AssetTableView({
                 </td>
                 <td
                   className={styles.tableCell}
-                  style={{ fontSize: '0.88rem', color: 'var(--on-surface)' }}
+                  style={{ fontSize: '0.88rem', color: 'var(--on-surface-subtle)' }}
                 >
-                  {isFolder ? '—' : formatBytes(asset.size_bytes)}
+                  {(() => {
+                    if (isFolder) return '—'
+                    const usageScreens = screens.filter(s => s.asset_id === asset.id)
+                    if (usageScreens.length === 0) return 'Unused'
+                    return (
+                      <span className={styles.screenNames} title={usageScreens.map(s => s.name).join(', ')}>
+                        {usageScreens.length === 1 ? usageScreens[0].name : `${usageScreens.length} screens`}
+                      </span>
+                    )
+                  })()}
                 </td>
                 <td className={styles.tableCell}>
                   <div className={styles.cellLastSeen}>{date}</div>
                 </td>
                 <td className={styles.tableCell}>
                   <div className={styles.actionsGroup}>
+                    {!isFolder && (
+                      <button
+                        className={styles.actionBtnBox}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPushModalAsset(asset)
+                        }}
+                        title={t('Push to screen')}
+                        aria-label="Push to screen"
+                      >
+                        <Tv size={16} />
+                      </button>
+                    )}
                     <div className={styles.moreMenuWrapper}>
                       <button
                         className={`${styles.actionBtnBox} ${
@@ -281,17 +312,7 @@ export function AssetTableView({
                                 {t('Download')}
                               </button>
                             )}
-                            {!isFolder && (
-                              <button
-                                className={styles.dropdownItem}
-                                onClick={() => {
-                                  setOpenMenuId(null)
-                                  setPushModalAsset(asset)
-                                }}
-                              >
-                                {t('Push to screen')}
-                              </button>
-                            )}
+
                             <button
                               className={`${styles.dropdownItem} ${styles.danger}`}
                               onClick={() => {

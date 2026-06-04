@@ -94,7 +94,7 @@ export default async function FolderPage({ params }: Props) {
     : { data: [], count: 0 }
 
   const assets = response.data ?? []
-  const totalAssets = response.count ?? 0
+  const totalAssets = assets.filter(a => a.mime_type !== 'application/x-folder').length
 
   // Fetch all screens for the team
   const { data: screens } = profile?.team_id

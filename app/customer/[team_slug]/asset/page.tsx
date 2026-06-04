@@ -59,7 +59,7 @@ export default async function AssetPage({ params }: Props) {
     : { data: [], count: 0 }
 
   const assets = response.data ?? []
-  const totalAssets = response.count ?? 0
+  const totalAssets = assets.filter(a => a.mime_type !== 'application/x-folder').length
 
   const { data: screens } = profile?.team_id
     ? await supabase

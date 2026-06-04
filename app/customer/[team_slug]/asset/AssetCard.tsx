@@ -1,9 +1,9 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass } from 'lucide-react'
+import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Tv } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
+import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
 import styles from './AssetCard.module.css'
 
@@ -27,6 +27,7 @@ const YoutubeIcon = ({ size = 20, style }: { size?: number; style?: React.CSSPro
 export function AssetCard({
   asset,
   previewUrl,
+  screens,
   onDelete,
   onPreview,
   onRename,
@@ -40,6 +41,7 @@ export function AssetCard({
 }: {
   asset: Asset
   previewUrl: string | null
+  screens?: ScreenDevice[]
   onDelete: () => void
   onPreview: (asset: Asset) => void
   onRename: () => void
@@ -170,18 +172,32 @@ export function AssetCard({
       <div className={styles.assetInfo}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
           <p className={styles.assetName} title={asset.file_name}>{asset.file_name}</p>
-          <div className={styles.moreMenuWrapper}>
-            <button 
-              className={`${styles.actionBtnBox} ${menuOpen ? styles.active : ''}`}
-              onClick={onToggleMenu}
-              aria-label="More Actions"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                <circle cx="12" cy="12" r="1.5"></circle>
-                <circle cx="12" cy="5" r="1.5"></circle>
-                <circle cx="12" cy="19" r="1.5"></circle>
-              </svg>
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {!isFolder && (
+              <button
+                className={styles.actionBtnBox}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onPushToScreen()
+                }}
+                title={t('Push to screen')}
+                aria-label="Push to screen"
+              >
+                <Tv size={14} />
+              </button>
+            )}
+            <div className={styles.moreMenuWrapper}>
+              <button 
+                className={`${styles.actionBtnBox} ${menuOpen ? styles.active : ''}`}
+                onClick={onToggleMenu}
+                aria-label="More Actions"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                  <circle cx="12" cy="12" r="1.5"></circle>
+                  <circle cx="12" cy="5" r="1.5"></circle>
+                  <circle cx="12" cy="19" r="1.5"></circle>
+                </svg>
+              </button>
             {menuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
               <div 
                 className={styles.moreDropdown}
@@ -196,11 +212,7 @@ export function AssetCard({
                     {t('Download')}
                   </button>
                 )}
-                {!isFolder && (
-                  <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onPushToScreen(); }}>
-                    {t('Push to screen')}
-                  </button>
-                )}
+
                 <button className={styles.dropdownItem} onClick={(e) => { e.stopPropagation(); onRename(); }}>
                   {t('Rename')}
                 </button>
@@ -212,8 +224,16 @@ export function AssetCard({
             )}
           </div>
         </div>
-        <div className={styles.assetMeta}>
-          <span>{isFolder ? '—' : formatBytes(asset.size_bytes)}</span>
+      </div>
+      <div className={styles.assetMeta}>
+          <span>
+            {(() => {
+              if (isFolder) return '—'
+              const usageScreens = screens?.filter(s => s.asset_id === asset.id) ?? []
+              if (usageScreens.length === 0) return 'Unused'
+              return usageScreens.length === 1 ? `On: ${usageScreens[0].name}` : `On: ${usageScreens.length} screens`
+            })()}
+          </span>
           <span className={styles.metaDot}>·</span>
           <span>{date}</span>
         </div>

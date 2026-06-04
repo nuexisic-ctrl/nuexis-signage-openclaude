@@ -602,10 +602,14 @@ export async function moveAssetsToFolder(
     return { success: false, error: err.message }
   }
 
-  // 1. Verify ownership of all target assets
+  if (!assetIds || assetIds.length === 0) {
+    return { success: true }
+  }
+
+  // 1. Verify ownership of all target assets and fetch their current folder_id
   const { data: targetAssets, error: selectError } = await supabase
     .from('assets')
-    .select('id, team_id')
+    .select('id, team_id, folder_id')
     .in('id', assetIds)
 
   if (selectError || !targetAssets || targetAssets.length === 0) {
@@ -630,10 +634,33 @@ export async function moveAssetsToFolder(
     }
   }
 
+  // 3. Prevent redundant moves:
+  //    - treat root as folder_id IS NULL
+  //    - treat destination folder_id as an exact match
+  const allTargetIds = new Set(targetAssets.map(a => a.id))
+
+  const idsAlreadyInDestination = new Set(
+    targetAssets
+      .filter(a => {
+        if (folderId === null) return a.folder_id === null
+        return a.folder_id === folderId
+      })
+      .map(a => a.id)
+  )
+
+  // Assets that actually need updating.
+  const idsActuallyToMove: string[] = Array.from(allTargetIds).filter(
+    id => !idsAlreadyInDestination.has(id)
+  )
+
+  if (idsActuallyToMove.length === 0) {
+    return { success: true }
+  }
+
   const { error: updateError } = await supabase
     .from('assets')
     .update({ folder_id: folderId })
-    .in('id', assetIds)
+    .in('id', idsActuallyToMove)
     .eq('team_id', teamId)
 
   if (updateError) {
