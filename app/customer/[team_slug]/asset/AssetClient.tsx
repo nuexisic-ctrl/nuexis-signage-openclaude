@@ -7,6 +7,7 @@ import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, Chevr
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import { moveAssetsToFolder } from './actions'
+import { toast } from '@/app/components/Toast'
 import { AssetPreviewModal } from './AssetPreviewModal'
 import { AssetCard } from './AssetCard'
 import { FilterSidebar } from './FilterSidebar'
@@ -161,14 +162,6 @@ export default function AssetClient({
     previewUrlsRef.current = previewUrls
   }, [previewUrls])
 
-  const [actionBanner, setActionBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-  const actionBannerTimer = useRef<number | null>(null)
-  const showActionBanner = useCallback((type: 'success' | 'error', message: string) => {
-    if (actionBannerTimer.current) window.clearTimeout(actionBannerTimer.current)
-    setActionBanner({ type, message })
-    actionBannerTimer.current = window.setTimeout(() => setActionBanner(null), 3200)
-  }, [])
-
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null)
   const [isBreadcrumbDragOver, setIsBreadcrumbDragOver] = useState(false)
 
@@ -184,8 +177,7 @@ export default function AssetClient({
     }))
     setSelectedAssetIds(new Set())
 
-    showActionBanner(
-      'success',
+    toast.success(
       `${t('Moved')} ${assetIds.length} ${assetIds.length === 1 ? t('item') : t('items')} ${t('to')} ${targetFolderName}`
     )
 
@@ -197,16 +189,16 @@ export default function AssetClient({
       } else {
         setAssets(previousAssets)
         setSelectedAssetIds(previousSelected)
-        showActionBanner('error', result.error || t('Failed to move assets.'))
+        toast.error(result.error || t('Failed to move assets.'))
         return false
       }
     } catch (err) {
       setAssets(previousAssets)
       setSelectedAssetIds(previousSelected)
-      showActionBanner('error', t('Failed to move assets due to a network error.'))
+      toast.error(t('Failed to move assets due to a network error.'))
       return false
     }
-  }, [assets, selectedAssetIds, teamSlug, router, showActionBanner])
+  }, [assets, selectedAssetIds, teamSlug, router])
 
   const handleMoveDrop = useCallback((draggedId: string, targetFolderId: string | null, targetFolderName: string) => {
     const draggedIds = draggedId.split(',').map(x => x.trim()).filter(Boolean)
@@ -430,7 +422,19 @@ export default function AssetClient({
         <div>
           {folder ? (
             <div>
-              <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
+              <div className={styles.titleContainer}>
+                <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
+                <button
+                  className={styles.headerRefreshBtn}
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  aria-label="Refresh Status"
+                  title="Refresh Status"
+                  type="button"
+                >
+                  <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
+                </button>
+              </div>
               <div className={styles.breadcrumbContainer} style={{ marginTop: '6px' }}>
                 <Link 
                   href={`/customer/${teamSlug}/asset`} 
@@ -470,26 +474,44 @@ export default function AssetClient({
               </p>
             </div>
           ) : (
-            <>
-              <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
+            <div>
+              <div className={styles.titleContainer}>
+                <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
+                <button
+                  className={styles.headerRefreshBtn}
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  aria-label="Refresh Status"
+                  title="Refresh Status"
+                  type="button"
+                >
+                  <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
+                </button>
+              </div>
               <p className={styles.pageSubtitle}>
                 {totalAssets > 0
                   ? `${totalAssets} ${totalAssets === 1 ? t('asset') : t('assets')} ${t('in your library.')}`
                   : t('Upload images and videos to get started.')}
               </p>
-            </>
+            </div>
           )}
         </div>
         <div className={styles.topbarActions}>
           <button
-            className={styles.refreshBtn}
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            aria-label="Refresh Status"
-            title="Refresh Status"
             type="button"
+            onClick={() => setShowCreateFolder(true)}
+            className={styles.topbarActionBtn}
           >
-            <RefreshCw size={20} className={isRefreshing ? styles.spin : ''} />
+            <FolderPlus size={16} />
+            {t('New Folder')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowWidgetSelection(true)}
+            className={styles.topbarActionBtn}
+          >
+            <Plus size={16} />
+            {t('Create Widget')}
           </button>
           <input
             ref={fileInputRef}
@@ -506,54 +528,15 @@ export default function AssetClient({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className={styles.topbarActionBtn}
+            className={`${styles.topbarActionBtn} ${styles.topbarPrimaryBtn}`}
           >
             <Upload size={16} />
             {t('Upload Media')}
           </button>
-          <button
-            type="button"
-            onClick={() => setShowCreateFolder(true)}
-            className={styles.topbarActionBtn}
-          >
-            <FolderPlus size={16} />
-            {t('New Folder')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowWidgetSelection(true)}
-            className={`${styles.topbarActionBtn} ${styles.topbarPrimaryBtn}`}
-          >
-            <Plus size={16} />
-            {t('Create Widget')}
-          </button>
         </div>
       </div>
 
-      {actionBanner && (
-        <div className={actionBanner.type === 'error' ? styles.errorBanner : styles.successBanner} role="status">
-          {actionBanner.type === 'error' ? (
-            <AlertTriangle className={styles.errorIcon} size={17} />
-          ) : (
-            <Check className={styles.successIcon} size={17} />
-          )}
-          {actionBanner.message}
-        </div>
-      )}
 
-      {uploadError && (
-        <div className={styles.errorBanner} role="alert">
-          <AlertTriangle className={styles.errorIcon} size={17} />
-          {uploadError}
-        </div>
-      )}
-
-      {showSuccess && (
-        <div className={styles.successBanner} role="alert">
-          <Check className={styles.successIcon} size={17} />
-          {t('Media uploaded successfully')}
-        </div>
-      )}
 
       <div className={styles.pageLayout}>
         <div className={`${styles.mainContent} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
@@ -804,31 +787,14 @@ export default function AssetClient({
                     <span className={styles.dragHint}>{t('Tip: drag items onto a folder to move them')}</span>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div className={styles.perPageSelector} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', color: 'var(--on-surface-muted)' }}>
+                <div className={styles.footerControls}>
+                  <div className={styles.perPageSelector}>
                     <span>{t('Per page:')}</span>
                     <select
                       value={String(pageSize)}
                       onChange={(e) => {
                         const val = e.target.value
                         navigatePage(1, Number(val))
-                      }}
-                      style={{
-                        padding: '4px 28px 4px 8px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--outline-variant)',
-                        background: 'var(--surface-low)',
-                        color: 'var(--on-surface)',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        appearance: 'none',
-                        WebkitAppearance: 'none',
-                        MozAppearance: 'none',
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'right 7px center',
-                        backgroundSize: '12px 12px',
-                        minWidth: '56px'
                       }}
                     >
                       <option value="5">5</option>
@@ -848,7 +814,7 @@ export default function AssetClient({
                       disabled={!hasPrevPage}
                       type="button"
                       aria-label={t('Previous page')}
-                      style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
+                      style={{ cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
                     >
                       <ChevronLeft size={16} />
                     </button>
@@ -858,7 +824,7 @@ export default function AssetClient({
                       disabled={!hasNextPage}
                       type="button"
                       aria-label={t('Next page')}
-                      style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
+                      style={{ cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
                     >
                       <ChevronRight size={16} />
                     </button>

@@ -1,0 +1,239 @@
+.settingsArea {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.pageTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  font-weight: 800;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.pageSubtitle {
+  font-family: var(--font-body);
+  font-size: 0.94rem;
+  color: var(--on-surface-muted);
+  margin: 6px 0 0;
+}
+
+.pageLayout {
+  width: 100%;
+  max-width: 768px;
+  margin-top: 8px;
+}
+
+.settingsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Card Design */
+.card {
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--outline-variant);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.cardHeaderIcon {
+  color: var(--primary);
+}
+
+.cardTitle {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.cardBody {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Forms */
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formGroup label {
+  font-family: var(--font-label);
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--on-surface-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.formInput {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  outline: none;
+  transition: all var(--transition-base);
+}
+
+.formInput:focus:not(:disabled) {
+  border-color: var(--primary);
+  background: var(--surface-lowest);
+  box-shadow: 0 0 0 3px rgba(9, 76, 178, 0.1);
+}
+
+.formInput:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: color-mix(in srgb, var(--surface-low) 92%, var(--outline-variant));
+}
+
+.fieldHint {
+  font-size: 0.78rem;
+  color: var(--on-surface-subtle);
+  margin-top: 2px;
+}
+
+.rowGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .rowGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.roleBadgeContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 0.9rem;
+}
+
+.roleLabel {
+  font-weight: 600;
+  color: var(--on-surface-subtle);
+}
+
+.roleBadge {
+  display: inline-flex;
+  padding: 4px 12px;
+  background: var(--primary-container);
+  color: var(--primary);
+  font-weight: 700;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-family: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sectionDesc {
+  font-size: 0.88rem;
+  color: var(--on-surface-muted);
+  margin: 0 0 4px;
+}
+
+/* Theme Options */
+.themeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.themeOption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 80px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  font-family: var(--font-label);
+  font-weight: 700;
+  font-size: 0.88rem;
+  transition: all var(--transition-base);
+}
+
+.themeOption:hover {
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border-color: var(--outline);
+}
+
+.themeOption.themeActive {
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-lowest));
+  color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(9, 76, 178, 0.05);
+}
+
+/* Save Submit */
+.submitContainer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.saveBtn {
+  min-height: 44px;
+  padding: 0 24px;
+  background: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  border-radius: 10px;
+  font-family: var(--font-label);
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(9, 76, 178, 0.15);
+  transition: all var(--transition-base);
+}
+
+.saveBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(9, 76, 178, 0.25);
+  filter: brightness(1.05);
+}
+
+.saveBtn:active {
+  transform: translateY(0);
+}

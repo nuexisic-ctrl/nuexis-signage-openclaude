@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { rateLimitAction } from '@/lib/redis'
+import { resilientFetch } from '@/lib/supabase/resilientFetch'
 
 export async function POST(request: NextRequest) {
   try {
@@ -73,7 +74,10 @@ export async function POST(request: NextRequest) {
     const publicClient = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { fetch: resilientFetch }
+      }
     )
 
     const { data: signedUrl, error } = await publicClient.rpc('get_player_signed_media_url_by_session', {

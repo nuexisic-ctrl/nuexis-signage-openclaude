@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Plus, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
 import { updateDeviceLastSeen } from './actions'
@@ -24,6 +24,7 @@ import { useDevicePresence } from './useDevicePresence'
 import { deleteGroup } from '../groups/actions'
 import { SelectedActions } from './SelectedActions'
 import { GroupsSection } from './GroupsSection'
+import { toast } from '@/app/components/Toast'
 
 
 // Tick relative timestamps every 60s — "5 mins ago" accuracy doesn't need faster updates
@@ -248,9 +249,10 @@ export default function ScreensClient({
       startTransition(async () => {
         const res = await deleteGroup(teamSlug, group.id)
         if (res.success) {
+          toast.success(`Group "${group.name}" deleted successfully`)
           router.refresh()
         } else {
-          alert(res.error || 'Failed to delete group.')
+          toast.error(res.error || 'Failed to delete group.')
         }
       })
     }
@@ -330,39 +332,40 @@ export default function ScreensClient({
   return (
     <>
       <div className={`${styles.topbar} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
-        <div>
-          <h1 className={styles.pageTitle}>Screens</h1>
+        <div className={styles.headerTitleRow}>
+          <div className={styles.titleContainer}>
+            <h1 className={styles.pageTitle}>Screens</h1>
+            <button
+              className={styles.headerRefreshBtn}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              aria-label="Refresh Status"
+              title="Refresh Status"
+              type="button"
+            >
+              <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
+            </button>
+          </div>
           <p className={styles.pageSubtitle}>
             Manage and monitor your workspace screens
           </p>
         </div>
         <div className={styles.topbarActions}>
           <button
-            className={styles.refreshBtn}
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            aria-label="Refresh Status"
-            title="Refresh Status"
-          >
-            <RefreshCw size={20} className={isRefreshing ? styles.spin : ''} />
-          </button>
-          <button
-            className={styles.addBtn}
+            type="button"
+            className={styles.topbarActionBtn}
             onClick={() => setShowCreateGroupFromSelection(true)}
-            style={{ 
-              background: 'var(--surface-low)', 
-              color: 'var(--on-surface)', 
-              border: '1px solid var(--outline-variant)' 
-            }}
           >
+            <FolderPlus size={16} />
             New Group
           </button>
           <button
             id="add-screen-btn"
-            className={styles.addBtn}
+            type="button"
+            className={`${styles.topbarActionBtn} ${styles.topbarPrimaryBtn}`}
             onClick={() => setShowPairModal(true)}
           >
-            <Plus className={styles.addBtnIcon} size={18} />
+            <Plus size={16} />
             Add Screen
           </button>
         </div>
@@ -540,23 +543,14 @@ export default function ScreensClient({
                     : `Showing ${startItem} to ${endItem} of ${devices.length} screens`
                   }
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div className={styles.perPageSelector} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', color: 'var(--on-surface-muted)' }}>
+                <div className={styles.footerControls}>
+                  <div className={styles.perPageSelector}>
                     <span>Per page:</span>
                     <select
                       value={String(pageSize)}
                       onChange={(e) => {
                         const val = e.target.value
                         navigatePage(1, Number(val))
-                      }}
-                      style={{
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--outline-variant)',
-                        background: 'var(--surface-low)',
-                        color: 'var(--on-surface)',
-                        cursor: 'pointer',
-                        fontWeight: 600
                       }}
                     >
                       <option value="5">5</option>
@@ -575,7 +569,7 @@ export default function ScreensClient({
                         className={styles.pageBtn} 
                         onClick={() => navigatePage(currentPage - 1, pageSize)}
                         disabled={!hasPrevPage}
-                        style={{ opacity: hasPrevPage ? 1 : 0.5, cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
+                        style={{ cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
                       >
                         <ChevronLeft size={16} />
                       </button>
@@ -583,7 +577,7 @@ export default function ScreensClient({
                         className={styles.pageBtn} 
                         onClick={() => navigatePage(currentPage + 1, pageSize)}
                         disabled={!hasNextPage}
-                        style={{ opacity: hasNextPage ? 1 : 0.5, cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
+                        style={{ cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
                       >
                         <ChevronRight size={16} />
                       </button>

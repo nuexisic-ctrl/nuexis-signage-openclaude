@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Monitor, Smartphone, Maximize, Clock, ChevronDown } from 'lucide-react'
+import { X, Monitor, Smartphone, Maximize, Clock, ChevronDown, ArrowLeft } from 'lucide-react'
 import styles from './Modal.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import { modalStack } from '@/lib/utils/modalStack'
 
 interface FlowWidgetModalProps {
   onClose: () => void
+  onBack?: () => void
   onSubmit: (name: string, config: {
     style: 'classic-digital' | 'modern-digital' | 'classic-analog' | 'modern-analog' | 'minimalist' | 'neon-digital' | 'boardroom-serif'
     showSeconds: boolean
@@ -201,6 +202,7 @@ function HoverPreviewSelect<T extends string>({
 // ── Modal component ────────────────────────────────────────────────────
 export default function FlowWidgetModal({
   onClose,
+  onBack,
   onSubmit,
   isSubmitting
 }: FlowWidgetModalProps) {
@@ -318,13 +320,23 @@ export default function FlowWidgetModal({
             borderTopRightRadius: '16px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {onBack && (
+                <button 
+                  type="button" 
+                  onClick={onBack} 
+                  className={styles.modalCloseBtn}
+                  aria-label="Back to widget selection"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              )}
               <Clock size={22} color="var(--primary)" />
               <div>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)', fontWeight: 600 }}>Create Clock Widget</h2>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>Deploy elegant, sandboxed, high-performance clocks on your displays.</p>
               </div>
             </div>
-            <button onClick={onClose} className={styles.modalCloseBtn} aria-label="Close modal"><X size={20} /></button>
+            <button onClick={onClose} className={styles.modalCloseBtn} type="button" aria-label="Close modal"><X size={20} /></button>
           </div>
 
           {/* Body content with split view */}

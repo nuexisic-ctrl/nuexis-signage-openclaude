@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Loader2, CheckCircle2, ChevronUp, ChevronDown, X, AlertTriangle } from 'lucide-react'
 import styles from './asset.module.css'
 
@@ -33,6 +33,8 @@ const getStatusClass = (status: UploadItem['status']) => {
   }
 }
 
+const VISIBLE_FILE_COUNT = 3
+
 export function UploadPanel({
   showQueuePanel,
   uploadQueue,
@@ -41,9 +43,21 @@ export function UploadPanel({
   setShowQueuePanel,
   setUploadQueue,
 }: UploadPanelProps) {
-  if (!showQueuePanel) return null
+  const [isListExpanded, setIsListExpanded] = useState(false)
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
 
   const isUploading = uploadQueue.some(item => item.status === 'uploading' || item.status === 'waiting')
+
+  useEffect(() => {
+    if (!isUploading) return
+    setCurrentTime(Date.now())
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [isUploading])
+
+  if (!showQueuePanel) return null
 
   const getRemainingTimeText = () => {
     const uploadingItem = uploadQueue.find(item => item.status === 'uploading')
@@ -51,7 +65,7 @@ export function UploadPanel({
       return ''
     }
 
-    const elapsedSeconds = (Date.now() - uploadingItem.startTime) / 1000
+    const elapsedSeconds = (currentTime - uploadingItem.startTime) / 1000
     const progress = uploadingItem.progress || 5
     const size = uploadingItem.size || 0
 
@@ -104,12 +118,12 @@ export function UploadPanel({
             const total = uploadQueue.length
             const completed = uploadQueue.filter(item => item.status === 'completed').length
             const failed = uploadQueue.filter(item => item.status === 'failed').length
-            const uploading = uploadQueue.filter(item => item.status === 'uploading').length
-            if (uploading > 0) {
+            const inProgress = uploadQueue.filter(item => item.status === 'uploading' || item.status === 'waiting').length
+            if (inProgress > 0) {
               const pct = Math.round(uploadQueue.reduce((acc, x) => acc + x.progress, 0) / total)
-              return `Uploading ${uploading} file${uploading > 1 ? 's' : ''}... (${pct}%)${getRemainingTimeText()}`
+              return `Uploading ${completed} of ${total} files (${pct}%)${getRemainingTimeText()}`
             }
-            return `Uploads: ${completed} done${failed > 0 ? `, ${failed} failed` : ''}`
+            return `${completed} of ${total} uploaded${failed > 0 ? ` · ${failed} failed` : ''}`
           })()}
         </div>
         <div className={styles.uploadPanelButtons}>
@@ -142,32 +156,53 @@ export function UploadPanel({
       
       <div className={`${styles.uploadPanelContent} ${isQueueCollapsed ? styles.collapsed : ''}`}>
         <div className={styles.uploadPanelList}>
-          {uploadQueue.map(item => (
-            <div key={item.id} className={styles.uploadItem}>
-              <div className={styles.uploadItemInfo}>
-                <span className={styles.uploadItemName} title={item.fileName}>
-                  {item.fileName}
-                </span>
-                <span className={`${styles.uploadItemMeta} ${getStatusClass(item.status)}`}>
-                  {item.status === 'completed' && <CheckCircle2 size={12} />}
-                  {item.status === 'failed' && <AlertTriangle size={12} />}
-                  {item.status === 'uploading' && `${item.progress}%`}
-                  {item.status === 'waiting' && 'Waiting'}
-                </span>
-              </div>
-              <div className={styles.uploadItemProgressContainer}>
-                <div 
-                  className={`${styles.uploadItemProgressBar} ${getStatusClass(item.status)}`}
-                  style={{ width: `${item.progress}%` }}
-                />
-              </div>
-              {item.error && (
-                <div className={styles.uploadItemError} title={item.error}>
-                  {item.error}
-                </div>
-              )}
-            </div>
-          ))}
+          {(() => {
+            const visibleItems = isListExpanded ? uploadQueue : uploadQueue.slice(0, VISIBLE_FILE_COUNT)
+            const hiddenCount = uploadQueue.length - VISIBLE_FILE_COUNT
+            return (
+              <>
+                {visibleItems.map(item => (
+                  <div key={item.id} className={styles.uploadItem}>
+                    <div className={styles.uploadItemInfo}>
+                      <span className={styles.uploadItemName} title={item.fileName}>
+                        {item.fileName}
+                      </span>
+                      <span className={`${styles.uploadItemMeta} ${getStatusClass(item.status)}`}>
+                        {item.status === 'completed' && <CheckCircle2 size={12} />}
+                        {item.status === 'failed' && <AlertTriangle size={12} />}
+                        {item.status === 'uploading' && `${item.progress}%`}
+                        {item.status === 'waiting' && 'Waiting'}
+                      </span>
+                    </div>
+                    <div className={styles.uploadItemProgressContainer}>
+                      <div 
+                        className={`${styles.uploadItemProgressBar} ${getStatusClass(item.status)}`}
+                        style={{ width: `${item.progress}%` }}
+                      />
+                    </div>
+                    {item.error && (
+                      <div className={styles.uploadItemError} title={item.error}>
+                        {item.error}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {hiddenCount > 0 && (
+                  <button
+                    type="button"
+                    className={styles.uploadListToggle}
+                    onClick={() => setIsListExpanded(prev => !prev)}
+                  >
+                    {isListExpanded ? (
+                      <><ChevronUp size={14} /> Show less</>
+                    ) : (
+                      <><ChevronDown size={14} /> Show {hiddenCount} more file{hiddenCount > 1 ? 's' : ''}</>
+                    )}
+                  </button>
+                )}
+              </>
+            )
+          })()}
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { signupWithRateLimit } from './actions'
 import styles from './signup.module.css'
+import { toast } from '@/app/components/Toast'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -18,7 +19,6 @@ export default function SignupPage() {
     password: '',
     confirmPassword: '',
   })
-  const [error, setError] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,20 +37,19 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.')
+      toast.error('Passwords do not match.')
       return
     }
 
     if (form.password.length < 8) {
-      setError('Password must be at least 8 characters.')
+      toast.error('Password must be at least 8 characters.')
       return
     }
 
     if (!form.teamSlug) {
-      setError('Team slug is required.')
+      toast.error('Team slug is required.')
       return
     }
 
@@ -65,12 +64,13 @@ export default function SignupPage() {
     })
 
     if (!result.success) {
-      setError(result.error || 'Failed to sign up.')
+      toast.error(result.error || 'Failed to sign up.')
       setStatus('idle')
       return
     }
 
     setStatus('success')
+    toast.success('Workspace created! Redirecting to your login page…')
     router.push(`/customer/${form.teamSlug}/login?signup=success`)
   }
 
@@ -79,7 +79,7 @@ export default function SignupPage() {
       <div className={styles.wrapper}>
         {/* Logo */}
         <Link href="/" className="navbar-logo" style={{ display: 'block', textAlign: 'center', marginBottom: '16px' }}>
-          <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto' }} />
+          <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto', width: 'auto', height: 'auto' }} />
         </Link>
 
         {/* Header */}
@@ -93,17 +93,6 @@ export default function SignupPage() {
 
         {/* Card */}
         <div className={styles.card}>
-          {error && (
-            <div className="alert alert-error" role="alert" style={{ marginBottom: '20px' }}>
-              {error}
-            </div>
-          )}
-
-          {status === 'success' && (
-            <div className="alert alert-success" role="status" style={{ marginBottom: '20px' }}>
-              Workspace created! Redirecting to your login page…
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} noValidate>
             {/* Row 1: Full Name + Team Name */}

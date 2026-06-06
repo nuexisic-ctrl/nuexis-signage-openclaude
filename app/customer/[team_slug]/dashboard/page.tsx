@@ -1,10 +1,7 @@
 import type { Metadata } from 'next'
-import { cookies } from 'next/headers'
 import { createClient, getCachedUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import styles from './dashboard.module.css'
-import Header from '../components/Header'
-import Sidebar from '../components/Sidebar'
 import DashboardShell from './DashboardShell'
 import {
   getAlerts,
@@ -59,9 +56,6 @@ export default async function DashboardPage({ params }: Props) {
     redirect(`/customer/${userTeamSlug}/dashboard`)
   }
 
-  const cookieStore = await cookies()
-  const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true'
-
   const [
     stats,
     offlineTrend,
@@ -91,38 +85,32 @@ export default async function DashboardPage({ params }: Props) {
   ])
 
   return (
-    <div className={styles.shell}>
-      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} initialCollapsed={initialCollapsed} />
-
-      <main className={styles.main}>
-        <Header fullName={fullName} email={user.email} />
-
-        <div className={styles.topbar}>
-          <div>
-            <h1 className={styles.pageTitle}>Dashboard</h1>
-            <p className={styles.pageSubtitle}>
-              Welcome back{fullName ? `, ${fullName.split(' ')[0]}` : ''}. Here&apos;s your workspace at a glance.
-            </p>
-          </div>
+    <>
+      <div className={styles.topbar}>
+        <div>
+          <h1 className={styles.pageTitle}>Dashboard</h1>
+          <p className={styles.pageSubtitle}>
+            Welcome back{fullName ? `, ${fullName.split(' ')[0]}` : ''}. Here&apos;s your workspace at a glance.
+          </p>
         </div>
+      </div>
 
-        <DashboardShell
-          teamSlug={team_slug}
-          teamId={profile?.team_id ?? ''}
-          stats={stats}
-          offlineTrend={offlineTrend}
-          alerts={alerts}
-          activities={activities}
-          analytics={analytics}
-          deviceHealth={deviceHealth}
-          scheduleEvents={scheduleEvents}
-          uptimeHistory={uptimeHistory}
-          screenUptimeData={screenUptimeData}
-          devices={devices}
-          playlistOptions={playlistOptions}
-          assetOptions={assetOptions}
-        />
-      </main>
-    </div>
+      <DashboardShell
+        teamSlug={team_slug}
+        teamId={profile?.team_id ?? ''}
+        stats={stats}
+        offlineTrend={offlineTrend}
+        alerts={alerts}
+        activities={activities}
+        analytics={analytics}
+        deviceHealth={deviceHealth}
+        scheduleEvents={scheduleEvents}
+        uptimeHistory={uptimeHistory}
+        screenUptimeData={screenUptimeData}
+        devices={devices}
+        playlistOptions={playlistOptions}
+        assetOptions={assetOptions}
+      />
+    </>
   )
 }

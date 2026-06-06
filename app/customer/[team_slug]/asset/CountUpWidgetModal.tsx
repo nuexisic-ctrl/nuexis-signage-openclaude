@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Monitor, Smartphone, Maximize, Timer, Calendar, Clock as ClockIcon, ChevronDown } from 'lucide-react'
+import { X, Monitor, Smartphone, Maximize, Timer, Calendar, Clock as ClockIcon, ChevronDown, ArrowLeft } from 'lucide-react'
 import styles from './Modal.module.css'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
 import ScaledScreenPreview from '@/app/components/ScaledScreenPreview'
@@ -11,6 +11,7 @@ import ThemeSelect from '../components/ThemeSelect'
 
 interface CountUpWidgetModalProps {
   onClose: () => void
+  onBack?: () => void
   onSubmit: (name: string, config: {
     text: string
     startTime: string
@@ -100,6 +101,7 @@ function getDefaultEndTimeParts() {
 
 export default function CountUpWidgetModal({
   onClose,
+  onBack,
   onSubmit,
   isSubmitting
 }: CountUpWidgetModalProps) {
@@ -386,6 +388,16 @@ export default function CountUpWidgetModal({
             borderTopRightRadius: '16px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {onBack && (
+                <button 
+                  type="button" 
+                  onClick={onBack} 
+                  className={styles.modalCloseBtn}
+                  aria-label="Back to widget selection"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              )}
               <Timer size={22} color="var(--primary)" />
               <div>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)', fontWeight: 600 }}>
@@ -396,7 +408,7 @@ export default function CountUpWidgetModal({
                 </p>
               </div>
             </div>
-            <button onClick={onClose} className={styles.modalCloseBtn} aria-label="Close modal"><X size={20} /></button>
+            <button onClick={onClose} className={styles.modalCloseBtn} type="button" aria-label="Close modal"><X size={20} /></button>
           </div>
 
           {/* Body */}

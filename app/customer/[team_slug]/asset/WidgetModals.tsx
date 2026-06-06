@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { AlertTriangle, Link, MonitorPlay, X, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass, Timer } from 'lucide-react'
+import { AlertTriangle, Link, MonitorPlay, X, ArrowLeft, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass, Timer } from 'lucide-react'
 import styles from './Modal.module.css'
 import { validateHtml, validateCss } from './validators'
 import { t } from '@/lib/i18n'
@@ -334,12 +334,14 @@ export function WidgetSelectionModal({
 
 interface YouTubeWidgetModalProps {
   onClose: () => void
+  onBack?: () => void
   onSubmit: (name: string, url: string) => void
   isSubmitting: boolean
 }
 
 export function YouTubeWidgetModal({
   onClose,
+  onBack,
   onSubmit,
   isSubmitting
 }: YouTubeWidgetModalProps) {
@@ -366,8 +368,20 @@ export function YouTubeWidgetModal({
     >
       <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Configure YouTube Widget')}</h2>
-          <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onBack && (
+              <button 
+                type="button" 
+                onClick={onBack} 
+                className={styles.modalCloseBtn}
+                aria-label="Back to widget selection"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Configure YouTube Widget')}</h2>
+          </div>
+          <button onClick={onClose} className={styles.modalCloseBtn} type="button"><X size={20} /></button>
         </div>
         <form onSubmit={e => { e.preventDefault(); onSubmit(name, url); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
@@ -410,12 +424,14 @@ export function YouTubeWidgetModal({
 
 interface RemoteUrlWidgetModalProps {
   onClose: () => void
+  onBack?: () => void
   onSubmit: (name: string, url: string) => void
   isSubmitting: boolean
 }
 
 export function RemoteUrlWidgetModal({
   onClose,
+  onBack,
   onSubmit,
   isSubmitting
 }: RemoteUrlWidgetModalProps) {
@@ -457,8 +473,20 @@ export function RemoteUrlWidgetModal({
     >
       <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Configure Remote URL')}</h2>
-          <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onBack && (
+              <button 
+                type="button" 
+                onClick={onBack} 
+                className={styles.modalCloseBtn}
+                aria-label="Back to widget selection"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Configure Remote URL')}</h2>
+          </div>
+          <button onClick={onClose} className={styles.modalCloseBtn} type="button"><X size={20} /></button>
         </div>
         <form onSubmit={e => { e.preventDefault(); validateAndSubmit(); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {error && (
@@ -586,6 +614,7 @@ export function HtmlWidgetPreviewModal({
 
 interface HtmlWidgetModalProps {
   onClose: () => void
+  onBack?: () => void
   onSubmit: (name: string, html: string, css: string) => void
   isSubmitting: boolean
   teamSlug: string
@@ -593,6 +622,7 @@ interface HtmlWidgetModalProps {
 
 export function HtmlWidgetModal({
   onClose,
+  onBack,
   onSubmit,
   isSubmitting
 }: HtmlWidgetModalProps) {
@@ -663,11 +693,23 @@ export function HtmlWidgetModal({
             borderTopLeftRadius: '16px',
             borderTopRightRadius: '16px'
           }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Create Text / HTML Widget')}</h2>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>{t('Design customized rich-text, layouts, and cards using custom HTML + CSS styling.')}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {onBack && (
+                <button 
+                  type="button" 
+                  onClick={onBack} 
+                  className={styles.modalCloseBtn}
+                  aria-label="Back to widget selection"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              )}
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Create Text / HTML Widget')}</h2>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>{t('Design customized rich-text, layouts, and cards using custom HTML + CSS styling.')}</p>
+              </div>
             </div>
-            <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
+            <button onClick={onClose} className={styles.modalCloseBtn} type="button"><X size={20} /></button>
           </div>
 
           {/* Form Body */}
@@ -1269,6 +1311,7 @@ function normalizeUrl(url: string): string {
 
 interface QRCodeWidgetModalProps {
   onClose: () => void
+  onBack?: () => void
   onSubmit: (name: string, config: {
     type: string
     value: string
@@ -1284,6 +1327,7 @@ interface QRCodeWidgetModalProps {
 
 export function QRCodeWidgetModal({
   onClose,
+  onBack,
   onSubmit,
   isSubmitting,
   assets
@@ -1507,11 +1551,23 @@ export function QRCodeWidgetModal({
             borderTopLeftRadius: '16px',
             borderTopRightRadius: '16px'
           }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Create QR Code Widget')}</h2>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>{t('Generate and save a customized scannable QR Code as an image asset.')}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {onBack && (
+                <button 
+                  type="button" 
+                  onClick={onBack} 
+                  className={styles.modalCloseBtn}
+                  aria-label="Back to widget selection"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              )}
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Create QR Code Widget')}</h2>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>{t('Generate and save a customized scannable QR Code as an image asset.')}</p>
+              </div>
             </div>
-            <button onClick={onClose} className={styles.modalCloseBtn}><X size={20} /></button>
+            <button onClick={onClose} className={styles.modalCloseBtn} type="button"><X size={20} /></button>
           </div>
 
           {/* Form Body */}

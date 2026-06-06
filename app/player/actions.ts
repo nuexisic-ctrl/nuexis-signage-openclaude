@@ -4,6 +4,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 import { redis, rateLimitAction } from '@/lib/redis'
 import { createAdminClient } from '@/lib/supabase/server'
+import { resilientFetch } from '@/lib/supabase/resilientFetch'
 
 /**
  * Creates a Supabase client using the ANON key (not the service-role key).
@@ -19,6 +20,9 @@ function getPlayerClient() {
         persistSession: false,
         autoRefreshToken: false,
       },
+      global: {
+        fetch: resilientFetch
+      }
     }
   )
 }

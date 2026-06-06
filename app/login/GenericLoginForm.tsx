@@ -5,11 +5,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import styles from './generic-login.module.css'
+import { toast } from '@/app/components/Toast'
 
 export default function GenericLoginForm() {
   const router = useRouter()
   const [slug, setSlug] = useState('')
-  const [error, setError] = useState('')
   const [shouldShake, setShouldShake] = useState(false)
   const [mounted, setMounted] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -23,19 +23,18 @@ export default function GenericLoginForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     setShouldShake(false)
 
     const trimmed = slug.trim().toLowerCase()
 
     if (!trimmed) {
-      setError('Please enter your workspace name.')
+      toast.error('Please enter your workspace name.')
       triggerShake()
       return
     }
 
     if (!/^[a-z0-9-]+$/.test(trimmed)) {
-      setError('Workspace names can only contain lowercase letters, numbers, and dashes.')
+      toast.error('Workspace names can only contain lowercase letters, numbers, and dashes.')
       triggerShake()
       return
     }
@@ -65,7 +64,7 @@ export default function GenericLoginForm() {
               width={140} 
               height={40} 
               priority 
-              style={{ margin: '0 auto' }} 
+              style={{ margin: '0 auto', width: 'auto', height: 'auto' }} 
               sizes="(max-width: 768px) 100vw, 140px" 
             />
           </Link>
@@ -77,16 +76,6 @@ export default function GenericLoginForm() {
 
         {/* Card */}
         <div className={styles.formCard}>
-          {error && (
-            <div className="alert alert-error" role="alert" style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              <span>{error}</span>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-group" style={{ marginBottom: '16px' }}>
@@ -107,7 +96,6 @@ export default function GenericLoginForm() {
                   className={`form-input ${styles.formInputWithIcon}`}
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
-                  aria-invalid={!!error}
                   required
                 />
               </div>

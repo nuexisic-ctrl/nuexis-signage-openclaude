@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
-import { cookies } from 'next/headers'
 import { createClient, getCachedUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import AssetClient from './AssetClient'
 import styles from './asset.module.css'
-import Header from '../components/Header'
-import Sidebar from '../components/Sidebar'
 
 interface Props {
   params: Promise<{ team_slug: string }>
@@ -54,40 +51,29 @@ export default async function AssetPage({ params }: Props) {
     .order('created_at', { ascending: false })
     .limit(1000)
 
-  const response = profile?.team_id
-    ? await query
-    : { data: [], count: 0 }
+  // Fetch assets and screens concurrently to eliminate waterfall delays
+  const [response, screensRes] = await Promise.all([
+    profile?.team_id ? query : Promise.resolve({ data: [], count: 0, error: null }),
+    profile?.team_id
+      ? supabase
+          .from('devices')
+          .select('id, name, status, content_type, asset_id, playlist_id, content')
+          .eq('team_id', profile.team_id as string)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null })
+  ])
 
   const assets = response.data ?? []
   const totalAssets = assets.filter(a => a.mime_type !== 'application/x-folder').length
-
-  const { data: screens } = profile?.team_id
-    ? await supabase
-        .from('devices')
-        .select('id, name, status, content_type, asset_id, playlist_id, content')
-        .eq('team_id', profile.team_id as string)
-        .order('created_at', { ascending: false })
-    : { data: [] }
-
-  const cookieStore = await cookies();
-  const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
+  const screens = screensRes.data ?? []
 
   return (
-    <div className={styles.shell}>
-      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} initialCollapsed={initialCollapsed} />
-
-      {/* Main */}
-      <main className={styles.main}>
-        <Header fullName={fullName} email={user.email} />
-
-        <AssetClient
-          initialAssets={assets as Parameters<typeof AssetClient>[0]['initialAssets']}
-          teamId={profile?.team_id ?? ''}
-          teamSlug={team_slug}
-          totalAssets={totalAssets}
-          screens={(screens ?? []) as Parameters<typeof AssetClient>[0]['screens']}
-        />
-      </main>
-    </div>
+    <AssetClient
+      initialAssets={assets as Parameters<typeof AssetClient>[0]['initialAssets']}
+      teamId={profile?.team_id ?? ''}
+      teamSlug={team_slug}
+      totalAssets={totalAssets}
+      screens={(screens ?? []) as Parameters<typeof AssetClient>[0]['screens']}
+    />
   )
 }

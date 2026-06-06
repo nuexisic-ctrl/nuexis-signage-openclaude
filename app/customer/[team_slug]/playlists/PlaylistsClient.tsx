@@ -7,6 +7,7 @@ import { createPlaylist, deletePlaylist, updatePlaylist, getPlaylistItems } from
 import { createClient } from '@/lib/supabase/client'
 import CustomSelect from '../components/CustomSelect'
 import { modalStack } from '@/lib/utils/modalStack'
+import { toast } from '@/app/components/Toast'
 
 interface PlaylistsClientProps {
   initialPlaylists: any[]
@@ -123,8 +124,10 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
             setTimeout(() => supabase.removeChannel(channel), 1000)
           }
         })
+        toast.success(`Playlist "${newPlaylistName}" updated successfully`)
       } else {
         await createPlaylist(teamId, newPlaylistName, teamSlug, items)
+        toast.success(`Playlist "${newPlaylistName}" created successfully`)
       }
 
       // Re-fetch all playlists to reflect items changes and total play times
@@ -141,9 +144,9 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
       }
 
       handleCloseModal()
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      alert(editingPlaylistId ? 'Failed to update playlist' : 'Failed to create playlist')
+      toast.error(err.message || (editingPlaylistId ? 'Failed to update playlist' : 'Failed to create playlist'))
     } finally {
       setIsSaving(false)
     }
@@ -157,15 +160,15 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     try {
       const fetchedItems = await getPlaylistItems(playlist.id)
       setItems(fetchedItems)
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      alert('Failed to load playlist items')
+      toast.error(err.message || 'Failed to load playlist items')
     } finally {
       setIsLoadingItems(false)
     }
   }
 
-  const handleCloseModal = () => {
+  function handleCloseModal() {
     setIsModalOpen(false)
     setNewPlaylistName('')
     setEditingPlaylistId(null)
@@ -174,14 +177,16 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('Are you sure you want to delete this playlist?')) return
+    const targetName = playlists.find(p => p.id === id)?.name || 'Playlist'
+    if (!confirm(`Are you sure you want to delete the playlist "${targetName}"?`)) return
     
     try {
       await deletePlaylist(id, teamSlug)
       setPlaylists(playlists.filter(p => p.id !== id))
-    } catch (err) {
+      toast.success(`Playlist "${targetName}" deleted successfully`)
+    } catch (err: any) {
       console.error(err)
-      alert('Failed to delete playlist')
+      toast.error(err.message || 'Failed to delete playlist')
     }
   }
 
@@ -431,8 +436,8 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
             <div className={styles.paginationInfo}>
               Showing {startItem} to {endItem} of {filteredPlaylists.length} playlists
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div className={styles.perPageSelector} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', color: 'var(--on-surface-muted)' }}>
+            <div className={styles.footerControls}>
+              <div className={styles.perPageSelector}>
                 <span>Per page:</span>
                 <select
                   value={pageSize}
@@ -442,15 +447,6 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                     setPageSize(newLimit)
                     setCurrentPage(1)
                     localStorage.setItem('nuexis_playlists_per_page', String(newLimit))
-                  }}
-                  style={{
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--outline-variant)',
-                    background: 'var(--surface-low)',
-                    color: 'var(--on-surface)',
-                    cursor: 'pointer',
-                    fontWeight: 600
                   }}
                 >
                   <option value="5">5</option>

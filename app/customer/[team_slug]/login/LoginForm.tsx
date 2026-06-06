@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { loginWithRateLimit } from './actions'
 import styles from './login.module.css'
+import { toast } from '@/app/components/Toast'
 
 interface LoginFormProps {
   teamSlug: string
@@ -102,7 +103,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
 
     // Field check
     if (!email || !password) {
-      setError('Please enter your email and password.')
+      toast.error('Please enter your email and password.')
       triggerShake()
       return
     }
@@ -116,6 +117,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
       const result = await loginWithRateLimit(teamSlug, email, password, clientIpFallback)
 
       if (!result.success) {
+        toast.error(result.error!)
         setError(result.error!)
         setStatus('idle')
         triggerShake()
@@ -130,6 +132,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
       }
 
       setStatus('success')
+      toast.success('Successfully logged in! Redirecting to dashboard...')
 
       // Short delay for a premium transition experience before redirecting
       setTimeout(() => {
@@ -138,6 +141,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
       }, 600)
 
     } catch (err: any) {
+      toast.error('An unexpected error occurred. Please try again.')
       setError('An unexpected error occurred. Please try again.')
       setStatus('idle')
       triggerShake()
@@ -248,16 +252,6 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
 
         {/* Compact Form Card */}
         <div className={styles.formCard}>
-          {error && (
-            <div className="alert alert-error" role="alert" style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              <span>{error}</span>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} noValidate>
             {/* Email Field */}

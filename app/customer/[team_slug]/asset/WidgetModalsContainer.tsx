@@ -9,6 +9,7 @@ import CountUpWidgetModal from './CountUpWidgetModal'
 import { insertAsset, getUploadUrl } from './actions'
 import { createClient } from '@/lib/supabase/client'
 import { Asset } from './types'
+import { toast } from '@/app/components/Toast'
 
 interface WidgetModalsContainerProps {
   showWidgetSelection: boolean
@@ -64,9 +65,10 @@ export function WidgetModalsContainer({
       }
       setAssets(prev => [newAsset, ...prev])
       setShowYouTubeConfig(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
+      toast.success(`YouTube widget "${name}" created successfully`)
       startTransition(() => { router.refresh() })
+    } else {
+      toast.error(result.error || 'Failed to create YouTube widget.')
     }
     setIsSubmittingWidget(false)
   }
@@ -93,9 +95,10 @@ export function WidgetModalsContainer({
       }
       setAssets(prev => [newAsset, ...prev])
       setShowRemoteUrlConfig(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
+      toast.success(`Webpage widget "${name}" created successfully`)
       startTransition(() => { router.refresh() })
+    } else {
+      toast.error(result.error || 'Failed to create Webpage widget.')
     }
     setIsSubmittingWidget(false)
   }
@@ -123,9 +126,10 @@ export function WidgetModalsContainer({
       }
       setAssets(prev => [newAsset, ...prev])
       setShowHtmlConfig(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
+      toast.success(`HTML widget "${name}" created successfully`)
       startTransition(() => { router.refresh() })
+    } else {
+      toast.error(result.error || 'Failed to create HTML widget.')
     }
     setIsSubmittingWidget(false)
   }
@@ -160,9 +164,10 @@ export function WidgetModalsContainer({
       }
       setAssets(prev => [newAsset, ...prev])
       setShowFlowConfig(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
+      toast.success(`Clock widget "${name}" created successfully`)
       startTransition(() => { router.refresh() })
+    } else {
+      toast.error(result.error || 'Failed to create Clock widget.')
     }
     setIsSubmittingWidget(false)
   }
@@ -205,9 +210,10 @@ export function WidgetModalsContainer({
       }
       setAssets(prev => [newAsset, ...prev])
       setShowCountdownConfig(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
+      toast.success(`Countdown widget "${name}" created successfully`)
       startTransition(() => { router.refresh() })
+    } else {
+      toast.error(result.error || 'Failed to create Countdown widget.')
     }
     setIsSubmittingWidget(false)
   }
@@ -251,9 +257,10 @@ export function WidgetModalsContainer({
       }
       setAssets(prev => [newAsset, ...prev])
       setShowCountUpConfig(false)
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
+      toast.success(`Count Up widget "${name}" created successfully`)
       startTransition(() => { router.refresh() })
+    } else {
+      toast.error(result.error || 'Failed to create Count Up widget.')
     }
     setIsSubmittingWidget(false)
   }
@@ -276,6 +283,10 @@ export function WidgetModalsContainer({
       {showYouTubeConfig && (
         <YouTubeWidgetModal 
           onClose={() => setShowYouTubeConfig(false)}
+          onBack={() => {
+            setShowYouTubeConfig(false)
+            setShowWidgetSelection(true)
+          }}
           onSubmit={handleCreateYouTubeWidget}
           isSubmitting={isSubmittingWidget}
         />
@@ -284,6 +295,10 @@ export function WidgetModalsContainer({
       {showRemoteUrlConfig && (
         <RemoteUrlWidgetModal 
           onClose={() => setShowRemoteUrlConfig(false)}
+          onBack={() => {
+            setShowRemoteUrlConfig(false)
+            setShowWidgetSelection(true)
+          }}
           onSubmit={handleCreateRemoteUrlWidget}
           isSubmitting={isSubmittingWidget}
         />
@@ -292,6 +307,10 @@ export function WidgetModalsContainer({
       {showHtmlConfig && (
         <HtmlWidgetModal
           onClose={() => setShowHtmlConfig(false)}
+          onBack={() => {
+            setShowHtmlConfig(false)
+            setShowWidgetSelection(true)
+          }}
           onSubmit={handleCreateHtmlWidget}
           isSubmitting={isSubmittingWidget}
           teamSlug={teamSlug}
@@ -301,6 +320,10 @@ export function WidgetModalsContainer({
       {showFlowConfig && (
         <FlowWidgetModal
           onClose={() => setShowFlowConfig(false)}
+          onBack={() => {
+            setShowFlowConfig(false)
+            setShowWidgetSelection(true)
+          }}
           onSubmit={handleCreateFlowWidget}
           isSubmitting={isSubmittingWidget}
         />
@@ -309,6 +332,10 @@ export function WidgetModalsContainer({
       {showCountdownConfig && (
         <CountdownWidgetModal
           onClose={() => setShowCountdownConfig(false)}
+          onBack={() => {
+            setShowCountdownConfig(false)
+            setShowWidgetSelection(true)
+          }}
           onSubmit={handleCreateCountdownWidget}
           isSubmitting={isSubmittingWidget}
         />
@@ -317,6 +344,10 @@ export function WidgetModalsContainer({
       {showCountUpConfig && (
         <CountUpWidgetModal
           onClose={() => setShowCountUpConfig(false)}
+          onBack={() => {
+            setShowCountUpConfig(false)
+            setShowWidgetSelection(true)
+          }}
           onSubmit={handleCreateCountUpWidget}
           isSubmitting={isSubmittingWidget}
         />
@@ -325,13 +356,17 @@ export function WidgetModalsContainer({
       {showQRCodeConfig && (
         <QRCodeWidgetModal
           onClose={() => setShowQRCodeConfig(false)}
+          onBack={() => {
+            setShowQRCodeConfig(false)
+            setShowWidgetSelection(true)
+          }}
           onSubmit={async (name, config, file) => {
             setIsSubmittingWidget(true)
             try {
               // 1. Get signed upload URL
               const uploadUrlResult = await getUploadUrl(teamSlug, file.name, file.size)
               if (!uploadUrlResult.success) {
-                alert(uploadUrlResult.error)
+                toast.error(uploadUrlResult.error)
                 setIsSubmittingWidget(false)
                 return
               }
@@ -343,11 +378,11 @@ export function WidgetModalsContainer({
                 .uploadToSignedUrl(filePath, token, file, { cacheControl: '3600', upsert: false })
               
               if (storageError) {
-                alert(storageError.message)
+                toast.error(storageError.message)
                 setIsSubmittingWidget(false)
                 return
               }
-
+ 
               // 3. Insert widget asset config
               const serialized = JSON.stringify({
                 ...config,
@@ -360,7 +395,7 @@ export function WidgetModalsContainer({
                 size_bytes: file.size,
                 folder_id: folderId || null,
               })
-
+ 
               if (result.success) {
                 const newAsset: Asset = {
                   id: result.id!,
@@ -373,15 +408,14 @@ export function WidgetModalsContainer({
                 }
                 setAssets(prev => [newAsset, ...prev])
                 setShowQRCodeConfig(false)
-                setShowSuccess(true)
-                setTimeout(() => setShowSuccess(false), 5000)
+                toast.success(`QR Code widget "${name}" created successfully`)
                 startTransition(() => { router.refresh() })
               } else {
-                alert(result.error || 'Failed to save widget configuration.')
+                toast.error(result.error || 'Failed to save widget configuration.')
               }
             } catch (err: any) {
               console.error('[QRCodeWidget] Error saving widget:', err)
-              alert(err.message || 'An unexpected error occurred.')
+              toast.error(err.message || 'An unexpected error occurred.')
             } finally {
               setIsSubmittingWidget(false)
             }

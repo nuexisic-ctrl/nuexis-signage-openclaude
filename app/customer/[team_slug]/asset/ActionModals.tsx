@@ -2,6 +2,7 @@ import { useState, useRef, useTransition, useEffect } from 'react'
 import { AlertTriangle, X, Check } from 'lucide-react'
 import { deleteAsset, updateAssetName, updateAssetFolder } from './actions'
 import styles from './Modal.module.css'
+import { toast } from '@/app/components/Toast'
 
 const PRESET_COLORS = [
   '#78716c', // stone (default gray)
@@ -41,7 +42,6 @@ export function RenameAssetModal({
   const [name, setName] = useState(currentName)
   const [color, setColor] = useState(currentColor || '#78716c')
   const [showColorPicker, setShowColorPicker] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const colorPickerRef = useRef<HTMLDivElement>(null)
@@ -62,7 +62,7 @@ export function RenameAssetModal({
     e.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) {
-      setError('Name cannot be empty.')
+      toast.error('Name cannot be empty.')
       return
     }
     
@@ -75,21 +75,22 @@ export function RenameAssetModal({
       return
     }
 
-    setError(null)
     startTransition(async () => {
       if (isFolder) {
         const result = await updateAssetFolder(teamSlug, assetId, trimmed, color)
         if (result.success) {
+          toast.success('Folder renamed successfully')
           onSuccess(trimmed, color)
         } else {
-          setError(result.error)
+          toast.error(result.error)
         }
       } else {
         const result = await updateAssetName(teamSlug, assetId, trimmed)
         if (result.success) {
+          toast.success('Asset renamed successfully')
           onSuccess(trimmed)
         } else {
-          setError(result.error)
+          toast.error(result.error)
         }
       }
     })
@@ -190,12 +191,6 @@ export function RenameAssetModal({
               )}
             </div>
           </div>
-          {error && (
-            <div className={styles.errorBanner} role="alert">
-              <AlertTriangle className={styles.errorIcon} size={17} />
-              {error}
-            </div>
-          )}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button
               type="button"
@@ -253,7 +248,10 @@ export function DeleteAssetModal({
     startTransition(async () => {
       const result = await deleteAsset(teamSlug, assetId, filePath)
       if (result.success) {
+        toast.success(`Asset "${assetName}" deleted successfully`)
         onSuccess(assetId)
+      } else {
+        toast.error(result.error || 'Failed to delete asset')
       }
     })
   }

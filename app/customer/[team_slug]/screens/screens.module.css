@@ -46,34 +46,78 @@
   margin: 6px 0 0;
 }
 
+.headerTitleRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.titleContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.headerRefreshBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
+  color: var(--on-surface-subtle);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.headerRefreshBtn:hover {
+  background: var(--surface-high);
+  color: var(--on-surface);
+}
+
+.headerRefreshBtn:disabled {
+  opacity: 0.6;
+}
+
 .topbarActions {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.refreshBtn {
+.topbarActionBtn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  background: var(--surface-low);
-  color: var(--on-surface);
-  border: 1px solid var(--outline-variant);
+  gap: 6px;
+  padding: 8px 16px;
   border-radius: 10px;
   cursor: pointer;
-  transition: background-color var(--transition-base), color var(--transition-base);
+  font-weight: 700;
+  font-family: var(--font-label);
+  min-height: 42px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
+  color: var(--on-surface);
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 
-.refreshBtn:hover {
-  background: var(--surface-medium);
-  color: var(--on-surface-high);
+.topbarActionBtn:hover {
+  background: var(--surface-high);
+  border-color: color-mix(in srgb, var(--primary) 20%, var(--outline-variant));
 }
 
-.refreshBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.topbarPrimaryBtn {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: transparent;
+}
+
+.topbarPrimaryBtn:hover {
+  background: color-mix(in srgb, var(--primary) 90%, #000);
+  transform: translateY(-1px);
 }
 
 .spin {
@@ -83,33 +127,6 @@
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
-}
-
-.addBtn {
-  min-height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--primary);
-  color: var(--on-primary);
-  border: 1px solid transparent;
-  border-radius: 10px;
-  font-family: var(--font-label);
-  font-size: 0.875rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform var(--transition-base), opacity var(--transition-base);
-}
-
-.addBtn:hover {
-  opacity: 0.92;
-  transform: translateY(-1px);
-}
-
-.addBtnIcon {
-  flex-shrink: 0;
 }
 
 .pageLayout {
@@ -338,10 +355,43 @@
   border-top: 1px solid var(--outline-variant);
   font-size: 0.84rem;
   color: var(--on-surface-muted);
+  background: var(--surface-lowest);
 }
 
 .paginationInfo {
   font-family: var(--font-body);
+}
+
+.footerControls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.perPageSelector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  color: var(--on-surface-muted);
+}
+
+.perPageSelector select {
+  padding: 4px 28px 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
+  color: var(--on-surface);
+  cursor: pointer;
+  font-weight: 600;
+  appearance: none;
+  WebkitAppearance: none;
+  MozAppearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  background-size: 12px 12px;
+  min-width: 56px;
 }
 
 .pagination {
@@ -458,12 +508,40 @@
   .tableFooter {
     flex-direction: column;
     align-items: stretch;
+    gap: 6px;
+    padding: 10px 14px;
+  }
+
+  .paginationInfo {
+    text-align: left;
+    font-size: 0.8rem;
+  }
+
+  .footerControls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .perPageSelector {
+    flex-shrink: 0;
   }
 
   .pagination {
+    flex-shrink: 0;
     justify-content: flex-end;
   }
 
+  .pageBtn {
+    min-width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 768px) {
   .mainContent.sidebarOpen {
     margin-right: 0;
   }

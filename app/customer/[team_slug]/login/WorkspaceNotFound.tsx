@@ -20,7 +20,7 @@ export default function WorkspaceNotFound({ teamSlug }: WorkspaceNotFoundProps) 
             width={140} 
             height={40} 
             priority 
-            style={{ margin: '0 auto' }} 
+            style={{ margin: '0 auto', width: 'auto', height: 'auto' }} 
             sizes="(max-width: 768px) 100vw, 140px" 
           />
         </Link>

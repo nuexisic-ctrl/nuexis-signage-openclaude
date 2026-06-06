@@ -6,6 +6,8 @@ import { deleteAssetsBulk } from './actions'
 import styles from './Modal.module.css'
 import { t } from '@/lib/i18n'
 
+import { toast } from '@/app/components/Toast'
+
 export interface BulkDeleteModalProps {
   assetsToDelete: { id: string; file_name: string; file_path: string }[]
   teamSlug: string
@@ -31,9 +33,14 @@ export function BulkDeleteModal({
       const items = assetsToDelete.map(a => ({ id: a.id, filePath: a.file_path }))
       const result = await deleteAssetsBulk(teamSlug, items)
       if (result.success) {
+        toast.success(
+          assetsToDelete.length === 1
+            ? t('Asset deleted successfully')
+            : `${assetsToDelete.length} ${t('assets deleted successfully')}`
+        )
         onSuccess()
       } else {
-        alert(result.error || 'Failed to delete selected assets.')
+        toast.error(result.error || 'Failed to delete selected assets.')
       }
     })
   }

@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
-import { cookies } from 'next/headers'
 import { createClient, getCachedUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ScreensClient from './ScreensClient'
 import styles from './screens.module.css'
-import Header from '../components/Header'
-import Sidebar from '../components/Sidebar'
 
 interface Props {
   params: Promise<{ team_slug: string }>
@@ -55,9 +52,37 @@ export default async function ScreensPage({ params }: Props) {
     .order('created_at', { ascending: false })
     .limit(1000)
 
-  const response = profile?.team_id
-    ? await query
-    : { data: [], count: 0 }
+  // Execute all screen-related queries concurrently to eliminate waterfall delays
+  const [response, assetsRes, playlistsRes, groupsRes, membershipsRes] = await Promise.all([
+    profile?.team_id ? query : Promise.resolve({ data: [], count: 0, error: null }),
+    profile?.team_id
+      ? supabase
+          .from('assets')
+          .select('id, file_name, file_path, mime_type, size_bytes, created_at')
+          .eq('team_id', profile.team_id)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    profile?.team_id
+      ? supabase
+          .from('playlists')
+          .select('id, name, created_at, playlist_items(duration_seconds, widget_type, assets(mime_type))')
+          .eq('team_id', profile.team_id)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    profile?.team_id
+      ? supabase
+          .from('screen_groups')
+          .select('*')
+          .eq('team_id', profile.team_id)
+          .order('name', { ascending: true })
+      : Promise.resolve({ data: [], error: null }),
+    profile?.team_id
+      ? supabase
+          .from('screen_group_members')
+          .select('group_id, device_id, is_primary')
+          .eq('team_id', profile.team_id)
+      : Promise.resolve({ data: [], error: null })
+  ])
 
   const devicesData = response.data ?? []
   const totalScreens = response.count ?? 0
@@ -77,67 +102,21 @@ export default async function ScreensPage({ params }: Props) {
     }
   })
 
-  // Fetch all assets for this team
-  const assets = profile?.team_id
-    ? (await supabase
-        .from('assets')
-        .select('id, file_name, file_path, mime_type, size_bytes, created_at')
-        .eq('team_id', profile.team_id)
-        .order('created_at', { ascending: false })
-      ).data ?? []
-    : []
-
-  // Fetch all playlists for this team
-  const playlists = profile?.team_id
-    ? (await supabase
-        .from('playlists')
-        .select('id, name, created_at, playlist_items(duration_seconds, widget_type, assets(mime_type))')
-        .eq('team_id', profile.team_id)
-        .order('created_at', { ascending: false })
-      ).data ?? []
-    : []
-
-  // Fetch all screen groups for this team
-  const groups = profile?.team_id
-    ? (await supabase
-        .from('screen_groups')
-        .select('*')
-        .eq('team_id', profile.team_id)
-        .order('name', { ascending: true })
-      ).data ?? []
-    : []
-
-  // Fetch all screen group memberships for this team
-  const memberships = profile?.team_id
-    ? (await supabase
-        .from('screen_group_members')
-        .select('group_id, device_id, is_primary')
-        .eq('team_id', profile.team_id)
-      ).data ?? []
-    : []
-
-  const cookieStore = await cookies();
-  const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
+  const assets = assetsRes.data ?? []
+  const playlists = playlistsRes.data ?? []
+  const groups = groupsRes.data ?? []
+  const memberships = membershipsRes.data ?? []
 
   return (
-    <div className={styles.shell}>
-      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} initialCollapsed={initialCollapsed} />
-
-      {/* Main */}
-      <main className={styles.main}>
-        <Header fullName={fullName} email={user.email} />
-        
-        <ScreensClient
-          devices={devices}
-          assets={assets}
-          playlists={playlists}
-          groups={groups}
-          memberships={memberships}
-          teamSlug={team_slug}
-          teamId={profile?.team_id as string}
-          totalScreens={totalScreens}
-        />
-      </main>
-    </div>
+    <ScreensClient
+      devices={devices}
+      assets={assets}
+      playlists={playlists}
+      groups={groups}
+      memberships={memberships}
+      teamSlug={team_slug}
+      teamId={profile?.team_id as string}
+      totalScreens={totalScreens}
+    />
   )
 }

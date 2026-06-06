@@ -404,8 +404,8 @@ export function GroupsSection({
           <div className={styles.paginationInfo}>
             Showing {startItem} to {endItem} of {filteredGroups.length} groups
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div className={styles.perPageSelector} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', color: 'var(--on-surface-muted)' }}>
+          <div className={styles.footerControls}>
+            <div className={styles.perPageSelector}>
               <span>Per page:</span>
               <select
                 value={pageSize}
@@ -415,15 +415,6 @@ export function GroupsSection({
                   setPageSize(newLimit)
                   setCurrentPage(1)
                   localStorage.setItem('nuexis_groups_per_page', String(newLimit))
-                }}
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--outline-variant)',
-                  background: 'var(--surface-low)',
-                  color: 'var(--on-surface)',
-                  cursor: 'pointer',
-                  fontWeight: 600
                 }}
               >
                 <option value="5">5</option>
@@ -441,7 +432,7 @@ export function GroupsSection({
                 className={styles.pageBtn} 
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
-                style={{ opacity: currentPage > 1 ? 1 : 0.5, cursor: currentPage > 1 ? 'pointer' : 'not-allowed' }}
+                style={{ cursor: currentPage > 1 ? 'pointer' : 'not-allowed' }}
               >
                 <ChevronLeft size={16} />
               </button>
@@ -449,7 +440,7 @@ export function GroupsSection({
                 className={styles.pageBtn} 
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages}
-                style={{ opacity: currentPage < totalPages ? 1 : 0.5, cursor: currentPage < totalPages ? 'pointer' : 'not-allowed' }}
+                style={{ cursor: currentPage < totalPages ? 'pointer' : 'not-allowed' }}
               >
                 <ChevronRight size={16} />
               </button>

@@ -15,6 +15,7 @@ import { AssetPreviewModal } from '../../AssetPreviewModal'
 import { t } from '@/lib/i18n'
 import styles from '../../asset.module.css'
 import tableStyles from '../../AssetTableView.module.css'
+import { toast } from '@/app/components/Toast'
 
 const YoutubeIcon = ({ size = 20, style }: { size?: number; style?: React.CSSProperties }) => (
   <svg 
@@ -162,6 +163,7 @@ export default function FolderClient({
 
   // Single Move to Root
   const handleMoveToRoot = (assetId: string) => {
+    const assetName = assets.find(a => a.id === assetId)?.file_name || t('item')
     startTransition(async () => {
       const result = await moveAssetsToFolder(teamSlug, [assetId], null)
       if (result.success) {
@@ -171,24 +173,27 @@ export default function FolderClient({
           next.delete(assetId)
           return next
         })
+        toast.success(`${t('Moved')} "${assetName}" ${t('to Root')}`)
         router.refresh()
       } else {
-        alert(result.error || t('Failed to move asset.'))
+        toast.error(result.error || t('Failed to move asset.'))
       }
     })
   }
 
   // Bulk Move to Root
   const handleBulkMoveToRoot = () => {
+    const count = selectedAssetIds.size
     startTransition(async () => {
       const assetIds = Array.from(selectedAssetIds)
       const result = await moveAssetsToFolder(teamSlug, assetIds, null)
       if (result.success) {
         setAssets(prev => prev.filter(a => !selectedAssetIds.has(a.id)))
         setSelectedAssetIds(new Set())
+        toast.success(`${t('Moved')} ${count} ${count === 1 ? t('item') : t('items')} ${t('to Root')}`)
         router.refresh()
       } else {
-        alert(result.error || t('Failed to move assets.'))
+        toast.error(result.error || t('Failed to move assets.'))
       }
     })
   }

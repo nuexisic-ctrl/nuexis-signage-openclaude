@@ -5,6 +5,8 @@ import { getUploadUrl, insertAsset } from './actions'
 import { Asset } from './types'
 import { UploadItem } from './UploadPanel'
 
+import { toast } from '@/app/components/Toast'
+
 const MAX_FILE_SIZE = 50 * 1024 * 1024
 const ALLOWED_EXTENSIONS = /\.(png|jpg|jpeg|mp4|webm|pdf)$/i
 
@@ -45,7 +47,7 @@ export function useAssetUpload({
 
   const handleFiles = useCallback(async (files: File[]) => {
     if (!teamId) {
-      setUploadError('Could not determine your team. Please refresh and try again.')
+      toast.error('Could not determine your team. Please refresh and try again.')
       return
     }
     setUploadError(null)
@@ -149,8 +151,11 @@ export function useAssetUpload({
     }
 
     if (uploadedAssets.length > 0) {
-      setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
+      toast.success(
+        uploadedAssets.length === 1
+          ? `Media "${uploadedAssets[0].file_name}" uploaded successfully.`
+          : `Successfully uploaded ${uploadedAssets.length} media files.`
+      )
     }
 
     startTransition(() => { router.refresh() })

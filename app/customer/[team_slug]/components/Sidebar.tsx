@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -9,12 +9,10 @@ import {
   Monitor, 
   Image as ImageIcon, 
   CalendarClock, 
-  LineChart, 
+  ChevronLeft, 
+  ChevronRight, 
   Settings, 
-  ListVideo,
-  ChevronLeft,
-  ChevronRight,
-  FolderTree
+  ListVideo 
 } from 'lucide-react'
 import styles from './sidebar.module.css'
 
@@ -29,6 +27,11 @@ interface SidebarProps {
 export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', initialCollapsed = false }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed)
   const pathname = usePathname()
+  
+  // Mobile horizontal scroll tracking
+  const bottomNavRef = useRef<HTMLDivElement>(null)
+  const [showLeftArrow, setShowLeftArrow] = useState(false)
+  const [showRightArrow, setShowRightArrow] = useState(false)
 
   // Toggle class on body for the main content to adjust its margin and save state
   useEffect(() => {
@@ -43,6 +46,35 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
     }
   }, [isCollapsed])
 
+  const checkScroll = () => {
+    const el = bottomNavRef.current
+    if (el) {
+      const scrollLeft = el.scrollLeft
+      const scrollWidth = el.scrollWidth
+      const clientWidth = el.clientWidth
+      
+      setShowLeftArrow(scrollLeft > 5)
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 5)
+    }
+  }
+
+  useEffect(() => {
+    const el = bottomNavRef.current
+    if (el) {
+      el.addEventListener('scroll', checkScroll)
+      checkScroll()
+      window.addEventListener('resize', checkScroll)
+      
+      const timer = setTimeout(checkScroll, 300)
+      
+      return () => {
+        el.removeEventListener('scroll', checkScroll)
+        window.removeEventListener('resize', checkScroll)
+        clearTimeout(timer)
+      }
+    }
+  }, [])
+
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: `/customer/${teamSlug}/dashboard` },
     { icon: Monitor,         label: 'Screens',   href: `/customer/${teamSlug}/screens` },
@@ -51,7 +83,10 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
     { icon: CalendarClock,   label: 'Schedules', href: '#' },
   ]
 
-
+  const mobileNavItems = [
+    ...navItems,
+    { icon: Settings,        label: 'Settings',  href: `/customer/${teamSlug}/settings` },
+  ]
 
   return (
     <>
@@ -98,7 +133,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
 
         <div className={styles.sidebarFooter}>
           <Link
-            href="#"
+            href={`/customer/${teamSlug}/settings`}
             className={`${styles.navItem} ${pathname.includes('/settings') ? styles.active : ''}`}
             title={isCollapsed ? "Settings" : undefined}
             style={{ 
@@ -112,27 +147,50 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
             {!isCollapsed && <span className={styles.navLabel}>Settings</span>}
           </Link>
         </div>
-
-
       </aside>
 
       {/* Mobile Bottom Navigation */}
       <nav className={styles.bottomNav}>
-        <ul className={styles.bottomNavList}>
-          {navItems.slice(0, 5).map((item) => {
-            const isActive = pathname.startsWith(item.href) && item.href !== '#'
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`${styles.bottomNavItem} ${isActive ? styles.active : ''}`}
-              >
-                <item.icon size={20} />
-                <span className={styles.bottomNavLabel}>{item.label}</span>
-              </Link>
-            )
-          })}
-        </ul>
+        {showLeftArrow && (
+          <button 
+            type="button"
+            className={styles.scrollIndicatorLeft} 
+            onClick={() => bottomNavRef.current?.scrollBy({ left: -80, behavior: 'smooth' })}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
+        
+        <div ref={bottomNavRef} className={styles.bottomNavScrollContainer}>
+          <ul className={styles.bottomNavList}>
+            {mobileNavItems.map((item) => {
+              const isActive = pathname.startsWith(item.href) && item.href !== '#'
+              return (
+                <li key={item.label} className={styles.bottomNavListItem}>
+                  <Link
+                    href={item.href}
+                    className={`${styles.bottomNavItem} ${isActive ? styles.active : ''}`}
+                  >
+                    <item.icon size={20} />
+                    <span className={styles.bottomNavLabel}>{item.label}</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+
+        {showRightArrow && (
+          <button 
+            type="button"
+            className={styles.scrollIndicatorRight} 
+            onClick={() => bottomNavRef.current?.scrollBy({ left: 80, behavior: 'smooth' })}
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={16} />
+          </button>
+        )}
       </nav>
     </>
   )

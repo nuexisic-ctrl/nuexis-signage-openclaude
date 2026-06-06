@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Monitor, Smartphone, Maximize, Hourglass, ChevronDown, Calendar, Clock as ClockIcon } from 'lucide-react'
+import { X, Monitor, Smartphone, Maximize, Hourglass, ChevronDown, Calendar, Clock as ClockIcon, ArrowLeft } from 'lucide-react'
 import styles from './Modal.module.css'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import { modalStack } from '@/lib/utils/modalStack'
@@ -10,6 +10,7 @@ import ThemeSelect from '../components/ThemeSelect'
 
 interface CountdownWidgetModalProps {
   onClose: () => void
+  onBack?: () => void
   onSubmit: (name: string, config: {
     text: string
     endTime: string
@@ -70,6 +71,7 @@ function getDefaultEndTimeParts() {
 
 export default function CountdownWidgetModal({
   onClose,
+  onBack,
   onSubmit,
   isSubmitting
 }: CountdownWidgetModalProps) {
@@ -349,13 +351,23 @@ export default function CountdownWidgetModal({
             borderTopRightRadius: '16px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {onBack && (
+                <button 
+                  type="button" 
+                  onClick={onBack} 
+                  className={styles.modalCloseBtn}
+                  aria-label="Back to widget selection"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+              )}
               <Hourglass size={22} color="var(--primary)" />
               <div>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)', fontWeight: 600 }}>Create Countdown Widget</h2>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>Display beautiful real-time timers for sales, announcements, or events.</p>
               </div>
             </div>
-            <button onClick={onClose} className={styles.modalCloseBtn} aria-label="Close modal"><X size={20} /></button>
+            <button onClick={onClose} className={styles.modalCloseBtn} type="button" aria-label="Close modal"><X size={20} /></button>
           </div>
 
           {/* Body Content with Split View */}

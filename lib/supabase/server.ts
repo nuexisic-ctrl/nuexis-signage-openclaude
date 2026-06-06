@@ -3,11 +3,17 @@ import { cookies } from 'next/headers'
 import { SupabaseClient, createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cache } from 'react'
 import type { Database } from '@/types/supabase'
+import { resilientFetch } from './resilientFetch'
 
 export function createAdminClient() {
   return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      global: {
+        fetch: resilientFetch
+      }
+    }
   )
 }
 
@@ -18,6 +24,9 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: {
+        fetch: resilientFetch
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll()

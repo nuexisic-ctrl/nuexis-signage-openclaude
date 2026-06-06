@@ -1,5 +1,23 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
+import os from "os";
+
+// Helper to get local network IP addresses dynamically so Server Actions work on other devices
+const getLocalIPs = () => {
+  const interfaces = os.networkInterfaces();
+  const ips: string[] = [];
+  for (const name of Object.keys(interfaces)) {
+    const netInterface = interfaces[name];
+    if (netInterface) {
+      for (const net of netInterface) {
+        if (net.family === 'IPv4' && !net.internal) {
+          ips.push(`${net.address}:3000`);
+        }
+      }
+    }
+  }
+  return ips;
+};
 
 const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
@@ -11,7 +29,9 @@ const nextConfig: NextConfig = {
   turbopack: {},
   experimental: {
     serverActions: {
-      allowedOrigins: process.env.NODE_ENV === 'development' ? ['10.0.2.2:3000', 'localhost:3000'] : []
+      allowedOrigins: process.env.NODE_ENV === 'development' 
+        ? ['10.0.2.2:3000', 'localhost:3000', ...getLocalIPs()] 
+        : []
     }
   },
   async headers() {
@@ -34,7 +54,7 @@ const nextConfig: NextConfig = {
               "base-uri 'self'",
               "form-action 'self'",
               "frame-ancestors 'none'",
-              "upgrade-insecure-requests",
+              ...(process.env.NODE_ENV === 'production' ? ["upgrade-insecure-requests"] : []),
             ].join('; '),
           },
           {
