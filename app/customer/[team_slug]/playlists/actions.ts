@@ -3,6 +3,7 @@
 import { createClient, requireOwner } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { rateLimitAction } from '@/lib/redis'
+import type { Json } from '@/types/supabase'
 
 // ── Auth helper ─────────────────────────────────────────────────────────
 // Verifies the caller is authenticated and returns their verified team_id
@@ -58,7 +59,7 @@ export async function createPlaylist(
     duration_seconds: item.duration_seconds,
     sort_order: index,
     widget_type: item.widget_type || null,
-    widget_config: (item.widget_config || null) as import('@/types/supabase').Json,
+    widget_config: (item.widget_config || null) as Json,
   }))
 
   const { data, error: rpcError } = await supabase.rpc('create_playlist_atomic', {
@@ -152,7 +153,7 @@ export async function updatePlaylist(
     duration_seconds: item.duration_seconds,
     sort_order: index,
     widget_type: item.widget_type || null,
-    widget_config: (item.widget_config || null) as import('@/types/supabase').Json
+    widget_config: (item.widget_config || null) as Json
   }))
 
   const { data, error: rpcError } = await supabase.rpc('update_playlist_atomic', {

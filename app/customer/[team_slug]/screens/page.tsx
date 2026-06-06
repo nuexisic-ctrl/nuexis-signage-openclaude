@@ -32,11 +32,11 @@ export default async function ScreensPage({ params }: Props) {
   // Get the user's team_id, role, and team slug securely from their profile
   const { data: profile } = await supabase
     .from('profiles')
-    .select('team_id, role, teams(slug)')
+    .select('team_id, role, teams(slug, historical_playtime_seconds)')
     .eq('id', user.id)
     .single()
 
-  const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? profile.teams.slug : undefined
+  const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).slug : undefined
   if (userTeamSlug && userTeamSlug !== team_slug) {
     redirect(`/customer/${userTeamSlug}/screens`)
   }
@@ -106,6 +106,7 @@ export default async function ScreensPage({ params }: Props) {
   const playlists = playlistsRes.data ?? []
   const groups = groupsRes.data ?? []
   const memberships = membershipsRes.data ?? []
+  const historicalPlaytime = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).historical_playtime_seconds : 0
 
   return (
     <ScreensClient
@@ -117,6 +118,7 @@ export default async function ScreensPage({ params }: Props) {
       teamSlug={team_slug}
       teamId={profile?.team_id as string}
       totalScreens={totalScreens}
+      historicalPlaytime={Number(historicalPlaytime) || 0}
     />
   )
 }

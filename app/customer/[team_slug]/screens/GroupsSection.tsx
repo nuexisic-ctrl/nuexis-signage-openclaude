@@ -1,12 +1,15 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { 
   Users, Monitor, Edit3, Trash2, FolderTree, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import { ContentIcon, ContentKind } from './DeviceIcon'
 import styles from './GroupsSection.module.css'
 import { Device } from './types'
+import { deleteGroup } from '../groups/actions'
+import { toast } from '@/app/components/Toast'
 
 interface Group {
   id: string
@@ -79,11 +82,42 @@ export function GroupsSection({
     playlist:     styles.contentIcon_playlist,
   }
 
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [isMounted, setIsMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(5)
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set())
+
+  const handleDeleteSelectedGroups = () => {
+    if (selectedGroupIds.size === 0) return
+    if (!window.confirm(`Are you sure you want to delete the ${selectedGroupIds.size} selected group(s)?`)) return
+
+    startTransition(async () => {
+      let successCount = 0
+      let lastError = ''
+      for (const groupId of selectedGroupIds) {
+        const group = groups.find(g => g.id === groupId)
+        const name = group ? group.name : 'Group'
+        const res = await deleteGroup(teamSlug, groupId)
+        if (res.success) {
+          successCount++
+        } else {
+          lastError = res.error || `Failed to delete group "${name}".`
+        }
+      }
+      if (successCount > 0) {
+        toast.success(`Deleted ${successCount} group(s) successfully`)
+        setSelectedGroupIds(new Set())
+        router.refresh()
+      }
+      if (lastError) {
+        toast.error(lastError)
+      }
+    })
+  }
 
   useEffect(() => {
     const savedLimit = localStorage.getItem('nuexis_groups_per_page')
@@ -149,38 +183,69 @@ export function GroupsSection({
             </div>
           )}
           {isMounted && groups.length > 0 && (
-            <div className={styles.viewToggleGroup}>
-              <button 
-                className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
-                onClick={() => handleSetViewMode('table')}
-                title="Table View"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="8" y1="6" x2="21" y2="6"></line>
-                  <line x1="8" y1="12" x2="21" y2="12"></line>
-                  <line x1="8" y1="18" x2="21" y2="18"></line>
-                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                </svg>
-              </button>
-              <button 
-                className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
-                onClick={() => handleSetViewMode('grid')}
-                title="Grid View"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
-                  <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
-                  <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
-                  <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
-                </svg>
-              </button>
+            <div className={styles.controlsRight}>
+              {selectedGroupIds.size > 0 && (
+                <div className={styles.selectedActionsContainer}>
+                  <div className={styles.selectedCountBadge} title={`${selectedGroupIds.size} groups selected`}>
+                    <span className={styles.selectedCountNumber}>{selectedGroupIds.size}</span>
+                    <span className={styles.selectedCountText}>Selected</span>
+                  </div>
+                  <button
+                    className={`${styles.bulkActionIconBtn} ${styles.bulkActionIconBtnDanger}`}
+                    onClick={handleDeleteSelectedGroups}
+                    title="Delete Selected Groups"
+                    type="button"
+                    disabled={isPending}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                  <button
+                    className={styles.bulkActionIconBtn}
+                    onClick={() => setSelectedGroupIds(new Set())}
+                    title="Clear selection"
+                    type="button"
+                    disabled={isPending}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+              )}
+              <div className={styles.viewToggleGroup}>
+                <button 
+                  className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
+                  onClick={() => handleSetViewMode('table')}
+                  title="Table View"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                  </svg>
+                </button>
+                <button 
+                  className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
+                  onClick={() => handleSetViewMode('grid')}
+                  title="Grid View"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                    <rect x="14" y="3" width="7" height="7" rx="1" ry="1"></rect>
+                    <rect x="14" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                    <rect x="3" y="14" width="7" height="7" rx="1" ry="1"></rect>
+                  </svg>
+                </button>
+              </div>
             </div>
           )}
         </div>
 
-        <div className={`${styles.progressBarWrapper} ${isRefreshing ? styles.active : ''}`}>
+        <div className={`${styles.progressBarWrapper} ${(isRefreshing || isPending) ? styles.active : ''}`}>
           <div className={styles.progressBarLine} />
         </div>
 
@@ -209,6 +274,27 @@ export function GroupsSection({
             <table className={styles.table}>
             <thead>
               <tr>
+                <th style={{ width: '40px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={paginatedGroups.length > 0 && paginatedGroups.every(g => selectedGroupIds.has(g.id))}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setSelectedGroupIds(prev => {
+                        const next = new Set(prev)
+                        paginatedGroups.forEach(g => {
+                          if (checked) {
+                            next.add(g.id)
+                          } else {
+                            next.delete(g.id)
+                          }
+                        })
+                        return next
+                      })
+                    }}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                </th>
                 <th style={{ width: '25%' }}>Group Name</th>
                 <th style={{ width: '15%' }}>Screens</th>
                 <th style={{ width: '20%' }}>Live Status</th>
@@ -233,10 +319,36 @@ export function GroupsSection({
                   contentName = pl ? pl.name : 'Deleted Playlist'
                 }
 
-
+                const isSelected = selectedGroupIds.has(group.id)
 
                 return (
-                  <tr key={group.id} className={styles.tableRow} onClick={() => onSelectGroup(group)}>
+                  <tr 
+                    key={group.id} 
+                    className={`${styles.tableRow} ${isSelected ? styles.rowSelected : ''}`} 
+                    onClick={() => onSelectGroup(group)}
+                  >
+                    <td 
+                      style={{ width: '40px', textAlign: 'center', cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedGroupIds(prev => {
+                          const next = new Set(prev)
+                          if (next.has(group.id)) {
+                            next.delete(group.id)
+                          } else {
+                            next.add(group.id)
+                          }
+                          return next
+                        })
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer', pointerEvents: 'none' }}
+                      />
+                    </td>
                     <td>
                       <div className={styles.groupNameCell}>
                         <span 
@@ -340,14 +452,49 @@ export function GroupsSection({
               contentName = pl ? pl.name : 'Deleted Playlist'
             }
 
+            const isSelected = selectedGroupIds.has(group.id)
+
             return (
               <div 
                 key={group.id} 
-                className={styles.card} 
+                className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`} 
                 style={{ '--group-border-color': group.color || '#3b82f6' } as React.CSSProperties}
                 onClick={() => onSelectGroup(group)}
               >
                 <div className={styles.cardHeader}>
+                  <div 
+                    style={{
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      background: 'rgba(7, 17, 31, 0.72)', 
+                      backdropFilter: 'blur(8px)',
+                      borderRadius: '4px',
+                      padding: '4px',
+                      marginRight: '10px',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedGroupIds(prev => {
+                        const next = new Set(prev)
+                        if (next.has(group.id)) {
+                          next.delete(group.id)
+                        } else {
+                          next.add(group.id)
+                        }
+                        return next
+                      })
+                    }}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={isSelected} 
+                      onChange={() => {}} 
+                      style={{ width: '14px', height: '14px', cursor: 'pointer', margin: 0, pointerEvents: 'none' }}
+                    />
+                  </div>
                   <h3 className={styles.cardTitle}>{group.name}</h3>
                   <div className={styles.cardBadge}>
                     <Users size={12} />

@@ -22,20 +22,17 @@ export function SelectedActions({
 
   return (
     <div className={styles.selectedActionsContainer}>
-      <div className={styles.selectedCountBadge}>
+      <div className={styles.selectedCountBadge} title={`${selectedDeviceIds.size} screens selected`}>
         <span className={styles.selectedCountNumber}>{selectedDeviceIds.size}</span>
-        <span className={styles.selectedCountText}>
-          {selectedDeviceIds.size === 1 ? 'screen selected' : 'screens selected'}
-        </span>
+        <span className={styles.selectedCountText}>Selected</span>
       </div>
       
       <button
-        className={styles.bulkActionBtn}
+        className={styles.bulkActionIconBtn}
         onClick={() => setShowCreateGroupFromSelection(true)}
-        title="Create a new screen group from selection"
+        title="Create Group from Selection"
       >
         <FolderPlus size={16} className={styles.bulkActionBtnIcon} />
-        <span>Create Group</span>
       </button>
       
       <button

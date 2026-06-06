@@ -852,4 +852,33 @@
   color: #ef4444;
 }
 
+.desktopOnlyRefreshBtn {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .desktopOnlyRefreshBtn {
+    display: inline-flex !important;
+  }
+  .mobileOnlyRefreshBtn {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .desktopOnlyRefreshBtn {
+    display: none !important;
+  }
+  .mobileOnlyRefreshBtn {
+    display: inline-flex !important;
+  }
+}
+
+.iconOnlyRefreshBtn {
+  width: 42px;
+  padding: 0;
+  justify-content: center;
+}
+
+
 

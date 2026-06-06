@@ -144,7 +144,9 @@ export function GroupEditModal({
 
     const handleOutsideClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowScreensDropdown(false)
+        setTimeout(() => {
+          setShowScreensDropdown(false)
+        }, 120)
       }
     }
 
@@ -160,7 +162,9 @@ export function GroupEditModal({
 
     const handleOutsideClick = (e: MouseEvent) => {
       if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
-        setShowColorPicker(false)
+        setTimeout(() => {
+          setShowColorPicker(false)
+        }, 120)
       }
     }
 
@@ -339,7 +343,10 @@ export function GroupEditModal({
                             key={c}
                             className={`${styles.colorOptionBubble} ${isSelected ? styles.colorOptionBubbleSelected : ''}`}
                             style={{ backgroundColor: c }}
-                            onClick={() => setColor(c)}
+                            onClick={() => {
+                              setColor(c)
+                              setShowColorPicker(false)
+                            }}
                           >
                             {isSelected && <Check size={10} style={{ color: c === '#ffffff' ? '#000' : '#fff' }} />}
                           </button>

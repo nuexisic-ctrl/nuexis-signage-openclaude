@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useTransition } from 'react'
+import React, { useState, useRef, useTransition, useEffect } from 'react'
 import { X, Check, AlertTriangle } from 'lucide-react'
 import { createGroup, updateGroupMembers } from '../groups/actions'
 import styles from './NewGroupModal.module.css'
@@ -56,19 +56,56 @@ export default function NewGroupModal({
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>(initialSelectedDeviceIds)
   const [screenSearch, setScreenSearch] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const colorPickerRef = useRef<HTMLDivElement>(null)
+  
+  const startedOnOverlayRef = useRef(false)
+  const childWasActiveRef = useRef(false)
+
+  // Close color picker popover on outside click
+  useEffect(() => {
+    if (!showColorPicker) return
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setTimeout(() => {
+          setShowColorPicker(false)
+        }, 120)
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [showColorPicker])
   
   const [isPending, startTransition] = useTransition()
   const overlayRef = useRef<HTMLDivElement>(null)
-  const startedOnOverlayRef = useRef(false)
 
   if (!isOpen) return null
 
   function handleOverlayMouseDown(e: React.MouseEvent<HTMLDivElement>) {
-    startedOnOverlayRef.current = e.target === overlayRef.current
+    if (e.target === overlayRef.current) {
+      startedOnOverlayRef.current = true
+      childWasActiveRef.current = showColorPicker
+    } else {
+      startedOnOverlayRef.current = false
+    }
   }
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current && startedOnOverlayRef.current) onClose()
+    if (e.target === overlayRef.current && startedOnOverlayRef.current) {
+      if (showColorPicker) {
+        setShowColorPicker(false)
+        return
+      }
+      if (childWasActiveRef.current) {
+        childWasActiveRef.current = false
+        return
+      }
+      onClose()
+    }
   }
 
   const handleToggleScreen = (id: string) => {
@@ -122,40 +159,76 @@ export default function NewGroupModal({
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.fieldGroup}>
             <label className={styles.label}>Group Name (Optional)</label>
-            <input
-              type="text"
-              maxLength={60}
-              className={styles.input}
-              placeholder="E.g., Airport Terminal, Retail Front"
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              disabled={isPending}
-            />
-          </div>
-
-          <div className={styles.fieldGroup}>
-            <label className={styles.label}>Group Color Tag</label>
-            <div className={styles.colorPickerGrid}>
-              {PRESET_COLORS.map((c) => {
-                const isSelected = groupColor === c
-                return (
-                  <div
-                    key={c}
-                    className={`${styles.colorOption} ${
-                      isSelected ? styles.colorOptionSelected : ''
-                    }`}
-                    style={{
-                      backgroundColor: c,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    onClick={() => setGroupColor(c)}
-                  >
-                    {isSelected && <Check size={14} style={{ color: '#fff' }} />}
+            <div className={styles.inputWithColorContainer}>
+              <input
+                type="text"
+                maxLength={60}
+                className={styles.inputWithColor}
+                placeholder="E.g., Airport Terminal, Retail Front"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                disabled={isPending}
+              />
+              <button
+                type="button"
+                className={styles.colorIndicatorDot}
+                style={{ backgroundColor: groupColor }}
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                title="Select Group Color"
+                aria-label="Select Group Color"
+              />
+              {showColorPicker && (
+                <div className={styles.colorPickerPopover} ref={colorPickerRef}>
+                  <div className={styles.popoverHeader}>
+                    <span className={styles.popoverTitle}>Select Color</span>
+                    <button 
+                      type="button" 
+                      className={styles.popoverCloseBtn} 
+                      onClick={() => setShowColorPicker(false)}
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
-                )
-              })}
+                  
+                  <div className={styles.predefinedColorsGrid}>
+                    {PRESET_COLORS.map((c) => {
+                      const isSelected = groupColor === c
+                      return (
+                        <button
+                          type="button"
+                          key={c}
+                          className={`${styles.colorOptionBubble} ${isSelected ? styles.colorOptionBubbleSelected : ''}`}
+                          style={{ backgroundColor: c }}
+                          onClick={() => {
+                            setGroupColor(c)
+                            setShowColorPicker(false)
+                          }}
+                        >
+                          {isSelected && <Check size={10} style={{ color: c === '#ffffff' ? '#000' : '#fff' }} />}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  
+                  <div className={styles.customColorSection}>
+                    <label className={styles.customColorLabel}>Custom Color</label>
+                    <div className={styles.customColorRow}>
+                      <input
+                        type="color"
+                        className={styles.customColorInput}
+                        value={groupColor}
+                        onChange={(e) => setGroupColor(e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        className={styles.customColorHexInput}
+                        value={groupColor}
+                        onChange={(e) => setGroupColor(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

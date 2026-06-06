@@ -1,4 +1,4 @@
-import React, { useState, useTransition, useRef } from 'react'
+import React, { useState, useEffect, useTransition, useRef } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import styles from './Modal.module.css'
 import { claimDevice } from './actions'
@@ -15,10 +15,18 @@ export function PairModal({
   onSuccess,
 }: PairModalProps) {
   const [code, setCode] = useState('')
-  const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const overlayRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    // Small timeout ensures it runs after modal mount and animation transitions commit
+    const timer = setTimeout(() => {
+      inputRef.current?.focus()
+    }, 80)
+    return () => clearTimeout(timer)
+  }, [])
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose()
@@ -28,7 +36,7 @@ export function PairModal({
     e.preventDefault()
     setError(null)
     startTransition(async () => {
-      const result = await claimDevice(teamSlug, code, name)
+      const result = await claimDevice(teamSlug, code, '')
       if (result.success) {
         onSuccess()
       } else {
@@ -49,7 +57,7 @@ export function PairModal({
           <div>
             <h2 id="modal-title" className={styles.modalTitle}>Add Screen</h2>
             <p className={styles.modalSubtitle}>
-              Open the NuExis player app on your screen and enter the 6-digit code shown.
+              Follow the instructions below to launch the player app and pair your screen.
             </p>
           </div>
           <button
@@ -66,6 +74,7 @@ export function PairModal({
           <div className={styles.fieldGroup}>
             <label htmlFor="pairing-code" className={styles.label}>Pairing Code</label>
             <input
+              ref={inputRef}
               id="pairing-code"
               className={styles.codeInput}
               type="text"
@@ -76,26 +85,54 @@ export function PairModal({
               onChange={(e) => {
                 const val = e.target.value.replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6)
                 setCode(val)
-                if (val.length === 6) {
-                  document.getElementById('screen-name')?.focus()
-                }
               }}
               autoFocus
               autoComplete="off"
             />
           </div>
 
-          <div className={styles.fieldGroup}>
-            <label htmlFor="screen-name" className={styles.label}>Screen Name (Optional)</label>
-            <input
-              id="screen-name"
-              className={styles.input}
-              type="text"
-              placeholder="e.g. Lobby Display, Reception TV"
-              maxLength={80}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+          <div className={styles.instructionSection}>
+            <p className={styles.instructionText}>
+              Open the NuExis player app on your screen to get your 6-digit pairing code. Choose a platform below to launch or download:
+            </p>
+            <div className={styles.platformGrid}>
+              <div className={`${styles.platformCard} ${styles.platformCardComingSoon}`}>
+                <div className={styles.platformIcon}>🤖</div>
+                <div className={styles.platformInfo}>
+                  <div className={styles.platformName}>Android</div>
+                  <div className={styles.platformStatus}>Coming Soon</div>
+                </div>
+              </div>
+
+              <a 
+                href="/player" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className={`${styles.platformCard} ${styles.platformCardActive}`}
+              >
+                <div className={styles.platformIcon}>🌐</div>
+                <div className={styles.platformInfo}>
+                  <div className={styles.platformName}>Web Player</div>
+                  <div className={styles.platformStatusActive}>Open Player ↗</div>
+                </div>
+              </a>
+
+              <div className={`${styles.platformCard} ${styles.platformCardComingSoon}`}>
+                <div className={styles.platformIcon}>🪟</div>
+                <div className={styles.platformInfo}>
+                  <div className={styles.platformName}>Windows</div>
+                  <div className={styles.platformStatus}>Coming Soon</div>
+                </div>
+              </div>
+
+              <div className={`${styles.platformCard} ${styles.platformCardComingSoon}`}>
+                <div className={styles.platformIcon}>🍎</div>
+                <div className={styles.platformInfo}>
+                  <div className={styles.platformName}>macOS</div>
+                  <div className={styles.platformStatus}>Coming Soon</div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {error && (

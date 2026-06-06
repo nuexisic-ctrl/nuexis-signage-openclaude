@@ -229,3 +229,97 @@ select.input {
   border-color: var(--primary);
   color: var(--primary);
 }
+
+.instructionSection {
+  margin-top: 14px;
+  margin-bottom: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--outline-variant);
+}
+
+.instructionText {
+  font-size: 0.85rem;
+  color: var(--on-surface-muted);
+  line-height: 1.55;
+  margin: 0 0 14px 0;
+}
+
+.platformGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.platformCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--on-surface);
+  transition: all 150ms ease;
+}
+
+.platformCardActive {
+  cursor: pointer;
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--outline-variant));
+  background: color-mix(in srgb, var(--primary) 4%, var(--surface-low));
+}
+
+.platformCardActive:hover {
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface-high));
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.platformCardComingSoon {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: var(--surface-lowest);
+  border-style: dashed;
+}
+
+.platformIcon {
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--surface-medium);
+  flex-shrink: 0;
+}
+
+.platformInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.platformName {
+  font-weight: 700;
+  font-size: 0.825rem;
+  color: var(--on-surface);
+}
+
+.platformStatus {
+  font-size: 0.7rem;
+  color: var(--on-surface-subtle);
+}
+
+.platformStatusActive {
+  font-size: 0.7rem;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+@media (max-width: 480px) {
+  .platformGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

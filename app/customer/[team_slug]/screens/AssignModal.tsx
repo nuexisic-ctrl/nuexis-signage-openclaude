@@ -2,7 +2,7 @@ import React, { useState, useTransition, useRef, useEffect } from 'react'
 import { AlertTriangle, X, Tv } from 'lucide-react'
 import styles from './Modal.module.css'
 import { Device, Asset, Playlist } from './types'
-import { updateDeviceAssignment, AssignmentData } from './actions'
+import { updateDeviceAssignment, updateDeviceName, AssignmentData } from './actions'
 import { AssetBrowserModal } from './AssetBrowserModal'
 import { PlaylistBrowserModal } from './PlaylistBrowserModal'
 import { modalStack } from '@/lib/utils/modalStack'
@@ -34,6 +34,7 @@ export function AssignModal({
   onSuccess,
   onPreview,
 }: AssignModalProps) {
+  const [screenName, setScreenName] = useState(device.name || '')
   const [contentType, setContentType] = useState<'Asset' | 'Playlist' | 'Schedule' | null>(
     (device.content_type as 'Asset' | 'Playlist' | 'Schedule' | null) || null
   )
@@ -129,6 +130,16 @@ export function AssignModal({
       localStorage.setItem(`scale_mode_${device.id}`, scaleMode)
     }
     startTransition(async () => {
+      const trimmedName = screenName.trim()
+      const originalName = (device.name || '').trim()
+      if (trimmedName && trimmedName !== originalName) {
+        const nameResult = await updateDeviceName(teamSlug, device.id, trimmedName)
+        if (!nameResult.success) {
+          setError(nameResult.error)
+          return
+        }
+      }
+
       const data: AssignmentData = {
         content_type: contentType,
         asset_id: contentType === 'Asset' ? (assetId || null) : null,
@@ -162,6 +173,19 @@ export function AssignModal({
           </div>
 
           <form className={styles.form} onSubmit={handleSubmit}>
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>Screen Name</label>
+              <input
+                type="text"
+                maxLength={60}
+                className={styles.input}
+                value={screenName}
+                onChange={(e) => setScreenName(e.target.value)}
+                disabled={isPending}
+                placeholder="E.g., Reception Monitor"
+              />
+            </div>
+
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Content Type</label>
               <CustomSelect
@@ -295,10 +319,10 @@ export function AssignModal({
               <button 
                 className={styles.submitBtn} 
                 type="submit" 
-                disabled={isPending || !contentType || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}
+                disabled={isPending || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}
                 style={{ flex: 1.2 }}
               >
-                {isPending ? 'Saving…' : 'Save Assignment'}
+                {isPending ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
           </form>

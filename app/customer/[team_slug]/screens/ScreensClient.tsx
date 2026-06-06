@@ -57,6 +57,7 @@ interface Props {
   totalScreens?: number
   currentPage?: number
   pageSize?: number
+  historicalPlaytime?: number
 }
 
 export default function ScreensClient({
@@ -67,6 +68,7 @@ export default function ScreensClient({
   memberships: initialMemberships = [],
   teamSlug,
   teamId,
+  historicalPlaytime = 0,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -109,6 +111,7 @@ export default function ScreensClient({
   const [groups, setGroups] = useState<any[]>(initialGroups)
   const [memberships, setMemberships] = useState<any[]>(initialMemberships)
   const [editGroup, setEditGroup] = useState<any | null>(null)
+  const [historicalPlaytimeState, setHistoricalPlaytimeState] = useState(historicalPlaytime)
 
 
   // Use Custom Hook for device presence & fallback polling
@@ -189,7 +192,7 @@ export default function ScreensClient({
       const from = (currentPage - 1) * pageSize
       const to = from + pageSize - 1
 
-      const [devicesRes, groupsRes, membershipsRes] = await Promise.all([
+      const [devicesRes, groupsRes, membershipsRes, teamRes] = await Promise.all([
         supabase
           .from('devices')
           .select(DEVICE_SELECT_FIELDS)
@@ -204,7 +207,12 @@ export default function ScreensClient({
         supabase
           .from('screen_group_members')
           .select('group_id, device_id, is_primary')
-          .eq('team_id', teamId)
+          .eq('team_id', teamId),
+        supabase
+          .from('teams')
+          .select('historical_playtime_seconds')
+          .eq('id', teamId)
+          .single()
       ])
 
       if (!devicesRes.error && devicesRes.data) {
@@ -218,6 +226,10 @@ export default function ScreensClient({
 
       if (!membershipsRes.error && membershipsRes.data) {
         setMemberships(membershipsRes.data)
+      }
+
+      if (teamRes && !teamRes.error && teamRes.data) {
+        setHistoricalPlaytimeState(Number(teamRes.data.historical_playtime_seconds) || 0)
       }
 
       if (!devicesRes.error && devicesRes.data) {
@@ -307,7 +319,7 @@ export default function ScreensClient({
 
   const onlineCount = devices.filter(d => getLiveStatus(d) === 'online').length;
   const offlineCount = devices.length - onlineCount;
-  const totalPlaytimeSeconds = devices.reduce((acc, d) => acc + (Number(d.total_playtime_seconds) || 0), 0);
+  const totalPlaytimeSeconds = historicalPlaytimeState + devices.reduce((acc, d) => acc + (Number(d.total_playtime_seconds) || 0), 0);
 
   const totalPages = Math.ceil(filteredDevices.length / pageSize) || 1
   const hasNextPage = currentPage < totalPages
@@ -336,7 +348,7 @@ export default function ScreensClient({
           <div className={styles.titleContainer}>
             <h1 className={styles.pageTitle}>Screens</h1>
             <button
-              className={styles.headerRefreshBtn}
+              className={`${styles.headerRefreshBtn} ${styles.mobileOnlyRefreshBtn}`}
               onClick={handleRefresh}
               disabled={isRefreshing}
               aria-label="Refresh Status"
@@ -351,6 +363,16 @@ export default function ScreensClient({
           </p>
         </div>
         <div className={styles.topbarActions}>
+          <button
+            type="button"
+            className={`${styles.topbarActionBtn} ${styles.desktopOnlyRefreshBtn} ${styles.iconOnlyRefreshBtn}`}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh Status"
+            title="Refresh Status"
+          >
+            <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
+          </button>
           <button
             type="button"
             className={styles.topbarActionBtn}

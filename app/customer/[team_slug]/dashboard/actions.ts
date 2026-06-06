@@ -126,7 +126,7 @@ const fetchRawDashboardData = cache(async (teamSlug: string) => {
   const teamId = await getTeamId(supabase, teamSlug)
   if (!teamId) return null
 
-  const [devicesRes, playlistsRes, assetsRes, claimAttemptsRes] = await Promise.all([
+  const [devicesRes, playlistsRes, assetsRes, claimAttemptsRes, teamRes] = await Promise.all([
     supabase
       .from('devices')
       .select('id, name, status, last_seen_at, content_type, asset_id, playlist_id, total_playtime_seconds, created_at, orientation')
@@ -148,7 +148,12 @@ const fetchRawDashboardData = cache(async (teamSlug: string) => {
       .select('id, attempted_at')
       .gte('attempted_at', new Date(Date.now() - 60 * 60 * 1000).toISOString())
       .order('attempted_at', { ascending: false })
-      .limit(5)
+      .limit(5),
+    supabase
+      .from('teams')
+      .select('historical_playtime_seconds')
+      .eq('id', teamId)
+      .single()
   ])
 
   return {
@@ -156,7 +161,8 @@ const fetchRawDashboardData = cache(async (teamSlug: string) => {
     devices: devicesRes.data || [],
     playlists: playlistsRes.data || [],
     assets: assetsRes.data || [],
-    claimAttempts: claimAttemptsRes.data || []
+    claimAttempts: claimAttemptsRes.data || [],
+    historicalPlaytimeSeconds: Number(teamRes.data?.historical_playtime_seconds) || 0
   }
 })
 
@@ -164,12 +170,12 @@ export async function getDashboardStats(teamSlug: string): Promise<DashboardStat
   const data = await fetchRawDashboardData(teamSlug)
   if (!data) return null
 
-  const { devices } = data
+  const { devices, historicalPlaytimeSeconds } = data
   const total = devices.length
   const active = devices.filter(d => d.status === 'online').length
   const offline = devices.filter(d => d.status === 'offline').length
   const pairing = devices.filter(d => d.status === 'pairing').length
-  const totalPlaytime = devices.reduce((sum, d) => sum + Number(d.total_playtime_seconds || 0), 0)
+  const totalPlaytime = historicalPlaytimeSeconds + devices.reduce((sum, d) => sum + Number(d.total_playtime_seconds || 0), 0)
 
   const now = Date.now()
   const totalPossibleSeconds = devices.reduce((sum, d) => {
@@ -311,8 +317,8 @@ export async function getAnalytics(teamSlug: string): Promise<AnalyticsOverview>
     return { totalPlaytimeSeconds: 0, formattedPlaytime: '0s', impressions: { available: false }, topContent: { available: false }, topSkills: { available: false } }
   }
 
-  const { devices } = data
-  const totalPlaytimeSeconds = devices.reduce((sum, d) => sum + Number(d.total_playtime_seconds || 0), 0)
+  const { devices, historicalPlaytimeSeconds } = data
+  const totalPlaytimeSeconds = historicalPlaytimeSeconds + devices.reduce((sum, d) => sum + Number(d.total_playtime_seconds || 0), 0)
 
   const hours = Math.floor(totalPlaytimeSeconds / 3600)
   const minutes = Math.floor((totalPlaytimeSeconds % 3600) / 60)
@@ -387,12 +393,12 @@ export async function getUptimeHistory(teamSlug: string): Promise<UptimeDataPoin
   const data = await fetchRawDashboardData(teamSlug)
   if (!data || data.devices.length === 0) return []
 
-  const { devices } = data
+  const { devices, historicalPlaytimeSeconds } = data
   const days = generateDaysArray(7)
   const now = Date.now()
 
   const totalLifetime = devices.reduce((sum, d) => sum + (now - new Date(d.created_at).getTime()), 0) / 1000
-  const totalPlaytime = devices.reduce((sum, d) => sum + Number(d.total_playtime_seconds || 0), 0)
+  const totalPlaytime = historicalPlaytimeSeconds + devices.reduce((sum, d) => sum + Number(d.total_playtime_seconds || 0), 0)
 
   return days.map((date, i) => {
     const playtimePortion = totalPlaytime * (i + 1) / 7
