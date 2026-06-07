@@ -60,6 +60,7 @@ export default async function ScreensPage({ params }: Props) {
           .from('assets')
           .select('id, file_name, file_path, mime_type, size_bytes, created_at')
           .eq('team_id', profile.team_id)
+          .neq('mime_type', 'application/x-folder')
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     profile?.team_id

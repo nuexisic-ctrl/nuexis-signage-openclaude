@@ -286,10 +286,55 @@ export function ScreenPreviewModal({
     if (!itemPath) return null
 
     if (itemMime === 'application/x-widget-youtube') {
-      const videoId = itemPath.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || ''
+      let youtubeUrl = itemPath
+      let ccEnabled = false
+      try {
+        const parsed = JSON.parse(itemPath)
+        if (parsed && typeof parsed === 'object' && parsed.url) {
+          youtubeUrl = parsed.url
+          ccEnabled = !!parsed.ccEnabled
+        }
+      } catch {}
+
+      const videoId = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || ''
+      const ccParam = ccEnabled ? '&cc_load_policy=1' : ''
       return (
         <iframe
-          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0`}
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0${ccParam}`}
+          style={{ ...mediaStyle, border: 'none', pointerEvents: 'none' }}
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+        />
+      )
+    }
+
+    if (itemMime === 'application/x-widget-youtube-playlist') {
+      let playlistUrl = itemPath
+      let ccEnabled = false
+      try {
+        const parsed = JSON.parse(itemPath)
+        if (parsed && typeof parsed === 'object') {
+          playlistUrl = parsed.url || ''
+          ccEnabled = !!parsed.ccEnabled
+        }
+      } catch {}
+
+      let playlistId = ''
+      const listParam = playlistUrl.match(/[?&]list=([^#\&\?]+)/)
+      if (listParam) {
+        playlistId = listParam[1]
+      } else {
+        const trimmed = playlistUrl.trim()
+        if (/^[A-Za-z0-9_-]{18,40}$/.test(trimmed)) {
+          playlistId = trimmed
+        }
+      }
+
+      const ccParam = ccEnabled ? '&cc_load_policy=1' : ''
+      return (
+        <iframe
+          src={`https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&mute=1&loop=1&controls=0${ccParam}`}
           style={{ ...mediaStyle, border: 'none', pointerEvents: 'none' }}
           allow="autoplay; encrypted-media"
           allowFullScreen

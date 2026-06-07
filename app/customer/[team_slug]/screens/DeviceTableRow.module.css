@@ -32,9 +32,9 @@
   font-size: 0.94rem;
   font-weight: 800;
   color: var(--on-surface);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  min-width: 0;
+  width: 100%;
 }
 
 .cellId {
@@ -68,10 +68,10 @@
 }
 
 .playlistCellText {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-weight: 600;
+  display: flex;
+  min-width: 0;
+  width: 100%;
 }
 
 .playlistCellEmptyText {

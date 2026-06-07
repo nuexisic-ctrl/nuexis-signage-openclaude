@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import PlaylistEngine from './PlaylistEngine'
 import styles from './player.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
@@ -82,16 +82,62 @@ export default function PairedView({
   let content = null
   if (contentType === 'Asset' && assetUrl) {
     if (mimeType === 'application/x-widget-youtube') {
-      const videoId = assetUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || ''
+      let youtubeUrl = assetUrl
+      let ccEnabled = false
+      try {
+        const parsed = JSON.parse(assetUrl)
+        if (parsed && typeof parsed === 'object' && parsed.url) {
+          youtubeUrl = parsed.url
+          ccEnabled = !!parsed.ccEnabled
+        }
+      } catch {}
+
+      const videoId = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || ''
+      const ccParam = ccEnabled ? '&cc_load_policy=1' : ''
       content = (
         <iframe
           key={assetUrl}
-          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=0`}
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=0${ccParam}`}
           style={{ ...mediaStyle, border: 'none', pointerEvents: 'none' }}
           allow="autoplay; encrypted-media"
           allowFullScreen
           sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
         />
+      )
+    } else if (mimeType === 'application/x-widget-youtube-playlist') {
+      let playlistUrl = assetUrl
+      let ccEnabled = false
+      let shuffleEnabled = false
+      try {
+        const parsed = JSON.parse(assetUrl)
+        if (parsed && typeof parsed === 'object') {
+          playlistUrl = parsed.url || ''
+          ccEnabled = !!parsed.ccEnabled
+          shuffleEnabled = !!parsed.shuffleEnabled
+        }
+      } catch {}
+
+      let playlistId = ''
+      const listParam = playlistUrl.match(/[?&]list=([^#\&\?]+)/)
+      if (listParam) {
+        playlistId = listParam[1]
+      } else {
+        const trimmed = playlistUrl.trim()
+        if (/^[A-Za-z0-9_-]{18,40}$/.test(trimmed)) {
+          playlistId = trimmed
+        }
+      }
+
+      content = (
+        <div style={{ ...mediaStyle, overflow: 'hidden' }}>
+          <YouTubePlaylistPlayer
+            playlistId={playlistId}
+            shuffle={shuffleEnabled}
+            ccEnabled={ccEnabled}
+            isMuted={isMuted}
+            isActive={true}
+          />
+        </div>
       )
     } else if (mimeType === 'application/x-widget-remote-url') {
       content = (
@@ -338,5 +384,109 @@ export default function PairedView({
         </div>
       )}
     </div>
+  )
+}
+
+// ── YOUTUBE PLAYLIST PLAYER ENGINE COMPONENT ──────────────────────────────
+
+interface YouTubePlaylistPlayerProps {
+  playlistId: string
+  shuffle: boolean
+  ccEnabled: boolean
+  isMuted: boolean
+  isActive: boolean
+}
+
+function YouTubePlaylistPlayer({
+  playlistId,
+  shuffle,
+  ccEnabled,
+  isMuted,
+  isActive
+}: YouTubePlaylistPlayerProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const playerRef = useRef<any>(null)
+  const [apiReady, setApiReady] = useState(false)
+  const playerId = useRef(`yt-player-${Math.random().toString(36).substr(2, 9)}`)
+
+  useEffect(() => {
+    if ((window as any).YT && (window as any).YT.Player) {
+      setApiReady(true)
+      return
+    }
+
+    const previousCallback = (window as any).onYouTubeIframeAPIReady
+    (window as any).onYouTubeIframeAPIReady = () => {
+      if (previousCallback) previousCallback()
+      setApiReady(true)
+    }
+
+    const tag = document.querySelector('script[src="https://www.youtube.com/iframe_api"]')
+    if (!tag) {
+      const script = document.createElement('script')
+      script.src = 'https://www.youtube.com/iframe_api'
+      document.body.appendChild(script)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!apiReady || !containerRef.current) return
+
+    if (playerRef.current) {
+      try {
+        playerRef.current.destroy()
+      } catch (err) {
+        console.error('Error destroying YT player:', err)
+      }
+      playerRef.current = null
+    }
+
+    const placeholder = document.createElement('div')
+    placeholder.id = playerId.current
+    containerRef.current.innerHTML = ''
+    containerRef.current.appendChild(placeholder)
+
+    const playerVars: any = {
+      listType: 'playlist',
+      list: playlistId,
+      autoplay: isActive ? 1 : 0,
+      mute: isMuted ? 1 : 0,
+      controls: 0,
+      loop: 1,
+      cc_load_policy: ccEnabled ? 1 : 0,
+      rel: 0,
+      origin: typeof window !== 'undefined' ? window.location.origin : undefined
+    }
+
+    playerRef.current = new (window as any).YT.Player(playerId.current, {
+      height: '100%',
+      width: '100%',
+      playerVars,
+      events: {
+        onReady: (event: any) => {
+          if (shuffle) {
+            event.target.setShuffle(true)
+            if (isActive) {
+              event.target.playVideo()
+            }
+          }
+        }
+      }
+    })
+
+    return () => {
+      if (playerRef.current) {
+        try {
+          playerRef.current.destroy()
+        } catch (err) {
+          console.error('Error destroying YT player in cleanup:', err)
+        }
+        playerRef.current = null
+      }
+    }
+  }, [apiReady, playlistId, shuffle, ccEnabled, isMuted, isActive])
+
+  return (
+    <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
   )
 }

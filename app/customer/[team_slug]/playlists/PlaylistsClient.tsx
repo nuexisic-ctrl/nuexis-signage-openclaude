@@ -530,7 +530,9 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                             onChange={(val) => handleUpdateItem(idx, 'asset_id', val)}
                             options={[
                               { value: '', label: 'Select Asset...' },
-                              ...assets.map(a => ({ value: a.id, label: a.file_name }))
+                              ...assets
+                                .filter(a => a.mime_type !== 'application/x-folder')
+                                .map(a => ({ value: a.id, label: a.file_name }))
                             ]}
                             className={styles.itemSelectCustom}
                           />

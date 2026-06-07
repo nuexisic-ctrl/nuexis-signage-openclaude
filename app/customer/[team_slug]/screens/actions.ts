@@ -117,6 +117,32 @@ export async function updateDeviceAssignment(
     return { success: false, error: err.message }
   }
 
+  // Server-side validation of content type assignment
+  if (data.content_type === 'Asset' && data.asset_id) {
+    const { data: asset, error: assetError } = await supabase
+      .from('assets')
+      .select('id, team_id, mime_type')
+      .eq('id', data.asset_id)
+      .single()
+
+    if (assetError || !asset || asset.team_id !== teamId) {
+      return { success: false, error: 'Invalid or unauthorized asset selected.' }
+    }
+    if (asset.mime_type === 'application/x-folder') {
+      return { success: false, error: 'Folders cannot be assigned to screens.' }
+    }
+  } else if (data.content_type === 'Playlist' && data.playlist_id) {
+    const { data: playlist, error: playlistError } = await supabase
+      .from('playlists')
+      .select('id, team_id')
+      .eq('id', data.playlist_id)
+      .single()
+
+    if (playlistError || !playlist || playlist.team_id !== teamId) {
+      return { success: false, error: 'Invalid or unauthorized playlist selected.' }
+    }
+  }
+
   const assignmentQuery = supabase
     .from('devices')
     .update({

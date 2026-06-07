@@ -246,6 +246,10 @@ export async function getSignedMediaUrl(
   secret: string,
   expiresIn: number = 3600
 ) {
+  if (filePath === 'folder') {
+    return ''
+  }
+
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
     return filePath
   }

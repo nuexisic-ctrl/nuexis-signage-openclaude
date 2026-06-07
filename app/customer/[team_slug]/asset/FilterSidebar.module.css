@@ -126,6 +126,21 @@
   box-sizing: border-box;
 }
 
+.filterInput[type="date"] {
+  padding-right: 12px;
+}
+
+.filterInput[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+}
+
+.filterInput[type="date"]::-webkit-inner-spin-button {
+  display: none;
+  -webkit-appearance: none;
+}
+
 .filterSelect {
   -webkit-appearance: none;
   appearance: none;

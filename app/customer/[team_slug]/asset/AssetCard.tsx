@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
 import styles from './AssetCard.module.css'
+import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 
 const YoutubeIcon = ({ size = 20, style }: { size?: number; style?: React.CSSProperties }) => (
   <svg 
@@ -169,7 +170,7 @@ export function AssetCard({
         ) : isWidget(asset.mime_type) ? (
           <div className={styles.videoThumbWrapper} style={{ position: 'relative', width: '100%', height: '100%' }}>
              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-low)' }}>
-                {asset.mime_type === 'application/x-widget-youtube' ? (
+                {asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? (
                   <YoutubeIcon size={72} style={{ stroke: '#ff0000', color: '#ff0000' }} />
                 ) : asset.mime_type === 'application/x-widget-remote-url' ? (
                   <Link size={72} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
@@ -199,7 +200,9 @@ export function AssetCard({
 
       <div className={styles.assetInfo}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-          <p className={styles.assetName} title={asset.file_name}>{asset.file_name}</p>
+          <p className={styles.assetName}>
+            <FilenameTruncator filename={asset.file_name} />
+          </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {!isFolder && (
               <button
@@ -234,9 +237,15 @@ export function AssetCard({
                 style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 100000 }}
                 onClick={e => e.stopPropagation()}
               >
-                <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
-                  {isFolder ? t('Open') : t('Preview')}
-                </button>
+                {isWidget(asset.mime_type) && asset.mime_type !== 'application/x-widget-qrcode' ? (
+                  <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
+                    {t('Edit Widget')}
+                  </button>
+                ) : (
+                  <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
+                    {isFolder ? t('Open') : t('Preview')}
+                  </button>
+                )}
                 {!isWidget(asset.mime_type) && !isFolder && (
                   <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
                     {t('Download')}

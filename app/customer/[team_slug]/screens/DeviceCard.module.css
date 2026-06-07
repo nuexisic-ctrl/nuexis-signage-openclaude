@@ -58,7 +58,8 @@
   color: var(--on-surface);
   margin: 0;
   line-height: 1.35;
-  overflow-wrap: anywhere;
+  display: flex;
+  width: 100%;
 }
 
 .statusAndMenu {
@@ -93,9 +94,8 @@
   min-width: 0;
   font-size: 0.86rem;
   color: var(--on-surface);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: flex;
+  width: 100%;
 }
 
 .moreMenuWrapper {

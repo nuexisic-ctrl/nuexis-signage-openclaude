@@ -33,6 +33,27 @@ interface CountUpWidgetModalProps {
     }
   }) => void
   isSubmitting: boolean
+  initialData?: {
+    name: string
+    text?: string
+    startTime?: string
+    endTime?: string
+    endMessage?: string
+    timerStyle?: string
+    daysOnly?: boolean
+    theme?: string
+    themeSettings?: {
+      primaryColor?: string
+      secondaryColor?: string
+      backgroundColor?: string
+      textColor?: string
+      backgroundImage?: string
+    }
+    advancedSettings?: {
+      showDate?: boolean
+      dateFormat?: string
+    }
+  }
 }
 
 const NAME_MAX_LENGTH = 100
@@ -103,35 +124,37 @@ export default function CountUpWidgetModal({
   onClose,
   onBack,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  initialData,
 }: CountUpWidgetModalProps) {
-  const [name, setName] = useState('')
+  const isEditMode = !!initialData
+  const [name, setName] = useState(initialData?.name ?? '')
   const [nameError, setNameError] = useState('')
 
   // Core widget fields
-  const [text, setText] = useState('Time Since Event')
-  const [timerStyle, setTimerStyle] = useState<TimerStyle>('card')
-  const [daysOnly, setDaysOnly] = useState(false)
-  const [theme, setTheme] = useState<ThemeOption>('dark')
+  const [text, setText] = useState(initialData?.text ?? 'Time Since Event')
+  const [timerStyle, setTimerStyle] = useState<TimerStyle>((initialData?.timerStyle as TimerStyle) ?? 'card')
+  const [daysOnly, setDaysOnly] = useState(initialData?.daysOnly ?? false)
+  const [theme, setTheme] = useState<ThemeOption>((initialData?.theme as ThemeOption) ?? 'dark')
 
   // Collapsible section visibility states
   const [showStyle, setShowStyle] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   // Theme Settings
-  const [primaryColor, setPrimaryColor] = useState('#38bdf8')
-  const [secondaryColor, setSecondaryColor] = useState('#818cf8')
-  const [backgroundColor, setBackgroundColor] = useState('#090d16')
-  const [textColor, setTextColor] = useState('#f8fafc')
-  const [backgroundImage, setBackgroundImage] = useState('')
+  const [primaryColor, setPrimaryColor] = useState(initialData?.themeSettings?.primaryColor ?? '#38bdf8')
+  const [secondaryColor, setSecondaryColor] = useState(initialData?.themeSettings?.secondaryColor ?? '#818cf8')
+  const [backgroundColor, setBackgroundColor] = useState(initialData?.themeSettings?.backgroundColor ?? '#090d16')
+  const [textColor, setTextColor] = useState(initialData?.themeSettings?.textColor ?? '#f8fafc')
+  const [backgroundImage, setBackgroundImage] = useState(initialData?.themeSettings?.backgroundImage ?? '')
 
   // Advanced (UI-only, no JSON editor)
-  const [showDate, setShowDate] = useState(false)
-  const [dateFormat, setDateFormat] = useState<DateFormat>('January 01, 2024')
+  const [showDate, setShowDate] = useState(initialData?.advancedSettings?.showDate ?? false)
+  const [dateFormat, setDateFormat] = useState<DateFormat>((initialData?.advancedSettings?.dateFormat as DateFormat) ?? 'January 01, 2024')
 
-  // Optional end message
-  const [endEnabled, setEndEnabled] = useState(false)
-  const [endMessage, setEndMessage] = useState('Milestone reached!')
+  // Optional end message — pre-enable if we have initialData with an endMessage
+  const [endEnabled, setEndEnabled] = useState(!!(initialData?.endMessage))
+  const [endMessage, setEndMessage] = useState(initialData?.endMessage ?? 'Milestone reached!')
 
   // Hover preview overrides
   const [previewOverride, setPreviewOverride] = useState<{
@@ -140,7 +163,15 @@ export default function CountUpWidgetModal({
   }>({})
 
   // Start time picker
-  const [initialStartTime] = useState(getDefaultStartTimeParts)
+  const [initialStartTime] = useState(() => {
+    if (initialData?.startTime) {
+      try {
+        const d = new Date(initialData.startTime)
+        return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes(), second: d.getSeconds(), iso: initialData.startTime }
+      } catch { /* fall through */ }
+    }
+    return getDefaultStartTimeParts()
+  })
   const [showStartPicker, setShowStartPicker] = useState(false)
   const [startYear, setStartYear] = useState(initialStartTime.year)
   const [startMonth, setStartMonth] = useState(initialStartTime.month)
@@ -152,7 +183,15 @@ export default function CountUpWidgetModal({
   const startPickerRef = useRef<HTMLDivElement>(null)
 
   // End time picker
-  const [initialEndTime] = useState(getDefaultEndTimeParts)
+  const [initialEndTime] = useState(() => {
+    if (initialData?.endTime) {
+      try {
+        const d = new Date(initialData.endTime)
+        return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes(), second: d.getSeconds(), iso: initialData.endTime }
+      } catch { /* fall through */ }
+    }
+    return getDefaultEndTimeParts()
+  })
   const [showEndPicker, setShowEndPicker] = useState(false)
   const [endYear, setEndYear] = useState(initialEndTime.year)
   const [endMonth, setEndMonth] = useState(initialEndTime.month)
@@ -401,8 +440,11 @@ export default function CountUpWidgetModal({
               <Timer size={22} color="var(--primary)" />
               <div>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)', fontWeight: 600 }}>
-                  Create CountUp Widget
+                  {isEditMode ? 'Edit CountUp Widget' : 'Create CountUp Widget'}
                 </h2>
+                {isEditMode && (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', padding: '2px 8px', borderRadius: '999px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', fontFamily: 'var(--font-label)', display: 'inline-block', marginTop: '4px' }}>EDITING</span>
+                )}
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>
                   Display time elapsed since a chosen start time.
                 </p>
@@ -412,24 +454,9 @@ export default function CountUpWidgetModal({
           </div>
 
           {/* Body */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            flex: 1,
-            minHeight: 0,
-            background: 'var(--surface-lowest)',
-            overflowY: 'auto'
-          }}>
+          <div className={styles.splitViewBody}>
             {/* Left Form Panel */}
-            <form onSubmit={handleSubmit} style={{
-              flex: '1 1 480px',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '18px',
-              borderRight: '1px solid var(--outline-variant)'
-            }}>
+            <form onSubmit={handleSubmit} className={styles.splitViewForm}>
               {/* Widget Name */}
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>
@@ -702,7 +729,7 @@ export default function CountUpWidgetModal({
                   className={styles.collapsibleHeader}
                   onClick={() => setShowStyle(!showStyle)}
                 >
-                  <span>Theme Settings*</span>
+                  <span>Theme Settings</span>
                   <span>{showStyle ? '▲' : '▼'}</span>
                 </div>
                 {showStyle && (
@@ -797,7 +824,7 @@ export default function CountUpWidgetModal({
                   className={styles.collapsibleHeader}
                   onClick={() => setShowAdvanced(!showAdvanced)}
                 >
-                  <span>Advanced Settings*</span>
+                  <span>Advanced Settings</span>
                   <span>{showAdvanced ? '▲' : '▼'}</span>
                 </div>
                 {showAdvanced && (
@@ -1034,16 +1061,7 @@ export default function CountUpWidgetModal({
             </form>
 
             {/* Right Preview Panel */}
-            <div style={{
-              flex: '1 1 580px',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              background: 'rgba(0, 0, 0, 0.02)',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
+            <div className={styles.splitViewPreview}>
               <div style={{ display: 'flex', gap: '8px', background: 'rgba(0, 0, 0, 0.05)', padding: '4px', borderRadius: '8px', zIndex: 10 }}>
                 <button
                   type="button"
@@ -1168,7 +1186,7 @@ export default function CountUpWidgetModal({
                 fontSize: '0.88rem'
               }}
             >
-              {isSubmitting ? 'Saving...' : 'Save Widget'}
+              {isSubmitting ? 'Saving...' : isEditMode ? 'Save Changes' : 'Save Widget'}
             </button>
           </div>
         </div>

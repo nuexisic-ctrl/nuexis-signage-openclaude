@@ -38,7 +38,7 @@ export function CreateFolderModal({
   parentFolderId?: string | null
 }) {
   const [name, setName] = useState('')
-  const [color, setColor] = useState('#78716c')
+  const [color, setColor] = useState('#000000')
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()

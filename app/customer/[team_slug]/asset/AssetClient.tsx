@@ -18,6 +18,7 @@ import { BulkDeleteModal } from './BulkDeleteModal'
 import { useAssetUpload } from './useAssetUpload'
 import { UploadPanel } from './UploadPanel'
 import { WidgetModalsContainer } from './WidgetModalsContainer'
+import { WidgetEditContainer } from './WidgetEditContainer'
 import { CreateFolderModal } from './CreateFolderModal'
 import { BulkMoveModal } from './BulkMoveModal'
 import { PushToScreenModal } from './PushToScreenModal'
@@ -47,6 +48,7 @@ export default function AssetClient({
 }: Props) {
   const [assets, setAssets] = useState<Asset[]>(initialAssets)
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
@@ -78,10 +80,10 @@ export default function AssetClient({
   
   // Advanced filters state variables
   const [filterType, setFilterType] = useState<string>('all')
-  const [filterDatePreset, setFilterDatePreset] = useState<string>('all')
+  const [filterDatePreset, setFilterDatePreset] = useState<string>('custom')
   const [filterStartDate, setFilterStartDate] = useState<string>('')
   const [filterEndDate, setFilterEndDate] = useState<string>('')
-  const [filterSizePreset, setFilterSizePreset] = useState<string>('all')
+  const [filterSizePreset, setFilterSizePreset] = useState<string>('custom')
   const [filterMinSize, setFilterMinSize] = useState<string>('')
   const [filterMaxSize, setFilterMaxSize] = useState<string>('')
 
@@ -306,6 +308,8 @@ export default function AssetClient({
   const handlePreviewAsset = (asset: Asset) => {
     if (asset.mime_type === 'application/x-folder') {
       router.push(`/customer/${teamSlug}/asset/folder/${asset.id}`)
+    } else if (isWidget(asset.mime_type) && asset.mime_type !== 'application/x-widget-qrcode') {
+      setEditingAsset(asset)
     } else {
       setPreviewAsset(asset)
     }
@@ -413,8 +417,13 @@ export default function AssetClient({
     return assets.filter(a => a.folder_id === folder.id && a.mime_type !== 'application/x-folder').length
   }, [assets, folder])
 
-  const isFiltersActive = isFilterSidebarOpen || filterType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
-  const showFilterDot = filterType !== 'all' || filterDatePreset !== 'all' || filterSizePreset !== 'all'
+  const hasActiveFilters = 
+    filterType !== 'all' ||
+    (filterDatePreset !== 'all' && (filterDatePreset !== 'custom' || filterStartDate !== '' || filterEndDate !== '')) ||
+    (filterSizePreset !== 'all' && (filterSizePreset !== 'custom' || filterMinSize !== '' || filterMaxSize !== ''))
+
+  const isFiltersActive = isFilterSidebarOpen || hasActiveFilters
+  const showFilterDot = hasActiveFilters
 
   return (
     <div className={styles.assetArea}>
@@ -873,6 +882,17 @@ export default function AssetClient({
         setShowSuccess={setShowSuccess}
         folderId={folder?.id}
       />
+
+      {editingAsset && (
+        <WidgetEditContainer
+          asset={editingAsset}
+          teamSlug={teamSlug}
+          onClose={() => setEditingAsset(null)}
+          onUpdated={(updatedAsset) => {
+            setAssets(prev => prev.map(a => a.id === updatedAsset.id ? updatedAsset : a))
+          }}
+        />
+      )}
 
       {renameModalAsset && (
         <RenameAssetModal

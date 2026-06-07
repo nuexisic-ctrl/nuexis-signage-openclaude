@@ -5,6 +5,7 @@ import { X, Search, Filter, LayoutGrid, List, ChevronLeft, ChevronRight, FileTex
 import styles from './AssetBrowserModal.module.css'
 import { FilterSidebar } from '../asset/FilterSidebar'
 import { modalStack } from '@/lib/utils/modalStack'
+import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 
 const YoutubeIcon = ({ size = 20, ...props }: { size?: number } & React.SVGProps<SVGSVGElement>) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -169,6 +170,9 @@ export function AssetBrowserModal({
   const filteredAssets = useMemo(() => {
     const now = new Date()
     return assets.filter((asset) => {
+      // Exclude folders
+      if (asset.mime_type === 'application/x-folder') return false
+
       // Search
       if (!asset.file_name.toLowerCase().includes(searchQuery.toLowerCase())) return false
 
@@ -447,7 +451,9 @@ export function AssetBrowserModal({
                             <div className={styles.fileIconWrapper}>
                               {renderTableIcon(asset)}
                             </div>
-                            <span className={styles.fileNameText}>{asset.file_name}</span>
+                            <span className={styles.fileNameText}>
+                              <FilenameTruncator filename={asset.file_name} />
+                            </span>
                           </div>
                         </td>
                         <td>
@@ -487,8 +493,8 @@ export function AssetBrowserModal({
                       <span className={`${styles.typeBadge} ${styles.cardTypeBadge}`}>
                         {badgeType}
                       </span>
-                      <h4 className={styles.cardTitle} title={asset.file_name}>
-                        {asset.file_name}
+                      <h4 className={styles.cardTitle}>
+                        <FilenameTruncator filename={asset.file_name} />
                       </h4>
                       <div className={styles.cardDetails}>
                         <span>{formatSize(asset.size_bytes)} • {formatDate(asset.created_at)}</span>

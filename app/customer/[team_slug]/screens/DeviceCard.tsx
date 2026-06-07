@@ -2,6 +2,7 @@ import React from 'react'
 import styles from './DeviceCard.module.css'
 import { Device, Asset, Playlist, LiveStatus } from './types'
 import { DeviceIcon, StatusBadge, formatLastSeen, getContentLabel, resolveDeviceContent } from './DeviceIcon'
+import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 
 export interface DeviceCardProps {
   device: Device
@@ -108,7 +109,9 @@ export function DeviceCard({
             <DeviceIcon name={device.name || ''} orientation={device.orientation} />
           </div>
           <div>
-            <h3 className={styles.deviceName}>{device.name || 'Unnamed Screen'}</h3>
+            <h3 className={styles.deviceName}>
+              <FilenameTruncator filename={device.name || 'Unnamed Screen'} />
+            </h3>
             {deviceGroups.length > 0 && (
               <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
                 {deviceGroups.map(g => (
@@ -177,7 +180,7 @@ export function DeviceCard({
             className={styles.deviceMetaValue} 
             style={(!resolvedDevice.asset_id && !resolvedDevice.playlist_id) ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}
           >
-            {getContentLabel(resolvedDevice, assets, playlists)} {isInherited && (
+            <FilenameTruncator filename={getContentLabel(resolvedDevice, assets, playlists)} /> {isInherited && (
               <span style={{ fontSize: '0.72rem', color: 'var(--primary)', opacity: 0.85, fontWeight: 500, fontStyle: 'italic', marginLeft: '4px' }}>
                 (Group)
               </span>

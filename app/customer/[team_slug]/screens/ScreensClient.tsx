@@ -158,7 +158,7 @@ export default function ScreensClient({
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false)
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterOrientation, setFilterOrientation] = useState<string>('all')
-  const [filterDatePreset, setFilterDatePreset] = useState<string>('all')
+  const [filterDatePreset, setFilterDatePreset] = useState<string>('custom')
   const [filterStartDate, setFilterStartDate] = useState<string>('')
   const [filterEndDate, setFilterEndDate] = useState<string>('')
 
@@ -339,7 +339,11 @@ export default function ScreensClient({
     return filteredDevices.slice(from, from + pageSize)
   }, [filteredDevices, currentPage, pageSize])
 
-
+  const hasActiveFilters = 
+    filterStatus !== 'all' ||
+    filterOrientation !== 'all' ||
+    (filterDatePreset !== 'all' && (filterDatePreset !== 'custom' || filterStartDate !== '' || filterEndDate !== '')) ||
+    filterGroupIds.length > 0
 
   return (
     <>
@@ -443,14 +447,14 @@ export default function ScreensClient({
                 )}
                 <button 
                   data-filter-toggle
-                  className={`${styles.filterBtn} ${isFilterSidebarOpen || filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' || filterGroupIds.length > 0 ? styles.active : ''}`}
+                  className={`${styles.filterBtn} ${isFilterSidebarOpen || hasActiveFilters ? styles.active : ''}`}
                   onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                   </svg>
                   Filters
-                  {(filterStatus !== 'all' || filterOrientation !== 'all' || filterDatePreset !== 'all' || filterGroupIds.length > 0) && (
+                  {hasActiveFilters && (
                     <span className={styles.filterDot} />
                   )}
                 </button>

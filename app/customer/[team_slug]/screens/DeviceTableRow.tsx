@@ -7,6 +7,7 @@ import {
   getContentLabel, getContentKind, ContentIcon,
   resolveDeviceContent
 } from './DeviceIcon'
+import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 
 export interface DeviceTableRowProps {
   device: Device
@@ -120,7 +121,9 @@ export function DeviceTableRow({
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <div className={styles.cellName}>{device.name || 'Unnamed Screen'}</div>
+              <div className={styles.cellName}>
+                <FilenameTruncator filename={device.name || 'Unnamed Screen'} />
+              </div>
               {deviceGroups.map(g => (
                 <span 
                   key={g.id} 
@@ -172,7 +175,7 @@ export function DeviceTableRow({
             <ContentIcon kind={kind} size={16} />
           </span>
           <span className={isEmpty ? styles.playlistCellEmptyText : styles.playlistCellText}>
-            {label} {isInherited && (
+            {isEmpty ? label : <FilenameTruncator filename={label} />} {isInherited && (
               <span style={{ fontSize: '0.72rem', color: 'var(--primary)', opacity: 0.85, fontWeight: 500, fontStyle: 'italic', marginLeft: '4px' }}>
                 (Group)
               </span>

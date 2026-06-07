@@ -91,8 +91,8 @@ export default function PlaylistEngine({
             if (!resolved) continue
             const { filePath, mimeType } = resolved
 
-            // Skip widget types
-            if (mimeType.startsWith('application/x-widget')) continue
+            // Skip widget types and folder assets
+            if (mimeType.startsWith('application/x-widget') || mimeType === 'application/x-folder' || filePath === 'folder') continue
             
             // Use a consistent filepath cache key instead of the expiring signed URL (H-03)
             const cacheKey = `https://local-media-cache/${filePath}`
@@ -172,7 +172,7 @@ export default function PlaylistEngine({
         return data
       })
       
-      if (showLoading && mounted) setIsLoading(false)
+      if (mounted) setIsLoading(false)
       
       // Start background caching for physical assets
       if (data && data.length > 0) {
@@ -297,15 +297,12 @@ function PlayableItem({
       const resolved = getAssetPathAndMime(item.assets)
       if (resolved) {
         const { filePath, mimeType } = resolved
-        if (
-          mimeType === 'application/x-widget-youtube' || 
-          mimeType === 'application/x-widget-remote-url' ||
-          mimeType === 'application/x-widget-html' ||
-          mimeType === 'application/x-widget-flow' ||
-          mimeType === 'application/x-widget-countdown' ||
-          mimeType === 'application/x-widget-countup'
-        ) {
+        if (mimeType.startsWith('application/x-widget')) {
           return filePath
+        }
+
+        if (mimeType === 'application/x-folder' || filePath === 'folder') {
+          return null
         }
         
         // Return cached URL from ref if exists
@@ -324,15 +321,11 @@ function PlayableItem({
     }
     const resolved = getAssetPathAndMime(item.assets)
     if (resolved) {
-      const { mimeType } = resolved
-      if (
-        mimeType === 'application/x-widget-youtube' || 
-        mimeType === 'application/x-widget-remote-url' ||
-        mimeType === 'application/x-widget-html' ||
-        mimeType === 'application/x-widget-flow' ||
-        mimeType === 'application/x-widget-countdown' ||
-        mimeType === 'application/x-widget-countup'
-      ) {
+      const { filePath, mimeType } = resolved
+      if (mimeType.startsWith('application/x-widget')) {
+        return true
+      }
+      if (mimeType === 'application/x-folder' || filePath === 'folder') {
         return true
       }
     }
@@ -353,10 +346,9 @@ function PlayableItem({
         const { filePath, mimeType } = resolved
 
         if (
-          mimeType !== 'application/x-widget-youtube' &&
-          mimeType !== 'application/x-widget-remote-url' &&
-          mimeType !== 'application/x-widget-html' &&
-          mimeType !== 'application/x-widget-flow' &&
+          !mimeType.startsWith('application/x-widget') &&
+          mimeType !== 'application/x-folder' &&
+          filePath !== 'folder' &&
           (item.type === 'image' || item.type === 'video' || mimeType === 'image/png')
         ) {
           // Use cached blob if available, otherwise get a deduplicated signed URL
@@ -425,16 +417,73 @@ function PlayableItem({
   if (!mediaUrl) return null
 
   if (item.assets?.mime_type === 'application/x-widget-youtube') {
-    const videoId = mediaUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || ''
+    let youtubeUrl = mediaUrl
+    let ccEnabled = false
+    try {
+      const parsed = JSON.parse(mediaUrl)
+      if (parsed && typeof parsed === 'object' && parsed.url) {
+        youtubeUrl = parsed.url
+        ccEnabled = !!parsed.ccEnabled
+      }
+    } catch {}
+
+    const videoId = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || ''
+    const ccParam = ccEnabled ? '&cc_load_policy=1' : ''
     return (
       <iframe 
-        src={`https://www.youtube.com/embed/${videoId}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=0`}
+        src={`https://www.youtube.com/embed/${videoId}?autoplay=${isActive ? 1 : 0}&mute=${isMuted ? 1 : 0}&loop=1&playlist=${videoId}&controls=0${ccParam}`}
         style={{ ...mediaStyle, border: 'none', pointerEvents: 'none' }}
         allow="autoplay; encrypted-media"
         allowFullScreen
         onLoad={() => setIsLoaded(true)}
         sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
       />
+    )
+  }
+
+  if (item.assets?.mime_type === 'application/x-widget-youtube-playlist') {
+    let playlistUrl = mediaUrl
+    let ccEnabled = false
+    let shuffleEnabled = false
+    try {
+      const parsed = JSON.parse(mediaUrl)
+      if (parsed && typeof parsed === 'object') {
+        playlistUrl = parsed.url || ''
+        ccEnabled = !!parsed.ccEnabled
+        shuffleEnabled = !!parsed.shuffleEnabled
+      }
+    } catch {}
+
+    let playlistId = ''
+    const listParam = playlistUrl.match(/[?&]list=([^#\&\?]+)/)
+    if (listParam) {
+      playlistId = listParam[1]
+    } else {
+      const trimmed = playlistUrl.trim()
+      if (/^[A-Za-z0-9_-]{18,40}$/.test(trimmed)) {
+        playlistId = trimmed
+      }
+    }
+
+    if (!playlistId) {
+      return (
+        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+          Error: Invalid YouTube playlist ID
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ ...mediaStyle, overflow: 'hidden' }}>
+        <YouTubePlaylistPlayer
+          playlistId={playlistId}
+          shuffle={shuffleEnabled}
+          ccEnabled={ccEnabled}
+          isMuted={isMuted}
+          isActive={isActive}
+          onLoadComplete={() => setIsLoaded(true)}
+        />
+      </div>
     )
   }
 
@@ -611,5 +660,117 @@ function PlayableItem({
       onLoad={() => setIsLoaded(true)}
       onError={() => setIsLoaded(true)}
     />
+  )
+}
+
+// ── YOUTUBE PLAYLIST PLAYER ENGINE COMPONENT ──────────────────────────────
+
+interface YouTubePlaylistPlayerProps {
+  playlistId: string
+  shuffle: boolean
+  ccEnabled: boolean
+  isMuted: boolean
+  isActive: boolean
+  onLoadComplete?: () => void
+}
+
+function YouTubePlaylistPlayer({
+  playlistId,
+  shuffle,
+  ccEnabled,
+  isMuted,
+  isActive,
+  onLoadComplete
+}: YouTubePlaylistPlayerProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const playerRef = useRef<any>(null)
+  const [apiReady, setApiReady] = useState(false)
+  const playerId = useRef(`yt-player-${Math.random().toString(36).substr(2, 9)}`)
+
+  useEffect(() => {
+    if ((window as any).YT && (window as any).YT.Player) {
+      setApiReady(true)
+      return
+    }
+
+    const previousCallback = (window as any).onYouTubeIframeAPIReady
+    (window as any).onYouTubeIframeAPIReady = () => {
+      if (previousCallback) previousCallback()
+      setApiReady(true)
+    }
+
+    const tag = document.querySelector('script[src="https://www.youtube.com/iframe_api"]')
+    if (!tag) {
+      const script = document.createElement('script')
+      script.src = 'https://www.youtube.com/iframe_api'
+      document.body.appendChild(script)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!apiReady || !containerRef.current) return
+
+    if (playerRef.current) {
+      try {
+        playerRef.current.destroy()
+      } catch (err) {
+        console.error('Error destroying YT player:', err)
+      }
+      playerRef.current = null
+    }
+
+    const placeholder = document.createElement('div')
+    placeholder.id = playerId.current
+    containerRef.current.innerHTML = ''
+    containerRef.current.appendChild(placeholder)
+
+    const playerVars: any = {
+      listType: 'playlist',
+      list: playlistId,
+      autoplay: isActive ? 1 : 0,
+      mute: isMuted ? 1 : 0,
+      controls: 0,
+      loop: 1,
+      cc_load_policy: ccEnabled ? 1 : 0,
+      rel: 0,
+      origin: typeof window !== 'undefined' ? window.location.origin : undefined
+    }
+
+    playerRef.current = new (window as any).YT.Player(playerId.current, {
+      height: '100%',
+      width: '100%',
+      playerVars,
+      events: {
+        onReady: (event: any) => {
+          if (shuffle) {
+            event.target.setShuffle(true)
+            if (isActive) {
+              event.target.playVideo()
+            }
+          }
+          if (onLoadComplete) {
+            onLoadComplete()
+          }
+        },
+        onStateChange: (event: any) => {
+          // Can monitor status changes
+        }
+      }
+    })
+
+    return () => {
+      if (playerRef.current) {
+        try {
+          playerRef.current.destroy()
+        } catch (err) {
+          console.error('Error destroying YT player in cleanup:', err)
+        }
+        playerRef.current = null
+      }
+    }
+  }, [apiReady, playlistId, shuffle, ccEnabled, isMuted, isActive, onLoadComplete])
+
+  return (
+    <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
   )
 }

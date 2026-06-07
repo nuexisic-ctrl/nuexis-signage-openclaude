@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { AlertTriangle, Link, MonitorPlay, X, ArrowLeft, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass, Timer } from 'lucide-react'
+import { AlertTriangle, Link, MonitorPlay, X, ArrowLeft, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass, Timer, ListVideo } from 'lucide-react'
 import styles from './Modal.module.css'
 import { validateHtml, validateCss } from './validators'
 import { t } from '@/lib/i18n'
@@ -15,6 +15,7 @@ import { Asset } from './types'
 interface WidgetSelectionModalProps {
   onClose: () => void
   onSelectYouTube: () => void
+  onSelectYouTubePlaylist: () => void
   onSelectRemoteUrl: () => void
   onSelectHtml: () => void
   onSelectFlow: () => void
@@ -57,6 +58,7 @@ function saveSearchHistory(query: string, prev: string[]): string[] {
 export function WidgetSelectionModal({
   onClose,
   onSelectYouTube,
+  onSelectYouTubePlaylist,
   onSelectRemoteUrl,
   onSelectHtml,
   onSelectFlow,
@@ -123,6 +125,14 @@ export function WidgetSelectionModal({
       icon: MonitorPlay,
       color: '#ff0000',
       action: onSelectYouTube
+    },
+    {
+      id: 'youtube_playlist',
+      title: t('YouTube Playlist'),
+      description: t('Embed and play YouTube playlists with options for captions and shuffle.'),
+      icon: ListVideo,
+      color: '#ff4444',
+      action: onSelectYouTubePlaylist
     },
     {
       id: 'remote_url',
@@ -282,7 +292,7 @@ export function WidgetSelectionModal({
         </div>
 
         {/* Scrollable Container for Widgets */}
-        <div style={{ overflowY: 'auto', maxHeight: 'calc(90vh - 180px)', paddingRight: '6px', margin: '4px -6px 0 0' }}>
+        <div style={{ overflowY: 'auto', maxHeight: 'calc(90vh - 190px)', padding: '12px 6px', margin: '0 -6px 0 0' }}>
           {filteredWidgets.length === 0 ? (
             <div className={styles.widgetSearchEmpty}>
               <Search size={28} style={{ opacity: 0.3, marginBottom: '10px' }} />
@@ -335,18 +345,22 @@ export function WidgetSelectionModal({
 interface YouTubeWidgetModalProps {
   onClose: () => void
   onBack?: () => void
-  onSubmit: (name: string, url: string) => void
+  onSubmit: (name: string, config: { url: string; ccEnabled: boolean }) => void
   isSubmitting: boolean
+  initialData?: { name: string; url: string; ccEnabled?: boolean }
 }
 
 export function YouTubeWidgetModal({
   onClose,
   onBack,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  initialData,
 }: YouTubeWidgetModalProps) {
-  const [name, setName] = useState('')
-  const [url, setUrl] = useState('')
+  const isEditMode = !!initialData
+  const [name, setName] = useState(initialData?.name ?? '')
+  const [url, setUrl] = useState(initialData?.url ?? '')
+  const [ccEnabled, setCcEnabled] = useState(initialData?.ccEnabled ?? false)
   const dragStartRef = useRef(false)
 
   useEffect(() => {
@@ -379,17 +393,23 @@ export function YouTubeWidgetModal({
                 <ArrowLeft size={20} />
               </button>
             )}
-            <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Configure YouTube Widget')}</h2>
+            <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>
+              {isEditMode ? t('Edit YouTube Widget') : t('Configure YouTube Widget')}
+            </h2>
+            {isEditMode && (
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', padding: '2px 8px', borderRadius: '999px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', fontFamily: 'var(--font-label)', marginLeft: '4px' }}>EDITING</span>
+            )}
           </div>
           <button onClick={onClose} className={styles.modalCloseBtn} type="button"><X size={20} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); onSubmit(name, url); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={e => { e.preventDefault(); onSubmit(name, { url, ccEnabled }); }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>{t('Widget Name*')}</label>
             <input 
               required
+              maxLength={100}
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={e => setName(e.target.value.slice(0, 100))}
               placeholder={t('e.g. Lobby YouTube Video')}
               style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
             />
@@ -399,12 +419,26 @@ export function YouTubeWidgetModal({
             <input 
               required
               type="url"
+              maxLength={255}
               value={url}
-              onChange={e => setUrl(e.target.value)}
+              onChange={e => setUrl(e.target.value.slice(0, 255))}
               placeholder={t('https://www.youtube.com/watch?v=...')}
               style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
             />
           </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--on-surface)' }}>
+              <input
+                type="checkbox"
+                checked={ccEnabled}
+                onChange={e => setCcEnabled(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              <span>{t('Enable Captions by Default')}</span>
+            </label>
+          </div>
+
           <button 
             type="submit" 
             disabled={isSubmitting || !name || !url}
@@ -414,7 +448,7 @@ export function YouTubeWidgetModal({
               opacity: isSubmitting ? 0.7 : 1
             }}
           >
-            {isSubmitting ? t('Saving...') : t('Save Widget')}
+            {isSubmitting ? t('Saving...') : isEditMode ? t('Save Changes') : t('Save Widget')}
           </button>
         </form>
       </div>
@@ -427,16 +461,19 @@ interface RemoteUrlWidgetModalProps {
   onBack?: () => void
   onSubmit: (name: string, url: string) => void
   isSubmitting: boolean
+  initialData?: { name: string; url: string }
 }
 
 export function RemoteUrlWidgetModal({
   onClose,
   onBack,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  initialData,
 }: RemoteUrlWidgetModalProps) {
-  const [name, setName] = useState('')
-  const [url, setUrl] = useState('')
+  const isEditMode = !!initialData
+  const [name, setName] = useState(initialData?.name ?? '')
+  const [url, setUrl] = useState(initialData?.url ?? '')
   const [error, setError] = useState<string | null>(null)
   const dragStartRef = useRef(false)
 
@@ -484,7 +521,12 @@ export function RemoteUrlWidgetModal({
                 <ArrowLeft size={20} />
               </button>
             )}
-            <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Configure Remote URL')}</h2>
+            <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>
+              {isEditMode ? t('Edit Remote URL Widget') : t('Configure Remote URL')}
+            </h2>
+            {isEditMode && (
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', padding: '2px 8px', borderRadius: '999px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', fontFamily: 'var(--font-label)', marginLeft: '4px' }}>EDITING</span>
+            )}
           </div>
           <button onClick={onClose} className={styles.modalCloseBtn} type="button"><X size={20} /></button>
         </div>
@@ -525,7 +567,7 @@ export function RemoteUrlWidgetModal({
               opacity: isSubmitting ? 0.7 : 1
             }}
           >
-            {isSubmitting ? t('Saving...') : t('Save Widget')}
+            {isSubmitting ? t('Saving...') : isEditMode ? t('Save Changes') : t('Save Widget')}
           </button>
         </form>
       </div>
@@ -618,17 +660,20 @@ interface HtmlWidgetModalProps {
   onSubmit: (name: string, html: string, css: string) => void
   isSubmitting: boolean
   teamSlug: string
+  initialData?: { name: string; html: string; css: string }
 }
 
 export function HtmlWidgetModal({
   onClose,
   onBack,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  initialData,
 }: HtmlWidgetModalProps) {
-  const [name, setName] = useState('')
-  const [html, setHtml] = useState('<!-- Custom HTML widget contents -->\n<div class="lobby-card">\n  <h1>Hello, World</h1>\n</div>')
-  const [css, setCss] = useState('/* Custom styles and animations */\nbody {\n  background: #0f172a;\n  color: #f8fafc;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  margin: 0;\n  font-family: sans-serif;\n}')
+  const isEditMode = !!initialData
+  const [name, setName] = useState(initialData?.name ?? '')
+  const [html, setHtml] = useState(initialData?.html ?? '<!-- Custom HTML widget contents -->\n<div class="lobby-card">\n  <h1>Hello, World</h1>\n</div>')
+  const [css, setCss] = useState(initialData?.css ?? '/* Custom styles and animations */\nbody {\n  background: #0f172a;\n  color: #f8fafc;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  margin: 0;\n  font-family: sans-serif;\n}')
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [htmlErrors, setHtmlErrors] = useState<string[]>([])
   const [cssErrors, setCssErrors] = useState<string[]>([])
@@ -705,7 +750,12 @@ export function HtmlWidgetModal({
                 </button>
               )}
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>{t('Create Text / HTML Widget')}</h2>
+                <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>
+                  {isEditMode ? t('Edit Text / HTML Widget') : t('Create Text / HTML Widget')}
+                </h2>
+                {isEditMode && (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', padding: '2px 8px', borderRadius: '999px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', fontFamily: 'var(--font-label)', display: 'inline-block', marginTop: '4px' }}>EDITING</span>
+                )}
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>{t('Design customized rich-text, layouts, and cards using custom HTML + CSS styling.')}</p>
               </div>
             </div>
@@ -835,7 +885,7 @@ export function HtmlWidgetModal({
                     boxShadow: hasErrors ? 'none' : '0 4px 12px rgba(9, 76, 178, 0.2)'
                   }}
                 >
-                  {isSubmitting ? t('Saving...') : t('Save Widget')}
+                  {isSubmitting ? t('Saving...') : isEditMode ? t('Save Changes') : t('Save Widget')}
                 </button>
               </div>
             </div>
@@ -2196,3 +2246,217 @@ const PRESET_COLORS = [
   '#475569', // slate-dark
   '#334155', // slate-deep
 ]
+
+// ── YOUTUBE PLAYLIST WIDGET CONFIGURATION & HELPERS ───────────────────────
+
+export interface YouTubePlaylistConfig {
+  url: string
+  ccEnabled: boolean
+  shuffleEnabled: boolean
+}
+
+export function parseYouTubePlaylistConfig(filePath: string): YouTubePlaylistConfig {
+  try {
+    const parsed = JSON.parse(filePath)
+    if (parsed && typeof parsed === 'object') {
+      return {
+        url: parsed.url || '',
+        ccEnabled: !!parsed.ccEnabled,
+        shuffleEnabled: !!parsed.shuffleEnabled
+      }
+    }
+  } catch {}
+  return {
+    url: filePath || '',
+    ccEnabled: false,
+    shuffleEnabled: false
+  }
+}
+
+export interface YouTubeWidgetConfig {
+  url: string
+  ccEnabled: boolean
+}
+
+export function parseYouTubeConfig(filePath: string): YouTubeWidgetConfig {
+  try {
+    const parsed = JSON.parse(filePath)
+    if (parsed && typeof parsed === 'object') {
+      return {
+        url: parsed.url || '',
+        ccEnabled: !!parsed.ccEnabled
+      }
+    }
+  } catch {}
+  return {
+    url: filePath || '',
+    ccEnabled: false
+  }
+}
+
+export function extractYouTubePlaylistId(url: string): string {
+  if (!url) return ''
+  const listParam = url.match(/[?&]list=([^#\&\?]+)/)
+  if (listParam) return listParam[1]
+  const trimmed = url.trim()
+  if (/^[A-Za-z0-9_-]{18,40}$/.test(trimmed)) {
+    return trimmed
+  }
+  return ''
+}
+
+interface YouTubePlaylistWidgetModalProps {
+  onClose: () => void
+  onBack?: () => void
+  onSubmit: (name: string, config: { url: string; ccEnabled: boolean; shuffleEnabled: boolean }) => void
+  isSubmitting: boolean
+  initialData?: { name: string; url: string; ccEnabled: boolean; shuffleEnabled: boolean }
+}
+
+export function YouTubePlaylistWidgetModal({
+  onClose,
+  onBack,
+  onSubmit,
+  isSubmitting,
+  initialData,
+}: YouTubePlaylistWidgetModalProps) {
+  const isEditMode = !!initialData
+  const [name, setName] = useState(initialData?.name ?? '')
+  const [url, setUrl] = useState(initialData?.url ?? '')
+  const [ccEnabled, setCcEnabled] = useState(initialData?.ccEnabled ?? false)
+  const [shuffleEnabled, setShuffleEnabled] = useState(initialData?.shuffleEnabled ?? false)
+  const [error, setError] = useState<string | null>(null)
+  const dragStartRef = useRef(false)
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmedName = name.trim()
+    const trimmedUrl = url.trim()
+
+    if (!trimmedName || !trimmedUrl) {
+      setError(t('Widget Name and YouTube Playlist Link are required.'))
+      return
+    }
+
+    const playlistId = extractYouTubePlaylistId(trimmedUrl)
+    if (!playlistId) {
+      setError(t('Invalid YouTube playlist URL or ID. Please make sure it contains a playlist ID (e.g., list=...)'))
+      return
+    }
+
+    setError(null)
+    onSubmit(trimmedName, {
+      url: trimmedUrl,
+      ccEnabled,
+      shuffleEnabled
+    })
+  }
+
+  return (
+    <div 
+      className={styles.modalOverlay} 
+      onMouseDown={(e) => {
+        dragStartRef.current = e.target === e.currentTarget
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && dragStartRef.current) {
+          onClose()
+        }
+      }}
+    >
+      <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onBack && (
+              <button 
+                type="button" 
+                onClick={onBack} 
+                className={styles.modalCloseBtn}
+                aria-label="Back to widget selection"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>
+              {isEditMode ? t('Edit YouTube Playlist') : t('Configure YouTube Playlist')}
+            </h2>
+            {isEditMode && (
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', padding: '2px 8px', borderRadius: '999px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', fontFamily: 'var(--font-label)', marginLeft: '4px' }}>EDITING</span>
+            )}
+          </div>
+          <button onClick={onClose} className={styles.modalCloseBtn} type="button"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {error && (
+            <div className={styles.errorBanner} role="alert" style={{ margin: '0', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#ef4444', fontSize: '0.85rem' }}>
+              <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+              <span>{error}</span>
+            </div>
+          )}
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>{t('App Name*')}</label>
+            <input 
+              required
+              maxLength={100}
+              value={name}
+              onChange={e => { setName(e.target.value.slice(0, 100)); setError(null); }}
+              placeholder={t('e.g. Lobby Playlist')}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>{t('YouTube Playlist Link*')}</label>
+            <input 
+              required
+              type="url"
+              maxLength={255}
+              value={url}
+              onChange={e => { setUrl(e.target.value.slice(0, 255)); setError(null); }}
+              placeholder={t('https://www.youtube.com/playlist?list=...')}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--on-surface)' }}>
+              <input
+                type="checkbox"
+                checked={ccEnabled}
+                onChange={e => setCcEnabled(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              <span>{t('Captions*')}</span>
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--on-surface)' }}>
+              <input
+                type="checkbox"
+                checked={shuffleEnabled}
+                onChange={e => setShuffleEnabled(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              <span>{t('Shuffle*')}</span>
+            </label>
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={isSubmitting || !name || !url}
+            style={{ 
+              marginTop: '12px', padding: '12px', background: 'var(--primary)', color: 'var(--on-primary)', 
+              border: 'none', borderRadius: '8px', fontWeight: 600, cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting ? 0.7 : 1
+            }}
+          >
+            {isSubmitting ? t('Saving...') : isEditMode ? t('Save Changes') : t('Save Widget')}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}

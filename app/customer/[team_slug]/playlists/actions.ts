@@ -50,6 +50,30 @@ export async function createPlaylist(
   const trimmedName = name.trim()
   if (!trimmedName) throw new Error('Playlist name is required.')
 
+  // Server-side validation of assets
+  const assetIds = items.map(item => item.asset_id).filter((id): id is string => !!id)
+  if (assetIds.length > 0) {
+    const { data: dbAssets, error: assetsError } = await supabase
+      .from('assets')
+      .select('id, team_id, mime_type')
+      .in('id', assetIds)
+
+    if (assetsError || !dbAssets) {
+      throw new Error('Failed to validate assets.')
+    }
+
+    const dbAssetsMap = new Map(dbAssets.map(a => [a.id, a]))
+    for (const assetId of assetIds) {
+      const asset = dbAssetsMap.get(assetId)
+      if (!asset || asset.team_id !== teamId) {
+        throw new Error('Unauthorized or invalid asset in playlist.')
+      }
+      if (asset.mime_type === 'application/x-folder') {
+        throw new Error('Folders cannot be added to playlists.')
+      }
+    }
+  }
+
   // Use the SECURITY DEFINER RPC — runs playlist insert + item inserts in a
   // single Postgres transaction. If items fail, the playlist header also rolls
   // back, preventing ghost empty playlists from accumulating.
@@ -144,6 +168,30 @@ export async function updatePlaylist(
 
   const trimmedName = name.trim()
   if (!trimmedName) throw new Error('Playlist name is required.')
+
+  // Server-side validation of assets
+  const assetIds = items.map(item => item.asset_id).filter((id): id is string => !!id)
+  if (assetIds.length > 0) {
+    const { data: dbAssets, error: assetsError } = await supabase
+      .from('assets')
+      .select('id, team_id, mime_type')
+      .in('id', assetIds)
+
+    if (assetsError || !dbAssets) {
+      throw new Error('Failed to validate assets.')
+    }
+
+    const dbAssetsMap = new Map(dbAssets.map(a => [a.id, a]))
+    for (const assetId of assetIds) {
+      const asset = dbAssetsMap.get(assetId)
+      if (!asset || asset.team_id !== teamId) {
+        throw new Error('Unauthorized or invalid asset in playlist.')
+      }
+      if (asset.mime_type === 'application/x-folder') {
+        throw new Error('Folders cannot be added to playlists.')
+      }
+    }
+  }
 
   // Use the SECURITY DEFINER RPC — runs delete/insert/update in a
   // single Postgres transaction. If any step fails, ALL changes roll back.

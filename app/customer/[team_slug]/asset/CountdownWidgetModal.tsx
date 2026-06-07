@@ -27,6 +27,22 @@ interface CountdownWidgetModalProps {
     }
   }) => void
   isSubmitting: boolean
+  initialData?: {
+    name: string
+    text?: string
+    endTime?: string
+    endMessage?: string
+    timerStyle?: string
+    daysOnly?: boolean
+    theme?: string
+    themeSettings?: {
+      primaryColor?: string
+      secondaryColor?: string
+      backgroundColor?: string
+      textColor?: string
+      backgroundImage?: string
+    }
+  }
 }
 
 const NAME_MAX_LENGTH = 100
@@ -73,24 +89,26 @@ export default function CountdownWidgetModal({
   onClose,
   onBack,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  initialData,
 }: CountdownWidgetModalProps) {
-  const [name, setName] = useState('')
+  const isEditMode = !!initialData
+  const [name, setName] = useState(initialData?.name ?? '')
   const [nameError, setNameError] = useState('')
   
   // Widget specific configuration states
-  const [text, setText] = useState('Event Starts In')
-  const [endMessage, setEndMessage] = useState('Event Has Begun!')
-  const [timerStyle, setTimerStyle] = useState<TimerStyle>('card')
-  const [daysOnly, setDaysOnly] = useState(false)
-  const [theme, setTheme] = useState<ThemeOption>('dark')
+  const [text, setText] = useState(initialData?.text ?? 'Event Starts In')
+  const [endMessage, setEndMessage] = useState(initialData?.endMessage ?? 'Event Has Begun!')
+  const [timerStyle, setTimerStyle] = useState<TimerStyle>((initialData?.timerStyle as TimerStyle) ?? 'card')
+  const [daysOnly, setDaysOnly] = useState(initialData?.daysOnly ?? false)
+  const [theme, setTheme] = useState<ThemeOption>((initialData?.theme as ThemeOption) ?? 'dark')
   
   // Theme Settings
-  const [primaryColor, setPrimaryColor] = useState('#38bdf8')
-  const [secondaryColor, setSecondaryColor] = useState('#818cf8')
-  const [backgroundColor, setBackgroundColor] = useState('#090d16')
-  const [textColor, setTextColor] = useState('#f8fafc')
-  const [backgroundImage, setBackgroundImage] = useState('')
+  const [primaryColor, setPrimaryColor] = useState(initialData?.themeSettings?.primaryColor ?? '#38bdf8')
+  const [secondaryColor, setSecondaryColor] = useState(initialData?.themeSettings?.secondaryColor ?? '#818cf8')
+  const [backgroundColor, setBackgroundColor] = useState(initialData?.themeSettings?.backgroundColor ?? '#090d16')
+  const [textColor, setTextColor] = useState(initialData?.themeSettings?.textColor ?? '#f8fafc')
+  const [backgroundImage, setBackgroundImage] = useState(initialData?.themeSettings?.backgroundImage ?? '')
 
   // Collapsible section visibility states
   const [showStyle, setShowStyle] = useState(false)
@@ -102,8 +120,16 @@ export default function CountdownWidgetModal({
     theme?: ThemeOption
   }>({})
   
-  // Date & Time Picker states
-  const [initialEndTime] = useState(getDefaultEndTimeParts)
+  // Date & Time Picker states — initialise from existing endTime if editing
+  const [initialEndTime] = useState(() => {
+    if (initialData?.endTime) {
+      try {
+        const d = new Date(initialData.endTime)
+        return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(), hour: d.getHours(), minute: d.getMinutes(), second: d.getSeconds(), iso: initialData.endTime }
+      } catch { /* fall through */ }
+    }
+    return getDefaultEndTimeParts()
+  })
   const [showPicker, setShowPicker] = useState(false)
   const [pickYear, setPickYear] = useState(initialEndTime.year)
   const [pickMonth, setPickMonth] = useState(initialEndTime.month)
@@ -363,7 +389,12 @@ export default function CountdownWidgetModal({
               )}
               <Hourglass size={22} color="var(--primary)" />
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)', fontWeight: 600 }}>Create Countdown Widget</h2>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)', fontWeight: 600 }}>
+                  {isEditMode ? 'Edit Countdown Widget' : 'Create Countdown Widget'}
+                </h2>
+                {isEditMode && (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', padding: '2px 8px', borderRadius: '999px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', fontFamily: 'var(--font-label)', display: 'inline-block', marginTop: '4px' }}>EDITING</span>
+                )}
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>Display beautiful real-time timers for sales, announcements, or events.</p>
               </div>
             </div>
@@ -371,24 +402,9 @@ export default function CountdownWidgetModal({
           </div>
 
           {/* Body Content with Split View */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            flex: 1,
-            minHeight: 0,
-            background: 'var(--surface-lowest)',
-            overflowY: 'auto'
-          }}>
+          <div className={styles.splitViewBody}>
             {/* Left Form Panel */}
-            <form onSubmit={handleSubmit} style={{
-              flex: '1 1 480px',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '18px',
-              borderRight: '1px solid var(--outline-variant)'
-            }}>
+            <form onSubmit={handleSubmit} className={styles.splitViewForm}>
               {/* Widget Name */}
               <div>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Widget Name*</label>
@@ -594,7 +610,7 @@ export default function CountdownWidgetModal({
                   className={styles.collapsibleHeader}
                   onClick={() => setShowStyle(!showStyle)}
                 >
-                  <span>Theme Settings*</span>
+                  <span>Theme Settings</span>
                   <span>{showStyle ? '▲' : '▼'}</span>
                 </div>
                 {showStyle && (
@@ -688,7 +704,7 @@ export default function CountdownWidgetModal({
                   className={styles.collapsibleHeader}
                   onClick={() => setShowAdvanced(!showAdvanced)}
                 >
-                  <span>Advanced Settings*</span>
+                  <span>Advanced Settings</span>
                   <span>{showAdvanced ? '▲' : '▼'}</span>
                 </div>
                 {showAdvanced && (
@@ -732,16 +748,7 @@ export default function CountdownWidgetModal({
             </form>
 
             {/* Right Live Simulator Panel */}
-            <div style={{
-              flex: '1 1 580px',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              background: 'rgba(0, 0, 0, 0.02)',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
+            <div className={styles.splitViewPreview}>
               {/* Preview Mode selector buttons */}
               <div style={{ display: 'flex', gap: '8px', background: 'rgba(0, 0, 0, 0.05)', padding: '4px', borderRadius: '8px', zIndex: 10 }}>
                 <button
@@ -848,7 +855,7 @@ export default function CountdownWidgetModal({
                 fontFamily: 'var(--font-label)', fontSize: '0.88rem'
               }}
             >
-              {isSubmitting ? 'Saving...' : 'Save Widget'}
+              {isSubmitting ? 'Saving...' : isEditMode ? 'Save Changes' : 'Save Widget'}
             </button>
           </div>
         </div>

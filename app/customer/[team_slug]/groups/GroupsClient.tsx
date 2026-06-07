@@ -226,10 +226,10 @@ export default function GroupsClient({
               let contentName = 'no content'
               if (group.content_type === 'Asset') {
                 const ast = assets.find(a => a.id === group.asset_id)
-                contentName = ast ? ast.file_name : 'Deleted Asset'
+                contentName = ast ? ast.file_name : 'no content'
               } else if (group.content_type === 'Playlist') {
                 const pl = playlists.find(p => p.id === group.playlist_id)
-                contentName = pl ? pl.name : 'Deleted Playlist'
+                contentName = pl ? pl.name : 'no content'
               }
 
               return (

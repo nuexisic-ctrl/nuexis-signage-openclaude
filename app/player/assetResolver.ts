@@ -46,6 +46,11 @@ export async function resolveAsset({
       return
     }
 
+    if (asset.mime_type === 'application/x-folder' || asset.file_path === 'folder') {
+      onClear()
+      return
+    }
+
     if (asset.mime_type === 'application/x-widget-qrcode') {
       try {
         const config = JSON.parse(asset.file_path)
@@ -58,13 +63,7 @@ export async function resolveAsset({
       }
     }
 
-    const isWidget =
-      asset.mime_type === 'application/x-widget-youtube' ||
-      asset.mime_type === 'application/x-widget-remote-url' ||
-      asset.mime_type === 'application/x-widget-html' ||
-      asset.mime_type === 'application/x-widget-flow' ||
-      asset.mime_type === 'application/x-widget-countdown' ||
-      asset.mime_type === 'application/x-widget-countup'
+    const isWidget = asset.mime_type.startsWith('application/x-widget')
 
     if (isWidget) {
       onResolve(asset.file_path, asset.mime_type, null)

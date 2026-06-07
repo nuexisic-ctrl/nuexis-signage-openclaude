@@ -54,6 +54,7 @@ export default async function PlaylistsPage({ params, searchParams }: Props) {
       .from('assets')
       .select('id, file_name, file_path, mime_type, size_bytes')
       .eq('team_id', profile?.team_id as string)
+      .neq('mime_type', 'application/x-folder')
       .order('created_at', { ascending: false })
       .limit(100)
   ])

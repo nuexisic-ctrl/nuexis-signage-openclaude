@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { WidgetSelectionModal, YouTubeWidgetModal, RemoteUrlWidgetModal, HtmlWidgetModal, QRCodeWidgetModal } from './WidgetModals'
+import { WidgetSelectionModal, YouTubeWidgetModal, YouTubePlaylistWidgetModal, RemoteUrlWidgetModal, HtmlWidgetModal, QRCodeWidgetModal } from './WidgetModals'
 import FlowWidgetModal from './FlowWidgetModal'
 import CountdownWidgetModal from './CountdownWidgetModal'
 import CountUpWidgetModal from './CountUpWidgetModal'
@@ -32,6 +32,7 @@ export function WidgetModalsContainer({
 }: WidgetModalsContainerProps) {
   const supabase = createClient()
   const [showYouTubeConfig, setShowYouTubeConfig] = useState(false)
+  const [showYouTubePlaylistConfig, setShowYouTubePlaylistConfig] = useState(false)
   const [showRemoteUrlConfig, setShowRemoteUrlConfig] = useState(false)
   const [showHtmlConfig, setShowHtmlConfig] = useState(false)
   const [showFlowConfig, setShowFlowConfig] = useState(false)
@@ -43,11 +44,12 @@ export function WidgetModalsContainer({
   const [, startTransition] = useTransition()
   const router = useRouter()
 
-  const handleCreateYouTubeWidget = async (name: string, url: string) => {
+  const handleCreateYouTubeWidget = async (name: string, config: { url: string; ccEnabled: boolean }) => {
     setIsSubmittingWidget(true)
+    const serialized = JSON.stringify(config)
     const result = await insertAsset(teamSlug, {
       file_name: name,
-      file_path: url,
+      file_path: serialized,
       mime_type: 'application/x-widget-youtube',
       size_bytes: 0,
       folder_id: folderId || null,
@@ -57,7 +59,7 @@ export function WidgetModalsContainer({
       const newAsset: Asset = {
         id: result.id!,
         file_name: name,
-        file_path: url,
+        file_path: serialized,
         mime_type: 'application/x-widget-youtube',
         size_bytes: 0,
         created_at: new Date().toISOString(),
@@ -69,6 +71,37 @@ export function WidgetModalsContainer({
       startTransition(() => { router.refresh() })
     } else {
       toast.error(result.error || 'Failed to create YouTube widget.')
+    }
+    setIsSubmittingWidget(false)
+  }
+
+  const handleCreateYouTubePlaylistWidget = async (name: string, config: { url: string; ccEnabled: boolean; shuffleEnabled: boolean }) => {
+    setIsSubmittingWidget(true)
+    const serialized = JSON.stringify(config)
+    const result = await insertAsset(teamSlug, {
+      file_name: name,
+      file_path: serialized,
+      mime_type: 'application/x-widget-youtube-playlist',
+      size_bytes: 0,
+      folder_id: folderId || null,
+    })
+
+    if (result.success) {
+      const newAsset: Asset = {
+        id: result.id!,
+        file_name: name,
+        file_path: serialized,
+        mime_type: 'application/x-widget-youtube-playlist',
+        size_bytes: 0,
+        created_at: new Date().toISOString(),
+        folder_id: folderId || null,
+      }
+      setAssets(prev => [newAsset, ...prev])
+      setShowYouTubePlaylistConfig(false)
+      toast.success(`YouTube Playlist widget "${name}" created successfully`)
+      startTransition(() => { router.refresh() })
+    } else {
+      toast.error(result.error || 'Failed to create YouTube Playlist widget.')
     }
     setIsSubmittingWidget(false)
   }
@@ -271,6 +304,7 @@ export function WidgetModalsContainer({
         <WidgetSelectionModal 
           onClose={() => setShowWidgetSelection(false)} 
           onSelectYouTube={() => setShowYouTubeConfig(true)}
+          onSelectYouTubePlaylist={() => setShowYouTubePlaylistConfig(true)}
           onSelectRemoteUrl={() => setShowRemoteUrlConfig(true)}
           onSelectHtml={() => setShowHtmlConfig(true)}
           onSelectFlow={() => setShowFlowConfig(true)}
@@ -288,6 +322,18 @@ export function WidgetModalsContainer({
             setShowWidgetSelection(true)
           }}
           onSubmit={handleCreateYouTubeWidget}
+          isSubmitting={isSubmittingWidget}
+        />
+      )}
+
+      {showYouTubePlaylistConfig && (
+        <YouTubePlaylistWidgetModal 
+          onClose={() => setShowYouTubePlaylistConfig(false)}
+          onBack={() => {
+            setShowYouTubePlaylistConfig(false)
+            setShowWidgetSelection(true)
+          }}
+          onSubmit={handleCreateYouTubePlaylistWidget}
           isSubmitting={isSubmittingWidget}
         />
       )}

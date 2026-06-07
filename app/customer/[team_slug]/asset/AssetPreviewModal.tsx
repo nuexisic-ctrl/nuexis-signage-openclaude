@@ -45,12 +45,44 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
   const isImg = isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode'
   const isVid = isVideo(asset.mime_type)
   const isYouTube = asset.mime_type === 'application/x-widget-youtube'
+  const isYouTubePlaylist = asset.mime_type === 'application/x-widget-youtube-playlist'
   const isRemoteUrl = asset.mime_type === 'application/x-widget-remote-url'
   const isHtml = asset.mime_type === 'application/x-widget-html'
 
   let youtubeVideoId = ''
+  let youtubeCcEnabled = false
   if (isYouTube) {
-    youtubeVideoId = asset.file_path.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || ''
+    let youtubeUrl = asset.file_path
+    try {
+      const parsed = JSON.parse(asset.file_path)
+      if (parsed && typeof parsed === 'object' && parsed.url) {
+        youtubeUrl = parsed.url
+        youtubeCcEnabled = !!parsed.ccEnabled
+      }
+    } catch {}
+    youtubeVideoId = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || ''
+  }
+
+  let playlistId = ''
+  let playlistCcEnabled = false
+  if (isYouTubePlaylist) {
+    let playlistUrl = asset.file_path
+    try {
+      const parsed = JSON.parse(asset.file_path)
+      if (parsed && typeof parsed === 'object') {
+        playlistUrl = parsed.url || ''
+        playlistCcEnabled = !!parsed.ccEnabled
+      }
+    } catch {}
+    const listParam = playlistUrl.match(/[?&]list=([^#\&\?]+)/)
+    if (listParam) {
+      playlistId = listParam[1]
+    } else {
+      const trimmed = playlistUrl.trim()
+      if (/^[A-Za-z0-9_-]{18,40}$/.test(trimmed)) {
+        playlistId = trimmed
+      }
+    }
   }
 
   return (
@@ -70,8 +102,10 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
             <span id="asset-preview-type" className={styles.modalMime}>
               {isYouTube
                 ? 'YouTube Widget'
-                : isRemoteUrl
-                  ? 'Remote URL Widget'
+                : isYouTubePlaylist
+                  ? 'YouTube Playlist Widget'
+                  : isRemoteUrl
+                    ? 'Remote URL Widget'
                   : isHtml
                     ? 'Text/HTML Widget'
                     : asset.mime_type === 'application/x-widget-flow'
@@ -115,7 +149,14 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
             <video src={previewUrl} controls autoPlay className={styles.modalMedia} style={{ maxHeight: '70vh', maxWidth: '100%' }} />
           ) : isYouTube && youtubeVideoId ? (
             <iframe 
-              src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1`}
+              src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1${youtubeCcEnabled ? '&cc_load_policy=1' : ''}`}
+              style={{ width: '100%', aspectRatio: '16/9', border: 'none', maxHeight: '70vh' }}
+              allow="autoplay; encrypted-media; fullscreen"
+              allowFullScreen
+            />
+          ) : isYouTubePlaylist && playlistId ? (
+            <iframe 
+              src={`https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1${playlistCcEnabled ? '&cc_load_policy=1' : ''}`}
               style={{ width: '100%', aspectRatio: '16/9', border: 'none', maxHeight: '70vh' }}
               allow="autoplay; encrypted-media; fullscreen"
               allowFullScreen

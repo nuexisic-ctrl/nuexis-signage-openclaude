@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
 import styles from './AssetTableView.module.css'
+import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 
 const YoutubeIcon = ({ size = 20, style }: { size?: number; style?: React.CSSProperties }) => (
   <svg 
@@ -236,7 +237,7 @@ export function AssetTableView({
                         ) : (
                           <Play size={20} />
                         )
-                      ) : asset.mime_type === 'application/x-widget-youtube' ? (
+                      ) : asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? (
                         <YoutubeIcon size={20} style={{ stroke: '#ff0000', color: '#ff0000' }} />
                       ) : asset.mime_type === 'application/x-widget-remote-url' ? (
                         <Link size={20} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
@@ -252,14 +253,15 @@ export function AssetTableView({
                         <File size={20} />
                       )}
                     </div>
-                    <div className={styles.cellName}>{asset.file_name}</div>
+                    <div className={styles.cellName}>
+                      <FilenameTruncator filename={asset.file_name} />
+                    </div>
                   </div>
                 </td>
                 <td className={styles.tableCell}>
                   <div 
                     className={styles.contentIconWrap}
                     title={isFolder ? 'FOLDER' : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
-                    style={{ cursor: 'help' }}
                   >
                     {isFolder ? (
                       <Folder size={15} />
@@ -271,7 +273,7 @@ export function AssetTableView({
                       )
                     ) : isVideo(asset.mime_type) ? (
                       <Play size={15} />
-                    ) : asset.mime_type === 'application/x-widget-youtube' ? (
+                    ) : asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? (
                       <YoutubeIcon size={15} />
                     ) : asset.mime_type === 'application/x-widget-remote-url' ? (
                       <Link size={15} />
@@ -371,6 +373,18 @@ export function AssetTableView({
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
+                            {isWidget(asset.mime_type) && asset.mime_type !== 'application/x-widget-qrcode' && (
+                              <button
+                                className={styles.dropdownItem}
+                                type="button"
+                                onClick={() => {
+                                  setOpenMenuId(null)
+                                  setPreviewAsset(asset)
+                                }}
+                              >
+                                {t('Edit Widget')}
+                              </button>
+                            )}
                             <button
                               className={styles.dropdownItem}
                               type="button"

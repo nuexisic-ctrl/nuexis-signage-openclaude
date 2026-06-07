@@ -406,7 +406,6 @@ export default function FolderClient({
                               <div 
                                 className={tableStyles.contentIconWrap}
                                 title={asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
-                                style={{ cursor: 'help' }}
                               >
                                 {isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode' ? (
                                   asset.mime_type === 'application/x-widget-qrcode' ? (

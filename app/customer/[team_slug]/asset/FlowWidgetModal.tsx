@@ -19,6 +19,15 @@ interface FlowWidgetModalProps {
     theme?: 'light' | 'dark'
   }) => void
   isSubmitting: boolean
+  initialData?: {
+    name: string
+    style: string
+    showSeconds: boolean
+    showDate: boolean
+    use24Hour: boolean
+    dateFormat: string
+    theme: 'light' | 'dark'
+  }
 }
 
 const NAME_MAX_LENGTH = 100
@@ -204,16 +213,18 @@ export default function FlowWidgetModal({
   onClose,
   onBack,
   onSubmit,
-  isSubmitting
+  isSubmitting,
+  initialData,
 }: FlowWidgetModalProps) {
-  const [name, setName] = useState('')
+  const isEditMode = !!initialData
+  const [name, setName] = useState(initialData?.name ?? '')
   const [nameError, setNameError] = useState('')
-  const [style, setStyle] = useState<typeof STYLES_WHITELIST[number]['id']>('classic-digital')
-  const [showSeconds, setShowSeconds] = useState(true)
-  const [showDate, setShowDate] = useState(true)
-  const [use24Hour, setUse24Hour] = useState(false)
-  const [dateFormat, setDateFormat] = useState<typeof DATE_FORMATS_WHITELIST[number]>('January 01, 2024')
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [style, setStyle] = useState<typeof STYLES_WHITELIST[number]['id']>((initialData?.style as any) ?? 'classic-digital')
+  const [showSeconds, setShowSeconds] = useState(initialData?.showSeconds ?? true)
+  const [showDate, setShowDate] = useState(initialData?.showDate ?? true)
+  const [use24Hour, setUse24Hour] = useState(initialData?.use24Hour ?? false)
+  const [dateFormat, setDateFormat] = useState<typeof DATE_FORMATS_WHITELIST[number]>((initialData?.dateFormat as any) ?? 'January 01, 2024')
+  const [theme, setTheme] = useState<'light' | 'dark'>(initialData?.theme ?? 'light')
   const dragStartRef = useRef(false)
   const wasDropdownOpenRef = useRef(false)
 
@@ -332,7 +343,12 @@ export default function FlowWidgetModal({
               )}
               <Clock size={22} color="var(--primary)" />
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)', fontWeight: 600 }}>Create Clock Widget</h2>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)', fontWeight: 600 }}>
+                  {isEditMode ? 'Edit Clock Widget' : 'Create Clock Widget'}
+                </h2>
+                {isEditMode && (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', padding: '2px 8px', borderRadius: '999px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', fontFamily: 'var(--font-label)', display: 'inline-block', marginTop: '4px' }}>EDITING</span>
+                )}
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--on-surface-subtle)' }}>Deploy elegant, sandboxed, high-performance clocks on your displays.</p>
               </div>
             </div>
@@ -340,23 +356,9 @@ export default function FlowWidgetModal({
           </div>
 
           {/* Body content with split view */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            flex: 1,
-            overflow: 'visible',
-            background: 'var(--surface-lowest)'
-          }}>
+          <div className={styles.splitViewBody}>
             {/* Left: Configuration Inputs */}
-            <form onSubmit={handleSubmit} style={{
-              flex: '1 1 400px',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px',
-              borderRight: '1px solid var(--outline-variant)'
-            }}>
+            <form onSubmit={handleSubmit} className={styles.splitViewForm} style={{ flex: '1 1 400px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.86rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Widget Name*</label>
                 <input
@@ -512,16 +514,7 @@ export default function FlowWidgetModal({
             </form>
 
             {/* Right: Live Interactive Simulator Area */}
-            <div style={{
-              flex: '1 1 450px',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              background: 'rgba(0, 0, 0, 0.02)',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
+            <div className={styles.splitViewPreview} style={{ flex: '1 1 450px' }}>
               {/* Preview mode selectors */}
               <div style={{ display: 'flex', gap: '8px', background: 'rgba(0, 0, 0, 0.05)', padding: '4px', borderRadius: '8px', zIndex: 10 }}>
                 <button
@@ -644,7 +637,7 @@ export default function FlowWidgetModal({
                 fontSize: '0.88rem'
               }}
             >
-              {isSubmitting ? 'Saving...' : 'Save Widget'}
+              {isSubmitting ? 'Saving...' : isEditMode ? 'Save Changes' : 'Save Widget'}
             </button>
           </div>
         </div>

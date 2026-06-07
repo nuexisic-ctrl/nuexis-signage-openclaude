@@ -1,11 +1,7 @@
 import type { Metadata } from 'next'
-import { cookies } from 'next/headers'
 import { createClient, getCachedUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import AssetClient from '../../AssetClient'
-import styles from '../../asset.module.css'
-import Header from '../../../components/Header'
-import Sidebar from '../../../components/Sidebar'
 import { Asset } from '../../types'
 
 interface Props {
@@ -44,9 +40,6 @@ export default async function FolderPage({ params }: Props) {
   if (userTeamSlug && userTeamSlug !== team_slug) {
     redirect(`/customer/${userTeamSlug}/asset/folder/${folder_id}`)
   }
-
-  const fullName = user.user_metadata?.full_name as string | undefined
-  const userRole = profile?.role || 'Owner'
 
   let folder
   if (isUuid) {
@@ -105,26 +98,14 @@ export default async function FolderPage({ params }: Props) {
         .order('created_at', { ascending: false })
     : { data: [] }
 
-  const cookieStore = await cookies();
-  const initialCollapsed = cookieStore.get('nuexis_sidebar_collapsed')?.value === 'true';
-
   return (
-    <div className={styles.shell}>
-      <Sidebar teamSlug={team_slug} fullName={fullName} email={user.email} role={userRole} initialCollapsed={initialCollapsed} />
-
-      {/* Main */}
-      <main className={styles.main}>
-        <Header fullName={fullName} email={user.email} />
-
-        <AssetClient
-          initialAssets={assets as Parameters<typeof AssetClient>[0]['initialAssets']}
-          teamId={profile?.team_id ?? ''}
-          teamSlug={team_slug}
-          totalAssets={totalAssets}
-          screens={(screens ?? []) as Parameters<typeof AssetClient>[0]['screens']}
-          folder={folder as Asset}
-        />
-      </main>
-    </div>
+    <AssetClient
+      initialAssets={assets as Parameters<typeof AssetClient>[0]['initialAssets']}
+      teamId={profile?.team_id ?? ''}
+      teamSlug={team_slug}
+      totalAssets={totalAssets}
+      screens={(screens ?? []) as Parameters<typeof AssetClient>[0]['screens']}
+      folder={folder as Asset}
+    />
   )
 }

@@ -750,3 +750,204 @@ export async function moveAssetsToFolder(
   return { success: true }
 }
 
+export type UpdateWidgetResult =
+  | { success: true }
+  | { success: false; error: string }
+
+/**
+ * updateWidgetAsset
+ * Updates an existing widget asset's name and configuration in-place.
+ * After updating the asset, it also refreshes the `content` column on every
+ * device that currently has this widget assigned — this triggers the player's
+ * existing Supabase Realtime subscription so all screens update instantly.
+ */
+export async function updateWidgetAsset(
+  teamSlug: string,
+  assetId: string,
+  newName: string,
+  newFilePath: string,
+  mimeType: string
+): Promise<UpdateWidgetResult> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in to edit widgets.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team. Please try again.' }
+  }
+
+  try {
+    await requireOwner(supabase, user.id)
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+
+  // Only widget types may be edited through this action
+  if (!mimeType.startsWith('application/x-widget')) {
+    return { success: false, error: 'Only widget assets can be edited with this action.' }
+  }
+
+  // Verify the asset exists and belongs to the caller's team
+  const { data: existing, error: fetchError } = await supabase
+    .from('assets')
+    .select('id, team_id, mime_type, file_path, file_name')
+    .eq('id', assetId)
+    .single()
+
+  if (fetchError || !existing) {
+    return { success: false, error: 'Widget not found.' }
+  }
+
+  if (existing.team_id !== teamId) {
+    console.warn(`[updateWidgetAsset] Unauthorized: user ${user.id} (team ${teamId}) attempted to edit asset ${assetId} (team ${existing.team_id})`)
+    return { success: false, error: 'You do not have permission to edit this widget.' }
+  }
+
+  if (existing.mime_type !== mimeType) {
+    return { success: false, error: 'Widget type mismatch.' }
+  }
+
+  // ── Validate name ──────────────────────────────────────────────────────────
+  const trimmedName = newName.trim()
+  if (!trimmedName || trimmedName.length > 100) {
+    return { success: false, error: 'Widget name must be between 1 and 100 characters.' }
+  }
+
+  // ── Per-type payload validation (mirrors insertAsset logic) ────────────────
+  let sanitizedPath = newFilePath
+
+  if (mimeType === 'application/x-widget-countup' || mimeType === 'application/x-widget-countdown') {
+    try {
+      const config = JSON.parse(newFilePath)
+      if (typeof config.text !== 'string' || config.text.trim().length === 0 || config.text.length > 150) {
+        return { success: false, error: 'Heading text is invalid or exceeds 150 characters.' }
+      }
+      if (config.endMessage && (typeof config.endMessage !== 'string' || config.endMessage.length > 200)) {
+        return { success: false, error: 'End message exceeds 200 characters.' }
+      }
+      if (config.themeSettings) {
+        const hexRegex = /^#([0-9a-fA-F]{3}){1,2}$/
+        if (config.themeSettings.primaryColor && !hexRegex.test(config.themeSettings.primaryColor)) {
+          return { success: false, error: 'Invalid primary color format.' }
+        }
+        if (config.themeSettings.secondaryColor && !hexRegex.test(config.themeSettings.secondaryColor)) {
+          return { success: false, error: 'Invalid secondary color format.' }
+        }
+        if (config.themeSettings.textColor && !hexRegex.test(config.themeSettings.textColor)) {
+          return { success: false, error: 'Invalid text color format.' }
+        }
+        const bg = config.themeSettings.backgroundColor
+        if (bg && !hexRegex.test(bg) && !bg.startsWith('linear-gradient')) {
+          return { success: false, error: 'Invalid background color format.' }
+        }
+        if (config.themeSettings.backgroundImage) {
+          try {
+            const parsed = new URL(config.themeSettings.backgroundImage)
+            if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+              return { success: false, error: 'Background image URL must use HTTP or HTTPS.' }
+            }
+          } catch {
+            return { success: false, error: 'Invalid background image URL.' }
+          }
+        }
+      }
+    } catch {
+      return { success: false, error: 'Invalid widget configuration.' }
+    }
+  }
+
+  if (mimeType === 'application/x-widget-youtube') {
+    if (typeof newFilePath !== 'string' || (!newFilePath.includes('youtube.com') && !newFilePath.includes('youtu.be'))) {
+      return { success: false, error: 'Invalid YouTube URL.' }
+    }
+  }
+
+  if (mimeType === 'application/x-widget-qrcode') {
+    try {
+      const config = JSON.parse(newFilePath)
+      if (typeof config.url !== 'string' || config.url.trim().length === 0 || config.url.length > 2000) {
+        return { success: false, error: 'Invalid QR Code URL or URL exceeds 2000 characters.' }
+      }
+    } catch {
+      return { success: false, error: 'Invalid QR Code configuration.' }
+    }
+  }
+
+  if (mimeType === 'application/x-widget-remote-url') {
+    try {
+      const parsed = new URL(newFilePath)
+      if (parsed.protocol !== 'https:') {
+        return { success: false, error: 'Remote URLs must use HTTPS for security.' }
+      }
+    } catch {
+      return { success: false, error: 'Invalid URL.' }
+    }
+  }
+
+  if (mimeType === 'application/x-widget-html') {
+    try {
+      const { html = '', css = '' } = JSON.parse(newFilePath)
+      const sanitizedHtml = DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: [
+          'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
+          'br', 'img', 'a', 'strong', 'em', 'b', 'i', 'u', 'table', 'thead', 'tbody',
+          'tr', 'th', 'td', 'style'
+        ],
+        ALLOWED_ATTR: ['class', 'style', 'src', 'href', 'target', 'alt', 'width', 'height']
+      })
+      sanitizedPath = JSON.stringify({ html: sanitizedHtml, css })
+    } catch {
+      return { success: false, error: 'Invalid HTML widget data.' }
+    }
+  }
+
+  // ── Update the asset record ────────────────────────────────────────────────
+  const { error: updateError } = await supabase
+    .from('assets')
+    .update({
+      file_name: trimmedName,
+      file_path: sanitizedPath,
+    })
+    .eq('id', assetId)
+    .eq('team_id', teamId)
+
+  if (updateError) {
+    console.error('[updateWidgetAsset] update error:', { message: updateError.message, details: updateError.details })
+    return { success: false, error: 'Failed to save widget changes. Please try again.' }
+  }
+
+  // ── Cascade content update to all devices using this widget ───────────────
+  // This triggers the player's existing postgres_changes subscription on `devices`,
+  // causing every connected screen to re-render immediately with the new content.
+  await supabase
+    .from('devices')
+    .update({ content: sanitizedPath })
+    .eq('asset_id', assetId)
+    .eq('team_id', teamId)
+  // Non-fatal: offline devices will pick up the change on next reconnect via getDeviceState.
+
+  // ── Write audit log ────────────────────────────────────────────────────────
+  try {
+    await supabase
+      .from('widget_edit_logs')
+      .insert({
+        asset_id: assetId,
+        team_id: teamId,
+        edited_by: user.id,
+        previous_name: existing.file_name,
+        new_name: trimmedName,
+        previous_path: existing.file_path,
+        new_path: sanitizedPath,
+      })
+  } catch (auditErr) {
+    // Non-fatal: log but don't block the save
+    console.error('[updateWidgetAsset] Failed to write audit log:', auditErr)
+  }
+
+  revalidatePath(`/customer/${teamSlug}/asset`)
+  return { success: true }
+}

@@ -459,6 +459,57 @@ export type Database = {
         }
         Relationships: []
       }
+      widget_edit_logs: {
+        Row: {
+          asset_id: string
+          created_at: string
+          edited_by: string
+          id: string
+          new_name: string | null
+          new_path: string | null
+          previous_name: string | null
+          previous_path: string | null
+          team_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          edited_by: string
+          id?: string
+          new_name?: string | null
+          new_path?: string | null
+          previous_name?: string | null
+          previous_path?: string | null
+          team_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          edited_by?: string
+          id?: string
+          new_name?: string | null
+          new_path?: string | null
+          previous_name?: string | null
+          previous_path?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "widget_edit_logs_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "widget_edit_logs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

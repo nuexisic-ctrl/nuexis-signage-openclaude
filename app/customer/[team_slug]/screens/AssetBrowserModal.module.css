@@ -3,17 +3,18 @@
   inset: 0;
   z-index: 1200;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px;
+  padding: 60px 20px 20px;
   background: rgba(7, 17, 31, 0.64);
   backdrop-filter: blur(8px);
+  overflow-y: auto;
 }
 
 .modal {
   width: min(100%, 920px);
   height: auto;
-  max-height: min(780px, calc(100vh - 40px));
+  max-height: calc(100vh - 120px);
   background: var(--surface-lowest);
   border: 1px solid var(--outline-variant);
   border-radius: 16px;
@@ -22,6 +23,7 @@
   box-shadow: var(--shadow-modal);
   overflow: hidden;
   color: var(--on-surface);
+  animation: slideDownModal 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .header {
@@ -397,6 +399,9 @@
 .fileNameText {
   font-weight: 700;
   color: var(--on-surface);
+  display: flex;
+  min-width: 0;
+  width: 100%;
 }
 
 /* Simplified Content Badge style matching assets page mimeChip exactly */
@@ -527,10 +532,10 @@
   font-weight: 800;
   color: var(--on-surface);
   margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   padding-right: 18px;
+  display: flex;
+  min-width: 0;
+  width: 100%;
 }
 
 .cardDetails {
@@ -617,4 +622,9 @@
   color: var(--on-surface-subtle);
   font-size: 0.9rem;
   margin: 0;
+}
+
+@keyframes slideDownModal {
+  from { opacity: 0; transform: translateY(-80px); }
+  to { opacity: 1; transform: translateY(0); }
 }

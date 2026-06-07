@@ -3,15 +3,16 @@
   inset: 0;
   z-index: 200;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px;
+  padding: 60px 20px 20px;
   background: rgba(7, 17, 31, 0.64);
   backdrop-filter: blur(8px);
 }
 
 .modal {
   width: min(100%, 480px);
+  max-height: calc(100vh - 120px);
   background: var(--surface-lowest);
   border: 1px solid var(--outline-variant);
   border-radius: 16px;
@@ -20,17 +21,17 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  animation: modalEnter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideDownModal 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@keyframes modalEnter {
+@keyframes slideDownModal {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(8px);
+    transform: translateY(-80px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }
 

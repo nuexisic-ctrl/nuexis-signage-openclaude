@@ -78,7 +78,7 @@ export function getContentKind(
     if (item.widget_type === 'flow-countdown' || item.assets?.mime_type === 'application/x-widget-countdown') return 'countdown'
     if (item.assets) {
       const mime = item.assets.mime_type
-      if (mime === 'application/x-widget-youtube') return 'youtube'
+      if (mime === 'application/x-widget-youtube' || mime === 'application/x-widget-youtube-playlist') return 'youtube'
       if (mime === 'application/x-widget-remote-url') return 'remote-url'
       if (mime === 'application/x-widget-html') return 'html-widget'
       if (mime === 'application/x-widget-flow') return 'clock'
@@ -91,7 +91,7 @@ export function getContentKind(
   if (!device.asset_id) return 'empty'
   const asset = assets.find(a => a.id === device.asset_id)
   if (!asset) return 'empty'
-  if (asset.mime_type === 'application/x-widget-youtube') return 'youtube'
+  if (asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist') return 'youtube'
   if (asset.mime_type === 'application/x-widget-remote-url') return 'remote-url'
   if (asset.mime_type === 'application/x-widget-html') return 'html-widget'
   if (asset.mime_type === 'application/x-widget-flow') return 'clock'
@@ -130,6 +130,7 @@ export function getContentLabel(device: Device, assets: Asset[] = [], playlists:
   const asset = assets.find(a => a.id === device.asset_id)
   if (!asset) return 'Assigned Asset'
   if (asset.mime_type === 'application/x-widget-youtube') return 'YouTube'
+  if (asset.mime_type === 'application/x-widget-youtube-playlist') return 'YouTube Playlist'
   if (asset.mime_type === 'application/x-widget-remote-url') return 'Remote URL'
   if (asset.mime_type === 'application/x-widget-html') return 'Custom HTML'
   if (asset.mime_type === 'application/x-widget-flow') {
@@ -178,6 +179,7 @@ function describePrimaryPlaylistContent(items: Playlist['playlist_items']): stri
     else if (item.assets?.mime_type?.startsWith('video/')) kind = 'Video'
     else if (item.assets?.mime_type?.startsWith('image/')) kind = 'Image'
     else if (item.assets?.mime_type === 'application/x-widget-youtube') kind = 'YouTube'
+    else if (item.assets?.mime_type === 'application/x-widget-youtube-playlist') kind = 'YouTube Playlist'
     else if (item.assets?.mime_type === 'application/x-widget-remote-url') kind = 'Remote URL'
     else if (item.assets?.mime_type === 'application/x-widget-html') kind = 'Custom HTML'
     kinds[kind] = (kinds[kind] || 0) + 1
