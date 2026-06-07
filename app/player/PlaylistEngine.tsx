@@ -6,6 +6,7 @@ import { getPlaylistItems, getSignedMediaUrl } from './actions'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
+import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
 
 interface PlaylistItem {
   id: string
@@ -566,6 +567,39 @@ function PlayableItem({
           use24Hour={parsedConfig.use24Hour}
           dateFormat={parsedConfig.dateFormat}
           theme={parsedConfig.theme}
+        />
+      </div>
+    )
+  }
+
+  if (item.assets?.mime_type === 'application/x-widget-worldclock') {
+    let parsedConfig: any = null
+    try {
+      parsedConfig = JSON.parse(mediaUrl)
+    } catch (err) {
+      console.error('Failed to render World Clock widget in playlist engine:', err)
+    }
+
+    if (!parsedConfig) {
+      return (
+        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+          Error rendering World Clock widget
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+        <FlowWorldClockRenderer
+          timezone={parsedConfig.timezone}
+          clockType={parsedConfig.clockType}
+          theme={parsedConfig.theme}
+          primaryColor={parsedConfig.themeSettings?.primaryColor}
+          secondaryColor={parsedConfig.themeSettings?.secondaryColor}
+          backgroundColor={parsedConfig.themeSettings?.backgroundColor}
+          textColor={parsedConfig.themeSettings?.textColor}
+          use24Hour={parsedConfig.use24Hour}
+          showSeconds={parsedConfig.showSeconds}
         />
       </div>
     )

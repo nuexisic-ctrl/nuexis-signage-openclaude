@@ -5,6 +5,7 @@ import PlaylistEngine from './PlaylistEngine'
 import styles from './player.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
+import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
 import { X, Monitor, RefreshCw, Volume2, VolumeX, Unlink } from 'lucide-react'
 
 interface PairedViewProps {
@@ -195,6 +196,26 @@ export default function PairedView({
       } catch (err) {
         console.error('Failed to parse Clock widget config in PairedView:', err)
         content = <div style={{ color: 'red', padding: '10px' }}>Error rendering Clock widget</div>
+      }
+    } else if (mimeType === 'application/x-widget-worldclock') {
+      try {
+        const config = JSON.parse(assetUrl)
+        content = (
+          <FlowWorldClockRenderer
+            timezone={config.timezone}
+            clockType={config.clockType}
+            theme={config.theme}
+            primaryColor={config.themeSettings?.primaryColor}
+            secondaryColor={config.themeSettings?.secondaryColor}
+            backgroundColor={config.themeSettings?.backgroundColor}
+            textColor={config.themeSettings?.textColor}
+            use24Hour={config.use24Hour}
+            showSeconds={config.showSeconds}
+          />
+        )
+      } catch (err) {
+        console.error('Failed to parse World Clock widget config in PairedView:', err)
+        content = <div style={{ color: 'red', padding: '10px' }}>Error rendering World Clock widget</div>
       }
     } else if (mimeType === 'application/x-widget-countdown') {
       try {

@@ -81,8 +81,7 @@ export default function WorldClockWidgetModal({
     theme?: 'light' | 'dark' | 'custom'
   }>({})
 
-  // Collapsible settings visibility
-  const [showThemeSettings, setShowThemeSettings] = useState(false)
+
 
   // Drag select and backdrop click detection
   const dragStartRef = useRef(false)
@@ -180,7 +179,7 @@ export default function WorldClockWidgetModal({
             alignItems: 'center',
             padding: '16px 24px',
             borderBottom: '1px solid var(--outline-variant)',
-            background: 'rgba(7, 17, 31, 0.4)',
+            background: 'var(--surface-low)',
             borderTopLeftRadius: '16px',
             borderTopRightRadius: '16px'
           }}>
@@ -292,78 +291,63 @@ export default function WorldClockWidgetModal({
                 </div>
               </div>
 
-              {/* Theme Settings Container */}
-              <div className={`${styles.collapsibleContainer} ${showThemeSettings ? styles.collapsibleContainerActive : ''}`}>
-                <div
-                  className={styles.collapsibleHeader}
-                  onClick={() => setShowThemeSettings(!showThemeSettings)}
-                >
-                  <span>Theme & Custom Styling</span>
-                  <span>{showThemeSettings ? '▲' : '▼'}</span>
-                </div>
-                {showThemeSettings && (
-                  <div className={styles.collapsibleContent}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>
-                        Theme Preset*
-                      </label>
-                      <CustomSelect
-                        id="worldclock-theme"
-                        value={theme}
-                        options={THEME_OPTIONS}
-                        onChange={val => { setTheme(val as 'light' | 'dark' | 'custom'); setPreviewOverride(p => ({ ...p, theme: undefined })) }}
-                        onPreviewChange={val => setPreviewOverride(p => ({ ...p, theme: val ? val as 'light' | 'dark' | 'custom' : undefined }))}
-                      />
-                    </div>
-
-                    {theme === 'custom' && (
-                      <div style={{
-                        display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px', background: 'rgba(0, 0, 0, 0.03)',
-                        border: '1px dashed var(--outline-variant)', borderRadius: '10px', marginTop: '12px'
-                      }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                          <div>
-                            <label style={{ fontSize: '0.78rem', color: 'var(--on-surface-subtle)', display: 'block', marginBottom: '4px' }}>Background Color</label>
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                              <input
-                                type="color"
-                                value={backgroundColor.startsWith('#') ? backgroundColor : '#090d16'}
-                                onChange={e => setBackgroundColor(e.target.value)}
-                                style={{ width: '36px', height: '36px', border: '1px solid var(--outline-variant)', borderRadius: '6px', cursor: 'pointer', padding: '2px', boxSizing: 'border-box' }}
-                              />
-                              <input
-                                type="text"
-                                value={backgroundColor}
-                                onChange={e => setBackgroundColor(e.target.value)}
-                                placeholder="#090d16"
-                                style={{ flex: 1, padding: '6px 8px', fontSize: '0.82rem', border: '1px solid var(--outline-variant)', borderRadius: '6px', background: 'var(--surface-container-lowest)', color: 'var(--on-surface)' }}
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label style={{ fontSize: '0.78rem', color: 'var(--on-surface-subtle)', display: 'block', marginBottom: '4px' }}>Text / Clock Color</label>
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                              <input
-                                type="color"
-                                value={textColor.startsWith('#') ? textColor : '#ffffff'}
-                                onChange={e => setTextColor(e.target.value)}
-                                style={{ width: '36px', height: '36px', border: '1px solid var(--outline-variant)', borderRadius: '6px', cursor: 'pointer', padding: '2px', boxSizing: 'border-box' }}
-                              />
-                              <input
-                                type="text"
-                                value={textColor}
-                                onChange={e => setTextColor(e.target.value)}
-                                placeholder="#ffffff"
-                                style={{ flex: 1, padding: '6px 8px', fontSize: '0.82rem', border: '1px solid var(--outline-variant)', borderRadius: '6px', background: 'var(--surface-container-lowest)', color: 'var(--on-surface)' }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+              {/* Theme Preset */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', color: 'var(--on-surface)', fontFamily: 'var(--font-label)', fontWeight: 600 }}>Theme Preset*</label>
+                <CustomSelect
+                  id="worldclock-theme"
+                  value={theme}
+                  options={THEME_OPTIONS}
+                  onChange={val => { setTheme(val as 'light' | 'dark' | 'custom'); setPreviewOverride(p => ({ ...p, theme: undefined })) }}
+                  onPreviewChange={val => setPreviewOverride(p => ({ ...p, theme: val ? val as 'light' | 'dark' | 'custom' : undefined }))}
+                />
               </div>
+
+              {theme === 'custom' && (
+                <div style={{
+                  display: 'flex', flexDirection: 'column', gap: '12px', padding: '14px', background: 'var(--surface-low)',
+                  border: '1.5px solid var(--outline-variant)', borderRadius: '10px', marginTop: '4px'
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.78rem', color: 'var(--on-surface-subtle)', display: 'block', marginBottom: '4px' }}>Background Color</label>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          value={backgroundColor.startsWith('#') ? backgroundColor : '#090d16'}
+                          onChange={e => setBackgroundColor(e.target.value)}
+                          style={{ width: '36px', height: '36px', border: '1px solid var(--outline-variant)', borderRadius: '6px', cursor: 'pointer', padding: '2px', boxSizing: 'border-box' }}
+                        />
+                        <input
+                          type="text"
+                          value={backgroundColor}
+                          onChange={e => setBackgroundColor(e.target.value)}
+                          placeholder="#090d16"
+                          style={{ flex: 1, padding: '6px 8px', fontSize: '0.82rem', border: '1px solid var(--outline-variant)', borderRadius: '6px', background: 'var(--surface-container-lowest)', color: 'var(--on-surface)' }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.78rem', color: 'var(--on-surface-subtle)', display: 'block', marginBottom: '4px' }}>Text / Clock Color</label>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <input
+                          type="color"
+                          value={textColor.startsWith('#') ? textColor : '#ffffff'}
+                          onChange={e => setTextColor(e.target.value)}
+                          style={{ width: '36px', height: '36px', border: '1px solid var(--outline-variant)', borderRadius: '6px', cursor: 'pointer', padding: '2px', boxSizing: 'border-box' }}
+                        />
+                        <input
+                          type="text"
+                          value={textColor}
+                          onChange={e => setTextColor(e.target.value)}
+                          placeholder="#ffffff"
+                          style={{ flex: 1, padding: '6px 8px', fontSize: '0.82rem', border: '1px solid var(--outline-variant)', borderRadius: '6px', background: 'var(--surface-container-lowest)', color: 'var(--on-surface)' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </form>
 
             {/* Right Live Simulator Panel */}
@@ -429,8 +413,6 @@ export default function WorldClockWidgetModal({
                     timezone={activeTimezone}
                     clockType={activeClockType}
                     theme={activeTheme}
-                    primaryColor={primaryColor}
-                    secondaryColor={secondaryColor}
                     backgroundColor={backgroundColor}
                     textColor={textColor}
                     use24Hour={use24Hour}
@@ -448,7 +430,7 @@ export default function WorldClockWidgetModal({
             display: 'flex',
             justifyContent: 'flex-end',
             alignItems: 'center',
-            background: 'rgba(7, 17, 31, 0.4)',
+            background: 'var(--surface-low)',
             gap: '12px',
             borderBottomLeftRadius: '16px',
             borderBottomRightRadius: '16px'
@@ -518,8 +500,6 @@ export default function WorldClockWidgetModal({
               timezone={activeTimezone}
               clockType={activeClockType}
               theme={activeTheme}
-              primaryColor={primaryColor}
-              secondaryColor={secondaryColor}
               backgroundColor={backgroundColor}
               textColor={textColor}
               use24Hour={use24Hour}

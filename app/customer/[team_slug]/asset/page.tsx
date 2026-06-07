@@ -96,12 +96,6 @@ export default async function AssetPage({ params, searchParams }: Props) {
       .order('created_at', { ascending: false })
       .limit(1000)
 
-    if (activeFolder) {
-      filesQuery.eq('folder_id', activeFolder.id)
-    } else {
-      filesQuery.is('folder_id', null)
-    }
-
     const [filesRes, screensRes] = await Promise.all([
       profile?.team_id ? filesQuery : Promise.resolve({ data: [], count: 0, error: null }),
       profile?.team_id

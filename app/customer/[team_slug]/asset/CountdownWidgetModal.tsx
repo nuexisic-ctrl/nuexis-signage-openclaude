@@ -372,7 +372,7 @@ export default function CountdownWidgetModal({
             alignItems: 'center',
             padding: '16px 24px',
             borderBottom: '1px solid var(--outline-variant)',
-            background: 'rgba(7, 17, 31, 0.4)',
+            background: 'var(--surface-low)',
             borderTopLeftRadius: '16px',
             borderTopRightRadius: '16px'
           }}>
@@ -826,7 +826,7 @@ export default function CountdownWidgetModal({
             display: 'flex',
             justifyContent: 'flex-end',
             alignItems: 'center',
-            background: 'rgba(7, 17, 31, 0.4)',
+            background: 'var(--surface-low)',
             gap: '12px',
             borderBottomLeftRadius: '16px',
             borderBottomRightRadius: '16px'

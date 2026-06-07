@@ -744,7 +744,7 @@ export function HtmlWidgetModal({
             alignItems: 'center', 
             padding: '16px 24px', 
             borderBottom: '1px solid var(--outline-variant)',
-            background: 'rgba(7, 17, 31, 0.4)',
+            background: 'var(--surface-low)',
             borderTopLeftRadius: '16px',
             borderTopRightRadius: '16px'
           }}>
@@ -841,7 +841,7 @@ export function HtmlWidgetModal({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: 'rgba(7, 17, 31, 0.4)',
+              background: 'var(--surface-low)',
               borderBottomLeftRadius: '16px',
               borderBottomRightRadius: '16px'
             }}>
@@ -1607,7 +1607,7 @@ export function QRCodeWidgetModal({
             alignItems: 'center', 
             padding: '16px 24px', 
             borderBottom: '1px solid var(--outline-variant)',
-            background: 'rgba(7, 17, 31, 0.4)',
+            background: 'var(--surface-low)',
             borderTopLeftRadius: '16px',
             borderTopRightRadius: '16px'
           }}>
@@ -2019,7 +2019,7 @@ export function QRCodeWidgetModal({
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: 'rgba(7, 17, 31, 0.4)',
+              background: 'var(--surface-low)',
               borderBottomLeftRadius: '16px',
               borderBottomRightRadius: '16px'
             }}>

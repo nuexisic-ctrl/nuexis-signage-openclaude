@@ -51,8 +51,14 @@ export default function AssetClient({
   folder,
 }: Props) {
   const [folders, setFolders] = useState<Asset[]>(initialFolders)
-  const [filesCache, setFilesCache] = useState<Record<string, Asset[]>>({
-    [folder?.id || 'root']: initialFiles
+  const [filesCache, setFilesCache] = useState<Record<string, Asset[]>>(() => {
+    const cache: Record<string, Asset[]> = {}
+    initialFiles.forEach(file => {
+      const key = file.folder_id || 'root'
+      if (!cache[key]) cache[key] = []
+      cache[key].push(file)
+    })
+    return cache
   })
   const [activeFolder, setActiveFolder] = useState<Asset | null>(folder || null)
   const [isLoadingFiles, setIsLoadingFiles] = useState(false)
@@ -97,13 +103,30 @@ export default function AssetClient({
 
     const filesStillHere = updatedFiles.filter(f => (f.folder_id || null) === (activeFolder?.id || null))
     setFilesCache(prev => {
-      const next = { ...prev, [activeId]: filesStillHere }
+      const next = { ...prev }
+      next[activeId] = filesStillHere
+
+      // Add moved/added files to their respective target folder caches if they exist
       updatedFiles.forEach(f => {
-        const fid = f.folder_id || 'root'
-        if (fid !== activeId && next[fid]) {
-          delete next[fid]
+        const targetId = f.folder_id || 'root'
+        if (targetId !== activeId) {
+          const targetList = next[targetId] || []
+          if (!targetList.some(item => item.id === f.id)) {
+            next[targetId] = [...targetList, f]
+          }
         }
       })
+
+      // Clean up deleted files from all caches
+      const updatedFilesIds = new Set(updatedFiles.map(file => file.id))
+      currentFilesList.forEach(file => {
+        if (!updatedFilesIds.has(file.id)) {
+          Object.keys(next).forEach(key => {
+            next[key] = (next[key] || []).filter(item => item.id !== file.id)
+          })
+        }
+      })
+
       return next
     })
   }, [folders, filesCache, activeFolder])
@@ -203,11 +226,16 @@ export default function AssetClient({
 
   useEffect(() => {
     setFolders(initialFolders)
-    setFilesCache(prev => ({
-      ...prev,
-      [folder?.id || 'root']: initialFiles
-    }))
-  }, [initialFolders, initialFiles, folder])
+    
+    // Group all initial files by folder_id
+    const newCache: Record<string, Asset[]> = {}
+    initialFiles.forEach(file => {
+      const key = file.folder_id || 'root'
+      if (!newCache[key]) newCache[key] = []
+      newCache[key].push(file)
+    })
+    setFilesCache(newCache)
+  }, [initialFolders, initialFiles])
 
   useEffect(() => {
     setActiveFolder(folder || null)

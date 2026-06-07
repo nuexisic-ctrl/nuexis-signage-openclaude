@@ -87,14 +87,13 @@ export function BulkMoveModal({
           <button
             type="button"
             disabled={isPending}
-            onClick={() => handleMove(null, t('Root (No Folder)'))}
+            onClick={() => handleMove(null, t('Root'))}
             className={listStyles.listButton}
-            aria-label={t('Move to Root (No Folder)')}
+            aria-label={t('Move to Root')}
           >
             <Folder size={18} style={{ stroke: '#78716c', color: '#78716c' }} />
             <span className={listStyles.folderLabel}>
-              <span className={listStyles.folderName}>{t('Root (No Folder)')}</span>
-              <span className={listStyles.folderHint}>{t('Move selected items out of folders')}</span>
+              <span className={listStyles.folderName}>{t('Root')}</span>
             </span>
           </button>
 

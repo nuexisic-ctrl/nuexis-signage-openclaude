@@ -405,6 +405,28 @@ export function ScreenPreviewModal({
       }
     }
 
+    if (itemMime === 'application/x-widget-worldclock') {
+      try {
+        const config = JSON.parse(itemPath)
+        return (
+          <FlowWorldClockRenderer
+            timezone={config.timezone}
+            clockType={config.clockType}
+            theme={config.theme}
+            primaryColor={config.themeSettings?.primaryColor}
+            secondaryColor={config.themeSettings?.secondaryColor}
+            backgroundColor={config.themeSettings?.backgroundColor}
+            textColor={config.themeSettings?.textColor}
+            use24Hour={config.use24Hour}
+            showSeconds={config.showSeconds}
+          />
+        )
+      } catch (err) {
+        console.error('Failed to render World Clock widget in simulator:', err)
+        return <div style={{ color: 'red', padding: '10px' }}>Error rendering World Clock widget</div>
+      }
+    }
+
     if (itemMime === 'application/x-widget-countdown') {
       try {
         const config = JSON.parse(itemPath)

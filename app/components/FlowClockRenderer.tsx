@@ -151,27 +151,42 @@ const GLOBAL_CSS = `
 .fck-board-root {
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   width:100%;height:100%;padding:6cqmin;box-sizing:border-box;
-  background:#0c0c0e;text-align:center;
+  background: var(--fck-board-bg, #0c0c0e);text-align:center;
   font-family:'Noto Serif',Georgia,serif;
+  transition: background var(--transition-base, 0.2s), color var(--transition-base, 0.2s);
+}
+.fck-board-root[data-theme="light"] {
+  --fck-board-bg: #fbf9f5;
+  --fck-board-text: #3d3013;
+  --fck-board-accent: #8f7634;
+  --fck-board-glow: rgba(143,118,52,0.1);
+  --fck-board-divider: linear-gradient(90deg,transparent,#8f7634,transparent);
+}
+.fck-board-root[data-theme="dark"] {
+  --fck-board-bg: #0c0c0e;
+  --fck-board-text: #e8d5a3;
+  --fck-board-accent: #c9a84c;
+  --fck-board-glow: rgba(201,168,76,0.3);
+  --fck-board-divider: linear-gradient(90deg,transparent,#c9a84c,transparent);
 }
 .fck-board-divider {
-  width:min(120px,20cqmin);height:1px;background:linear-gradient(90deg,transparent,#c9a84c,transparent);
+  width:min(120px,20cqmin);height:1px;background: var(--fck-board-divider, linear-gradient(90deg,transparent,#c9a84c,transparent));
   margin:2cqmin auto;
 }
 .fck-board-time {
   font-size:min(20cqmin,6rem);font-weight:300;margin:0;line-height:1.05;
-  letter-spacing:0.08em;color:#e8d5a3;
-  text-shadow:0 0 20px rgba(201,168,76,0.3);
+  letter-spacing:0.08em;color: var(--fck-board-text, #e8d5a3);
+  text-shadow:0 0 20px var(--fck-board-glow, rgba(201,168,76,0.3));
 }
 .fck-board-secs {
-  font-size:0.45em;color:#c9a84c;margin-left:0.12em;font-weight:300;
+  font-size:0.45em;color: var(--fck-board-accent, #c9a84c);margin-left:0.12em;font-weight:300;
 }
 .fck-board-ampm {
-  font-size:min(5cqmin,1.3rem);color:#c9a84c;margin-left:10px;font-weight:400;letter-spacing:0.2em;
+  font-size:min(5cqmin,1.3rem);color: var(--fck-board-accent, #c9a84c);margin-left:10px;font-weight:400;letter-spacing:0.2em;
 }
 .fck-board-date {
   font-size:min(4.5cqmin,1.3rem);font-weight:400;margin:0;
-  letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;
+  letter-spacing:0.2em;color: var(--fck-board-accent, #c9a84c);text-transform:uppercase;
 }
 `
 
@@ -322,7 +337,7 @@ export default function FlowClockRenderer({
 
   // ── Render ──────────────────────────────────────────────────────────────────
   const defaultTheme = theme ?? (
-    (style === 'modern-digital' || style === 'modern-analog') ? 'dark' : 'light'
+    (style === 'modern-digital' || style === 'modern-analog' || style === 'boardroom-serif') ? 'dark' : 'light'
   )
 
   return (
@@ -578,7 +593,7 @@ export default function FlowClockRenderer({
 
       {/* ── Boardroom Serif ── */}
       {style === 'boardroom-serif' && (
-        <div className="fck-board-root">
+        <div className="fck-board-root" data-theme={defaultTheme}>
           <div className="fck-board-divider" />
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center' }}>
             <h1 className="fck-board-time">
