@@ -13,6 +13,7 @@ export interface AssignModalProps {
   assets: Asset[]
   playlists: Playlist[]
   teamSlug: string
+  teamId: string
   onClose: () => void
   onSuccess: () => void
   onPreview?: (
@@ -30,6 +31,7 @@ export function AssignModal({
   assets,
   playlists,
   teamSlug,
+  teamId,
   onClose,
   onSuccess,
   onPreview,
@@ -332,6 +334,8 @@ export function AssignModal({
       {showAssetBrowser && (
         <AssetBrowserModal
           assets={assets}
+          teamSlug={teamSlug}
+          teamId={teamId}
           onClose={() => setShowAssetBrowser(false)}
           onSelect={(id) => {
             setAssetId(id)

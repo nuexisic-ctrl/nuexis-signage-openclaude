@@ -173,6 +173,24 @@ export default function ScreensClient({
 
   const supabase = createClient()
 
+  // ── Postgres changes realtime subscription for assets ────────────────
+  useEffect(() => {
+    if (!teamId) return
+
+    const channel = supabase
+      .channel('assets-realtime-screens')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assets', filter: `team_id=eq.${teamId}` }, 
+        async () => {
+          router.refresh()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [teamId, router, supabase])
+
   useEffect(() => {
     const handleClick = () => {
       setOpenMenuId(null)
@@ -644,6 +662,7 @@ export default function ScreensClient({
         assets={assets}
         playlists={playlists}
         teamSlug={teamSlug}
+        teamId={teamId}
         handlePairSuccess={handlePairSuccess}
         handleAssignSuccess={handleAssignSuccess}
         handleDeleteSuccess={handleDeleteSuccess}

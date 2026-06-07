@@ -27,6 +27,7 @@ interface GroupEditModalProps {
   assets: Asset[]
   playlists: Playlist[]
   teamSlug: string
+  teamId: string
   onClose: () => void
   onSuccess: () => void
 }
@@ -66,6 +67,7 @@ export function GroupEditModal({
   assets,
   playlists,
   teamSlug,
+  teamId,
   onClose,
   onSuccess,
 }: GroupEditModalProps) {
@@ -574,6 +576,8 @@ export function GroupEditModal({
       {showAssetBrowser && (
         <AssetBrowserModal
           assets={assets}
+          teamSlug={teamSlug}
+          teamId={teamId}
           onClose={() => setShowAssetBrowser(false)}
           onSelect={(id) => {
             setAssetId(id)

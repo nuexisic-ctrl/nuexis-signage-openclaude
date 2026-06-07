@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Tv } from 'lucide-react'
+import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -170,7 +170,7 @@ export function AssetCard({
         ) : isWidget(asset.mime_type) ? (
           <div className={styles.videoThumbWrapper} style={{ position: 'relative', width: '100%', height: '100%' }}>
              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-low)' }}>
-                {asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? (
+                 {asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? (
                   <YoutubeIcon size={72} style={{ stroke: '#ff0000', color: '#ff0000' }} />
                 ) : asset.mime_type === 'application/x-widget-remote-url' ? (
                   <Link size={72} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
@@ -178,6 +178,8 @@ export function AssetCard({
                   <Code size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
                 ) : asset.mime_type === 'application/x-widget-flow' ? (
                   <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                ) : asset.mime_type === 'application/x-widget-worldclock' ? (
+                  <Globe size={72} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
                 ) : asset.mime_type === 'application/x-widget-countdown' ? (
                   <Hourglass size={72} style={{ stroke: '#eab308', color: '#eab308' }} />
                 ) : asset.mime_type === 'application/x-widget-qrcode' ? (
@@ -194,7 +196,7 @@ export function AssetCard({
         )}
         
         <div className={styles.mimeChip}>
-          {isFolder ? t('FOLDER') : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+          {isFolder ? t('FOLDER') : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-worldclock' ? 'WORLD CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import styles from './Modal.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
+import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
 import { useA11yModal } from '@/lib/utils/useA11yModal'
 
 interface Asset {
@@ -110,13 +111,15 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
                     ? 'Text/HTML Widget'
                     : asset.mime_type === 'application/x-widget-flow'
                       ? 'Clock Widget'
-                      : asset.mime_type === 'application/x-widget-countdown'
-                        ? 'Countdown Widget'
-                        : asset.mime_type === 'application/x-widget-countup'
-                          ? 'CountUp Widget'
-                        : asset.mime_type === 'application/x-widget-qrcode'
-                          ? 'QR Code Widget'
-                          : asset.mime_type}
+                      : asset.mime_type === 'application/x-widget-worldclock'
+                        ? 'World Clock Widget'
+                        : asset.mime_type === 'application/x-widget-countdown'
+                          ? 'Countdown Widget'
+                          : asset.mime_type === 'application/x-widget-countup'
+                            ? 'CountUp Widget'
+                          : asset.mime_type === 'application/x-widget-qrcode'
+                            ? 'QR Code Widget'
+                            : asset.mime_type}
             </span>
           </div>
           <button
@@ -239,6 +242,28 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
             } catch (err) {
               console.error('Failed to parse CountUp widget config in preview:', err)
               return <div style={{ color: 'red', padding: '20px' }}>Error rendering CountUp widget</div>
+            }
+          })() : asset.mime_type === 'application/x-widget-worldclock' ? (() => {
+            try {
+              const config = JSON.parse(asset.file_path)
+              return (
+                <div style={{ width: '100%', height: '100%', minHeight: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FlowWorldClockRenderer
+                    timezone={config.timezone}
+                    clockType={config.clockType}
+                    theme={config.theme}
+                    primaryColor={config.themeSettings?.primaryColor}
+                    secondaryColor={config.themeSettings?.secondaryColor}
+                    backgroundColor={config.themeSettings?.backgroundColor}
+                    textColor={config.themeSettings?.textColor}
+                    use24Hour={config.use24Hour}
+                    showSeconds={config.showSeconds}
+                  />
+                </div>
+              )
+            } catch (err) {
+              console.error('Failed to parse World Clock widget config in preview:', err)
+              return <div style={{ color: 'red', padding: '20px' }}>Error rendering World Clock widget</div>
             }
           })() : asset.mime_type === 'application/x-widget-flow' ? (() => {
             try {

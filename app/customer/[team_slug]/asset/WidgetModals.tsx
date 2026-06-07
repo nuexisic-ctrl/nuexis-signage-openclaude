@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { AlertTriangle, Link, MonitorPlay, X, ArrowLeft, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass, Timer, ListVideo } from 'lucide-react'
+import { AlertTriangle, Link, MonitorPlay, X, ArrowLeft, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass, Timer, ListVideo, Globe } from 'lucide-react'
 import styles from './Modal.module.css'
 import { validateHtml, validateCss } from './validators'
 import { t } from '@/lib/i18n'
@@ -22,6 +22,7 @@ interface WidgetSelectionModalProps {
   onSelectQRCode: () => void
   onSelectCountdown: () => void
   onSelectCountUp: () => void
+  onSelectWorldClock: () => void
 }
 
 const WIDGET_SEARCH_HISTORY_KEY = 'widget_search_history'
@@ -64,7 +65,8 @@ export function WidgetSelectionModal({
   onSelectFlow,
   onSelectQRCode,
   onSelectCountdown,
-  onSelectCountUp
+  onSelectCountUp,
+  onSelectWorldClock
 }: WidgetSelectionModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchHistory, setSearchHistory] = useState<string[]>([])
@@ -117,6 +119,14 @@ export function WidgetSelectionModal({
       icon: Clock,
       color: '#8b5cf6',
       action: onSelectFlow
+    },
+    {
+      id: 'worldclock',
+      title: t('World Clock'),
+      description: t('Display a professional digital or analog clock for any global timezone.'),
+      icon: Globe,
+      color: '#f43f5e',
+      action: onSelectWorldClock
     },
     {
       id: 'youtube',

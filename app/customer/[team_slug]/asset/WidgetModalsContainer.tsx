@@ -6,6 +6,7 @@ import { WidgetSelectionModal, YouTubeWidgetModal, YouTubePlaylistWidgetModal, R
 import FlowWidgetModal from './FlowWidgetModal'
 import CountdownWidgetModal from './CountdownWidgetModal'
 import CountUpWidgetModal from './CountUpWidgetModal'
+import WorldClockWidgetModal from './WorldClockWidgetModal'
 import { insertAsset, getUploadUrl } from './actions'
 import { createClient } from '@/lib/supabase/client'
 import { Asset } from './types'
@@ -39,6 +40,7 @@ export function WidgetModalsContainer({
   const [showQRCodeConfig, setShowQRCodeConfig] = useState(false)
   const [showCountdownConfig, setShowCountdownConfig] = useState(false)
   const [showCountUpConfig, setShowCountUpConfig] = useState(false)
+  const [showWorldClockConfig, setShowWorldClockConfig] = useState(false)
   const [isSubmittingWidget, setIsSubmittingWidget] = useState(false)
   
   const [, startTransition] = useTransition()
@@ -298,6 +300,47 @@ export function WidgetModalsContainer({
     setIsSubmittingWidget(false)
   }
 
+  const handleCreateWorldClockWidget = async (name: string, config: {
+    clockType: 'analog' | 'digital'
+    timezone: string
+    theme: 'light' | 'dark' | 'custom'
+    themeSettings?: {
+      backgroundColor?: string
+      textColor?: string
+    }
+    use24Hour?: boolean
+    showSeconds?: boolean
+  }) => {
+    setIsSubmittingWidget(true)
+    const serialized = JSON.stringify(config)
+    const result = await insertAsset(teamSlug, {
+      file_name: name,
+      file_path: serialized,
+      mime_type: 'application/x-widget-worldclock',
+      size_bytes: 0,
+      folder_id: folderId || null,
+    })
+
+    if (result.success) {
+      const newAsset: Asset = {
+        id: result.id!,
+        file_name: name,
+        file_path: serialized,
+        mime_type: 'application/x-widget-worldclock',
+        size_bytes: 0,
+        created_at: new Date().toISOString(),
+        folder_id: folderId || null,
+      }
+      setAssets(prev => [newAsset, ...prev])
+      setShowWorldClockConfig(false)
+      toast.success(`World Clock widget "${name}" created successfully`)
+      startTransition(() => { router.refresh() })
+    } else {
+      toast.error(result.error || 'Failed to create World Clock widget.')
+    }
+    setIsSubmittingWidget(false)
+  }
+
   return (
     <>
       {showWidgetSelection && (
@@ -311,6 +354,7 @@ export function WidgetModalsContainer({
           onSelectQRCode={() => setShowQRCodeConfig(true)}
           onSelectCountdown={() => setShowCountdownConfig(true)}
           onSelectCountUp={() => setShowCountUpConfig(true)}
+          onSelectWorldClock={() => setShowWorldClockConfig(true)}
         />
       )}
 
@@ -395,6 +439,18 @@ export function WidgetModalsContainer({
             setShowWidgetSelection(true)
           }}
           onSubmit={handleCreateCountUpWidget}
+          isSubmitting={isSubmittingWidget}
+        />
+      )}
+
+      {showWorldClockConfig && (
+        <WorldClockWidgetModal
+          onClose={() => setShowWorldClockConfig(false)}
+          onBack={() => {
+            setShowWorldClockConfig(false)
+            setShowWidgetSelection(true)
+          }}
+          onSubmit={handleCreateWorldClockWidget}
           isSubmitting={isSubmittingWidget}
         />
       )}

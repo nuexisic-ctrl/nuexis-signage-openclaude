@@ -9,6 +9,7 @@ import { Device, Asset, Playlist } from './types'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
+import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
 
 interface Props {
   device: Device

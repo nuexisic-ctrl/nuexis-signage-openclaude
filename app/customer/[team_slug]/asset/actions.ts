@@ -47,6 +47,32 @@ export async function insertAsset(
   }
   asset.file_name = trimmedName
 
+  if (asset.mime_type === 'application/x-widget-worldclock') {
+    try {
+      const config = JSON.parse(asset.file_path)
+      if (config.clockType !== 'analog' && config.clockType !== 'digital') {
+        return { success: false, error: 'Invalid clock type.' }
+      }
+      if (typeof config.timezone !== 'string' || config.timezone.trim().length === 0 || config.timezone.length > 100) {
+        return { success: false, error: 'Invalid timezone.' }
+      }
+      if (config.theme !== 'light' && config.theme !== 'dark' && config.theme !== 'custom') {
+        return { success: false, error: 'Invalid theme option.' }
+      }
+      if (config.themeSettings) {
+        const hexRegex = /^#([0-9a-fA-F]{3}){1,2}$/
+        if (config.themeSettings.backgroundColor && !hexRegex.test(config.themeSettings.backgroundColor)) {
+          return { success: false, error: 'Invalid background color format.' }
+        }
+        if (config.themeSettings.textColor && !hexRegex.test(config.themeSettings.textColor)) {
+          return { success: false, error: 'Invalid text color format.' }
+        }
+      }
+    } catch {
+      return { success: false, error: 'Invalid widget configuration.' }
+    }
+  }
+
   if (asset.mime_type === 'application/x-widget-countup' || asset.mime_type === 'application/x-widget-countdown') {
     try {
       const config = JSON.parse(asset.file_path)
@@ -820,6 +846,32 @@ export async function updateWidgetAsset(
   // ── Per-type payload validation (mirrors insertAsset logic) ────────────────
   let sanitizedPath = newFilePath
 
+  if (mimeType === 'application/x-widget-worldclock') {
+    try {
+      const config = JSON.parse(newFilePath)
+      if (config.clockType !== 'analog' && config.clockType !== 'digital') {
+        return { success: false, error: 'Invalid clock type.' }
+      }
+      if (typeof config.timezone !== 'string' || config.timezone.trim().length === 0 || config.timezone.length > 100) {
+        return { success: false, error: 'Invalid timezone.' }
+      }
+      if (config.theme !== 'light' && config.theme !== 'dark' && config.theme !== 'custom') {
+        return { success: false, error: 'Invalid theme option.' }
+      }
+      if (config.themeSettings) {
+        const hexRegex = /^#([0-9a-fA-F]{3}){1,2}$/
+        if (config.themeSettings.backgroundColor && !hexRegex.test(config.themeSettings.backgroundColor)) {
+          return { success: false, error: 'Invalid background color format.' }
+        }
+        if (config.themeSettings.textColor && !hexRegex.test(config.themeSettings.textColor)) {
+          return { success: false, error: 'Invalid text color format.' }
+        }
+      }
+    } catch {
+      return { success: false, error: 'Invalid widget configuration.' }
+    }
+  }
+
   if (mimeType === 'application/x-widget-countup' || mimeType === 'application/x-widget-countdown') {
     try {
       const config = JSON.parse(newFilePath)
@@ -951,3 +1003,53 @@ export async function updateWidgetAsset(
   revalidatePath(`/customer/${teamSlug}/asset`)
   return { success: true }
 }
+
+export interface FetchFolderFilesResult {
+  success: boolean
+  files?: any[]
+  error?: string
+}
+
+export async function fetchFolderFiles(
+  teamSlug: string,
+  folderId: string | null
+): Promise<FetchFolderFilesResult> {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, error: 'You must be logged in.' }
+  }
+
+  const teamId = user.app_metadata?.team_id as string | undefined
+  if (!teamId) {
+    return { success: false, error: 'Could not determine your team.' }
+  }
+
+  try {
+    const query = supabase
+      .from('assets')
+      .select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color')
+      .eq('team_id', teamId)
+      .neq('mime_type', 'application/x-folder')
+      .order('created_at', { ascending: false })
+
+    if (folderId) {
+      query.eq('folder_id', folderId)
+    } else {
+      query.is('folder_id', null)
+    }
+
+    const { data: files, error } = await query
+
+    if (error) {
+      console.error('[fetchFolderFiles] error:', error)
+      return { success: false, error: 'Failed to fetch folder assets.' }
+    }
+
+    return { success: true, files: files || [] }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'An unexpected error occurred.' }
+  }
+}
+

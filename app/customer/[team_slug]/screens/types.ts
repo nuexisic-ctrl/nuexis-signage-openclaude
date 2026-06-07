@@ -13,14 +13,8 @@ export interface Device {
   total_playtime_seconds?: number | null
 }
 
-export interface Asset {
-  id: string
-  file_name: string
-  file_path: string
-  mime_type: string
-  size_bytes: number
-  created_at?: string
-}
+import { Asset } from '../asset/types'
+export type { Asset }
 
 export interface PlaylistItem {
   duration_seconds: number

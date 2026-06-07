@@ -13,6 +13,7 @@ import { YouTubeWidgetModal, YouTubePlaylistWidgetModal, RemoteUrlWidgetModal, H
 import FlowWidgetModal from './FlowWidgetModal'
 import CountdownWidgetModal from './CountdownWidgetModal'
 import CountUpWidgetModal from './CountUpWidgetModal'
+import WorldClockWidgetModal from './WorldClockWidgetModal'
 import { updateWidgetAsset } from './actions'
 import { Asset } from './types'
 import { toast } from '@/app/components/Toast'
@@ -222,6 +223,36 @@ export function WidgetEditContainer({
           theme: config.theme,
           themeSettings: config.themeSettings,
           advancedSettings: config.advancedSettings,
+        }}
+      />
+    )
+  }
+  // ── World Clock Widget ───────────────────────────────────────────────────
+  if (asset.mime_type === 'application/x-widget-worldclock') {
+    const config = parseConfig<{
+      clockType?: 'analog' | 'digital'
+      timezone?: string
+      theme?: 'light' | 'dark' | 'custom'
+      themeSettings?: {
+        backgroundColor?: string
+        textColor?: string
+      }
+      use24Hour?: boolean
+      showSeconds?: boolean
+    }>({})
+    return (
+      <WorldClockWidgetModal
+        onClose={onClose}
+        onSubmit={(name, cfg) => saveWidget(name, JSON.stringify(cfg))}
+        isSubmitting={isSubmitting}
+        initialData={{
+          name: asset.file_name,
+          clockType: config.clockType ?? 'analog',
+          timezone: config.timezone ?? 'UTC',
+          theme: config.theme ?? 'light',
+          themeSettings: config.themeSettings,
+          use24Hour: config.use24Hour ?? false,
+          showSeconds: config.showSeconds ?? true
         }}
       />
     )

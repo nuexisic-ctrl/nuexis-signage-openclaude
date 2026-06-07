@@ -628,3 +628,159 @@
   from { opacity: 0; transform: translateY(-80px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Create Dropdown Container */
+.dropdownContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.createBtn {
+  height: 40px;
+  padding: 0 16px;
+  background: var(--primary);
+  border: none;
+  border-radius: 8px;
+  color: var(--on-primary);
+  font-family: var(--font-label);
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(9, 76, 178, 0.2);
+  transition: all 0.2s ease;
+}
+
+.createBtn:hover {
+  background: var(--primary-hover, #083c92);
+  transform: translateY(-1px);
+}
+
+.createDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 160px;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  box-shadow: var(--shadow-modal);
+  z-index: 1000;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdownItem {
+  height: 40px;
+  padding: 0 14px;
+  background: transparent;
+  border: none;
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  transition: background-color 0.2s ease;
+}
+
+.dropdownItem:hover {
+  background: var(--surface-low);
+}
+
+.dropdownItem svg {
+  color: var(--on-surface-muted);
+}
+
+/* Breadcrumb Navigation */
+.breadcrumbContainer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--font-label);
+  font-size: 0.8rem;
+  color: var(--on-surface-subtle);
+  margin-bottom: 16px;
+}
+
+.breadcrumbLink {
+  color: var(--on-surface-muted);
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+  padding: 0;
+}
+
+.breadcrumbLink:hover {
+  color: var(--primary);
+}
+
+.breadcrumbActive {
+  color: var(--on-surface);
+  font-weight: 800;
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+}
+
+.breadcrumbSeparator {
+  color: var(--on-surface-muted);
+  opacity: 0.5;
+  user-select: none;
+}
+
+/* Drag and Drop Active Overlay */
+.dragOver {
+  position: relative;
+}
+
+.dragOver::before {
+  content: "Drop files here to upload";
+  position: absolute;
+  inset: 16px;
+  background: rgba(9, 76, 178, 0.92);
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-label);
+  font-size: 1.2rem;
+  font-weight: 800;
+  z-index: 100;
+  pointer-events: none;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Secondary Modals Stacking Wrapper */
+.modalWrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  pointer-events: none;
+}
+
+.modalWrapper > * {
+  pointer-events: auto;
+}

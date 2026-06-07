@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass, Tv } from 'lucide-react'
+import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -245,6 +245,8 @@ export function AssetTableView({
                         <Code size={20} style={{ stroke: '#10b981', color: '#10b981' }} />
                       ) : asset.mime_type === 'application/x-widget-flow' ? (
                         <Clock size={20} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                      ) : asset.mime_type === 'application/x-widget-worldclock' ? (
+                        <Globe size={20} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
                       ) : asset.mime_type === 'application/x-widget-countdown' ? (
                         <Hourglass size={20} style={{ stroke: '#eab308', color: '#eab308' }} />
                       ) : asset.mime_type === 'application/x-widget-qrcode' ? (
@@ -261,7 +263,7 @@ export function AssetTableView({
                 <td className={styles.tableCell}>
                   <div 
                     className={styles.contentIconWrap}
-                    title={isFolder ? 'FOLDER' : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+                    title={isFolder ? 'FOLDER' : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-worldclock' ? 'WORLD CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
                   >
                     {isFolder ? (
                       <Folder size={15} />
@@ -281,6 +283,8 @@ export function AssetTableView({
                       <Code size={15} />
                     ) : asset.mime_type === 'application/x-widget-flow' ? (
                       <Clock size={15} />
+                    ) : asset.mime_type === 'application/x-widget-worldclock' ? (
+                      <Globe size={15} />
                     ) : asset.mime_type === 'application/x-widget-countdown' ? (
                       <Hourglass size={15} />
                     ) : (

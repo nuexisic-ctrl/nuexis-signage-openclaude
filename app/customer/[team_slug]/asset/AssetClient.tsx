@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
-import { moveAssetsToFolder } from './actions'
+import { moveAssetsToFolder, fetchFolderFiles } from './actions'
 import { toast } from '@/app/components/Toast'
 import { AssetPreviewModal } from './AssetPreviewModal'
 import { AssetCard } from './AssetCard'
@@ -26,7 +26,8 @@ import { t } from '@/lib/i18n'
 import styles from './asset.module.css'
 
 interface Props {
-  initialAssets: Asset[]
+  initialFolders: Asset[]
+  initialFiles: Asset[]
   screens: ScreenDevice[]
   teamId: string
   teamSlug: string
@@ -36,8 +37,11 @@ interface Props {
   folder?: Asset
 }
 
+const EMPTY_FILES_ARRAY: Asset[] = []
+
 export default function AssetClient({
-  initialAssets,
+  initialFolders,
+  initialFiles,
   screens,
   teamId,
   teamSlug,
@@ -46,7 +50,64 @@ export default function AssetClient({
   pageSize: initialPageSize = 10,
   folder,
 }: Props) {
-  const [assets, setAssets] = useState<Asset[]>(initialAssets)
+  const [folders, setFolders] = useState<Asset[]>(initialFolders)
+  const [filesCache, setFilesCache] = useState<Record<string, Asset[]>>({
+    [folder?.id || 'root']: initialFiles
+  })
+  const [activeFolder, setActiveFolder] = useState<Asset | null>(folder || null)
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false)
+
+  // Derived state to keep components fully compatible with the old assets variable
+  const currentFiles = useMemo(() => 
+    filesCache[activeFolder?.id || 'root'] || EMPTY_FILES_ARRAY,
+    [filesCache, activeFolder]
+  )
+  const currentSubfolders = useMemo(() => 
+    folders.filter(f => (f.folder_id || null) === (activeFolder?.id || null)),
+    [folders, activeFolder]
+  )
+  const assets = useMemo(() => [...currentSubfolders, ...currentFiles], [currentSubfolders, currentFiles])
+
+  // Custom setAssets wrapper to update folders and filesCache dynamically
+  const setAssets = useCallback((updater: Asset[] | ((prev: Asset[]) => Asset[])) => {
+    const activeId = activeFolder?.id || 'root'
+    const currentFilesList = filesCache[activeId] || []
+    const currentSubfoldersList = folders.filter(f => (f.folder_id || null) === (activeFolder?.id || null))
+    const currentCombined = [...currentSubfoldersList, ...currentFilesList]
+
+    const nextCombined = typeof updater === 'function' ? updater(currentCombined) : updater
+
+    const updatedFolders = nextCombined.filter(a => a.mime_type === 'application/x-folder')
+    const updatedFiles = nextCombined.filter(a => a.mime_type !== 'application/x-folder')
+
+    setFolders(prev => {
+      const map = new Map(prev.map(f => [f.id, f]))
+      updatedFolders.forEach(f => {
+        map.set(f.id, f)
+      })
+      const currentSubfolderIds = new Set(currentSubfoldersList.map(f => f.id))
+      const updatedSubfolderIds = new Set(updatedFolders.map(f => f.id))
+      currentSubfolderIds.forEach(id => {
+        if (!updatedSubfolderIds.has(id)) {
+          map.delete(id)
+        }
+      })
+      return Array.from(map.values())
+    })
+
+    const filesStillHere = updatedFiles.filter(f => (f.folder_id || null) === (activeFolder?.id || null))
+    setFilesCache(prev => {
+      const next = { ...prev, [activeId]: filesStillHere }
+      updatedFiles.forEach(f => {
+        const fid = f.folder_id || 'root'
+        if (fid !== activeId && next[fid]) {
+          delete next[fid]
+        }
+      })
+      return next
+    })
+  }, [folders, filesCache, activeFolder])
+
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
   
@@ -129,7 +190,7 @@ export default function AssetClient({
     setAssets,
     startTransition,
     router,
-    folderId: folder?.id,
+    folderId: activeFolder?.id,
   })
 
   useEffect(() => {
@@ -141,8 +202,114 @@ export default function AssetClient({
   }, [])
 
   useEffect(() => {
-    setAssets(initialAssets)
-  }, [initialAssets])
+    setFolders(initialFolders)
+    setFilesCache(prev => ({
+      ...prev,
+      [folder?.id || 'root']: initialFiles
+    }))
+  }, [initialFolders, initialFiles, folder])
+
+  useEffect(() => {
+    setActiveFolder(folder || null)
+  }, [folder])
+
+  // Caching: SWR file fetcher
+  const loadFolderFiles = useCallback(async (folderId: string | null) => {
+    const cacheKey = folderId || 'root'
+    const hasCache = !!filesCache[cacheKey]
+    if (!hasCache) {
+      setIsLoadingFiles(true)
+    }
+
+    try {
+      const result = await fetchFolderFiles(teamSlug, folderId)
+      if (result.success && result.files) {
+        setFilesCache(prev => ({
+          ...prev,
+          [cacheKey]: result.files as Asset[]
+        }))
+      } else {
+        toast.error(result.error || t('Failed to refresh folder contents.'))
+      }
+    } catch (err) {
+      console.error('[loadFolderFiles] error:', err)
+    } finally {
+      setIsLoadingFiles(false)
+    }
+  }, [teamSlug, filesCache, t])
+
+  useEffect(() => {
+    loadFolderFiles(activeFolder?.id || null)
+  }, [activeFolder])
+
+  const resolveFolderFromPath = useCallback((pathStr: string | null): Asset | null => {
+    if (!pathStr || pathStr === '/') return null
+    const segments = pathStr.split('/').filter(Boolean)
+    if (segments.length === 0) return null
+
+    let currentParentId: string | null = null
+    let currentFolder: Asset | null = null
+
+    for (const segment of segments) {
+      const decodedSegment = decodeURIComponent(segment)
+      const found = folders.find(f => 
+        f.mime_type === 'application/x-folder' &&
+        (f.folder_id || null) === currentParentId &&
+        f.file_name.toLowerCase() === decodedSegment.toLowerCase()
+      )
+      if (!found) return null
+      currentFolder = found
+      currentParentId = found.id
+    }
+    return currentFolder
+  }, [folders])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search)
+      const pathParam = params.get('path') || '/'
+      const resolved = resolveFolderFromPath(pathParam)
+      setActiveFolder(resolved)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [resolveFolderFromPath])
+
+  const navigateToFolder = useCallback((targetFolder: Asset | null, pathStr: string) => {
+    setActiveFolder(targetFolder)
+    const queryParam = pathStr === '/' ? '' : `?path=${pathStr}`
+    window.history.pushState(null, '', `/customer/${teamSlug}/asset${queryParam}`)
+  }, [teamSlug])
+
+  const breadcrumbs = useMemo(() => {
+    const list: { name: string; folder: Asset | null; path: string }[] = [
+      { name: 'Root', folder: null, path: '/' }
+    ]
+    if (!activeFolder) return list
+
+    const pathSegments: Asset[] = [activeFolder]
+    let currentId = activeFolder.folder_id
+    while (currentId) {
+      const parentFolder = folders.find(f => f.id === currentId && f.mime_type === 'application/x-folder')
+      if (!parentFolder) break
+      pathSegments.unshift(parentFolder)
+      currentId = parentFolder.folder_id
+    }
+
+    let currentPath = ''
+    for (const f of pathSegments) {
+      currentPath += '/' + encodeURIComponent(f.file_name)
+      list.push({
+        name: f.file_name,
+        folder: f,
+        path: currentPath
+      })
+    }
+    return list
+  }, [activeFolder, folders])
+
+  const [dragOverBreadcrumbIndex, setDragOverBreadcrumbIndex] = useState<number | null>(null)
 
   useEffect(() => {
     const handleClick = () => {
@@ -248,17 +415,22 @@ export default function AssetClient({
           )
       if (cancelled) return
 
-      setPreviewUrls(prev => {
-        const next = new Map(prev)
-        // Prune URLs for assets that no longer exist (keeps memory bounded).
-        Array.from(next.keys()).forEach(key => {
-          if (!existingKeys.has(key)) next.delete(key)
+      const hasPruned = Array.from(existing.keys()).some(key => !existingKeys.has(key))
+      const hasAdded = results.some(res => res.url && !existing.has(res.path))
+
+      if (hasPruned || hasAdded) {
+        setPreviewUrls(prev => {
+          const next = new Map(prev)
+          // Prune URLs for assets that no longer exist (keeps memory bounded).
+          Array.from(next.keys()).forEach(key => {
+            if (!existingKeys.has(key)) next.delete(key)
+          })
+          for (const res of results) {
+            if (res.url) next.set(res.path, res.url)
+          }
+          return next
         })
-        for (const res of results) {
-          if (res.url) next.set(res.path, res.url)
-        }
-        return next
-      })
+      }
     }
     generateUrls()
     return () => { cancelled = true }
@@ -273,6 +445,20 @@ export default function AssetClient({
     if (isRefreshing) return
     setIsRefreshing(true)
     try {
+      const [foldersRes, filesRes] = await Promise.all([
+        supabase.from('assets').select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color').eq('team_id', teamId).eq('mime_type', 'application/x-folder'),
+        fetchFolderFiles(teamSlug, activeFolder?.id || null)
+      ])
+      
+      if (foldersRes.data) {
+        setFolders(foldersRes.data as Asset[])
+      }
+      if (filesRes.success && filesRes.files) {
+        setFilesCache(prev => ({
+          ...prev,
+          [activeFolder?.id || 'root']: filesRes.files as Asset[]
+        }))
+      }
       startTransition(() => {
         router.refresh()
       })
@@ -307,7 +493,16 @@ export default function AssetClient({
 
   const handlePreviewAsset = (asset: Asset) => {
     if (asset.mime_type === 'application/x-folder') {
-      router.push(`/customer/${teamSlug}/asset/folder/${asset.id}`)
+      const pathSegments: string[] = [asset.file_name]
+      let currentId = asset.folder_id
+      while (currentId) {
+        const parentFolder = folders.find(f => f.id === currentId && f.mime_type === 'application/x-folder')
+        if (!parentFolder) break
+        pathSegments.unshift(parentFolder.file_name)
+        currentId = parentFolder.folder_id
+      }
+      const pathStr = '/' + pathSegments.map(encodeURIComponent).join('/')
+      navigateToFolder(asset, pathStr)
     } else if (isWidget(asset.mime_type) && asset.mime_type !== 'application/x-widget-qrcode') {
       setEditingAsset(asset)
     } else {
@@ -324,12 +519,16 @@ export default function AssetClient({
     localStorage.setItem('nuexis_folders_cache', JSON.stringify(cachedFolders))
   }, [assets])
 
+  const allLoadedAssets = useMemo(() => {
+    return [...folders, ...Object.values(filesCache).flat()]
+  }, [folders, filesCache])
+
   const filteredAssets = useMemo(() => {
     // eslint-disable-next-line react-hooks/purity
     const now = Date.now()
     const today = new Date().setHours(0,0,0,0)
     
-    const filtered = assets.filter(a => {
+    const filtered = allLoadedAssets.filter(a => {
       if (filterType !== 'all') {
         if (filterType === 'image' && !isImage(a.mime_type)) return false
         if (filterType === 'video' && !isVideo(a.mime_type)) return false
@@ -367,14 +566,14 @@ export default function AssetClient({
 
       if (searchQuery) {
         const matchesSearch = a.file_name.toLowerCase().includes(searchQuery.toLowerCase())
-        if (folder) {
-          return matchesSearch && a.folder_id === folder.id
+        if (activeFolder) {
+          return matchesSearch && a.folder_id === activeFolder.id
         }
         return matchesSearch
       }
       
       // Root level assets (or folders) when no search is active, or assets within the active folder
-      return folder ? a.folder_id === folder.id : !a.folder_id
+      return activeFolder ? a.folder_id === activeFolder.id : !a.folder_id
     })
 
     // Sort folders at the top, then by created_at descending
@@ -385,7 +584,7 @@ export default function AssetClient({
       if (!aIsFolder && bIsFolder) return 1
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
-  }, [assets, filterType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery, folder])
+  }, [allLoadedAssets, filterType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery, activeFolder])
 
   const totalPages = Math.ceil(filteredAssets.length / pageSize) || 1
   const hasNextPage = currentPage < totalPages
@@ -413,9 +612,9 @@ export default function AssetClient({
   }, [filteredAssets, currentPage, pageSize])
 
   const folderAssetsCount = useMemo(() => {
-    if (!folder) return 0
-    return assets.filter(a => a.folder_id === folder.id && a.mime_type !== 'application/x-folder').length
-  }, [assets, folder])
+    if (!activeFolder) return 0
+    return (filesCache[activeFolder.id] || []).length
+  }, [filesCache, activeFolder])
 
   const hasActiveFilters = 
     filterType !== 'all' ||
@@ -429,81 +628,99 @@ export default function AssetClient({
     <div className={styles.assetArea}>
       <div className={`${styles.topbar} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
         <div>
-          {folder ? (
-            <div>
-              <div className={styles.titleContainer}>
-                <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
-                <button
-                  className={styles.headerRefreshBtn}
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  aria-label="Refresh Status"
-                  title="Refresh Status"
-                  type="button"
-                >
-                  <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
-                </button>
-              </div>
-              <div className={styles.breadcrumbContainer} style={{ marginTop: '6px' }}>
-                <Link 
-                  href={`/customer/${teamSlug}/asset`} 
-                  className={`${styles.breadcrumbLink} ${isBreadcrumbDragOver ? styles.breadcrumbDragOver : ''}`}
-                  onDragOver={(e) => {
-                    e.preventDefault()
-                    e.dataTransfer.dropEffect = 'move'
-                  }}
-                  onDragEnter={(e) => {
-                    e.preventDefault()
-                    setIsBreadcrumbDragOver(true)
-                  }}
-                  onDragLeave={() => {
-                    setIsBreadcrumbDragOver(false)
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    setIsBreadcrumbDragOver(false)
-                    const draggedId = e.dataTransfer.getData('text/plain')
-                    if (draggedId) {
-                      handleMoveDrop(draggedId, null, t('Root (No Folder)'))
-                    }
-                  }}
-                >
-                  {t('Asset Library')}
-                </Link>
-                <span className={styles.breadcrumbSeparator}>/</span>
-                <span className={styles.breadcrumbActive}>
-                  <Folder size={16} style={{ stroke: folder.color || '#78716c', fill: folder.color || '#78716c', fillOpacity: 0.15 }} />
-                  {folder.file_name}
+          <div className={styles.titleContainer}>
+            <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
+            <button
+              className={styles.headerRefreshBtn}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              aria-label="Refresh Status"
+              title="Refresh Status"
+              type="button"
+            >
+              <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
+            </button>
+          </div>
+          
+          <p className={styles.pageSubtitle}>
+            {activeFolder ? (
+              folderAssetsCount > 0
+                ? `${folderAssetsCount} ${folderAssetsCount === 1 ? t('asset') : t('assets')} ${t('in this folder.')}`
+                : t('This folder is empty.')
+            ) : (
+              totalAssets > 0
+                ? `${totalAssets} ${totalAssets === 1 ? t('asset') : t('assets')} ${t('in your library.')}`
+                : t('Upload images and videos to get started.')
+            )}
+            {isLoadingFiles && (
+              <span style={{ marginLeft: '12px', fontSize: '0.8rem', color: 'var(--on-surface-subtle)' }}>
+                {t('Loading...')}
+              </span>
+            )}
+          </p>
+
+          <div className={styles.breadcrumbContainer} style={{ marginTop: '8px' }}>
+            {breadcrumbs.map((item, index) => {
+              const isLast = index === breadcrumbs.length - 1
+              const isDragOver = dragOverBreadcrumbIndex === index
+              
+              return (
+                <span key={index} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {index > 0 && <span className={styles.breadcrumbSeparator}>&gt;</span>}
+                  <button
+                    type="button"
+                    onClick={() => navigateToFolder(item.folder, item.path)}
+                    className={`${isLast ? styles.breadcrumbActive : styles.breadcrumbLink} ${isDragOver ? styles.breadcrumbDragOver : ''}`}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault()
+                      setDragOverBreadcrumbIndex(index)
+                    }}
+                    onDragLeave={() => {
+                      setDragOverBreadcrumbIndex(null)
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setDragOverBreadcrumbIndex(null)
+                      let ids: string[] = []
+                      try {
+                        const raw = e.dataTransfer.getData('application/x-nuexis-asset-ids') || '[]'
+                        ids = JSON.parse(raw)
+                      } catch {
+                        ids = (e.dataTransfer.getData('text/plain') || '')
+                          .split(',')
+                          .map(x => x.trim())
+                          .filter(Boolean)
+                      }
+                      const targetFolderId = item.folder ? item.folder.id : null
+                      const targetFolderName = item.name
+                      
+                      const sanitized = ids.filter(id => id && id !== targetFolderId)
+                      if (sanitized.length === 0) return
+
+                      moveAssetsOptimistically(sanitized, targetFolderId, targetFolderName)
+                    }}
+                  >
+                    {item.folder && (
+                      <Folder size={16} style={{ stroke: item.folder.color || '#78716c', fill: item.folder.color || '#78716c', fillOpacity: 0.15 }} />
+                    )}
+                    {item.name === 'Root' ? t('Root') : item.name}
+                  </button>
                 </span>
-              </div>
-              <p className={styles.pageSubtitle} style={{ marginTop: '6px' }}>
-                {folderAssetsCount > 0
-                  ? `${folderAssetsCount} ${folderAssetsCount === 1 ? t('asset') : t('assets')} ${t('in this folder.')}`
-                  : t('This folder is empty.')}
-              </p>
-            </div>
-          ) : (
-            <div>
-              <div className={styles.titleContainer}>
-                <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
-                <button
-                  className={styles.headerRefreshBtn}
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  aria-label="Refresh Status"
-                  title="Refresh Status"
-                  type="button"
-                >
-                  <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
-                </button>
-              </div>
-              <p className={styles.pageSubtitle}>
-                {totalAssets > 0
-                  ? `${totalAssets} ${totalAssets === 1 ? t('asset') : t('assets')} ${t('in your library.')}`
-                  : t('Upload images and videos to get started.')}
-              </p>
-            </div>
-          )}
+              )
+            })}
+          </div>
         </div>
         <div className={styles.topbarActions}>
           <button
@@ -880,7 +1097,7 @@ export default function AssetClient({
         assets={assets}
         setAssets={setAssets}
         setShowSuccess={setShowSuccess}
-        folderId={folder?.id}
+        folderId={activeFolder?.id}
       />
 
       {editingAsset && (
@@ -935,18 +1152,29 @@ export default function AssetClient({
         <CreateFolderModal
           teamSlug={teamSlug}
           onClose={() => setShowCreateFolder(false)}
-          onSuccess={(id) => {
+          onSuccess={(id, name, color) => {
+            const newFolder: Asset = {
+              id,
+              file_name: name,
+              file_path: 'folder',
+              mime_type: 'application/x-folder',
+              size_bytes: 0,
+              created_at: new Date().toISOString(),
+              folder_id: activeFolder?.id || null,
+              color: color
+            }
+            setFolders(prev => [newFolder, ...prev])
             setShowCreateFolder(false)
             router.refresh()
           }}
-          parentFolderId={folder?.id}
+          parentFolderId={activeFolder?.id || null}
         />
       )}
 
       {showBulkMoveModal && (
         <BulkMoveModal
           selectedAssets={assets.filter(a => selectedAssetIds.has(a.id))}
-          folders={assets.filter(a => a.mime_type === 'application/x-folder' && (!folder || a.id !== folder.id))}
+          folders={folders.filter(a => a.mime_type === 'application/x-folder' && (!activeFolder || a.id !== activeFolder.id))}
           teamSlug={teamSlug}
           onClose={() => setShowBulkMoveModal(false)}
           onMoveAssets={(assetIds, targetFolderId, targetFolderName) => {

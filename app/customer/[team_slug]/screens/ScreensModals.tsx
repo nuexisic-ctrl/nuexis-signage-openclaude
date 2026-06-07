@@ -24,6 +24,7 @@ interface ScreensModalsProps {
   assets: Asset[]
   playlists: Playlist[]
   teamSlug: string
+  teamId: string
   handlePairSuccess: () => void
   handleAssignSuccess: () => void
   handleDeleteSuccess: () => void
@@ -55,6 +56,7 @@ export function ScreensModals({
   assets,
   playlists,
   teamSlug,
+  teamId,
   handlePairSuccess,
   handleAssignSuccess,
   handleDeleteSuccess,
@@ -86,6 +88,7 @@ export function ScreensModals({
           assets={assets} 
           playlists={playlists} 
           teamSlug={teamSlug}
+          teamId={teamId}
           onClose={() => setAssignModalDevice(null)} 
           onSuccess={handleAssignSuccess}
           onPreview={(device, contentType, assetId, playlistId, scaleMode, orientation) => 
@@ -152,6 +155,7 @@ export function ScreensModals({
           assets={assets}
           playlists={playlists}
           teamSlug={teamSlug}
+          teamId={teamId}
           onClose={() => setEditGroup(null)}
           onSuccess={() => {
             setEditGroup(null)

@@ -74,14 +74,14 @@ export function getContentKind(
     const { item } = getActivePlaylistItem(pl, nowMs)
     if (!item) return 'playlist'
     
-    if (item.widget_type === 'flow-clock' || item.assets?.mime_type === 'application/x-widget-flow') return 'clock'
+    if (item.widget_type === 'flow-clock' || item.assets?.mime_type === 'application/x-widget-flow' || item.assets?.mime_type === 'application/x-widget-worldclock') return 'clock'
     if (item.widget_type === 'flow-countdown' || item.assets?.mime_type === 'application/x-widget-countdown') return 'countdown'
     if (item.assets) {
       const mime = item.assets.mime_type
       if (mime === 'application/x-widget-youtube' || mime === 'application/x-widget-youtube-playlist') return 'youtube'
       if (mime === 'application/x-widget-remote-url') return 'remote-url'
       if (mime === 'application/x-widget-html') return 'html-widget'
-      if (mime === 'application/x-widget-flow') return 'clock'
+      if (mime === 'application/x-widget-flow' || mime === 'application/x-widget-worldclock') return 'clock'
       if (mime === 'application/x-widget-countdown') return 'countdown'
       if (mime.startsWith('video/')) return 'video'
       if (mime.startsWith('image/')) return 'image'
@@ -94,7 +94,7 @@ export function getContentKind(
   if (asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist') return 'youtube'
   if (asset.mime_type === 'application/x-widget-remote-url') return 'remote-url'
   if (asset.mime_type === 'application/x-widget-html') return 'html-widget'
-  if (asset.mime_type === 'application/x-widget-flow') return 'clock'
+  if (asset.mime_type === 'application/x-widget-flow' || asset.mime_type === 'application/x-widget-worldclock') return 'clock'
   if (asset.mime_type === 'application/x-widget-countdown') return 'countdown'
   if (asset.mime_type.startsWith('video/')) return 'video'
   if (asset.mime_type.startsWith('image/')) return 'image'
@@ -136,6 +136,14 @@ export function getContentLabel(device: Device, assets: Asset[] = [], playlists:
   if (asset.mime_type === 'application/x-widget-flow') {
     return `${asset.file_name} (${getClockStyleName(asset.file_path)})`
   }
+  if (asset.mime_type === 'application/x-widget-worldclock') {
+    try {
+      const cfg = JSON.parse(asset.file_path || '{}')
+      return `${asset.file_name} (World Clock - ${cfg.timezone || 'UTC'})`
+    } catch {
+      return `${asset.file_name} (World Clock)`
+    }
+  }
   if (asset.mime_type === 'application/x-widget-countdown') {
     return `${asset.file_name} (Countdown)`
   }
@@ -174,7 +182,7 @@ function describePrimaryPlaylistContent(items: Playlist['playlist_items']): stri
   const kinds: Record<string, number> = {}
   for (const item of items) {
     let kind = 'Other'
-    if (item.widget_type === 'flow-clock' || item.assets?.mime_type === 'application/x-widget-flow') kind = 'Clock'
+    if (item.widget_type === 'flow-clock' || item.assets?.mime_type === 'application/x-widget-flow' || item.assets?.mime_type === 'application/x-widget-worldclock') kind = 'Clock'
     else if (item.widget_type === 'flow-countdown' || item.assets?.mime_type === 'application/x-widget-countdown') kind = 'Countdown'
     else if (item.assets?.mime_type?.startsWith('video/')) kind = 'Video'
     else if (item.assets?.mime_type?.startsWith('image/')) kind = 'Image'
@@ -250,6 +258,20 @@ export function buildTooltipInfo(
 
   // ── Clock Widget ──
   if (kind === 'clock') {
+    const isWorldClock = asset?.mime_type === 'application/x-widget-worldclock'
+    if (isWorldClock) {
+      let tz = 'UTC'
+      try {
+        tz = JSON.parse(asset.file_path || '{}').timezone || 'UTC'
+      } catch {}
+      return {
+        headline: 'Showing a World Clock',
+        meta: [
+          { label: 'Timezone', value: tz },
+        ],
+        note: 'This clock updates every second on the player device.',
+      }
+    }
     const clockStyle = getClockStyleName(asset.file_path || '{}')
     return {
       headline: 'Showing a Clock',

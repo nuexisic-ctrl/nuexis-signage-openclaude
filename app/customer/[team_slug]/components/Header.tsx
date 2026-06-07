@@ -54,7 +54,10 @@ export default function Header({ fullName, email }: HeaderProps) {
     
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsDropdownOpen(false)
+        setIsDropdownOpen(prev => {
+          if (prev) return false
+          return prev
+        })
       }
     }
 

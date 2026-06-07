@@ -243,7 +243,7 @@ export type Database = {
           id?: string
           playlist_id?: string | null
           sort_order?: number
-          type?: string
+          type: string
           widget_config?: Json | null
           widget_type?: string | null
         }
