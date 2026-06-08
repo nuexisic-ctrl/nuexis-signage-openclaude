@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe } from 'lucide-react'
+import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Globe, Images } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -126,6 +126,62 @@ export function AssetCard({
           />
         </div>
       )}
+      <div className={`${styles.moreMenuWrapper} ${styles.moreActionsToggle} ${menuOpen ? styles.moreActionsToggleVisible : ''}`}>
+        <button 
+          className={styles.moreActionsButton}
+          onClick={onToggleMenu}
+          aria-label="More Actions"
+          type="button"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+            <circle cx="12" cy="12" r="1.5"></circle>
+            <circle cx="12" cy="5" r="1.5"></circle>
+            <circle cx="12" cy="19" r="1.5"></circle>
+          </svg>
+        </button>
+        {menuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
+          <div 
+            className={styles.moreDropdown}
+            style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 100000 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {isWidget(asset.mime_type) && asset.mime_type !== 'application/x-widget-qrcode' ? (
+              <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
+                {t('Edit Widget')}
+              </button>
+            ) : (
+              <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
+                {isFolder ? t('Open') : t('Preview')}
+              </button>
+            )}
+            {!isFolder && (
+              <button 
+                className={styles.dropdownItem} 
+                type="button" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  onPushToScreen(); 
+                }}
+              >
+                {t('Push to screen')}
+              </button>
+            )}
+            {!isWidget(asset.mime_type) && !isFolder && (
+              <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
+                {t('Download')}
+              </button>
+            )}
+
+            <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onRename(); }}>
+              {t('Rename')}
+            </button>
+            <button className={`${styles.dropdownItem} ${styles.danger}`} type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+              {t('Delete')}
+            </button>
+          </div>,
+          document.body
+        )}
+      </div>
       <div
         className={`${styles.assetThumb} ${styles.assetThumbInteractive}`}
         onClick={(e) => {
@@ -182,6 +238,8 @@ export function AssetCard({
                   <Globe size={72} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
                 ) : asset.mime_type === 'application/x-widget-countdown' ? (
                   <Hourglass size={72} style={{ stroke: '#eab308', color: '#eab308' }} />
+                ) : asset.mime_type === 'application/x-widget-slideshow' ? (
+                  <Images size={72} style={{ stroke: '#ec4899', color: '#ec4899' }} />
                 ) : asset.mime_type === 'application/x-widget-qrcode' ? (
                   <QrCode size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
                 ) : (
@@ -194,10 +252,6 @@ export function AssetCard({
             <File className={styles.genericIcon} size={30} />
           </div>
         )}
-        
-        <div className={styles.mimeChip}>
-          {isFolder ? t('FOLDER') : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-worldclock' ? 'WORLD CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
-        </div>
       </div>
 
       <div className={styles.assetInfo}>
@@ -205,65 +259,6 @@ export function AssetCard({
           <p className={styles.assetName}>
             <FilenameTruncator filename={asset.file_name} />
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {!isFolder && (
-              <button
-                className={styles.actionBtnBox}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onPushToScreen()
-                }}
-                title={t('Push to screen')}
-                aria-label="Push to screen"
-                type="button"
-              >
-                <Tv size={14} />
-              </button>
-            )}
-            <div className={styles.moreMenuWrapper}>
-              <button 
-                className={`${styles.actionBtnBox} ${menuOpen ? styles.active : ''}`}
-                onClick={onToggleMenu}
-                aria-label="More Actions"
-                type="button"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-                  <circle cx="12" cy="12" r="1.5"></circle>
-                  <circle cx="12" cy="5" r="1.5"></circle>
-                  <circle cx="12" cy="19" r="1.5"></circle>
-                </svg>
-              </button>
-            {menuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
-              <div 
-                className={styles.moreDropdown}
-                style={{ position: 'absolute', top: menuPosition.top, right: menuPosition.right, zIndex: 100000 }}
-                onClick={e => e.stopPropagation()}
-              >
-                {isWidget(asset.mime_type) && asset.mime_type !== 'application/x-widget-qrcode' ? (
-                  <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
-                    {t('Edit Widget')}
-                  </button>
-                ) : (
-                  <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onPreview(asset); }}>
-                    {isFolder ? t('Open') : t('Preview')}
-                  </button>
-                )}
-                {!isWidget(asset.mime_type) && !isFolder && (
-                  <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
-                    {t('Download')}
-                  </button>
-                )}
-
-                <button className={styles.dropdownItem} type="button" onClick={(e) => { e.stopPropagation(); onRename(); }}>
-                  {t('Rename')}
-                </button>
-                <button className={`${styles.dropdownItem} ${styles.danger}`} type="button" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
-                  {t('Delete')}
-                </button>
-              </div>,
-              document.body
-            )}
-          </div>
         </div>
       </div>
       <div className={styles.assetMeta}>
@@ -278,7 +273,6 @@ export function AssetCard({
           <span className={styles.metaDot}>·</span>
           <span>{date}</span>
         </div>
-      </div>
     </div>
   )
 }

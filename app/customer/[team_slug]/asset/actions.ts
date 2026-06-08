@@ -73,6 +73,31 @@ export async function insertAsset(
     }
   }
 
+  if (asset.mime_type === 'application/x-widget-slideshow') {
+    try {
+      const config = JSON.parse(asset.file_path)
+      if (config.animation !== 'fade' && config.animation !== 'slide-left' && config.animation !== 'slide-right' && config.animation !== 'zoom-in' && config.animation !== 'zoom-out') {
+        return { success: false, error: 'Invalid transition animation.' }
+      }
+      if (typeof config.duration !== 'number' || config.duration < 1 || config.duration > 300) {
+        return { success: false, error: 'Duration must be between 1 and 300 seconds.' }
+      }
+      if (!Array.isArray(config.images) || config.images.length === 0) {
+        return { success: false, error: 'At least one image must be selected.' }
+      }
+      if (config.images.length > 50) {
+        return { success: false, error: 'A maximum of 50 images is allowed.' }
+      }
+      for (const img of config.images) {
+        if (typeof img.id !== 'string' || typeof img.file_path !== 'string' || typeof img.file_name !== 'string') {
+          return { success: false, error: 'Invalid image reference.' }
+        }
+      }
+    } catch {
+      return { success: false, error: 'Invalid slideshow configuration.' }
+    }
+  }
+
   if (asset.mime_type === 'application/x-widget-countup' || asset.mime_type === 'application/x-widget-countdown') {
     try {
       const config = JSON.parse(asset.file_path)
@@ -869,6 +894,31 @@ export async function updateWidgetAsset(
       }
     } catch {
       return { success: false, error: 'Invalid widget configuration.' }
+    }
+  }
+
+  if (mimeType === 'application/x-widget-slideshow') {
+    try {
+      const config = JSON.parse(newFilePath)
+      if (config.animation !== 'fade' && config.animation !== 'slide-left' && config.animation !== 'slide-right' && config.animation !== 'zoom-in' && config.animation !== 'zoom-out') {
+        return { success: false, error: 'Invalid transition animation.' }
+      }
+      if (typeof config.duration !== 'number' || config.duration < 1 || config.duration > 300) {
+        return { success: false, error: 'Duration must be between 1 and 300 seconds.' }
+      }
+      if (!Array.isArray(config.images) || config.images.length === 0) {
+        return { success: false, error: 'At least one image must be selected.' }
+      }
+      if (config.images.length > 50) {
+        return { success: false, error: 'A maximum of 50 images is allowed.' }
+      }
+      for (const img of config.images) {
+        if (typeof img.id !== 'string' || typeof img.file_path !== 'string' || typeof img.file_name !== 'string') {
+          return { success: false, error: 'Invalid image reference.' }
+        }
+      }
+    } catch {
+      return { success: false, error: 'Invalid slideshow configuration.' }
     }
   }
 

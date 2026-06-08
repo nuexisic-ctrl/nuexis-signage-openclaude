@@ -1,11 +1,14 @@
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { X, File } from 'lucide-react'
 import styles from './Modal.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
 import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
+import FlowSlideshowRenderer, { SlideshowImage } from '@/app/components/FlowSlideshowRenderer'
 import { useA11yModal } from '@/lib/utils/useA11yModal'
+import { createClient } from '@/lib/supabase/client'
+import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 
 interface Asset {
   id: string
@@ -28,6 +31,69 @@ function isImage(mimeType: string) {
 
 function isVideo(mimeType: string) {
   return mimeType.startsWith('video/')
+}
+
+function SlideshowPreview({ filePath }: { filePath: string }) {
+  const [images, setImages] = useState<SlideshowImage[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    let isCancelled = false
+    const loadAndResolve = async () => {
+      try {
+        const config = JSON.parse(filePath)
+        const rawImages = config.images || []
+        const resolved = await Promise.all(
+          rawImages.map(async (img: any) => {
+            try {
+              const url = await getCachedSignedUrl(supabase, img.file_path, 3600)
+              return { ...img, url: url || undefined }
+            } catch {
+              return img
+            }
+          })
+        )
+        if (!isCancelled) {
+          setImages(resolved)
+        }
+      } catch (err) {
+        console.error('Failed to resolve preview slideshow config:', err)
+      } finally {
+        if (!isCancelled) {
+          setLoading(false)
+        }
+      }
+    }
+    loadAndResolve()
+    return () => {
+      isCancelled = true
+    }
+  }, [filePath])
+
+  if (loading) {
+    return (
+      <div style={{ color: '#aaa', padding: '40px', textAlign: 'center' }}>
+        Resolving slideshow images…
+      </div>
+    )
+  }
+
+  try {
+    const config = JSON.parse(filePath)
+    return (
+      <div style={{ width: '100%', height: '100%', minHeight: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <FlowSlideshowRenderer
+          images={images}
+          animation={config.animation}
+          backgroundColor={config.backgroundColor}
+          duration={config.duration}
+        />
+      </div>
+    )
+  } catch {
+    return <div style={{ color: 'red', padding: '20px' }}>Error rendering Slideshow widget</div>
+  }
 }
 
 export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
@@ -113,13 +179,15 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
                       ? 'Clock Widget'
                       : asset.mime_type === 'application/x-widget-worldclock'
                         ? 'World Clock Widget'
-                        : asset.mime_type === 'application/x-widget-countdown'
-                          ? 'Countdown Widget'
-                          : asset.mime_type === 'application/x-widget-countup'
-                            ? 'CountUp Widget'
-                          : asset.mime_type === 'application/x-widget-qrcode'
-                            ? 'QR Code Widget'
-                            : asset.mime_type}
+                          : asset.mime_type === 'application/x-widget-countdown'
+                            ? 'Countdown Widget'
+                            : asset.mime_type === 'application/x-widget-countup'
+                              ? 'CountUp Widget'
+                            : asset.mime_type === 'application/x-widget-slideshow'
+                              ? 'Online Slideshow Widget'
+                            : asset.mime_type === 'application/x-widget-qrcode'
+                              ? 'QR Code Widget'
+                              : asset.mime_type}
             </span>
           </div>
           <button
@@ -283,7 +351,9 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
               console.error('Failed to parse Clock widget config in preview:', err)
               return <div style={{ color: 'red', padding: '20px' }}>Error rendering Clock widget</div>
             }
-          })() : (
+          })() : asset.mime_type === 'application/x-widget-slideshow' ? (
+            <SlideshowPreview filePath={asset.file_path} />
+          ) : (
             <div className={styles.modalUnsupported} style={{ padding: '40px', textAlign: 'center', color: '#fff' }}>
               <File size={48} className={styles.unsupportedIcon} style={{ opacity: 0.5, marginBottom: '16px' }} />
               <p>Preview not available for this type.</p>

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus } from 'lucide-react'
+import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
 import { updateDeviceLastSeen } from './actions'
@@ -58,6 +58,7 @@ interface Props {
   currentPage?: number
   pageSize?: number
   historicalPlaytime?: number
+  initialViewMode?: 'grid' | 'table'
 }
 
 export default function ScreensClient({
@@ -69,6 +70,7 @@ export default function ScreensClient({
   teamSlug,
   teamId,
   historicalPlaytime = 0,
+  initialViewMode = 'table',
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -102,7 +104,7 @@ export default function ScreensClient({
     orientation: number
   } | null>(null)
   
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(initialViewMode)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
   const [filterGroupIds, setFilterGroupIds] = useState<string[]>([])
@@ -132,7 +134,7 @@ export default function ScreensClient({
 
   useEffect(() => {
     const saved = localStorage.getItem('screensViewMode')
-    if (saved === 'grid' || saved === 'table') {
+    if (saved && (saved === 'grid' || saved === 'table')) {
       setViewMode(saved)
     }
     // Restore saved group filter — must be done client-side only to avoid hydration mismatch
@@ -161,14 +163,31 @@ export default function ScreensClient({
   const [filterDatePreset, setFilterDatePreset] = useState<string>('custom')
   const [filterStartDate, setFilterStartDate] = useState<string>('')
   const [filterEndDate, setFilterEndDate] = useState<string>('')
+  
+  // Sort States
+  const [sortBy, setSortBy] = useState<string>('created-desc')
+  const [isSortOpen, setIsSortOpen] = useState(false)
+  const sortRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, filterStatus, filterOrientation, filterDatePreset, filterGroupIds])
+  }, [searchQuery, filterStatus, filterOrientation, filterDatePreset, filterGroupIds, sortBy])
+
+  useEffect(() => {
+    if (!isSortOpen) return
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setIsSortOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [isSortOpen])
 
   const handleSetViewMode = (mode: 'grid' | 'table') => {
     setViewMode(mode)
     localStorage.setItem('screensViewMode', mode)
+    document.cookie = `screens_view_mode=${mode}; path=/; max-age=31536000; SameSite=Lax`
   }
 
   const supabase = createClient()
@@ -312,28 +331,49 @@ export default function ScreensClient({
     return onlineDeviceIds.has(device.id) ? 'online' : 'offline'
   }
 
-  const filteredDevices = devices.filter(d => {
-    const liveStatus = getLiveStatus(d)
-    if (filterStatus !== 'all' && liveStatus !== filterStatus) return false
-    if (filterOrientation !== 'all' && (d.orientation ?? 0).toString() !== filterOrientation) return false
-    if (filterGroupIds.length > 0) {
-      const isMember = memberships.some(m => filterGroupIds.includes(m.group_id) && m.device_id === d.id)
-      if (!isMember) return false
-    }
-    if (filterDatePreset !== 'all') {
-      const dTime = new Date(d.created_at).getTime()
-      const now = Date.now()
-      if (filterDatePreset === 'today' && dTime < new Date().setHours(0,0,0,0)) return false
-      if (filterDatePreset === '7days' && dTime < now - 7 * 86400000) return false
-      if (filterDatePreset === '30days' && dTime < now - 30 * 86400000) return false
-      if (filterDatePreset === 'custom') {
-        if (filterStartDate && dTime < new Date(filterStartDate).getTime()) return false
-        if (filterEndDate && dTime >= new Date(filterEndDate).getTime() + 86400000) return false
+  const filteredDevices = useMemo(() => {
+    const filtered = devices.filter(d => {
+      const liveStatus = getLiveStatus(d)
+      if (filterStatus !== 'all' && liveStatus !== filterStatus) return false
+      if (filterOrientation !== 'all' && (d.orientation ?? 0).toString() !== filterOrientation) return false
+      if (filterGroupIds.length > 0) {
+        const isMember = memberships.some(m => filterGroupIds.includes(m.group_id) && m.device_id === d.id)
+        if (!isMember) return false
       }
-    }
-    const q = searchQuery.toLowerCase()
-    return !searchQuery || d.name?.toLowerCase().includes(q) || liveStatus.includes(q) || d.status.includes(q)
-  })
+      if (filterDatePreset !== 'all') {
+        const dTime = new Date(d.created_at).getTime()
+        const now = Date.now()
+        if (filterDatePreset === 'today' && dTime < new Date().setHours(0,0,0,0)) return false
+        if (filterDatePreset === '7days' && dTime < now - 7 * 86400000) return false
+        if (filterDatePreset === '30days' && dTime < now - 30 * 86400000) return false
+        if (filterDatePreset === 'custom') {
+          if (filterStartDate && dTime < new Date(filterStartDate).getTime()) return false
+          if (filterEndDate && dTime >= new Date(filterEndDate).getTime() + 86400000) return false
+        }
+      }
+      const q = searchQuery.toLowerCase()
+      return !searchQuery || d.name?.toLowerCase().includes(q) || liveStatus.includes(q) || d.status.includes(q)
+    })
+
+    // Sort based on selected sortBy option
+    return filtered.sort((a, b) => {
+      if (sortBy === 'name-asc') {
+        const nameA = a.name || ''
+        const nameB = b.name || ''
+        return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' })
+      }
+      if (sortBy === 'name-desc') {
+        const nameA = a.name || ''
+        const nameB = b.name || ''
+        return nameB.localeCompare(nameA, undefined, { sensitivity: 'base' })
+      }
+      if (sortBy === 'created-asc' || sortBy === 'updated-asc') {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      }
+      // Default: created-desc or updated-desc (Newest first)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+  }, [devices, filterStatus, filterOrientation, filterGroupIds, filterDatePreset, filterStartDate, filterEndDate, searchQuery, sortBy, memberships, onlineDeviceIds])
 
   const onlineCount = devices.filter(d => getLiveStatus(d) === 'online').length;
   const offlineCount = devices.length - onlineCount;
@@ -370,7 +410,7 @@ export default function ScreensClient({
           <div className={styles.titleContainer}>
             <h1 className={styles.pageTitle}>Screens</h1>
             <button
-              className={`${styles.headerRefreshBtn} ${styles.mobileOnlyRefreshBtn}`}
+              className={styles.headerRefreshBtn}
               onClick={handleRefresh}
               disabled={isRefreshing}
               aria-label="Refresh Status"
@@ -385,16 +425,6 @@ export default function ScreensClient({
           </p>
         </div>
         <div className={styles.topbarActions}>
-          <button
-            type="button"
-            className={`${styles.topbarActionBtn} ${styles.desktopOnlyRefreshBtn} ${styles.iconOnlyRefreshBtn}`}
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            aria-label="Refresh Status"
-            title="Refresh Status"
-          >
-            <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
-          </button>
           <button
             type="button"
             className={styles.topbarActionBtn}
@@ -476,7 +506,50 @@ export default function ScreensClient({
                     <span className={styles.filterDot} />
                   )}
                 </button>
-                {isMounted && (
+                <div className={styles.sortContainer} ref={sortRef}>
+                  <button 
+                    className={`${styles.sortBtn} ${isSortOpen ? styles.sortBtnActive : ''}`}
+                    onClick={() => setIsSortOpen(!isSortOpen)}
+                    title="Sort"
+                    aria-label="Sort"
+                    type="button"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="3" y1="6" x2="14" y2="6" />
+                      <line x1="3" y1="12" x2="11" y2="12" />
+                      <line x1="3" y1="18" x2="13" y2="18" />
+                      <path d="M19 6v12M16 15l3 3 3-3" />
+                    </svg>
+                  </button>
+                  {isSortOpen && (
+                    <div className={styles.sortDropdownMenu} role="menu">
+                      {[
+                        { value: 'updated-desc', label: 'Updated Date (Newest)' },
+                        { value: 'updated-asc', label: 'Updated Date (Oldest)' },
+                        { value: 'created-desc', label: 'Created Date (Newest)' },
+                        { value: 'created-asc', label: 'Created Date (Oldest)' },
+                        { value: 'name-asc', label: 'Name (A-Z)' },
+                        { value: 'name-desc', label: 'Name (Z-A)' },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          className={`${styles.sortDropdownItem} ${sortBy === option.value ? styles.sortDropdownItemActive : ''}`}
+                          onClick={() => {
+                            setSortBy(option.value)
+                            setIsSortOpen(false)
+                          }}
+                          role="menuitem"
+                          type="button"
+                        >
+                          {option.label}
+                          {sortBy === option.value && (
+                            <Check className={styles.sortCheckIcon} />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                   <div className={styles.viewToggleGroup}>
                     <button 
                       className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
@@ -505,7 +578,6 @@ export default function ScreensClient({
                       </svg>
                     </button>
                   </div>
-                )}
               </div>
             </div>
 
@@ -513,7 +585,28 @@ export default function ScreensClient({
               <div className={styles.progressBarLine} />
             </div>
 
-            {filteredDevices.length === 0 ? (
+            {!isMounted ? (
+              <div style={{ padding: '0 16px' }}>
+                {[1, 2, 3, 4, 5].map((row) => (
+                  <div key={row} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '18px 0',
+                    borderBottom: '1px solid var(--outline-variant)',
+                    gap: '16px'
+                  }}>
+                    <div className="skeleton" style={{ width: '24px', height: '24px', borderRadius: '4px' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2 }}>
+                      <div className="skeleton" style={{ width: '160px', height: '16px' }} />
+                      <div className="skeleton" style={{ width: '80px', height: '10px' }} />
+                    </div>
+                    <div className="skeleton" style={{ width: '80px', height: '16px', flex: 1 }} />
+                    <div className="skeleton" style={{ width: '100px', height: '16px', flex: 1 }} />
+                    <div className="skeleton" style={{ width: '32px', height: '32px', borderRadius: '8px', marginLeft: 'auto' }} />
+                  </div>
+                ))}
+              </div>
+            ) : filteredDevices.length === 0 ? (
               <div key="screens-empty-state-view" className={styles.emptyState}>
                 <div className={styles.emptyIcon}>NX</div>
                 <h3 className={styles.emptyTitle}>No screens found</h3>

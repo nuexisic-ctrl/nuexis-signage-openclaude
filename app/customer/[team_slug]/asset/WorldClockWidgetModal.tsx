@@ -263,33 +263,35 @@ export default function WorldClockWidgetModal({
               </div>
 
               {/* Format Settings */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <input
-                    type="checkbox"
-                    id="worldclock-showseconds"
-                    checked={showSeconds}
-                    onChange={e => setShowSeconds(e.target.checked)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-                  />
-                  <label htmlFor="worldclock-showseconds" style={{ fontSize: '0.9rem', color: 'var(--on-surface)', fontFamily: 'var(--font-body)', fontWeight: 500, cursor: 'pointer' }}>
-                    Show Seconds
-                  </label>
-                </div>
+              {clockType === 'digital' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input
+                      type="checkbox"
+                      id="worldclock-showseconds"
+                      checked={showSeconds}
+                      onChange={e => setShowSeconds(e.target.checked)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                    />
+                    <label htmlFor="worldclock-showseconds" style={{ fontSize: '0.9rem', color: 'var(--on-surface)', fontFamily: 'var(--font-body)', fontWeight: 500, cursor: 'pointer' }}>
+                      Show Seconds
+                    </label>
+                  </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <input
-                    type="checkbox"
-                    id="worldclock-24hour"
-                    checked={use24Hour}
-                    onChange={e => setUse24Hour(e.target.checked)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-                  />
-                  <label htmlFor="worldclock-24hour" style={{ fontSize: '0.9rem', color: 'var(--on-surface)', fontFamily: 'var(--font-body)', fontWeight: 500, cursor: 'pointer' }}>
-                    24-hour Format
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input
+                      type="checkbox"
+                      id="worldclock-24hour"
+                      checked={use24Hour}
+                      onChange={e => setUse24Hour(e.target.checked)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                    />
+                    <label htmlFor="worldclock-24hour" style={{ fontSize: '0.9rem', color: 'var(--on-surface)', fontFamily: 'var(--font-body)', fontWeight: 500, cursor: 'pointer' }}>
+                      24-hour Format
+                    </label>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Theme Preset */}
               <div>

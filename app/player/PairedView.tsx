@@ -6,6 +6,7 @@ import styles from './player.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
+import FlowSlideshowRenderer from '@/app/components/FlowSlideshowRenderer'
 import { X, Monitor, RefreshCw, Volume2, VolumeX, Unlink } from 'lucide-react'
 
 interface PairedViewProps {
@@ -235,6 +236,23 @@ export default function PairedView({
       } catch (err) {
         console.error('Failed to parse Countdown widget config in PairedView:', err)
         content = <div style={{ color: 'red', padding: '10px' }}>Error rendering Countdown widget</div>
+      }
+    } else if (mimeType === 'application/x-widget-slideshow') {
+      try {
+        const config = JSON.parse(assetUrl)
+        content = (
+          <FlowSlideshowRenderer
+            images={config.images}
+            animation={config.animation}
+            backgroundColor={config.backgroundColor}
+            duration={config.duration}
+            hardwareId={hardwareId}
+            secret={secret}
+          />
+        )
+      } catch (err) {
+        console.error('Failed to parse Slideshow widget config in PairedView:', err)
+        content = <div style={{ color: 'red', padding: '10px' }}>Error rendering Slideshow widget</div>
       }
     } else if (mimeType?.startsWith('video/')) {
       content = (

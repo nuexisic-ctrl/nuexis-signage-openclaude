@@ -2,6 +2,7 @@ import React, { useState, useTransition, useRef } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import styles from './Modal.module.css'
 import { updateDeviceName } from './actions'
+import { toast } from '@/app/components/Toast'
 
 export interface RenameModalProps {
   currentName: string
@@ -42,6 +43,7 @@ export function RenameModal({
     startTransition(async () => {
       const result = await updateDeviceName(teamSlug, deviceId, trimmed)
       if (result.success) {
+        toast.success('Screen renamed successfully')
         onSuccess(trimmed)
       } else {
         setError(result.error)
@@ -61,6 +63,22 @@ export function RenameModal({
         </div>
 
         <form className={styles.form} onSubmit={handleSubmit}>
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            alignItems: 'flex-start',
+            padding: '10px 12px',
+            background: 'var(--surface-low)',
+            border: '1px solid var(--outline-variant)',
+            borderRadius: '8px',
+            fontSize: '0.82rem',
+            color: 'var(--on-surface-subtle)',
+            lineHeight: '1.4'
+          }}>
+            <span style={{ fontSize: '1.1rem', lineHeight: '1', marginTop: '-1px' }}>ℹ️</span>
+            <span>Renaming this screen will update its name in your dashboard and on the active display in real-time.</span>
+          </div>
+
           <div className={styles.fieldGroup}>
             <label htmlFor="rename-input" className={styles.label}>Screen Name</label>
             <input

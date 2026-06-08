@@ -1,6 +1,6 @@
 import React, { useState, useTransition } from 'react'
 import { X, AlertTriangle } from 'lucide-react'
-import { AssetBrowserModal } from '../screens/AssetBrowserModal'
+import { AssetBrowserModal } from '../components/AssetBrowser'
 import { PlaylistBrowserModal } from '../screens/PlaylistBrowserModal'
 import { assignContentToGroup } from './actions'
 import styles from './groups.module.css'

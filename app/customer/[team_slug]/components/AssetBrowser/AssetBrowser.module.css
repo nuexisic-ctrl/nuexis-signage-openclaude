@@ -353,12 +353,20 @@
   border-bottom: 1px solid var(--outline-variant);
 }
 
+.table th:first-child {
+  padding-left: 0;
+}
+
 .table td {
   padding: 14px 16px;
   font-size: 0.9rem;
   color: var(--on-surface);
   border-bottom: 1px solid var(--outline-variant);
   vertical-align: middle;
+}
+
+.table td:first-child {
+  padding-left: 0;
 }
 
 .row {
@@ -783,4 +791,302 @@
 
 .modalWrapper > * {
   pointer-events: auto;
+}
+
+/* Multi-selection styles */
+.cardSelected {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(9, 76, 178, 0.15);
+}
+
+.rowSelected {
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface-low)) !important;
+}
+
+.selectionBubble {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--outline-variant);
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+.selectionBubble.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* Floating multi-select selection footer bar */
+.selectionFooterBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface-lowest);
+  border-top: 1px solid var(--outline-variant);
+  padding: 14px 24px;
+  z-index: 200;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+  animation: slideUpFooter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpFooter {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.selectionFooterContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.selectionFooterLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.selectionCountLabel {
+  font-size: 0.9rem;
+  color: var(--on-surface);
+}
+
+.selectionClearBtn {
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--on-surface-subtle);
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.selectionClearBtn:hover {
+  background: var(--surface-medium);
+  color: var(--on-surface);
+}
+
+.selectionFooterRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.selectionCancelBtn {
+  font-family: var(--font-label);
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--on-surface-subtle);
+  background: transparent;
+  border: 0;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.selectionCancelBtn:hover {
+  color: var(--on-surface);
+}
+
+.selectionConfirmBtn {
+  font-family: var(--font-label);
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--on-primary);
+  background: var(--primary);
+  border: 0;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(9, 76, 178, 0.2);
+  transition: all 0.2s ease;
+}
+
+.selectionConfirmBtn:hover {
+  background: var(--primary-hover, #083c92);
+  transform: translateY(-1px);
+}
+
+/* Sidebar filter transitions inside the browser */
+.sidebarOverlay {
+  display: none;
+}
+
+.filterSidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  height: 100%;
+  width: 320px;
+  z-index: 150;
+  background: var(--surface-lowest);
+  border-left: 1px solid var(--outline-variant);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease;
+}
+
+.filterSidebar.isOpen {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebarHeader {
+  min-height: 72px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--outline-variant);
+  box-sizing: border-box;
+}
+
+.sidebarTitle {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--on-surface);
+}
+
+.closeSidebarBtn {
+  background: var(--surface-low);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeSidebarBtn:hover {
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.sidebarBody {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.filterLabel {
+  font-family: var(--font-label);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--on-surface-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.filterInput {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.filterInput:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(9, 76, 178, 0.1);
+}
+
+.sidebarFooter {
+  padding: 16px 20px;
+  border-top: 1px solid var(--outline-variant);
+  margin-top: auto;
+}
+
+.resetFiltersBtn {
+  width: 100%;
+  height: 42px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  color: var(--on-surface);
+  font-family: var(--font-label);
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resetFiltersBtn:hover {
+  background: var(--surface-container);
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--outline-variant));
+}
+
+@media (max-width: 768px) {
+  .bodyWithSidebar {
+    flex-direction: column;
+  }
+  .filterSidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    z-index: 1300;
+    box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+    width: 320px;
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .filterSidebar.isOpen {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .sidebarOverlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 17, 31, 0.64);
+    backdrop-filter: blur(4px);
+    z-index: 1299;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .sidebarOverlay.overlayOpen {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }

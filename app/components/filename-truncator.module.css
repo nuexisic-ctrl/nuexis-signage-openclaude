@@ -4,7 +4,7 @@
   width: 100%;
   white-space: nowrap;
   vertical-align: middle;
-  cursor: help;
+  cursor: inherit;
   position: relative;
 }
 

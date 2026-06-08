@@ -384,8 +384,6 @@ export default function FlowWorldClockRenderer({
               </svg>
             </div>
             <div>
-              <h3 className="wck-timezone-label">{city}</h3>
-              {region && <p className="wck-timezone-sub">{region}</p>}
               <p className="wck-date-label">{formatDate(time)}</p>
             </div>
           </div>
@@ -396,8 +394,6 @@ export default function FlowWorldClockRenderer({
               {showSeconds && <span className="wck-digital-secs">:{secsStr}</span>}
               {!use24Hour && <span className="wck-digital-ampm">{ampm}</span>}
             </h1>
-            <h3 className="wck-timezone-label" style={{ marginTop: '3cqmin' }}>{city}</h3>
-            {region && <p className="wck-timezone-sub">{region}</p>}
             <p className="wck-date-label">{formatDate(time)}</p>
           </div>
         )}

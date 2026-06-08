@@ -7,6 +7,7 @@ import FlowWidgetModal from './FlowWidgetModal'
 import CountdownWidgetModal from './CountdownWidgetModal'
 import CountUpWidgetModal from './CountUpWidgetModal'
 import WorldClockWidgetModal from './WorldClockWidgetModal'
+import OnlineSlideshowWidgetModal from './OnlineSlideshowWidgetModal'
 import { insertAsset, getUploadUrl } from './actions'
 import { createClient } from '@/lib/supabase/client'
 import { Asset } from './types'
@@ -16,6 +17,7 @@ interface WidgetModalsContainerProps {
   showWidgetSelection: boolean
   setShowWidgetSelection: (val: boolean) => void
   teamSlug: string
+  teamId?: string
   assets: Asset[]
   setAssets: React.Dispatch<React.SetStateAction<Asset[]>>
   setShowSuccess: (val: boolean) => void
@@ -26,6 +28,7 @@ export function WidgetModalsContainer({
   showWidgetSelection,
   setShowWidgetSelection,
   teamSlug,
+  teamId,
   assets,
   setAssets,
   setShowSuccess,
@@ -41,6 +44,7 @@ export function WidgetModalsContainer({
   const [showCountdownConfig, setShowCountdownConfig] = useState(false)
   const [showCountUpConfig, setShowCountUpConfig] = useState(false)
   const [showWorldClockConfig, setShowWorldClockConfig] = useState(false)
+  const [showSlideshowConfig, setShowSlideshowConfig] = useState(false)
   const [isSubmittingWidget, setIsSubmittingWidget] = useState(false)
   
   const [, startTransition] = useTransition()
@@ -341,6 +345,42 @@ export function WidgetModalsContainer({
     setIsSubmittingWidget(false)
   }
 
+  const handleCreateSlideshowWidget = async (name: string, config: {
+    animation: 'fade' | 'slide-left' | 'slide-right' | 'zoom-in' | 'zoom-out'
+    backgroundColor: string
+    duration: number
+    images: { id: string; file_name: string; file_path: string }[]
+  }) => {
+    setIsSubmittingWidget(true)
+    const serialized = JSON.stringify(config)
+    const result = await insertAsset(teamSlug, {
+      file_name: name,
+      file_path: serialized,
+      mime_type: 'application/x-widget-slideshow',
+      size_bytes: 0,
+      folder_id: folderId || null,
+    })
+
+    if (result.success) {
+      const newAsset: Asset = {
+        id: result.id!,
+        file_name: name,
+        file_path: serialized,
+        mime_type: 'application/x-widget-slideshow',
+        size_bytes: 0,
+        created_at: new Date().toISOString(),
+        folder_id: folderId || null,
+      }
+      setAssets(prev => [newAsset, ...prev])
+      setShowSlideshowConfig(false)
+      toast.success(`Slideshow widget "${name}" created successfully`)
+      startTransition(() => { router.refresh() })
+    } else {
+      toast.error(result.error || 'Failed to create Slideshow widget.')
+    }
+    setIsSubmittingWidget(false)
+  }
+
   return (
     <>
       {showWidgetSelection && (
@@ -355,6 +395,7 @@ export function WidgetModalsContainer({
           onSelectCountdown={() => setShowCountdownConfig(true)}
           onSelectCountUp={() => setShowCountUpConfig(true)}
           onSelectWorldClock={() => setShowWorldClockConfig(true)}
+          onSelectSlideshow={() => setShowSlideshowConfig(true)}
         />
       )}
 
@@ -452,6 +493,21 @@ export function WidgetModalsContainer({
           }}
           onSubmit={handleCreateWorldClockWidget}
           isSubmitting={isSubmittingWidget}
+        />
+      )}
+
+      {showSlideshowConfig && (
+        <OnlineSlideshowWidgetModal
+          onClose={() => setShowSlideshowConfig(false)}
+          onBack={() => {
+            setShowSlideshowConfig(false)
+            setShowWidgetSelection(true)
+          }}
+          onSubmit={handleCreateSlideshowWidget}
+          isSubmitting={isSubmittingWidget}
+          assets={assets}
+          teamSlug={teamSlug}
+          teamId={teamId}
         />
       )}
 

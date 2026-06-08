@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { AlertTriangle, Link, MonitorPlay, X, ArrowLeft, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass, Timer, ListVideo, Globe } from 'lucide-react'
+import { AlertTriangle, Link, MonitorPlay, X, ArrowLeft, Code, Clock, QrCode, Check, ChevronDown, Search, History, Hourglass, Timer, ListVideo, Globe, Images } from 'lucide-react'
 import styles from './Modal.module.css'
 import { validateHtml, validateCss } from './validators'
 import { t } from '@/lib/i18n'
 import CustomCodeEditor from './CustomCodeEditor'
-import { AssetBrowserModal } from '../screens/AssetBrowserModal'
+import { AssetBrowserModal } from '../components/AssetBrowser'
 import QRCode from 'qrcode'
 import { Asset } from './types'
 
@@ -23,6 +23,7 @@ interface WidgetSelectionModalProps {
   onSelectCountdown: () => void
   onSelectCountUp: () => void
   onSelectWorldClock: () => void
+  onSelectSlideshow: () => void
 }
 
 const WIDGET_SEARCH_HISTORY_KEY = 'widget_search_history'
@@ -66,7 +67,8 @@ export function WidgetSelectionModal({
   onSelectQRCode,
   onSelectCountdown,
   onSelectCountUp,
-  onSelectWorldClock
+  onSelectWorldClock,
+  onSelectSlideshow
 }: WidgetSelectionModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchHistory, setSearchHistory] = useState<string[]>([])
@@ -96,6 +98,14 @@ export function WidgetSelectionModal({
   }, [showHistory])
 
   const ALL_WIDGETS = [
+    {
+      id: 'slideshow',
+      title: t('Online Slideshow'),
+      description: t('Display a customizable loop of images with slide transitions, durations, and background colors.'),
+      icon: Images,
+      color: '#ec4899',
+      action: onSelectSlideshow
+    },
     {
       id: 'countup',
       title: t('Count Up'),

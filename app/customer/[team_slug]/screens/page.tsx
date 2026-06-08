@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
 import { createClient, getCachedUser } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import ScreensClient from './ScreensClient'
@@ -108,6 +109,9 @@ export default async function ScreensPage({ params }: Props) {
   const memberships = membershipsRes.data ?? []
   const historicalPlaytime = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).historical_playtime_seconds : 0
 
+  const cookieStore = await cookies()
+  const initialViewMode = (cookieStore.get('screens_view_mode')?.value as 'grid' | 'table') || 'table'
+
   return (
     <ScreensClient
       devices={devices}
@@ -119,6 +123,7 @@ export default async function ScreensPage({ params }: Props) {
       teamId={profile?.team_id as string}
       totalScreens={totalScreens}
       historicalPlaytime={Number(historicalPlaytime) || 0}
+      initialViewMode={initialViewMode}
     />
   )
 }

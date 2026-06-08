@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { X, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ListVideo, Clock, Calendar } from 'lucide-react'
-import styles from './AssetBrowserModal.module.css'
+import styles from '../components/AssetBrowser/AssetBrowser.module.css'
 import { Playlist } from './types'
 import { modalStack } from '@/lib/utils/modalStack'
 

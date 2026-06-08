@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { Folder, FileText, Video, Image as ImageIcon, Play, LayoutGrid, List, Code, Clock, Hourglass, QrCode, Globe } from 'lucide-react'
 import { Asset } from '../asset/types'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
-import styles from './AssetBrowserModal.module.css'
+import styles from '../components/AssetBrowser/AssetBrowser.module.css'
 
 export const YoutubeIcon = ({ size = 20, ...props }: { size?: number } & React.SVGProps<SVGSVGElement>) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>

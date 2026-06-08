@@ -7,6 +7,7 @@ import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
 import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
+import FlowSlideshowRenderer from '@/app/components/FlowSlideshowRenderer'
 
 interface PlaylistItem {
   id: string
@@ -632,6 +633,35 @@ function PlayableItem({
           theme={parsedConfig.theme}
           themeSettings={parsedConfig.themeSettings}
           advancedSettings={parsedConfig.advancedSettings}
+        />
+      </div>
+    )
+  }
+
+  if (item.assets?.mime_type === 'application/x-widget-slideshow') {
+    let parsedConfig: any = null
+    try {
+      parsedConfig = JSON.parse(mediaUrl)
+    } catch (err) {
+      console.error('Failed to parse Slideshow widget config in playlist engine:', err)
+    }
+
+    if (!parsedConfig) {
+      return (
+        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+          Error rendering Slideshow widget
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+        <FlowSlideshowRenderer
+          images={parsedConfig.images}
+          animation={parsedConfig.animation}
+          backgroundColor={parsedConfig.backgroundColor}
+          duration={parsedConfig.duration}
+          getSignedUrl={getSignedUrl}
         />
       </div>
     )

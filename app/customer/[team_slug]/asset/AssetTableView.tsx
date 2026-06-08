@@ -1,7 +1,8 @@
 'use client'
 
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe } from 'lucide-react'
+import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe, Images, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -68,6 +69,28 @@ export function AssetTableView({
 }: AssetTableViewProps) {
   const supabase = createClient()
 
+  const [isSelectDropdownOpen, setIsSelectDropdownOpen] = useState(false)
+  const selectDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Handle click outside selection dropdown
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (selectDropdownRef.current && !selectDropdownRef.current.contains(e.target as Node)) {
+        setIsSelectDropdownOpen(false)
+      }
+    }
+    if (isSelectDropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [isSelectDropdownOpen])
+
+  const totalCount = filteredAssets.length
+  const filesCount = filteredAssets.filter(a => a.mime_type !== 'application/x-folder').length
+  const foldersCount = filteredAssets.filter(a => a.mime_type === 'application/x-folder').length
+
   const getDraggedIds = (asset: Asset, dataTransfer: DataTransfer | null) => {
     // Prefer explicit payload
     if (dataTransfer) {
@@ -109,26 +132,182 @@ export function AssetTableView({
       <table className={styles.screensTable}>
         <thead className={styles.tableHeader}>
           <tr>
-            <th style={{ width: '40px', textAlign: 'center' }}>
-              <input 
-                type="checkbox" 
-                checked={filteredAssets.length > 0 && filteredAssets.every(a => selectedAssetIds.has(a.id))}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
-                  } else {
-                    setSelectedAssetIds(new Set())
-                  }
-                }}
-                aria-label={t('Select all items on this page')}
-                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-              />
+            <th style={{ width: '58px', textAlign: 'center', padding: '14px 8px' }}>
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '2px', 
+                  position: 'relative' 
+                }} 
+                ref={selectDropdownRef}
+              >
+                <input 
+                  type="checkbox" 
+                  checked={filteredAssets.length > 0 && filteredAssets.every(a => selectedAssetIds.has(a.id))}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
+                    } else {
+                      setSelectedAssetIds(new Set())
+                    }
+                  }}
+                  aria-label={t('Select all items on this page')}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer', margin: 0 }}
+                />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsSelectDropdownOpen(!isSelectDropdownOpen)
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'var(--on-surface-subtle)',
+                    borderRadius: '4px',
+                    transition: 'background 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <ChevronDown size={14} />
+                </button>
+
+                {isSelectDropdownOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      left: 0,
+                      background: 'var(--surface-lowest)',
+                      border: '1px solid var(--outline-variant)',
+                      borderRadius: '10px',
+                      boxShadow: 'var(--shadow-modal)',
+                      padding: '6px',
+                      zIndex: 200,
+                      minWidth: '200px',
+                      textAlign: 'left',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '2px',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
+                        setIsSelectDropdownOpen(false)
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        border: 0,
+                        borderRadius: '6px',
+                        background: 'transparent',
+                        color: 'var(--on-surface)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'var(--font-label)',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        transition: 'background 0.15s',
+                        width: '100%',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-low)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {t('Select All')} ({totalCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAssetIds(new Set(filteredAssets.filter(a => a.mime_type !== 'application/x-folder').map(a => a.id)))
+                        setIsSelectDropdownOpen(false)
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        border: 0,
+                        borderRadius: '6px',
+                        background: 'transparent',
+                        color: 'var(--on-surface)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'var(--font-label)',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        transition: 'background 0.15s',
+                        width: '100%',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-low)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {t('Select Files Only')} ({filesCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAssetIds(new Set(filteredAssets.filter(a => a.mime_type === 'application/x-folder').map(a => a.id)))
+                        setIsSelectDropdownOpen(false)
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        border: 0,
+                        borderRadius: '6px',
+                        background: 'transparent',
+                        color: 'var(--on-surface)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'var(--font-label)',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        transition: 'background 0.15s',
+                        width: '100%',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-low)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {t('Select Folders Only')} ({foldersCount})
+                    </button>
+                    <div style={{ height: '1px', background: 'var(--outline-variant)', margin: '4px 6px' }} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAssetIds(new Set())
+                        setIsSelectDropdownOpen(false)
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        border: 0,
+                        borderRadius: '6px',
+                        background: 'transparent',
+                        color: 'var(--error)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'var(--font-label)',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        transition: 'background 0.15s',
+                        width: '100%',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--error-container)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {t('Deselect All')}
+                    </button>
+                  </div>
+                )}
+              </div>
             </th>
-            <th style={{ width: '35%' }}>{t('File Name')}</th>
-            <th style={{ width: '15%' }}>{t('Type')}</th>
-            <th style={{ width: '15%' }}>{t('Screens')}</th>
-            <th style={{ width: '25%' }}>{t('Date Added')}</th>
-            <th style={{ width: '10%', textAlign: 'right' }}>{t('Actions')}</th>
+            <th style={{ width: 'auto' }}>{t('File Name')}</th>
+            <th style={{ width: '130px' }}>{t('Screens')}</th>
+            <th style={{ width: '130px' }}>{t('Date Added')}</th>
+            <th style={{ width: '90px', textAlign: 'right' }}>{t('Actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -192,7 +371,7 @@ export function AssetTableView({
               >
                 <td 
                   className={styles.tableCell} 
-                  style={{ width: '40px', textAlign: 'center', cursor: 'pointer' }}
+                  style={{ width: '58px', textAlign: 'center', cursor: 'pointer', padding: '14px 8px' }}
                   onClick={(e) => {
                     e.stopPropagation()
                     handleToggleSelect(asset.id)
@@ -249,6 +428,8 @@ export function AssetTableView({
                         <Globe size={20} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
                       ) : asset.mime_type === 'application/x-widget-countdown' ? (
                         <Hourglass size={20} style={{ stroke: '#eab308', color: '#eab308' }} />
+                      ) : asset.mime_type === 'application/x-widget-slideshow' ? (
+                        <Images size={20} style={{ stroke: '#ec4899', color: '#ec4899' }} />
                       ) : asset.mime_type === 'application/x-widget-qrcode' ? (
                         <QrCode size={20} style={{ stroke: '#a855f7', color: '#a855f7' }} />
                       ) : (
@@ -260,38 +441,7 @@ export function AssetTableView({
                     </div>
                   </div>
                 </td>
-                <td className={styles.tableCell}>
-                  <div 
-                    className={styles.contentIconWrap}
-                    title={isFolder ? 'FOLDER' : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-worldclock' ? 'WORLD CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
-                  >
-                    {isFolder ? (
-                      <Folder size={15} />
-                    ) : isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode' ? (
-                      asset.mime_type === 'application/x-widget-qrcode' ? (
-                        <QrCode size={15} />
-                      ) : (
-                        <ImageIcon size={15} />
-                      )
-                    ) : isVideo(asset.mime_type) ? (
-                      <Play size={15} />
-                    ) : asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? (
-                      <YoutubeIcon size={15} />
-                    ) : asset.mime_type === 'application/x-widget-remote-url' ? (
-                      <Link size={15} />
-                    ) : asset.mime_type === 'application/x-widget-html' ? (
-                      <Code size={15} />
-                    ) : asset.mime_type === 'application/x-widget-flow' ? (
-                      <Clock size={15} />
-                    ) : asset.mime_type === 'application/x-widget-worldclock' ? (
-                      <Globe size={15} />
-                    ) : asset.mime_type === 'application/x-widget-countdown' ? (
-                      <Hourglass size={15} />
-                    ) : (
-                      <File size={15} />
-                    )}
-                  </div>
-                </td>
+
                 <td
                   className={styles.tableCell}
                   style={{ fontSize: '0.88rem', color: 'var(--on-surface-subtle)' }}

@@ -14,6 +14,8 @@ import FlowWidgetModal from './FlowWidgetModal'
 import CountdownWidgetModal from './CountdownWidgetModal'
 import CountUpWidgetModal from './CountUpWidgetModal'
 import WorldClockWidgetModal from './WorldClockWidgetModal'
+import OnlineSlideshowWidgetModal from './OnlineSlideshowWidgetModal'
+import { SlideshowImage } from '@/app/components/FlowSlideshowRenderer'
 import { updateWidgetAsset } from './actions'
 import { Asset } from './types'
 import { toast } from '@/app/components/Toast'
@@ -22,6 +24,8 @@ interface WidgetEditContainerProps {
   /** The asset being edited */
   asset: Asset
   teamSlug: string
+  teamId?: string
+  assets?: Asset[]
   /** Called when the modal is closed (on cancel or successful save) */
   onClose: () => void
   /** Optimistically update the parent's asset list */
@@ -31,6 +35,8 @@ interface WidgetEditContainerProps {
 export function WidgetEditContainer({
   asset,
   teamSlug,
+  teamId,
+  assets = [],
   onClose,
   onUpdated,
 }: WidgetEditContainerProps) {
@@ -253,6 +259,33 @@ export function WidgetEditContainer({
           themeSettings: config.themeSettings,
           use24Hour: config.use24Hour ?? false,
           showSeconds: config.showSeconds ?? true
+        }}
+      />
+    )
+  }
+
+  // ── Online Slideshow Widget ──────────────────────────────────────────────
+  if (asset.mime_type === 'application/x-widget-slideshow') {
+    const config = parseConfig<{
+      animation?: 'fade' | 'slide-left' | 'slide-right' | 'zoom-in' | 'zoom-out'
+      backgroundColor?: string
+      duration?: number
+      images?: SlideshowImage[]
+    }>({})
+    return (
+      <OnlineSlideshowWidgetModal
+        onClose={onClose}
+        onSubmit={(name, cfg) => saveWidget(name, JSON.stringify(cfg))}
+        isSubmitting={isSubmitting}
+        assets={assets}
+        teamSlug={teamSlug}
+        teamId={teamId}
+        initialData={{
+          name: asset.file_name,
+          animation: config.animation ?? 'fade',
+          backgroundColor: config.backgroundColor ?? '#000000',
+          duration: config.duration ?? 5,
+          images: config.images ?? [],
         }}
       />
     )

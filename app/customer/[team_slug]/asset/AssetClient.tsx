@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder, X } from 'lucide-react'
+import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder, X, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import { moveAssetsToFolder, fetchFolderFiles } from './actions'
@@ -161,6 +161,9 @@ export default function AssetClient({
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false)
+  const [sortBy, setSortBy] = useState<string>('created-desc')
+  const [isSortOpen, setIsSortOpen] = useState(false)
+  const sortRef = useRef<HTMLDivElement>(null)
   
   // Advanced filters state variables
   const [filterType, setFilterType] = useState<string>('all')
@@ -183,6 +186,78 @@ export default function AssetClient({
   const router = useRouter()
   const supabase = createClient()
 
+  // Drag & drop page upload state
+  const [isDraggingPage, setIsDraggingPage] = useState(false)
+  const dragCounter = useRef(0)
+
+  // Grid view selection dropdown state
+  const [isGridSelectDropdownOpen, setIsGridSelectDropdownOpen] = useState(false)
+  const gridSelectDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (gridSelectDropdownRef.current && !gridSelectDropdownRef.current.contains(e.target as Node)) {
+        setIsGridSelectDropdownOpen(false)
+      }
+    }
+    if (isGridSelectDropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [isGridSelectDropdownOpen])
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer.types.includes('Files')) {
+      dragCounter.current++
+      setIsDraggingPage(true)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer.types.includes('Files')) {
+      dragCounter.current--
+      if (dragCounter.current === 0) {
+        setIsDraggingPage(false)
+      }
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer.types.includes('Files')) {
+      e.dataTransfer.dropEffect = 'copy'
+    }
+  }
+
+  const handleDropPage = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDraggingPage(false)
+    dragCounter.current = 0
+    
+    if (e.dataTransfer.types.includes('Files')) {
+      const files = Array.from(e.dataTransfer.files)
+      if (files.length > 0) {
+        handleFiles(files)
+      }
+    }
+  }
+
+  useEffect(() => {
+    const preventDefault = (e: DragEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('dragover', preventDefault)
+    window.addEventListener('drop', preventDefault)
+    return () => {
+      window.removeEventListener('dragover', preventDefault)
+      window.removeEventListener('drop', preventDefault)
+    }
+  }, [])
+
   useEffect(() => {
     const savedLimit = localStorage.getItem('nuexis_assets_per_page')
     if (savedLimit) {
@@ -192,7 +267,19 @@ export default function AssetClient({
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, filterType, filterDatePreset, filterSizePreset])
+  }, [searchQuery, filterType, filterDatePreset, filterSizePreset, sortBy])
+
+  useEffect(() => {
+    if (!isSortOpen) return
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setIsSortOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [isSortOpen])
+
 
   // Use the extracted asset upload custom hook
   const {
@@ -604,15 +691,27 @@ export default function AssetClient({
       return activeFolder ? a.folder_id === activeFolder.id : !a.folder_id
     })
 
-    // Sort folders at the top, then by created_at descending
+    // Sort folders at the top, then sort based on selected sortBy option
     return filtered.sort((a, b) => {
       const aIsFolder = a.mime_type === 'application/x-folder'
       const bIsFolder = b.mime_type === 'application/x-folder'
       if (aIsFolder && !bIsFolder) return -1
       if (!aIsFolder && bIsFolder) return 1
+      
+      // Both are folders or both are files
+      if (sortBy === 'name-asc') {
+        return a.file_name.localeCompare(b.file_name, undefined, { sensitivity: 'base' })
+      }
+      if (sortBy === 'name-desc') {
+        return b.file_name.localeCompare(a.file_name, undefined, { sensitivity: 'base' })
+      }
+      if (sortBy === 'created-asc' || sortBy === 'updated-asc') {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      }
+      // Default: created-desc or updated-desc (Newest first)
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
-  }, [allLoadedAssets, filterType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery, activeFolder])
+  }, [allLoadedAssets, filterType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery, activeFolder, sortBy])
 
   const totalPages = Math.ceil(filteredAssets.length / pageSize) || 1
   const hasNextPage = currentPage < totalPages
@@ -653,7 +752,13 @@ export default function AssetClient({
   const showFilterDot = hasActiveFilters
 
   return (
-    <div className={styles.assetArea}>
+    <div 
+      className={styles.assetArea}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDropPage}
+    >
       <div className={`${styles.topbar} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
         <div>
           <div className={styles.titleContainer}>
@@ -824,6 +929,180 @@ export default function AssetClient({
                 )}
               </div>
               <div className={styles.controlsRight}>
+                {viewMode === 'grid' && (
+                  <div 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '4px', 
+                      position: 'relative',
+                      background: 'var(--surface-low)',
+                      border: '1.5px solid var(--outline-variant)',
+                      borderRadius: '10px',
+                      padding: '0 8px',
+                      height: '42px',
+                      boxSizing: 'border-box'
+                    }} 
+                    ref={gridSelectDropdownRef}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={filteredAssets.length > 0 && filteredAssets.every(a => selectedAssetIds.has(a.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
+                        } else {
+                          setSelectedAssetIds(new Set())
+                        }
+                      }}
+                      aria-label={t('Select all items')}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer', margin: 0 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsGridSelectDropdownOpen(!isGridSelectDropdownOpen)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        color: 'var(--on-surface-subtle)',
+                        borderRadius: '4px',
+                        transition: 'background 0.2s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <ChevronDown size={14} />
+                    </button>
+
+                    {isGridSelectDropdownOpen && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 'calc(100% + 6px)',
+                          left: 0,
+                          background: 'var(--surface-lowest)',
+                          border: '1px solid var(--outline-variant)',
+                          borderRadius: '10px',
+                          boxShadow: 'var(--shadow-modal)',
+                          padding: '6px',
+                          zIndex: 200,
+                          minWidth: '200px',
+                          textAlign: 'left',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '2px',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
+                            setIsGridSelectDropdownOpen(false)
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            border: 0,
+                            borderRadius: '6px',
+                            background: 'transparent',
+                            color: 'var(--on-surface)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'var(--font-label)',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            transition: 'background 0.15s',
+                            width: '100%',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-low)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {t('Select All')} ({filteredAssets.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAssetIds(new Set(filteredAssets.filter(a => a.mime_type !== 'application/x-folder').map(a => a.id)))
+                            setIsGridSelectDropdownOpen(false)
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            border: 0,
+                            borderRadius: '6px',
+                            background: 'transparent',
+                            color: 'var(--on-surface)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'var(--font-label)',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            transition: 'background 0.15s',
+                            width: '100%',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-low)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {t('Select Files Only')} ({filteredAssets.filter(a => a.mime_type !== 'application/x-folder').length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAssetIds(new Set(filteredAssets.filter(a => a.mime_type === 'application/x-folder').map(a => a.id)))
+                            setIsGridSelectDropdownOpen(false)
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            border: 0,
+                            borderRadius: '6px',
+                            background: 'transparent',
+                            color: 'var(--on-surface)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'var(--font-label)',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            transition: 'background 0.15s',
+                            width: '100%',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-low)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {t('Select Folders Only')} ({filteredAssets.filter(a => a.mime_type === 'application/x-folder').length})
+                        </button>
+                        <div style={{ height: '1px', background: 'var(--outline-variant)', margin: '4px 6px' }} />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAssetIds(new Set())
+                            setIsGridSelectDropdownOpen(false)
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            border: 0,
+                            borderRadius: '6px',
+                            background: 'transparent',
+                            color: 'var(--error)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'var(--font-label)',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            transition: 'background 0.15s',
+                            width: '100%',
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--error-container)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          {t('Deselect All')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {selectedAssetIds.size > 0 && (
                   <div className={styles.selectedActionsContainer}>
                     <div className={styles.selectedCountBadge}>
@@ -873,6 +1152,50 @@ export default function AssetClient({
                   {t('Filters')}
                   {showFilterDot && <span className={styles.filterDot} />}
                 </button>
+                <div className={styles.sortContainer} ref={sortRef}>
+                  <button 
+                    className={`${styles.sortBtn} ${isSortOpen ? styles.sortBtnActive : ''}`}
+                    onClick={() => setIsSortOpen(!isSortOpen)}
+                    title={t('Sort')}
+                    aria-label={t('Sort')}
+                    type="button"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="3" y1="6" x2="14" y2="6" />
+                      <line x1="3" y1="12" x2="11" y2="12" />
+                      <line x1="3" y1="18" x2="13" y2="18" />
+                      <path d="M19 6v12M16 15l3 3 3-3" />
+                    </svg>
+                  </button>
+                  {isSortOpen && (
+                    <div className={styles.sortDropdownMenu} role="menu">
+                      {[
+                        { value: 'updated-desc', label: t('Updated Date (Newest)') },
+                        { value: 'updated-asc', label: t('Updated Date (Oldest)') },
+                        { value: 'created-desc', label: t('Created Date (Newest)') },
+                        { value: 'created-asc', label: t('Created Date (Oldest)') },
+                        { value: 'name-asc', label: t('Name (A-Z)') },
+                        { value: 'name-desc', label: t('Name (Z-A)') },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          className={`${styles.sortDropdownItem} ${sortBy === option.value ? styles.sortDropdownItemActive : ''}`}
+                          onClick={() => {
+                            setSortBy(option.value)
+                            setIsSortOpen(false)
+                          }}
+                          role="menuitem"
+                          type="button"
+                        >
+                          {option.label}
+                          {sortBy === option.value && (
+                            <Check className={styles.sortCheckIcon} />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {isMounted && (
                   <div className={styles.viewToggleGroup}>
                     <button 
@@ -1122,6 +1445,7 @@ export default function AssetClient({
         showWidgetSelection={showWidgetSelection}
         setShowWidgetSelection={setShowWidgetSelection}
         teamSlug={teamSlug}
+        teamId={teamId}
         assets={assets}
         setAssets={setAssets}
         setShowSuccess={setShowSuccess}
@@ -1132,6 +1456,8 @@ export default function AssetClient({
         <WidgetEditContainer
           asset={editingAsset}
           teamSlug={teamSlug}
+          teamId={teamId}
+          assets={assets}
           onClose={() => setEditingAsset(null)}
           onUpdated={(updatedAsset) => {
             setAssets(prev => prev.map(a => a.id === updatedAsset.id ? updatedAsset : a))
@@ -1222,6 +1548,50 @@ export default function AssetClient({
             router.refresh()
           }}
         />
+      )}
+
+      {isDraggingPage && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: '16px',
+            background: 'color-mix(in srgb, var(--primary) 12%, var(--surface-lowest))',
+            backdropFilter: 'blur(8px)',
+            border: '3px dashed var(--primary)',
+            borderRadius: '16px',
+            zIndex: 99999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            pointerEvents: 'none',
+            animation: 'fadeIn 0.2s ease-out',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'color-mix(in srgb, var(--primary) 20%, transparent)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--primary)',
+            animation: 'pulse 2s infinite',
+          }}>
+            <Upload size={40} />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--on-surface)', margin: '0 0 8px 0', fontFamily: 'var(--font-serif)' }}>
+              {t('Drop files to upload')}
+            </h3>
+            <p style={{ fontSize: '0.95rem', color: 'var(--on-surface-subtle)', margin: 0, fontFamily: 'var(--font-body)' }}>
+              {t('Release your images, videos, or PDFs here to start uploading instantly')}
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Floating Upload Manager Panel */}

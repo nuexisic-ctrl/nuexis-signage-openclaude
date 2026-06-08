@@ -298,3 +298,48 @@
   border: 2px dashed color-mix(in srgb, var(--primary) 55%, transparent);
   pointer-events: none;
 }
+
+.moreActionsToggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 15;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 17, 31, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease, transform 150ms ease, background var(--transition-base), color var(--transition-base);
+  transform: scale(0.96);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.assetCard:hover .moreActionsToggle,
+.moreActionsToggleVisible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.moreActionsToggle:hover {
+  background: rgba(7, 17, 31, 0.88);
+  color: #ffffff;
+}
+
+.moreActionsButton {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  cursor: pointer;
+  outline: none;
+}
