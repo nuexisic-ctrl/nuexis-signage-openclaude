@@ -294,9 +294,9 @@ export default function OnlineSlideshowWidgetModal({
         }}
       >
         <div
-          className={`${styles.modalContainer} ${styles.countdownWidgetModal}`}
+          className={styles.modalContainer}
           onClick={(e) => e.stopPropagation()}
-          style={{ display: 'flex', flexDirection: 'column', padding: 0 }}
+          style={{ display: 'flex', flexDirection: 'column', padding: 0, width: '100%', maxWidth: '640px', height: 'auto', maxHeight: 'calc(100vh - 32px)' }}
         >
           {/* Header */}
           <div
@@ -363,10 +363,19 @@ export default function OnlineSlideshowWidgetModal({
             </button>
           </div>
 
-          {/* Body Content with Split View */}
-          <div className={styles.splitViewBody}>
-            {/* Left Form Panel */}
-            <form onSubmit={handleSubmit} className={styles.splitViewForm}>
+          {/* Scrollable Form Content */}
+          <form 
+            onSubmit={handleSubmit} 
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '18px', 
+              padding: '24px', 
+              overflowY: 'auto', 
+              flex: 1,
+              background: 'var(--surface-lowest)'
+            }}
+          >
               {/* Widget Name */}
               <div>
                 <label
@@ -702,75 +711,6 @@ export default function OnlineSlideshowWidgetModal({
 
             </form>
 
-            {/* Right Live Simulator Panel */}
-            <div className={styles.splitViewPreview}>
-              {/* Preview Mode selector buttons */}
-              <div style={{ display: 'flex', gap: '8px', background: 'rgba(0, 0, 0, 0.05)', padding: '4px', borderRadius: '8px', zIndex: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode('landscape')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '6px', border: 'none',
-                    background: previewMode === 'landscape' ? '#ffffff' : 'transparent',
-                    color: previewMode === 'landscape' ? 'var(--primary)' : 'var(--on-surface-subtle)',
-                    fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font-label)'
-                  }}
-                >
-                  <Monitor size={14} />
-                  Landscape (16:9)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode('portrait')}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '6px', border: 'none',
-                    background: previewMode === 'portrait' ? '#ffffff' : 'transparent',
-                    color: previewMode === 'portrait' ? 'var(--primary)' : 'var(--on-surface-subtle)',
-                    fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font-label)'
-                  }}
-                >
-                  <Smartphone size={14} />
-                  Portrait (9:16)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowFullscreenPreview(true)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '6px', border: 'none',
-                    background: 'transparent', color: 'var(--on-surface-subtle)',
-                    fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font-label)'
-                  }}
-                >
-                  <Maximize size={14} />
-                  Full Screen
-                </button>
-              </div>
-
-              {/* Simulated Screen Frame with Scaled Down Target Proportions */}
-              <div style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: '360px', position: 'relative'
-              }}>
-                <div style={{
-                  width: previewMode === 'landscape' ? 'min(100%, 760px)' : 'min(100%, 360px)',
-                  aspectRatio: previewMode === 'landscape' ? '16 / 9' : '9 / 16',
-                  background: '#000000',
-                  borderRadius: '8px',
-                  border: '1px solid var(--outline-variant)',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  boxShadow: '0 18px 40px rgba(0, 0, 0, 0.24)'
-                }}>
-                  <FlowSlideshowRenderer
-                    images={selectedImages}
-                    animation={animation}
-                    backgroundColor={backgroundColor}
-                    duration={duration}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Footer Controls */}
           <div style={{
             padding: '16px 24px',
@@ -792,6 +732,24 @@ export default function OnlineSlideshowWidgetModal({
               }}
             >
               Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFullscreenPreview(true)}
+              disabled={selectedImages.length === 0}
+              style={{
+                padding: '10px 18px',
+                background: 'var(--surface-container-high)',
+                color: 'var(--on-surface)',
+                border: '1px solid var(--outline-variant)',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: selectedImages.length === 0 ? 'not-allowed' : 'pointer',
+                fontFamily: 'var(--font-label)',
+                fontSize: '0.88rem'
+              }}
+            >
+              Preview
             </button>
             <button
               onClick={() => handleSubmit()}
@@ -821,6 +779,7 @@ export default function OnlineSlideshowWidgetModal({
           <div style={{
             width: previewMode === 'landscape' ? 'min(90vw, calc((90vh * 16) / 9))' : 'min(90vw, calc((90vh * 9) / 16))',
             height: previewMode === 'landscape' ? 'min(90vh, calc((90vw * 9) / 16))' : 'min(90vh, calc((90vw * 16) / 9))',
+            aspectRatio: previewMode === 'landscape' ? '16 / 9' : '9 / 16',
             background: '#000000', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}>
             <FlowSlideshowRenderer
@@ -833,15 +792,38 @@ export default function OnlineSlideshowWidgetModal({
 
           <div style={{
             position: 'absolute', top: '24px', right: '24px', display: 'flex', alignItems: 'center', gap: '12px',
-            background: 'rgba(0, 0, 0, 0.6)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)',
-            borderRadius: '30px', padding: '6px 16px', color: '#ffffff', fontSize: '0.86rem', fontFamily: 'var(--font-label)', fontWeight: 500, pointerEvents: 'none'
+            background: 'rgba(0, 0, 0, 0.8)', border: '1px solid rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(10px)',
+            borderRadius: '30px', padding: '6px 16px', color: '#ffffff', fontSize: '0.86rem', fontFamily: 'var(--font-label)', fontWeight: 500
           }}>
-            <span>Fullscreen Preview ({previewMode === 'landscape' ? '16:9' : '9:16'})</span>
+            <span style={{ marginRight: '8px' }}>Preview:</span>
+            <button
+              type="button"
+              onClick={() => setPreviewMode('landscape')}
+              style={{
+                background: previewMode === 'landscape' ? '#ffffff' : 'transparent',
+                color: previewMode === 'landscape' ? '#000000' : '#ffffff',
+                border: 'none', borderRadius: '15px', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer'
+              }}
+            >
+              16:9
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewMode('portrait')}
+              style={{
+                background: previewMode === 'portrait' ? '#ffffff' : 'transparent',
+                color: previewMode === 'portrait' ? '#000000' : '#ffffff',
+                border: 'none', borderRadius: '15px', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer'
+              }}
+            >
+              9:16
+            </button>
+            <div style={{ width: '1px', height: '16px', background: 'rgba(255, 255, 255, 0.2)', margin: '0 4px' }} />
             <button
               onClick={() => setShowFullscreenPreview(false)}
               style={{
                 background: '#ffffff', border: 'none', color: '#000000', borderRadius: '50%', width: '26px', height: '26px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', pointerEvents: 'auto', transition: 'transform 0.2s'
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s'
               }}
               onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
               onMouseOut={e => e.currentTarget.style.transform = 'scale(1.0)'}

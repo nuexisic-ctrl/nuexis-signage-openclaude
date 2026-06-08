@@ -48,6 +48,8 @@ export interface AssetBrowserContextType {
   setFilterMaxSize: (size: string) => void
   isFilterActive: boolean
   clearFilters: () => void
+  sortBy: string
+  setSortBy: (val: string) => void
 
   // Layout & Pagination
   viewMode: 'grid' | 'table'
@@ -171,6 +173,7 @@ export function AssetBrowserProvider({
 
   // Search & Filters State
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<string>('created-desc')
   const [selectedType, setSelectedType] = useState('all')
   const [filterDatePreset, setFilterDatePreset] = useState('all')
   const [filterStartDate, setFilterStartDate] = useState('')
@@ -240,6 +243,16 @@ export function AssetBrowserProvider({
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
 
+    const getContentTypeLabel = (mimeType: string): string => {
+      if (mimeType === 'application/x-folder') return 'Folder'
+      if (mimeType.startsWith('image/')) return 'Image'
+      if (mimeType.startsWith('video/')) return 'Video'
+      if (mimeType.startsWith('audio/')) return 'Audio'
+      if (mimeType === 'application/pdf') return 'PDF'
+      if (mimeType.startsWith('application/x-widget')) return 'Widget'
+      return 'Document'
+    }
+
     const filtered = allowedFilteredAssets.filter((asset) => {
       // Scope to active folder
       if (searchQuery) {
@@ -258,9 +271,20 @@ export function AssetBrowserProvider({
 
       // Type filter
       if (selectedType !== 'all') {
-        if (selectedType === 'widget' && !asset.mime_type.startsWith('application/x-widget')) return false
-        if (selectedType === 'video' && !asset.mime_type.startsWith('video/')) return false
         if (selectedType === 'image' && !asset.mime_type.startsWith('image/')) return false
+        if (selectedType === 'video' && !asset.mime_type.startsWith('video/')) return false
+        if (selectedType === 'audio' && !asset.mime_type.startsWith('audio/')) return false
+        if (selectedType === 'pdf' && asset.mime_type !== 'application/pdf') return false
+        if (selectedType === 'widget' && !asset.mime_type.startsWith('application/x-widget')) return false
+        if (selectedType === 'folder' && asset.mime_type !== 'application/x-folder') return false
+        if (selectedType === 'document' && (
+          asset.mime_type.startsWith('image/') || 
+          asset.mime_type.startsWith('video/') || 
+          asset.mime_type.startsWith('audio/') || 
+          asset.mime_type === 'application/pdf' || 
+          asset.mime_type.startsWith('application/x-widget') || 
+          asset.mime_type === 'application/x-folder'
+        )) return false
       }
 
       // Date filter
@@ -290,15 +314,35 @@ export function AssetBrowserProvider({
       return true
     })
 
-    // Sort folders at the top, then by created_at descending
+    // Sort folders at the top, then sort based on selected sortBy option
     return filtered.sort((a, b) => {
       const aIsFolder = a.mime_type === 'application/x-folder'
       const bIsFolder = b.mime_type === 'application/x-folder'
       if (aIsFolder && !bIsFolder) return -1
       if (!aIsFolder && bIsFolder) return 1
+      
+      if (sortBy === 'name-asc') {
+        return a.file_name.localeCompare(b.file_name, undefined, { sensitivity: 'base' })
+      }
+      if (sortBy === 'name-desc') {
+        return b.file_name.localeCompare(a.file_name, undefined, { sensitivity: 'base' })
+      }
+      if (sortBy === 'type-asc') {
+        const typeA = getContentTypeLabel(a.mime_type)
+        const typeB = getContentTypeLabel(b.mime_type)
+        return typeA.localeCompare(typeB)
+      }
+      if (sortBy === 'type-desc') {
+        const typeA = getContentTypeLabel(a.mime_type)
+        const typeB = getContentTypeLabel(b.mime_type)
+        return typeB.localeCompare(typeA)
+      }
+      if (sortBy === 'created-asc') {
+        return new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
+      }
       return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
     })
-  }, [allowedFilteredAssets, searchQuery, selectedType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, activeFolder])
+  }, [allowedFilteredAssets, searchQuery, selectedType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, activeFolder, sortBy])
 
   // Pagination Logic
   const totalItems = filteredAssets.length
@@ -408,7 +452,9 @@ export function AssetBrowserProvider({
       previewUrls,
       selectedIds,
       toggleSelect,
-      clearSelection
+      clearSelection,
+      sortBy,
+      setSortBy
     }}>
       {children}
     </AssetBrowserContext.Provider>

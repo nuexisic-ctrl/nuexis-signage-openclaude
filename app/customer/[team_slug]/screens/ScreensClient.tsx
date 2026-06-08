@@ -219,6 +219,39 @@ export default function ScreensClient({
     return () => document.removeEventListener('click', handleClick)
   }, [openMenuId])
 
+  // Click away to clear selected devices
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (selectedDeviceIds.size === 0) return
+
+      const target = e.target as HTMLElement
+
+      // If clicking interactive elements, do not clear
+      if (
+        target.closest('button') ||
+        target.closest('input') ||
+        target.closest('select') ||
+        target.closest('a') ||
+        target.closest('[role="button"]') ||
+        target.closest('[role="dialog"]') ||
+        target.closest('[class*="dropdown"]') ||
+        target.closest('[class*="menu"]') ||
+        target.closest('[class*="modal"]') ||
+        target.closest('[class*="select"]') ||
+        target.closest('[class*="deviceCard"]') ||
+        target.closest('[class*="card"]') ||
+        target.closest('tr')
+      ) {
+        return
+      }
+
+      setSelectedDeviceIds(new Set())
+    }
+
+    document.addEventListener('click', handleGlobalClick)
+    return () => document.removeEventListener('click', handleGlobalClick)
+  }, [selectedDeviceIds])
+
   async function handleRefresh() {
     if (isRefreshing) return
     setIsRefreshing(true)

@@ -108,7 +108,11 @@ export function FilterSidebar({
                 { value: 'all', label: t('All Types') },
                 { value: 'image', label: t('Images') },
                 { value: 'video', label: t('Videos') },
-                { value: 'widget', label: t('Widgets') }
+                { value: 'audio', label: t('Audios') },
+                { value: 'pdf', label: t('PDFs') },
+                { value: 'document', label: t('Documents') },
+                { value: 'widget', label: t('Widgets') },
+                { value: 'folder', label: t('Folders') }
               ]}
             />
           </div>

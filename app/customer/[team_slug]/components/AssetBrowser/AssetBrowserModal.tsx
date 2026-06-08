@@ -154,6 +154,40 @@ function AssetBrowserModalContent() {
     }
   }, [onClose])
 
+  // Click away to clear selected items inside the asset browser modal
+  const { selectedIds, clearSelection } = useAssetBrowser()
+
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (selectedIds.size === 0) return
+
+      const target = e.target as HTMLElement
+
+      // If clicking interactive elements, do not clear
+      if (
+        target.closest('button') ||
+        target.closest('input') ||
+        target.closest('select') ||
+        target.closest('a') ||
+        target.closest('[role="button"]') ||
+        target.closest('[role="dialog"]') ||
+        target.closest('[class*="dropdown"]') ||
+        target.closest('[class*="menu"]') ||
+        target.closest('[class*="modal"]') ||
+        target.closest('[class*="select"]') ||
+        target.closest('[class*="card"]') ||
+        target.closest('tr')
+      ) {
+        return
+      }
+
+      clearSelection()
+    }
+
+    document.addEventListener('click', handleGlobalClick)
+    return () => document.removeEventListener('click', handleGlobalClick)
+  }, [selectedIds, clearSelection])
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)

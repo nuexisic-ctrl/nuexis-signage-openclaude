@@ -1,9 +1,9 @@
 'use client'
 
 import React from 'react'
-import { MoreVertical, Check } from 'lucide-react'
+import { MoreVertical, Check, Folder, Image as ImageIcon, Play, Music, FileText, Code, File } from 'lucide-react'
 import { useAssetBrowser } from './AssetBrowserContext'
-import { getAssetTypeBadge, CardPreview, formatDate, formatSize } from '../../screens/AssetBrowserPreview'
+import { CardPreview, formatDate, formatSize } from '../../screens/AssetBrowserPreview'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 import { Asset } from '../../asset/types'
 import styles from './AssetBrowser.module.css'
@@ -39,7 +39,6 @@ export function AssetBrowserGrid() {
   return (
     <div className={styles.grid}>
       {paginatedAssets.map((asset) => {
-        const badgeType = getAssetTypeBadge(asset.mime_type, asset.file_name)
         const isSelected = selectedIds.has(asset.id) && asset.mime_type !== 'application/x-folder'
 
         return (
@@ -56,14 +55,22 @@ export function AssetBrowserGrid() {
             )}
             <CardPreview asset={asset} previewUrls={previewUrls} />
             <div className={styles.cardBody}>
-              <span className={`${styles.typeBadge} ${styles.cardTypeBadge}`}>
-                {badgeType}
-              </span>
-              <h4 className={styles.cardTitle}>
+              <h4 className={styles.cardTitle} style={{ marginTop: 0 }}>
                 <FilenameTruncator filename={asset.file_name} />
               </h4>
-              <div className={styles.cardDetails}>
+              <div className={styles.cardDetails} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '4px' }}>
                 <span>{asset.mime_type === 'application/x-folder' ? 'Folder' : `${formatSize(asset.size_bytes)} • ${formatDate(asset.created_at)}`}</span>
+                <span style={{ color: 'var(--on-surface-subtle)', display: 'inline-flex', alignItems: 'center' }} title={asset.mime_type}>
+                  {(() => {
+                    if (asset.mime_type === 'application/x-folder') return <Folder size={12} />
+                    if (asset.mime_type.startsWith('image/')) return <ImageIcon size={12} />
+                    if (asset.mime_type.startsWith('video/')) return <Play size={12} />
+                    if (asset.mime_type.startsWith('audio/')) return <Music size={12} />
+                    if (asset.mime_type === 'application/pdf') return <FileText size={12} />
+                    if (asset.mime_type.startsWith('application/x-widget')) return <Code size={12} />
+                    return <File size={12} />
+                  })()}
+                </span>
               </div>
               <div className={styles.cardMenuBtn} onClick={(e) => e.stopPropagation()}>
                 <button

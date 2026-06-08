@@ -91,7 +91,11 @@ export function AssetBrowserSidebar({ isOpen, onClose }: AssetBrowserSidebarProp
                   { value: 'all', label: 'All Types' },
                   { value: 'image', label: 'Images' },
                   { value: 'video', label: 'Videos' },
-                  { value: 'widget', label: 'Widgets' }
+                  { value: 'audio', label: 'Audios' },
+                  { value: 'pdf', label: 'PDFs' },
+                  { value: 'document', label: 'Documents' },
+                  { value: 'widget', label: 'Widgets' },
+                  { value: 'folder', label: 'Folders' }
                 ]}
               />
             </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Globe, Images } from 'lucide-react'
+import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Globe, Images, FileText, Music, Image as ImageIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -261,17 +261,19 @@ export function AssetCard({
           </p>
         </div>
       </div>
-      <div className={styles.assetMeta}>
-          <span>
+      <div className={styles.assetMeta} style={{ justifyContent: 'space-between', width: '100%', padding: '0 14px 14px', marginTop: '-4px' }}>
+          <span>{date}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--on-surface-subtle)' }} title={asset.mime_type}>
             {(() => {
-              if (isFolder) return '—'
-              const usageScreens = screens?.filter(s => s.asset_id === asset.id) ?? []
-              if (usageScreens.length === 0) return 'Unused'
-              return usageScreens.length === 1 ? `On: ${usageScreens[0].name}` : `On: ${usageScreens.length} screens`
+              if (isFolder) return <Folder size={12} style={{ stroke: asset.color || '#78716c' }} />
+              if (isImage(asset.mime_type)) return <ImageIcon size={12} style={{ stroke: '#22c55e' }} />
+              if (isVideo(asset.mime_type)) return <Play size={12} style={{ stroke: '#3b82f6' }} />
+              if (asset.mime_type.startsWith('audio/')) return <Music size={12} style={{ stroke: '#f59e0b' }} />
+              if (asset.mime_type === 'application/pdf') return <FileText size={12} style={{ stroke: '#ef4444' }} />
+              if (isWidget(asset.mime_type)) return <Code size={12} style={{ stroke: '#a855f7' }} />
+              return <File size={12} style={{ stroke: '#64748b' }} />
             })()}
           </span>
-          <span className={styles.metaDot}>·</span>
-          <span>{date}</span>
         </div>
     </div>
   )

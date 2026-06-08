@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe, Images, ChevronDown } from 'lucide-react'
+import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe, Images, ChevronDown, FileText, Music } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -45,6 +45,8 @@ interface AssetTableViewProps {
   dragOverFolderId?: string | null
   setDragOverFolderId?: (id: string | null) => void
   onDropOnFolder?: (folder: Asset, draggedAssetIds: string[]) => void
+  sortBy?: string
+  setSortBy?: (val: string) => void
 }
 
 export function AssetTableView({
@@ -66,6 +68,8 @@ export function AssetTableView({
   dragOverFolderId,
   setDragOverFolderId,
   onDropOnFolder,
+  sortBy,
+  setSortBy,
 }: AssetTableViewProps) {
   const supabase = createClient()
 
@@ -304,9 +308,42 @@ export function AssetTableView({
                 )}
               </div>
             </th>
-            <th style={{ width: 'auto' }}>{t('File Name')}</th>
-            <th style={{ width: '130px' }}>{t('Screens')}</th>
-            <th style={{ width: '130px' }}>{t('Date Added')}</th>
+            <th 
+              style={{ width: 'auto', cursor: setSortBy ? 'pointer' : 'default', userSelect: 'none' }}
+              onClick={() => {
+                if (setSortBy && sortBy) {
+                  setSortBy(sortBy === 'name-asc' ? 'name-desc' : 'name-asc')
+                }
+              }}
+            >
+              {t('File Name')}
+              {sortBy === 'name-asc' && ' ▲'}
+              {sortBy === 'name-desc' && ' ▼'}
+            </th>
+            <th 
+              style={{ width: '135px', cursor: setSortBy ? 'pointer' : 'default', userSelect: 'none' }}
+              onClick={() => {
+                if (setSortBy && sortBy) {
+                  setSortBy(sortBy === 'type-asc' ? 'type-desc' : 'type-asc')
+                }
+              }}
+            >
+              {t('Content Type')}
+              {sortBy === 'type-asc' && ' ▲'}
+              {sortBy === 'type-desc' && ' ▼'}
+            </th>
+            <th 
+              style={{ width: '130px', cursor: setSortBy ? 'pointer' : 'default', userSelect: 'none' }}
+              onClick={() => {
+                if (setSortBy && sortBy) {
+                  setSortBy(sortBy === 'created-asc' ? 'created-desc' : 'created-asc')
+                }
+              }}
+            >
+              {t('Date Added')}
+              {sortBy === 'created-asc' && ' ▲'}
+              {sortBy === 'created-desc' && ' ▼'}
+            </th>
             <th style={{ width: '90px', textAlign: 'right' }}>{t('Actions')}</th>
           </tr>
         </thead>
@@ -446,16 +483,40 @@ export function AssetTableView({
                   className={styles.tableCell}
                   style={{ fontSize: '0.88rem', color: 'var(--on-surface-subtle)' }}
                 >
-                  {(() => {
-                    if (isFolder) return '—'
-                    const usageScreens = screens.filter(s => s.asset_id === asset.id)
-                    if (usageScreens.length === 0) return 'Unused'
-                    return (
-                      <span className={styles.screenNames} title={usageScreens.map(s => s.name).join(', ')}>
-                        {usageScreens.length === 1 ? usageScreens[0].name : `${usageScreens.length} screens`}
-                      </span>
-                    )
-                  })()}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {(() => {
+                      if (isFolder) {
+                        return <Folder size={16} style={{ stroke: asset.color || '#78716c' }} />
+                      }
+                      if (isImage(asset.mime_type)) {
+                        return <ImageIcon size={16} style={{ stroke: '#22c55e' }} />
+                      }
+                      if (isVideo(asset.mime_type)) {
+                        return <Play size={16} style={{ stroke: '#3b82f6' }} />
+                      }
+                      if (asset.mime_type.startsWith('audio/')) {
+                        return <Music size={16} style={{ stroke: '#f59e0b' }} />
+                      }
+                      if (asset.mime_type === 'application/pdf') {
+                        return <FileText size={16} style={{ stroke: '#ef4444' }} />
+                      }
+                      if (isWidget(asset.mime_type)) {
+                        return <Code size={16} style={{ stroke: '#a855f7' }} />
+                      }
+                      return <File size={16} style={{ stroke: '#64748b' }} />
+                    })()}
+                    <span>
+                      {(() => {
+                        if (isFolder) return t('Folder')
+                        if (isImage(asset.mime_type)) return t('Image')
+                        if (isVideo(asset.mime_type)) return t('Video')
+                        if (asset.mime_type.startsWith('audio/')) return t('Audio')
+                        if (asset.mime_type === 'application/pdf') return t('PDF')
+                        if (isWidget(asset.mime_type)) return t('Widget')
+                        return t('Document')
+                      })()}
+                    </span>
+                  </div>
                 </td>
                 <td className={styles.tableCell}>
                   <div className={styles.cellLastSeen}>{date}</div>
