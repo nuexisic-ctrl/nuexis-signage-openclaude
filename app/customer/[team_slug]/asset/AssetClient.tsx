@@ -455,7 +455,13 @@ export default function AssetClient({
     if (!activeFolder) return '/'
     const pathSegments: string[] = [activeFolder.file_name]
     let pid = activeFolder.folder_id
+    const visited = new Set<string>([activeFolder.id])
     while (pid) {
+      if (visited.has(pid)) {
+        console.error('[AssetClient] Circular folder dependency detected at pid:', pid)
+        break
+      }
+      visited.add(pid)
       const p = folders.find(f => f.id === pid && f.mime_type === 'application/x-folder')
       if (!p) break
       pathSegments.unshift(p.file_name)
@@ -483,19 +489,31 @@ export default function AssetClient({
     if (!exists) {
       let parentId = activeFolder.folder_id
       let newActive: Asset | null = null
+      const visitedExistence = new Set<string>([activeFolder.id])
       while (parentId) {
+        if (visitedExistence.has(parentId)) {
+          console.error('[AssetClient] Circular folder dependency detected in existence check at parentId:', parentId)
+          break
+        }
+        visitedExistence.add(parentId)
         const parent = folders.find(f => f.id === parentId && f.mime_type === 'application/x-folder')
         if (parent) {
           newActive = parent
           break
         }
-        break
+        parentId = null
       }
       let pathStr = '/'
       if (newActive) {
         const pathSegments: string[] = [newActive.file_name]
         let pid = newActive.folder_id
+        const visitedPath = new Set<string>([newActive.id])
         while (pid) {
+          if (visitedPath.has(pid)) {
+            console.error('[AssetClient] Circular folder dependency detected in existence path generation at pid:', pid)
+            break
+          }
+          visitedPath.add(pid)
           const p = folders.find(f => f.id === pid && f.mime_type === 'application/x-folder')
           if (!p) break
           pathSegments.unshift(p.file_name)
@@ -516,7 +534,13 @@ export default function AssetClient({
 
     const pathSegments: Asset[] = [activeFolder]
     let currentId = activeFolder.folder_id
+    const visited = new Set<string>([activeFolder.id])
     while (currentId) {
+      if (visited.has(currentId)) {
+        console.error('[AssetClient] Circular folder dependency detected in breadcrumbs at currentId:', currentId)
+        break
+      }
+      visited.add(currentId)
       const parentFolder = folders.find(f => f.id === currentId && f.mime_type === 'application/x-folder')
       if (!parentFolder) break
       pathSegments.unshift(parentFolder)

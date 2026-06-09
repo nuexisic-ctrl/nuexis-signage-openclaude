@@ -103,7 +103,7 @@ export function CreateFolderModal({
         className={styles.modalContainer} 
         style={{ padding: '24px', maxWidth: '400px', width: '100%', overflow: 'visible' }} 
         onClick={e => e.stopPropagation()}
-        ref={dialogRef}
+        ref={dialogRef as React.RefObject<HTMLDivElement | null>}
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-folder-title"

@@ -761,6 +761,33 @@ export async function moveAssetsToFolder(
     if (folderError || !folderAsset || folderAsset.team_id !== teamId || folderAsset.mime_type !== 'application/x-folder') {
       return { success: false, error: 'Target folder not found.' }
     }
+
+    // Cycle detection: ensure none of the assets being moved are parents/ancestors of folderId
+    const { data: teamFolders, error: foldersError } = await supabase
+      .from('assets')
+      .select('id, folder_id')
+      .eq('team_id', teamId)
+      .eq('mime_type', 'application/x-folder')
+
+    if (foldersError) {
+      console.error('[moveAssetsToFolder] error fetching team folders:', foldersError)
+      return { success: false, error: 'Failed to validate folder structure.' }
+    }
+
+    let currentParentId: string | null = folderId
+    const visited = new Set<string>()
+    while (currentParentId) {
+      if (visited.has(currentParentId)) {
+        console.error('[moveAssetsToFolder] Circular dependency detected in existing folders for team:', teamId)
+        break
+      }
+      visited.add(currentParentId)
+      if (assetIds.includes(currentParentId)) {
+        return { success: false, error: 'Cannot move a folder into itself or one of its subfolders.' }
+      }
+      const parent = teamFolders?.find(f => f.id === currentParentId)
+      currentParentId = parent ? parent.folder_id : null
+    }
   }
 
   // 3. Prevent redundant moves:

@@ -1,7 +1,7 @@
 'use client'
 
 import { useTransition, useRef, useState, useMemo, useCallback } from 'react'
-import { Folder, FolderPlus, X, AlertTriangle, Search, ChevronRight, Check, Home } from 'lucide-react'
+import { Folder, FolderPlus, X, Search, ChevronRight, Home } from 'lucide-react'
 import { Asset } from './types'
 import { t } from '@/lib/i18n'
 import styles from './Modal.module.css'
@@ -24,8 +24,7 @@ export function BulkMoveModal({
   onMoveAssets: (assetIds: string[], targetFolderId: string | null, targetFolderName: string) => void
   onFolderCreated?: (folder: Asset) => void
 }) {
-  const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
+  const [isPending] = useTransition()
   
   // Navigation states
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
@@ -50,7 +49,13 @@ export function BulkMoveModal({
   const isDescendantOfSelected = useCallback((folderId: string | null): boolean => {
     if (!folderId) return false
     let currentId: string | null = folderId
+    const visited = new Set<string>()
     while (currentId) {
+      if (visited.has(currentId)) {
+        console.error('[BulkMoveModal] Circular folder dependency detected in isDescendantOfSelected at:', currentId)
+        break
+      }
+      visited.add(currentId)
       if (selectedFolderIds.has(currentId)) return true
       const parentFolder = folders.find(f => f.id === currentId)
       currentId = parentFolder ? (parentFolder.folder_id || null) : null
@@ -69,7 +74,13 @@ export function BulkMoveModal({
 
     const path: { id: string; name: string }[] = []
     let currId: string | null = currentFolderId
+    const visited = new Set<string>()
     while (currId) {
+      if (visited.has(currId)) {
+        console.error('[BulkMoveModal] Circular folder dependency detected in breadcrumbs at:', currId)
+        break
+      }
+      visited.add(currId)
       const folder = folders.find(f => f.id === currId)
       if (folder) {
         path.push({ id: folder.id, name: folder.file_name })
@@ -135,7 +146,7 @@ export function BulkMoveModal({
         className={styles.modalContainer} 
         style={{ padding: '24px', maxWidth: '480px', width: '100%' }} 
         onClick={e => e.stopPropagation()}
-        ref={dialogRef as any}
+        ref={dialogRef as React.RefObject<HTMLDivElement | null>}
         role="dialog"
         aria-modal="true"
         aria-labelledby="bulk-move-title"
@@ -166,12 +177,7 @@ export function BulkMoveModal({
           </button>
         </div>
 
-        {error && (
-          <div className={styles.errorBanner} role="alert" style={{ marginBottom: '16px' }}>
-            <AlertTriangle className={styles.errorIcon} size={17} />
-            {error}
-          </div>
-        )}
+
 
         {/* Search Folders */}
         <div className={listStyles.searchBar}>
@@ -254,7 +260,7 @@ export function BulkMoveModal({
           )}
 
           {/* List of folders */}
-          {displayedFolders.length === 0 && !showCreateForm ? (
+          {displayedFolders.length === 0 ? (
             <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--on-surface-subtle)', fontSize: '0.86rem' }}>
               {searchQuery ? t('No matching folders found.') : t('No folders here yet.')}
             </div>
