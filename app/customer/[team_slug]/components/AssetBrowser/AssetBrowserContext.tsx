@@ -131,6 +131,31 @@ export function AssetBrowserProvider({
     }
 
     try {
+      if (folderId) {
+        const { data: folderExists, error: folderCheckError } = await supabase
+          .from('assets')
+          .select('id')
+          .eq('id', folderId)
+          .eq('mime_type', 'application/x-folder')
+          .maybeSingle()
+
+        if (folderCheckError || !folderExists) {
+          toast.warning('This folder no longer exists or was recently moved. Refreshing folder structure...')
+          
+          if (teamId) {
+            const { data: latestFolders } = await supabase
+              .from('assets')
+              .select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color')
+              .eq('team_id', teamId)
+              .eq('mime_type', 'application/x-folder')
+            if (latestFolders) {
+              setFolders(latestFolders as Asset[])
+            }
+          }
+          return
+        }
+      }
+
       const result = await fetchFolderFiles(teamSlug, folderId)
       if (result.success && result.files) {
         setFilesCache(prev => ({
@@ -142,14 +167,40 @@ export function AssetBrowserProvider({
       }
     } catch (err) {
       console.error('[loadFolderFiles] error:', err)
+      toast.error('An error occurred while loading folder contents.')
     } finally {
       setIsLoadingFiles(false)
     }
-  }, [teamSlug, filesCache])
+  }, [teamSlug, filesCache, supabase, teamId])
 
   useEffect(() => {
     loadFolderFiles(activeFolder?.id || null)
-  }, [activeFolder])
+  }, [activeFolder, loadFolderFiles])
+
+  // Synchronize activeFolder inside AssetBrowserProvider if it is deleted or renamed/moved
+  useEffect(() => {
+    if (!activeFolder) return
+    const currentVersion = folders.find(f => f.id === activeFolder.id && f.mime_type === 'application/x-folder')
+    if (!currentVersion) {
+      let parentId = activeFolder.folder_id
+      let newActive: Asset | null = null
+      while (parentId) {
+        const parent = folders.find(f => f.id === parentId && f.mime_type === 'application/x-folder')
+        if (parent) {
+          newActive = parent
+          break
+        }
+        break
+      }
+      setActiveFolder(newActive)
+    } else if (
+      currentVersion.file_name !== activeFolder.file_name ||
+      currentVersion.color !== activeFolder.color ||
+      currentVersion.folder_id !== activeFolder.folder_id
+    ) {
+      setActiveFolder(currentVersion)
+    }
+  }, [folders, activeFolder])
 
   // Breadcrumbs Helper
   const breadcrumbs = useMemo(() => {

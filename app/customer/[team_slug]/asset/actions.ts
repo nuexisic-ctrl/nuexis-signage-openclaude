@@ -339,14 +339,14 @@ export async function deleteAsset(
   }
 
   // ── Delete from storage ────────────────────────────────────────────────────
-  if (!asset.mime_type.startsWith('application/x-widget')) {
+  if (!asset.mime_type.startsWith('application/x-widget') && asset.mime_type !== 'application/x-folder') {
     const { error: storageError } = await supabase.storage
       .from('workspace-media')
       .remove([filePath])
 
     if (storageError) {
-      console.error('[deleteAsset] storage error:', storageError)
-      return { success: false, error: 'An unexpected error occurred while managing your media.' }
+      // Log as a warning but proceed so database record can still be deleted if storage is out of sync
+      console.warn('[deleteAsset] storage removal warning (proceeding):', storageError)
     }
   }
 
@@ -578,7 +578,7 @@ export async function deleteAssetsBulk(
 
   // 2. Remove files from storage
   const storageFiles = assets
-    .filter(a => !a.mime_type.startsWith('application/x-widget'))
+    .filter(a => !a.mime_type.startsWith('application/x-widget') && a.mime_type !== 'application/x-folder')
     .map(a => a.file_path)
 
   if (storageFiles.length > 0) {
@@ -587,8 +587,8 @@ export async function deleteAssetsBulk(
       .remove(storageFiles)
 
     if (storageError) {
-      console.error('[deleteAssetsBulk] storage error:', storageError)
-      return { success: false, error: 'An unexpected error occurred while deleting assets from storage.' }
+      // Log as a warning but proceed so database records can still be deleted if storage is out of sync
+      console.warn('[deleteAssetsBulk] storage removal warning (proceeding):', storageError)
     }
   }
 

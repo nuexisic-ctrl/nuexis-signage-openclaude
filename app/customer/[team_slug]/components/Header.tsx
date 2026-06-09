@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Sun, Moon, Bell, LogOut, ChevronDown, ChevronLeft, Monitor } from 'lucide-react'
 import styles from './header.module.css'
+import { useTheme } from '@/app/components/ThemeProvider'
 
 interface HeaderProps {
   fullName?: string
@@ -10,39 +11,12 @@ interface HeaderProps {
 }
 
 export default function Header({ fullName, email }: HeaderProps) {
-  const [activeTheme, setActiveTheme] = useState<'light' | 'dark' | 'system'>('system')
+  const { theme: activeTheme, setTheme: handleSetThemeAndClose } = useTheme()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const initial = fullName ? fullName.charAt(0).toUpperCase() : email?.charAt(0).toUpperCase() || 'U'
-
-  // Load theme state from localStorage on client mount
-  useEffect(() => {
-    const saved = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null
-    if (saved === 'light' || saved === 'dark' || saved === 'system') {
-      setActiveTheme(saved)
-    } else {
-      setActiveTheme('system')
-    }
-  }, [])
-
-  // Apply selected theme to HTML document, listening to OS media changes if set to 'system'
-  useEffect(() => {
-    if (activeTheme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      const applySystemTheme = (e: MediaQueryListEvent | MediaQueryList) => {
-        const themeToApply = e.matches ? 'dark' : 'light'
-        document.documentElement.setAttribute('data-theme', themeToApply)
-      }
-      applySystemTheme(mediaQuery)
-
-      mediaQuery.addEventListener('change', applySystemTheme)
-      return () => mediaQuery.removeEventListener('change', applySystemTheme)
-    } else {
-      document.documentElement.setAttribute('data-theme', activeTheme)
-    }
-  }, [activeTheme])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -70,8 +44,7 @@ export default function Header({ fullName, email }: HeaderProps) {
   }, [])
 
   const handleSetTheme = (theme: 'light' | 'dark' | 'system') => {
-    setActiveTheme(theme)
-    localStorage.setItem('theme', theme)
+    handleSetThemeAndClose(theme)
     setIsDropdownOpen(false)
   }
 

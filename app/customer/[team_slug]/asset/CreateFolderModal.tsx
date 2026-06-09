@@ -31,11 +31,13 @@ export function CreateFolderModal({
   onClose,
   onSuccess,
   parentFolderId,
+  overlayStyle,
 }: {
   teamSlug: string
   onClose: () => void
   onSuccess: (id: string, name: string, color: string) => void
   parentFolderId?: string | null
+  overlayStyle?: React.CSSProperties
 }) {
   const [name, setName] = useState('')
   const [color, setColor] = useState('#000000')
@@ -96,12 +98,12 @@ export function CreateFolderModal({
   }
 
   return (
-    <div className={styles.modalOverlay} ref={overlayRef} onClick={handleOverlayClick} role="presentation">
+    <div className={styles.modalOverlay} style={overlayStyle} ref={overlayRef} onClick={handleOverlayClick} role="presentation">
       <div 
         className={styles.modalContainer} 
         style={{ padding: '24px', maxWidth: '400px', width: '100%', overflow: 'visible' }} 
         onClick={e => e.stopPropagation()}
-        ref={dialogRef as any}
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-folder-title"

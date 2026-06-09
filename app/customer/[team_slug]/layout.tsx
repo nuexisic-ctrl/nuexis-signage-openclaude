@@ -10,6 +10,8 @@ import styles from './layout.module.css'
 import { Search } from 'lucide-react'
 import headerStyles from './components/header.module.css'
 
+import { ThemeProvider } from '@/app/components/ThemeProvider'
+
 interface LayoutProps {
   children: ReactNode
   params: Promise<{ team_slug: string }>
@@ -78,20 +80,22 @@ export default async function CustomerLayout({ children, params }: LayoutProps) 
 
   return (
     <ErrorBoundary boundaryId="customer-dashboard">
-      <div className={styles.shell}>
-        <Sidebar 
-          teamSlug={team_slug} 
-          initialCollapsed={initialCollapsed} 
-        />
-        
-        {/* Main Panel */}
-        <main className={styles.main}>
-          <Suspense fallback={<HeaderSkeleton />}>
-            <HeaderWrapper teamSlug={team_slug} />
-          </Suspense>
-          {children}
-        </main>
-      </div>
+      <ThemeProvider>
+        <div className={styles.shell}>
+          <Sidebar 
+            teamSlug={team_slug} 
+            initialCollapsed={initialCollapsed} 
+          />
+          
+          {/* Main Panel */}
+          <main className={styles.main}>
+            <Suspense fallback={<HeaderSkeleton />}>
+              <HeaderWrapper teamSlug={team_slug} />
+            </Suspense>
+            {children}
+          </main>
+        </div>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

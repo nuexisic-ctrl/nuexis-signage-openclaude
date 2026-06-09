@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, User, Shield, Info, Layout, Sun, Moon, Monitor } from 'lucide-react'
+import React, { useState } from 'react'
+import { User, Shield, Layout, Sun, Moon, Monitor } from 'lucide-react'
 import { toast } from '@/app/components/Toast'
 import styles from './settings.module.css'
+import { useTheme } from '@/app/components/ThemeProvider'
 
 interface SettingsClientProps {
   teamSlug: string
@@ -20,25 +21,11 @@ export default function SettingsClient({
   userEmail,
   fullName,
 }: SettingsClientProps) {
-  const [activeTheme, setActiveTheme] = useState<'light' | 'dark' | 'system'>('system')
+  const { theme: activeTheme, setTheme: setActiveTheme } = useTheme()
   const [profileName, setProfileName] = useState(fullName)
-
-  useEffect(() => {
-    const saved = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null
-    if (saved === 'light' || saved === 'dark' || saved === 'system') {
-      setActiveTheme(saved)
-    }
-  }, [])
 
   const handleSetTheme = (theme: 'light' | 'dark' | 'system') => {
     setActiveTheme(theme)
-    localStorage.setItem('theme', theme)
-    if (theme === 'system') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
-    } else {
-      document.documentElement.setAttribute('data-theme', theme)
-    }
     toast.success(`Theme preference updated to ${theme}`)
   }
 

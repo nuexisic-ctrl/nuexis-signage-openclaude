@@ -42,7 +42,11 @@ export async function getCachedSignedUrl(
         .createSignedUrl(filePath, expiresInSeconds)
 
       if (error || !data?.signedUrl) {
-        console.error(`Error generating signed URL for ${filePath}:`, error)
+        if (error && (error as any).message === 'Object not found') {
+          console.warn(`File not found in storage: ${filePath}`)
+        } else {
+          console.error(`Error generating signed URL for ${filePath}:`, error)
+        }
         return null
       }
 

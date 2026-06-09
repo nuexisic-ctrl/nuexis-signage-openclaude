@@ -2,12 +2,12 @@
 
 import { useTransition, useRef, useState, useMemo, useCallback } from 'react'
 import { Folder, FolderPlus, X, AlertTriangle, Search, ChevronRight, Check, Home } from 'lucide-react'
-import { createFolder } from './actions'
 import { Asset } from './types'
 import { t } from '@/lib/i18n'
 import styles from './Modal.module.css'
 import listStyles from './BulkMoveModal.module.css'
 import { useA11yModal } from '@/lib/utils/useA11yModal'
+import { CreateFolderModal } from './CreateFolderModal'
 
 export function BulkMoveModal({
   selectedAssets,
@@ -32,10 +32,8 @@ export function BulkMoveModal({
   const [selectedTargetFolderId, setSelectedTargetFolderId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Inline folder creation states
-  const [showCreateForm, setShowCreateForm] = useState(false)
-  const [newFolderName, setNewFolderName] = useState('')
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  // Stacked folder creation modal state
+  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
 
   const overlayRef = useRef<HTMLDivElement>(null)
   const dialogRef = useA11yModal({
@@ -124,36 +122,7 @@ export function BulkMoveModal({
     onClose()
   }
 
-  async function handleCreateFolder() {
-    const trimmed = newFolderName.trim()
-    if (!trimmed) return
-    setIsCreatingFolder(true)
-    setError(null)
-    try {
-      const result = await createFolder(teamSlug, trimmed, '#78716c', currentFolderId)
-      if (result.success) {
-        const newFolder: Asset = {
-          id: result.id,
-          file_name: trimmed,
-          file_path: 'folder',
-          mime_type: 'application/x-folder',
-          size_bytes: 0,
-          created_at: new Date().toISOString(),
-          folder_id: currentFolderId,
-          color: '#78716c',
-        }
-        onFolderCreated?.(newFolder)
-        setNewFolderName('')
-        setShowCreateForm(false)
-      } else {
-        setError(result.error || t('Failed to create folder.'))
-      }
-    } catch (err) {
-      setError(t('An unexpected error occurred.'))
-    } finally {
-      setIsCreatingFolder(false)
-    }
-  }
+
 
   const currentLocationName = useMemo(() => {
     if (!currentFolderId) return t('Root')
@@ -256,7 +225,7 @@ export function BulkMoveModal({
             <button
               type="button"
               className={listStyles.newFolderBtn}
-              onClick={() => setShowCreateForm(!showCreateForm)}
+              onClick={() => setShowCreateFolderModal(true)}
             >
               <FolderPlus size={14} />
               {t('New Folder')}
@@ -265,40 +234,6 @@ export function BulkMoveModal({
         </div>
 
         <div className={listStyles.list}>
-          {/* Inline Folder Creation Form */}
-          {showCreateForm && (
-            <div className={listStyles.inlineForm}>
-              <Folder size={18} style={{ stroke: '#78716c', flexShrink: 0 }} />
-              <input
-                type="text"
-                autoFocus
-                className={listStyles.inlineInput}
-                placeholder={t('Folder name')}
-                value={newFolderName}
-                onChange={e => setNewFolderName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleCreateFolder()
-                  if (e.key === 'Escape') setShowCreateForm(false)
-                }}
-              />
-              <button
-                type="button"
-                className={`${listStyles.inlineActionBtn} ${listStyles.inlineActionBtnConfirm}`}
-                onClick={handleCreateFolder}
-                disabled={isCreatingFolder || !newFolderName.trim()}
-              >
-                <Check size={16} />
-              </button>
-              <button
-                type="button"
-                className={`${listStyles.inlineActionBtn} ${listStyles.inlineActionBtnCancel}`}
-                onClick={() => setShowCreateForm(false)}
-                disabled={isCreatingFolder}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          )}
 
           {/* Root Level Navigation row (only when inside a folder and not searching) */}
           {!currentFolderId && !searchQuery && (
@@ -377,6 +312,30 @@ export function BulkMoveModal({
           </button>
         </div>
       </div>
+
+      {showCreateFolderModal && (
+        <CreateFolderModal
+          teamSlug={teamSlug}
+          parentFolderId={currentFolderId}
+          onClose={() => setShowCreateFolderModal(false)}
+          onSuccess={(id, name, color) => {
+            const newFolder: Asset = {
+              id,
+              file_name: name,
+              file_path: 'folder',
+              mime_type: 'application/x-folder',
+              size_bytes: 0,
+              created_at: new Date().toISOString(),
+              folder_id: currentFolderId,
+              color: color
+            }
+            onFolderCreated?.(newFolder)
+            setSelectedTargetFolderId(id)
+            setShowCreateFolderModal(false)
+          }}
+          overlayStyle={{ zIndex: 1100 }}
+        />
+      )}
     </div>
   )
 }
