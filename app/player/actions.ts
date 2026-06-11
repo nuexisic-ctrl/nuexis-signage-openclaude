@@ -204,6 +204,40 @@ export async function sendHeartbeat(deviceId: string, teamId: string, hardwareId
   }
 }
 
+export async function reportPlayerDiagnostics(
+  hardwareId: string,
+  secret: string,
+  payload: Record<string, unknown>
+) {
+  if (!(await rateLimitAction(hardwareId, 'reportPlayerDiagnostics', 6, 60))) {
+    return
+  }
+
+  const device = await getDeviceState(hardwareId, secret)
+  if (!device?.team_id) {
+    throw new Error('Unauthorized device')
+  }
+
+  const sanitized = JSON.parse(
+    JSON.stringify(payload, (_key, value) => {
+      if (typeof value === 'string') return value.slice(0, 4000)
+      return value
+    })
+  )
+  const admin = createAdminClient()
+  const { error } = await admin.from('activity_log').insert({
+    team_id: device.team_id,
+    device_id: device.id,
+    event_type: 'player_health',
+    description: 'Android player health and diagnostics report',
+    metadata: sanitized,
+  })
+  if (error) {
+    console.error('[reportPlayerDiagnostics] Error:', error)
+    throw new Error('Failed to report player diagnostics')
+  }
+}
+
 export async function getPlaylistItems(playlistId: string, hardwareId: string, secret: string) {
   if (!(await rateLimitAction(hardwareId, 'getPlaylistItems', 30, 60))) {
     console.warn('[getPlaylistItems] Rate limit hit for device:', hardwareId)

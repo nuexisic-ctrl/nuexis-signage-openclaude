@@ -39,7 +39,7 @@ const serwist = new Serwist({
         plugins: [
           new ExpirationPlugin({
             maxEntries: 100, // Limit cache to 100 entries max
-            maxAgeSeconds: 24 * 60 * 60, // Cache TTL of 24 hours
+            maxAgeSeconds: 30 * 24 * 60 * 60,
             purgeOnQuotaError: true,
           }),
           {

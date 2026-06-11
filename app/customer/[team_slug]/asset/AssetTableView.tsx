@@ -109,25 +109,10 @@ export function AssetTableView({
       <table className={styles.screensTable}>
         <thead className={styles.tableHeader}>
           <tr>
-            <th style={{ width: '40px', textAlign: 'center' }}>
-              <input 
-                type="checkbox" 
-                checked={filteredAssets.length > 0 && filteredAssets.every(a => selectedAssetIds.has(a.id))}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
-                  } else {
-                    setSelectedAssetIds(new Set())
-                  }
-                }}
-                aria-label={t('Select all items on this page')}
-                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-              />
-            </th>
-            <th style={{ width: '35%' }}>{t('File Name')}</th>
+            <th style={{ width: '40px' }}></th>
+            <th style={{ width: '45%' }}>{t('File Name')}</th>
             <th style={{ width: '15%' }}>{t('Type')}</th>
-            <th style={{ width: '15%' }}>{t('Screens')}</th>
-            <th style={{ width: '25%' }}>{t('Date Added')}</th>
+            <th style={{ width: '30%' }}>{t('Date Added')}</th>
             <th style={{ width: '10%', textAlign: 'right' }}>{t('Actions')}</th>
           </tr>
         </thead>
@@ -296,21 +281,7 @@ export function AssetTableView({
                     )}
                   </div>
                 </td>
-                <td
-                  className={styles.tableCell}
-                  style={{ fontSize: '0.88rem', color: 'var(--on-surface-subtle)' }}
-                >
-                  {(() => {
-                    if (isFolder) return '—'
-                    const usageScreens = screens.filter(s => s.asset_id === asset.id)
-                    if (usageScreens.length === 0) return 'Unused'
-                    return (
-                      <span className={styles.screenNames} title={usageScreens.map(s => s.name).join(', ')}>
-                        {usageScreens.length === 1 ? usageScreens[0].name : `${usageScreens.length} screens`}
-                      </span>
-                    )
-                  })()}
-                </td>
+
                 <td className={styles.tableCell}>
                   <div className={styles.cellLastSeen}>{date}</div>
                 </td>

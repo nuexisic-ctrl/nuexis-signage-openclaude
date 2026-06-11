@@ -1,7 +1,7 @@
 'use client'
 
 import { createPortal } from 'react-dom'
-import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe } from 'lucide-react'
+import { File, Play, Image as ImageIcon, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
@@ -196,10 +196,40 @@ export function AssetCard({
             <File className={styles.genericIcon} size={30} />
           </div>
         )}
-        
-        <div className={styles.mimeChip}>
-          {isFolder ? t('FOLDER') : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-worldclock' ? 'WORLD CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : asset.mime_type === 'application/x-widget-website' ? 'WEBSITE' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
-        </div>
+
+        {/* Content type icon — bottom-right corner, icon only with tooltip */}
+        {!isFolder && (
+          <div className={styles.contentTypeIcon} aria-label={asset.mime_type === 'application/x-widget-flow' ? 'Clock Widget' : asset.mime_type === 'application/x-widget-worldclock' ? 'World Clock Widget' : asset.mime_type === 'application/x-widget-countdown' ? 'Countdown Widget' : asset.mime_type === 'application/x-widget-website' ? 'Website Widget' : isWidget(asset.mime_type) ? 'Widget' : isImage(asset.mime_type) ? 'Image' : isVideo(asset.mime_type) ? 'Video' : 'File'}>
+            <span className={styles.contentTypeTooltip}>
+              {asset.mime_type === 'application/x-widget-flow' ? 'Clock Widget' : asset.mime_type === 'application/x-widget-worldclock' ? 'World Clock' : asset.mime_type === 'application/x-widget-countdown' ? 'Countdown' : asset.mime_type === 'application/x-widget-website' ? 'Website' : asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? 'YouTube Widget' : asset.mime_type === 'application/x-widget-remote-url' ? 'Remote URL' : asset.mime_type === 'application/x-widget-html' ? 'Custom HTML' : asset.mime_type === 'application/x-widget-qrcode' ? 'QR Code' : isWidget(asset.mime_type) ? 'Widget' : isImage(asset.mime_type) ? 'Image' : isVideo(asset.mime_type) ? 'Video' : 'File'}
+            </span>
+            {asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? (
+              <YoutubeIcon size={14} style={{ stroke: '#ff0000', color: '#ff0000' }} />
+            ) : asset.mime_type === 'application/x-widget-remote-url' ? (
+              <Link size={14} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
+            ) : asset.mime_type === 'application/x-widget-html' ? (
+              <Code size={14} style={{ stroke: '#10b981', color: '#10b981' }} />
+            ) : asset.mime_type === 'application/x-widget-flow' ? (
+              <Clock size={14} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+            ) : asset.mime_type === 'application/x-widget-worldclock' ? (
+              <Globe size={14} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
+            ) : asset.mime_type === 'application/x-widget-website' ? (
+              <Globe size={14} style={{ stroke: '#10b981', color: '#10b981' }} />
+            ) : asset.mime_type === 'application/x-widget-countdown' ? (
+              <Hourglass size={14} style={{ stroke: '#eab308', color: '#eab308' }} />
+            ) : asset.mime_type === 'application/x-widget-qrcode' ? (
+              <QrCode size={14} style={{ stroke: '#a855f7', color: '#a855f7' }} />
+            ) : isWidget(asset.mime_type) ? (
+              <LayoutTemplate size={14} style={{ stroke: '#a855f7', color: '#a855f7' }} />
+            ) : isImage(asset.mime_type) ? (
+              <ImageIcon size={14} />
+            ) : isVideo(asset.mime_type) ? (
+              <Play size={14} />
+            ) : (
+              <File size={14} />
+            )}
+          </div>
+        )}
       </div>
 
       <div className={styles.assetInfo}>
@@ -269,15 +299,6 @@ export function AssetCard({
         </div>
       </div>
       <div className={styles.assetMeta}>
-          <span>
-            {(() => {
-              if (isFolder) return '—'
-              const usageScreens = screens?.filter(s => s.asset_id === asset.id) ?? []
-              if (usageScreens.length === 0) return 'Unused'
-              return usageScreens.length === 1 ? `On: ${usageScreens[0].name}` : `On: ${usageScreens.length} screens`
-            })()}
-          </span>
-          <span className={styles.metaDot}>·</span>
           <span>{date}</span>
         </div>
       </div>

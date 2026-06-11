@@ -6,7 +6,7 @@ import { getHardwareId } from '@/lib/utils/fingerprint'
 import {
   registerDevice, refreshDeviceCode, getDeviceState,
   unpairDevice, updateDeviceOrientation, incrementPlaytime,
-  sendHeartbeat,
+  sendHeartbeat, reportPlayerDiagnostics,
 } from './actions'
 import PairingView from './PairingView'
 import PairedView from './PairedView'
@@ -35,6 +35,10 @@ export default function PlayerPage() {
 
   useEffect(() => { stateRef.current = state }, [state])
   useEffect(() => { assetUrlRef.current = assetUrl }, [assetUrl])
+
+  useEffect(() => {
+    window.Android?.setOrientation(orientation)
+  }, [orientation])
 
   const [hardwareId, setHardwareId] = useState<string | null>(null)
   const [secret, setSecret] = useState<string | null>(null)
@@ -105,6 +109,37 @@ export default function PlayerPage() {
 
     return () => clearInterval(playtimeInterval)
   }, [flushPlaytime])
+
+  useEffect(() => {
+    if (!window.Android) return
+
+    const report = async () => {
+      window.Android?.heartbeat()
+      const hwId = hardwareIdRef.current
+      const sec = secretRef.current
+      if (!hwId || !sec || stateRef.current !== 'paired') return
+
+      try {
+        const health = JSON.parse(window.Android?.getHealthSnapshot() || '{}')
+        const recentLogs = JSON.parse(window.Android?.getRecentLogs() || '[]')
+        await reportPlayerDiagnostics(hwId, sec, {
+          ...health,
+          recentLogs: Array.isArray(recentLogs) ? recentLogs.slice(-25) : [],
+        })
+      } catch (error) {
+        console.warn('[Player] Native diagnostics deferred:', error)
+      }
+    }
+
+    const heartbeat = setInterval(() => window.Android?.heartbeat(), 60_000)
+    const diagnostics = setInterval(report, 15 * 60_000)
+    const initial = setTimeout(report, 30_000)
+    return () => {
+      clearInterval(heartbeat)
+      clearInterval(diagnostics)
+      clearTimeout(initial)
+    }
+  }, [])
 
   // ── Presence key init ───────────────────────────────────────────────
   useEffect(() => {

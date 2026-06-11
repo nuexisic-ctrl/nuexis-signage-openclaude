@@ -175,6 +175,8 @@ export default function AssetClient({
   const [menuPosition, setMenuPosition] = useState<{ top: number, right: number } | null>(null)
   const [isMounted, setIsMounted] = useState(false)
   const [showSuccessPulse, setShowSuccessPulse] = useState(false)
+  const [showSelectionDropdown, setShowSelectionDropdown] = useState(false)
+  const [filterScope, setFilterScope] = useState<'all' | 'files' | 'folders'>('all')
 
   const [currentPage, setCurrentPage] = useState(initialCurrentPage)
   const [pageSize, setPageSize] = useState<number>(initialPageSize)
@@ -569,6 +571,10 @@ export default function AssetClient({
         if (filterType === 'widget' && !isWidget(a.mime_type)) return false
       }
 
+      // Scope filter: files only or folders only
+      if (filterScope === 'files' && a.mime_type === 'application/x-folder') return false
+      if (filterScope === 'folders' && a.mime_type !== 'application/x-folder') return false
+
       if (filterDatePreset !== 'all') {
         const dDate = new Date(a.created_at).getTime()
         if (filterDatePreset === 'today' && dDate < today) return false
@@ -618,7 +624,7 @@ export default function AssetClient({
       if (!aIsFolder && bIsFolder) return 1
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
-  }, [allLoadedAssets, filterType, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery, activeFolder])
+  }, [allLoadedAssets, filterType, filterScope, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery, activeFolder])
 
   const totalPages = Math.ceil(filteredAssets.length / pageSize) || 1
   const hasNextPage = currentPage < totalPages
@@ -802,6 +808,101 @@ export default function AssetClient({
         <div className={`${styles.mainContent} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
           <div className={styles.mainBlockContainer}>
             <div className={styles.controlsBar}>
+              {/* Selection checkbox + dropdown — left side */}
+              <div className={styles.selectionDropdownWrapper}>
+                <div className={styles.selectionCheckboxGroup}>
+                  <input
+                    type="checkbox"
+                    id="asset-select-all-header"
+                    className={styles.selectionCheckboxInput}
+                    checked={filteredAssets.length > 0 && filteredAssets.every(a => selectedAssetIds.has(a.id))}
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate = selectedAssetIds.size > 0 && !filteredAssets.every(a => selectedAssetIds.has(a.id))
+                      }
+                    }}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
+                      } else {
+                        setSelectedAssetIds(new Set())
+                      }
+                    }}
+                    aria-label={t('Select all items')}
+                  />
+                  <button
+                    type="button"
+                    className={styles.selectionDropdownArrow}
+                    onClick={() => setShowSelectionDropdown(v => !v)}
+                    aria-label="Selection options"
+                    aria-expanded={showSelectionDropdown}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                </div>
+                {showSelectionDropdown && (
+                  <>
+                    <div
+                      className={styles.selectionDropdownBackdrop}
+                      onClick={() => setShowSelectionDropdown(false)}
+                    />
+                    <div className={styles.selectionDropdownMenu}>
+                      <button
+                        type="button"
+                        className={`${styles.selectionDropdownItem} ${filterScope === 'all' && selectedAssetIds.size === filteredAssets.length && filteredAssets.length > 0 ? styles.selectionDropdownItemActive : ''}`}
+                        onClick={() => {
+                          setFilterScope('all')
+                          setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
+                          setShowSelectionDropdown(false)
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><polyline points="9 11 12 14 22 4" /></svg>
+                        All ({filteredAssets.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.selectionDropdownItem} ${filterScope === 'files' ? styles.selectionDropdownItemActive : ''}`}
+                        onClick={() => {
+                          setFilterScope('files')
+                          setSelectedAssetIds(new Set())
+                          setShowSelectionDropdown(false)
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                        Files/Assets Only
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.selectionDropdownItem} ${filterScope === 'folders' ? styles.selectionDropdownItemActive : ''}`}
+                        onClick={() => {
+                          setFilterScope('folders')
+                          setSelectedAssetIds(new Set())
+                          setShowSelectionDropdown(false)
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+                        Folders Only
+                      </button>
+                      <div className={styles.selectionDropdownDivider} />
+                      <button
+                        type="button"
+                        className={styles.selectionDropdownItem}
+                        onClick={() => {
+                          setSelectedAssetIds(new Set())
+                          setFilterScope('all')
+                          setShowSelectionDropdown(false)
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        Deselect All
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
               <div className={styles.searchBox}>
                 <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />

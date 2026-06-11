@@ -103,6 +103,7 @@ export default function PlaylistEngine({
             if (!response) {
               // Use deduplicated signing to prevent concurrent duplicate requests
               const url = await getSignedMediaUrlDeduped(filePath)
+              window.Android?.cacheAsset(url, filePath, mimeType)
               response = await fetch(url, { mode: 'cors' })
               if (response.ok) {
                 await cache.put(cacheKey, response.clone())
@@ -504,7 +505,7 @@ function PlayableItem({
   if (item.assets?.mime_type === 'application/x-widget-website') {
     return (
       <div style={{ ...mediaStyle, overflow: 'hidden' }}>
-        <WebsiteRenderer url={mediaUrl} />
+        <WebsiteRenderer url={mediaUrl} onReady={() => setIsLoaded(true)} />
       </div>
     )
   }

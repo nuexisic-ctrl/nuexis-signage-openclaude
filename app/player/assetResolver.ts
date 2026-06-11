@@ -82,6 +82,7 @@ export async function resolveAsset({
         if (!response) {
           const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareId, secret)
           if (isCancelled()) return
+          window.Android?.cacheAsset(mediaUrl, asset.file_path, asset.mime_type)
           response = await fetch(mediaUrl, { mode: 'cors' })
           if (response.ok) {
             await cache.put(cacheKey, response.clone())
@@ -104,6 +105,7 @@ export async function resolveAsset({
         const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareId, secret).catch(() => null)
         if (isCancelled()) return
         if (mediaUrl) {
+          window.Android?.cacheAsset(mediaUrl, asset.file_path, asset.mime_type)
           onResolve(mediaUrl, asset.mime_type, null)
         }
       }
@@ -113,6 +115,7 @@ export async function resolveAsset({
       const mediaUrl = await getSignedMediaUrl(asset.file_path, hardwareId, secret).catch(() => null)
       if (isCancelled()) return
       if (mediaUrl) {
+        window.Android?.cacheAsset(mediaUrl, asset.file_path, asset.mime_type)
         onResolve(mediaUrl, asset.mime_type, null)
       }
     }

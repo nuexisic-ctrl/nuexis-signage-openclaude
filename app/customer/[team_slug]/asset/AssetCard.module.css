@@ -132,6 +132,56 @@
   white-space: nowrap;
 }
 
+/* Content type icon — bottom-right of thumbnail */
+.contentTypeIcon {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  background: rgba(7, 17, 31, 0.70);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  z-index: 2;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.contentTypeIcon:hover {
+  background: rgba(7, 17, 31, 0.90);
+  transform: scale(1.08);
+}
+
+.contentTypeTooltip {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  right: 0;
+  background: rgba(10, 17, 30, 0.92);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.95);
+  font-family: var(--font-label);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.contentTypeIcon:hover .contentTypeTooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .assetInfo {
   padding: 13px 14px 14px;
   display: flex;

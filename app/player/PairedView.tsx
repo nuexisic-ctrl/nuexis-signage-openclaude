@@ -34,6 +34,20 @@ export default function PairedView({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [showOrientationModal, setShowOrientationModal] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isControlsVisible, setIsControlsVisible] = useState(false)
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showControls = () => {
+    setIsControlsVisible(true)
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    hideTimerRef.current = setTimeout(() => setIsControlsVisible(false), 3000)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    }
+  }, [])
 
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
@@ -277,7 +291,12 @@ export default function PairedView({
     : {}
 
   return (
-    <div className={styles.pairedView} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#000' }}>
+    <div
+      className={styles.pairedView}
+      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', backgroundColor: '#000' }}
+      onMouseMove={showControls}
+      onClick={showControls}
+    >
       
       {/* ── Signage Screen Output (Rotated according to display configuration) ── */}
       <div style={contentWrapperStyle}>
@@ -287,7 +306,10 @@ export default function PairedView({
       </div>
 
       {/* ── Upright Controls Overlay (Outside rotated viewport) ── */}
-      <div className={styles.controlsOverlay} style={controlsOverlayStyle}>
+      <div
+        className={`${styles.controlsOverlay} ${isControlsVisible ? styles.controlsOverlayVisible : ''}`}
+        style={controlsOverlayStyle}
+      >
         <button className={styles.iconButton} onClick={toggleFullscreen} title="Toggle Fullscreen">
           {isFullscreen ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -444,7 +466,7 @@ function YouTubePlaylistPlayer({
     }
 
     const previousCallback = (window as any).onYouTubeIframeAPIReady
-    (window as any).onYouTubeIframeAPIReady = () => {
+    ;(window as any).onYouTubeIframeAPIReady = () => {
       if (previousCallback) previousCallback()
       setApiReady(true)
     }

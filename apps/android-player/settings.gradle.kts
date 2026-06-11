@@ -17,10 +17,3 @@ dependencyResolutionManagement {
 rootProject.name = "NuExisPlayer"
 
 include(":app")
-include(":core:network")
-include(":core:database")
-include(":core:domain")
-include(":core:media")
-include(":feature:player")
-include(":feature:pairing")
-include(":feature:sync")

@@ -1,6 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/fragment_container"
+    android:id="@+id/player_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000" />
+    android:background="#000000">
+
+    <WebView
+        android:id="@+id/player_webview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:importantForAutofill="noExcludeDescendants"
+        android:overScrollMode="never" />
+
+    <FrameLayout
+        android:id="@+id/website_overlay_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipChildren="true"
+        android:clipToPadding="true" />
+
+</FrameLayout>

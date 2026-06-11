@@ -43,10 +43,31 @@ export interface DeviceState {
 declare global {
   interface Window {
     Android?: {
+      isNuExisPlayer: boolean;
+      version: string;
       getNativeHardwareId: () => string;
       getNativeSecret: () => string | null;
       setNativeSecret: (secret: string) => void;
       clearNativeSecret: () => void;
+      showWebsiteOverlay: (
+        id: string,
+        url: string,
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        viewportWidth: number,
+        viewportHeight: number
+      ) => void;
+      hideWebsiteOverlay: (id: string) => void;
+      hideAllWebsiteOverlays: () => void;
+      setOrientation: (degrees: number) => void;
+      cacheAsset: (url: string, cacheKey: string, mimeType: string) => void;
+      log: (level: string, event: string, fields?: Record<string, unknown>) => void;
+      heartbeat: () => void;
+      getHealthSnapshot: () => string;
+      getRecentLogs: () => string;
+      reload: () => void;
     };
   }
 }

@@ -3,6 +3,8 @@ package com.nuexis.player.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.nuexis.player.app.diagnostics.StructuredLogger
+import com.nuexis.player.app.work.PlayerWorkScheduler
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -12,6 +14,9 @@ class NuExisApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
+    @Inject
+    lateinit var logger: StructuredLogger
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -20,7 +25,7 @@ class NuExisApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        // Initialize Watchdog Crash Handler for enterprise kiosk reliability
-        Thread.setDefaultUncaughtExceptionHandler(CrashHandler(this))
+        Thread.setDefaultUncaughtExceptionHandler(CrashHandler(this, logger))
+        PlayerWorkScheduler.schedule(this)
     }
 }

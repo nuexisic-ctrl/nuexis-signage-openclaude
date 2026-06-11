@@ -220,15 +220,124 @@
 .controlsBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--outline-variant);
+}
+
+/* ── Selection Dropdown (left of search) ─────────────────────────── */
+.selectionDropdownWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.selectionCheckboxGroup {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  height: auto;
+}
+
+.selectionCheckboxGroup:focus-within {
+  /* no box-level focus ring; individual elements handle focus */
+}
+
+.selectionCheckboxInput {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.selectionDropdownArrow {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-left: none;
+  background: transparent;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: color 150ms ease;
+  padding: 0;
+  margin-left: 2px;
+}
+
+.selectionDropdownArrow:hover {
+  color: var(--on-surface);
+}
+
+.selectionDropdownBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
+.selectionDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06);
+  padding: 6px;
+  z-index: 1000;
+  animation: dropdownSlideIn 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes dropdownSlideIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.selectionDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--on-surface);
+  font-family: var(--font-label);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 100ms ease;
+  white-space: nowrap;
+}
+
+.selectionDropdownItem:hover {
+  background: var(--surface-low);
+}
+
+.selectionDropdownItemActive {
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-low)) !important;
+  color: var(--primary) !important;
+}
+
+.selectionDropdownDivider {
+  height: 1px;
+  background: var(--outline-variant);
+  margin: 4px 8px;
 }
 
 .searchBox {
   position: relative;
-  width: min(420px, 100%);
+  flex: 1;
+  min-width: 0;
 }
 
 .searchIcon {
@@ -265,6 +374,7 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .viewToggleGroup {

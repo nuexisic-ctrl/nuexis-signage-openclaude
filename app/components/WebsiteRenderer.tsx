@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, ExternalLink } from 'lucide-react'
 import styles from './website-renderer.module.css'
 import { checkUrlFrameability } from '@/app/customer/[team_slug]/asset/actions'
@@ -8,16 +8,74 @@ import { checkUrlFrameability } from '@/app/customer/[team_slug]/asset/actions'
 interface WebsiteRendererProps {
   url: string
   preview?: boolean
+  onReady?: () => void
 }
 
-export default function WebsiteRenderer({ url, preview = false }: WebsiteRendererProps) {
+export default function WebsiteRenderer({
+  url,
+  preview = false,
+  onReady,
+}: WebsiteRendererProps) {
+  const placeholderRef = useRef<HTMLDivElement>(null)
+  const overlayIdRef = useRef(
+    `website-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<{
     type: 'x-frame-options' | 'csp-frame-ancestors' | 'network-error' | 'invalid-url' | 'ssrf-attempt' | null
     message: string
   } | null>(null)
+  const isNative = !preview && typeof window !== 'undefined' && !!window.Android?.isNuExisPlayer
 
   useEffect(() => {
+    if (!isNative) return
+    const element = placeholderRef.current
+    const bridge = window.Android
+    if (!element || !bridge) return
+
+    let frameId = 0
+    const updateOverlay = () => {
+      cancelAnimationFrame(frameId)
+      frameId = requestAnimationFrame(() => {
+        if (document.visibilityState !== 'visible') {
+          bridge.hideWebsiteOverlay(overlayIdRef.current)
+          return
+        }
+        const rect = element.getBoundingClientRect()
+        bridge.showWebsiteOverlay(
+          overlayIdRef.current,
+          url,
+          rect.left,
+          rect.top,
+          rect.width,
+          rect.height,
+          window.innerWidth,
+          window.innerHeight
+        )
+      })
+    }
+
+    const observer = new ResizeObserver(updateOverlay)
+    observer.observe(element)
+    window.addEventListener('resize', updateOverlay)
+    window.addEventListener('scroll', updateOverlay, true)
+    document.addEventListener('visibilitychange', updateOverlay)
+    updateOverlay()
+    setLoading(false)
+    onReady?.()
+
+    return () => {
+      cancelAnimationFrame(frameId)
+      observer.disconnect()
+      window.removeEventListener('resize', updateOverlay)
+      window.removeEventListener('scroll', updateOverlay, true)
+      document.removeEventListener('visibilitychange', updateOverlay)
+      bridge.hideWebsiteOverlay(overlayIdRef.current)
+    }
+  }, [isNative, onReady, url])
+
+  useEffect(() => {
+    if (isNative) return
     let active = true
     setLoading(true)
     setError(null)
@@ -42,7 +100,7 @@ export default function WebsiteRenderer({ url, preview = false }: WebsiteRendere
           }
           setError({ type: result.reason, message })
         }
-      } catch (err) {
+      } catch {
         if (!active) return
         setError({
           type: 'network-error',
@@ -51,16 +109,27 @@ export default function WebsiteRenderer({ url, preview = false }: WebsiteRendere
       } finally {
         if (active) {
           setLoading(false)
+          onReady?.()
         }
       }
     }
 
     checkFrameability()
-
     return () => {
       active = false
     }
-  }, [url])
+  }, [isNative, onReady, url])
+
+  if (isNative) {
+    return (
+      <div
+        ref={placeholderRef}
+        className={styles.container}
+        data-native-website-overlay={overlayIdRef.current}
+        style={{ background: 'transparent' }}
+      />
+    )
+  }
 
   if (loading) {
     return (
