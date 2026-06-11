@@ -17,16 +17,26 @@ vi.mock('@/lib/supabase/client', () => ({
   })
 }))
 
+import { ThemeProvider } from '@/app/components/ThemeProvider'
+
 describe('Header component', () => {
   it('renders user information correctly', () => {
-    render(<Header fullName="Test User" email="test@example.com" />)
+    render(
+      <ThemeProvider>
+        <Header fullName="Test User" email="test@example.com" />
+      </ThemeProvider>
+    )
     
     expect(screen.getByText('Test User')).toBeInTheDocument()
     expect(screen.getByText('test@example.com')).toBeInTheDocument()
   })
 
   it('renders fallback when name is not provided', () => {
-    render(<Header email="test@example.com" />)
+    render(
+      <ThemeProvider>
+        <Header email="test@example.com" />
+      </ThemeProvider>
+    )
     
     expect(screen.getByText('test@example.com')).toBeInTheDocument()
   })
