@@ -26,6 +26,11 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
   const [isLoadingItems, setIsLoadingItems] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(10)
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showSuccessPulse, setShowSuccessPulse] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
     const savedLimit = localStorage.getItem('nuexis_playlists_per_page')
