@@ -13,77 +13,80 @@ export async function claimDevice(
   pairingCode: string,
   screenName: string
 ): Promise<PairDeviceResult> {
-  const trimmedCode = pairingCode.trim().replace(/\s/g, '').toUpperCase()
-  const trimmedName = screenName.trim()
-
-
-  if (!/^[A-Z0-9]{6}$/.test(trimmedCode)) {
-    return { success: false, error: 'Please enter a valid 6-character pairing code.' }
-  }
-
-  const supabase = await createClient()
-
-  // 1. Get authenticated user
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return { success: false, error: 'You must be logged in to add a screen.' }
-  }
-
-  // 2. Get user's team_id from app_metadata in JWT
-  const teamId = user.app_metadata?.team_id as string | undefined
-
-  if (!teamId) {
-    return { success: false, error: 'Could not determine your team. Please try again.' }
-  }
-
   try {
-    await requireOwner(supabase, user.id)
+    const trimmedCode = pairingCode.trim().replace(/\s/g, '').toUpperCase()
+    const trimmedName = screenName.trim()
+
+    if (!/^[A-Z0-9]{6}$/.test(trimmedCode)) {
+      return { success: false, error: 'Please enter a valid 6-character pairing code.' }
+    }
+
+    const supabase = await createClient()
+
+    // 1. Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return { success: false, error: 'You must be logged in to add a screen.' }
+    }
+
+    // 2. Get user's team_id from app_metadata in JWT
+    const teamId = user.app_metadata?.team_id as string | undefined
+
+    if (!teamId) {
+      return { success: false, error: 'Could not determine your team. Please try again.' }
+    }
+
+    try {
+      await requireOwner(supabase, user.id)
+    } catch (err: any) {
+      return { success: false, error: err.message }
+    }
+
+    if (!(await rateLimitAction(user.id, 'claimDevice', 20, 60))) {
+      return { success: false, error: 'Too many requests. Please try again later.' }
+    }
+
+    // 3. Generate default name as sequential "Screen N" when name is optional
+    let finalName = trimmedName
+    if (!finalName) {
+      const { count } = await supabase
+        .from('devices')
+        .select('id', { count: 'exact', head: true })
+        .eq('team_id', teamId)
+      finalName = `Screen ${(count || 0) + 1}`
+    }
+
+    // 4. Call the SECURITY DEFINER RPC — handles atomic claim and attempt tracking.
+    const { data, error: rpcError } = await supabase.rpc('claim_device', {
+      p_pairing_code: trimmedCode,
+      p_team_id: teamId,
+      p_name: finalName,
+      p_user_id: user.id,
+    })
+
+    if (rpcError) {
+      console.error('[claimDevice] RPC error:', rpcError)
+      return { success: false, error: 'Failed to pair screen. Please try again later.' }
+    }
+
+    const result = data as unknown as { success: boolean; error?: string; device_id?: string }
+
+    if (!result.success) {
+      console.warn('[claimDevice] claim rejected:', result.error)
+      return { success: false, error: result.error || 'Unknown error' }
+    }
+
+    // Revalidate the screens page so the grid refreshes on next server render
+    revalidatePath(`/customer/${teamSlug}/screens`)
+
+    return { success: true }
   } catch (err: any) {
-    return { success: false, error: err.message }
+    // Prevent any unexpected throw from crashing the page with the
+    // "An error occurred in the Server Components render" error boundary.
+    console.error('[claimDevice] Unexpected error:', err?.message ?? err)
+    return { success: false, error: 'An unexpected error occurred. Please try again.' }
   }
-
-  if (!(await rateLimitAction(user.id, 'claimDevice', 20, 60))) {
-    return { success: false, error: 'Too many requests. Please try again later.' }
-  }
-
-  // 3. Generate default name as sequential "Screen N" when name is optional
-  let finalName = trimmedName
-  if (!finalName) {
-    const { count } = await supabase
-      .from('devices')
-      .select('id', { count: 'exact', head: true })
-      .eq('team_id', teamId)
-    finalName = `Screen ${(count || 0) + 1}`
-  }
-
-  // 4. Call the SECURITY DEFINER RPC — handles rate-limiting, atomic claim,
-  //    attempt tracking, and cleanup all in a single database transaction.
-  //    No service-role key needed.
-  const { data, error: rpcError } = await supabase.rpc('claim_device', {
-    p_pairing_code: trimmedCode,
-    p_team_id: teamId,
-    p_name: finalName,
-    p_user_id: user.id,
-  })
-
-  if (rpcError) {
-    console.error('[claimDevice] RPC error:', rpcError)
-    return { success: false, error: 'Failed to pair screen. Please try again later.' }
-  }
-
-  const result = data as unknown as { success: boolean; error?: string; device_id?: string }
-
-  if (!result.success) {
-    console.warn('[claimDevice] claim rejected:', result.error)
-    return { success: false, error: result.error || 'Unknown error' }
-  }
-
-
-  // 4. Revalidate the screens page so the grid refreshes on next server render
-  revalidatePath(`/customer/${teamSlug}/screens`)
-
-  return { success: true }
 }
 
 export interface AssignmentData {
