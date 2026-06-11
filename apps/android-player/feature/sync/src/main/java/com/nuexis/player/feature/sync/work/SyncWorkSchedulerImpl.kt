@@ -23,6 +23,17 @@ class SyncWorkSchedulerImpl @Inject constructor(
 
     private val workManager = WorkManager.getInstance(context)
 
+    override fun syncOnce() {
+        val request = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(connectedConstraints())
+            .build()
+        workManager.enqueueUniqueWork(
+            SYNC_ONCE_WORK,
+            androidx.work.ExistingWorkPolicy.REPLACE,
+            request
+        )
+    }
+
     override fun enqueueDownload() {
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
             .setConstraints(connectedConstraints())
@@ -69,5 +80,6 @@ class SyncWorkSchedulerImpl @Inject constructor(
         const val SYNC_PERIODIC_WORK = "nuexis_sync_periodic"
         const val HEARTBEAT_PERIODIC_WORK = "nuexis_heartbeat_periodic"
         const val DOWNLOAD_WORK = "nuexis_download_once"
+        const val SYNC_ONCE_WORK = "nuexis_sync_once"
     }
 }

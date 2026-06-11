@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 @HiltViewModel
@@ -101,54 +102,64 @@ class PlayerViewModel @Inject constructor(
                         playlistRepository.observeLocalPlaylist(contentId).collect { playlist ->
                             if (playlist != null && playlist.items.isNotEmpty()) {
                                 playlistItems = playlist.items
-                                if (_uiState.value is PlayerUiState.Loading ||
-                                    _uiState.value is PlayerUiState.NoContent
-                                ) {
-                                    playCurrentItem()
-                                }
+                                playCurrentItem()
                             } else {
-                                _uiState.value = PlayerUiState.NoContent
+                                // If we have a playlist assigned but no items in DB, we might be syncing
+                                if (playlistItems.isEmpty()) {
+                                    _uiState.value = PlayerUiState.Loading
+                                    // Trigger a manual sync if we've been stuck for a while
+                                    refreshContent()
+                                } else {
+                                    _uiState.value = PlayerUiState.NoContent
+                                }
                             }
                         }
                     } else if (contentType == "Asset") {
                         activePlaylistId = null
                         assetDao.observeAsset(contentId).collect { asset ->
-                            if (asset != null && asset.downloadStatus == com.nuexis.player.core.domain.model.DownloadStatus.COMPLETED) {
-                                val type = when {
-                                    asset.mimeType.startsWith("video/") -> "video"
-                                    asset.mimeType.startsWith("image/") -> "image"
-                                    asset.mimeType.startsWith("application/x-widget") -> "widget"
-                                    else -> "image"
-                                }
-                                val widgetType = if (type == "widget") {
-                                    if (asset.mimeType == "application/x-widget-website" || asset.mimeType == "application/x-widget-remote-url") "website" else "unsupported"
-                                } else null
-                                val widgetConfig = if (widgetType == "website") "{\"url\":\"${asset.localFileUri}\"}" else null
+                            if (asset != null) {
+                                if (asset.downloadStatus == com.nuexis.player.core.domain.model.DownloadStatus.COMPLETED) {
+                                    val domainAsset = com.nuexis.player.core.domain.model.Asset(
+                                        id = asset.id,
+                                        filePath = asset.filePath,
+                                        mimeType = asset.mimeType,
+                                        sizeBytes = asset.sizeBytes,
+                                        localFileUri = asset.localFileUri,
+                                        downloadStatus = asset.downloadStatus
+                                    )
+                                    val type = when {
+                                        asset.mimeType.startsWith("video/") -> "video"
+                                        asset.mimeType.startsWith("image/") -> "image"
+                                        asset.mimeType.startsWith("application/x-widget") -> "widget"
+                                        else -> "image"
+                                    }
+                                    val widgetType = if (type == "widget") {
+                                        if (asset.mimeType == "application/x-widget-website" || asset.mimeType == "application/x-widget-remote-url") "website" else "unsupported"
+                                    } else null
+                                    
+                                    // For remote-url widgets, we use the filePath as the URL if it's a URL
+                                    val widgetConfig = if (widgetType == "website") "{\"url\":\"${asset.filePath}\"}" else null
 
-                                val domainAsset = com.nuexis.player.core.domain.model.Asset(
-                                    id = asset.id,
-                                    filePath = asset.filePath,
-                                    mimeType = asset.mimeType,
-                                    sizeBytes = asset.sizeBytes,
-                                    localFileUri = asset.localFileUri,
-                                    downloadStatus = asset.downloadStatus
-                                )
-                                val singleItem = PlaylistItem(
-                                    id = "single_asset_item",
-                                    playlistId = null,
-                                    type = type,
-                                    assetId = asset.id,
-                                    widgetType = widgetType,
-                                    widgetConfig = widgetConfig,
-                                    durationSeconds = 30,
-                                    sortOrder = 0,
-                                    asset = domainAsset
-                                )
-                                playlistItems = listOf(singleItem)
-                                currentIndex = 0
-                                playCurrentItem()
+                                    val singleItem = PlaylistItem(
+                                        id = "single_asset_item",
+                                        playlistId = null,
+                                        type = type,
+                                        assetId = asset.id,
+                                        widgetType = widgetType,
+                                        widgetConfig = widgetConfig,
+                                        durationSeconds = 3600, // Show for an hour or until update
+                                        sortOrder = 0,
+                                        asset = domainAsset
+                                    )
+                                    playlistItems = listOf(singleItem)
+                                    currentIndex = 0
+                                    playCurrentItem()
+                                } else {
+                                    _uiState.value = PlayerUiState.Loading
+                                }
                             } else {
                                 _uiState.value = PlayerUiState.Loading
+                                refreshContent()
                             }
                         }
                     } else {
@@ -159,17 +170,36 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun playCurrentItem() {
-        if (playlistItems.isEmpty()) return
+        if (playlistItems.isEmpty()) {
+            _uiState.value = PlayerUiState.NoContent
+            return
+        }
 
         val item = playlistItems[currentIndex]
-        val localUri = item.asset?.localFileUri
-
-        if (item.type == "video" && localUri != null) {
-            playbackManager.preloadNext(localUri)
-            playbackManager.swapAndPlay()
-            _uiState.value = PlayerUiState.PlayingVideo(playbackManager)
-        } else if (item.type == "image" && localUri != null) {
-            _uiState.value = PlayerUiState.PlayingImage(localUri, item.durationSeconds)
+        val asset = item.asset
+        
+        // Handle native media (video/image) which requires a local file
+        if ((item.type == "video" || item.type == "image")) {
+            val localUri = asset?.localFileUri
+            if (localUri != null && asset.downloadStatus == com.nuexis.player.core.domain.model.DownloadStatus.COMPLETED) {
+                if (item.type == "video") {
+                    playbackManager.preloadNext(localUri)
+                    playbackManager.swapAndPlay()
+                    _uiState.value = PlayerUiState.PlayingVideo(playbackManager)
+                } else {
+                    _uiState.value = PlayerUiState.PlayingImage(localUri, item.durationSeconds)
+                }
+            } else {
+                // Asset not ready, show loading and wait for observation to trigger replay
+                _uiState.value = PlayerUiState.Loading
+                // If this is part of a playlist, try skipping to next
+                if (playlistItems.size > 1) {
+                    viewModelScope.launch {
+                        delay(2000)
+                        advanceToNext()
+                    }
+                }
+            }
         } else if (item.type == "widget" && (item.widgetType == "website" || item.widgetType == "webpage")) {
             val url = extractUrlFromConfig(item.widgetConfig)
             if (url != null) {

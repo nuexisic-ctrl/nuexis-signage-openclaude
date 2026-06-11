@@ -11,7 +11,10 @@ data class RpcRegisterDeviceRequest(
 data class RpcRegisterDeviceResponse(
     val id: String,
     val expires_at: String,
-    val secret: String
+    val secret: String,
+    val team_id: String? = null,
+    val status: String? = null,
+    val name: String? = null
 )
 
 data class RpcRefreshDeviceRequest(

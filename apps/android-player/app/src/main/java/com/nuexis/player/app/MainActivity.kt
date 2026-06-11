@@ -1,5 +1,6 @@
 package com.nuexis.player.app
 
+// Cache-busting comment to trigger full KSP/Dagger reprocessing
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.OnBackPressedCallback
@@ -54,6 +55,7 @@ class MainActivity : AppCompatActivity() {
                     if (device?.teamId == null) {
                         showPairing()
                     } else {
+                        syncWorkScheduler.syncOnce()
                         showPlayer()
                     }
                 }

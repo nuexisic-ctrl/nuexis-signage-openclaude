@@ -159,11 +159,11 @@ class DeviceRepositoryImpl @Inject constructor(
         saveSecret(body.secret)
         val device = Device(
             id = body.id,
-            teamId = null,
-            name = null,
+            teamId = body.team_id,
+            name = body.name,
             pairingCode = pairingCode,
             expiresAt = body.expires_at,
-            status = "pairing",
+            status = body.status ?: "pairing",
             contentType = null,
             assetId = null,
             playlistId = null,

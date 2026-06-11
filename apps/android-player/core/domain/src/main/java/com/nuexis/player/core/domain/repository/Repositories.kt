@@ -5,6 +5,7 @@ import com.nuexis.player.core.domain.model.Device
 import com.nuexis.player.core.domain.model.Playlist
 import kotlinx.coroutines.flow.Flow
 
+// Repository definitions for the domain layer
 interface DeviceRepository {
     suspend fun getHardwareId(): String
     suspend fun getSecret(): String?

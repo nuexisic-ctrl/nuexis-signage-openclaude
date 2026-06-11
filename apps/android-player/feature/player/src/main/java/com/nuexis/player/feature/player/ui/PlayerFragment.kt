@@ -43,7 +43,6 @@ class PlayerFragment : Fragment() {
                 viewModel = viewModel,
                 onReloadPlayer = {
                     // Logic to hard reload the player if necessary.
-                    // E.g., stopping playback and resetting states.
                     viewModel.playCurrentItem()
                 }
             )
@@ -56,19 +55,19 @@ class PlayerFragment : Fragment() {
                 }
             }
         }
-        
-        // Listen to ExoPlayer completion via PlaybackManager
-        // In a real implementation, you'd observe PlaybackManager.playbackState from ViewModel
     }
 
     private fun handleUiState(state: PlayerUiState) {
+        // Reset feedback container by default
+        binding.statusContainer.visibility = View.GONE
+        
         when (state) {
             is PlayerUiState.PlayingVideo -> {
                 binding.imageView.visibility = View.GONE
+                binding.webView.visibility = View.GONE
                 binding.playerViewActive.visibility = View.VISIBLE
                 binding.playerViewActive.player = state.playbackManager.getActivePlayer()
                 
-                // Assuming we listen to playback state in VM and it calls advanceToNext() on completion
                 viewLifecycleOwner.lifecycleScope.launch {
                     state.playbackManager.playbackState.collect { playbackState ->
                         if (playbackState is PlaybackManager.PlaybackState.ItemCompleted) {
@@ -83,7 +82,6 @@ class PlayerFragment : Fragment() {
                 binding.imageView.visibility = View.VISIBLE
                 binding.imageView.setImageURI(Uri.parse(state.uri))
                 
-                // Hold image for duration, then advance
                 viewLifecycleOwner.lifecycleScope.launch {
                     delay(state.durationSeconds * 1000L)
                     viewModel.advanceToNext()
@@ -104,10 +102,20 @@ class PlayerFragment : Fragment() {
                 }
             }
             is PlayerUiState.Loading -> {
-                // Show loading spinner
+                binding.playerViewActive.visibility = View.GONE
+                binding.imageView.visibility = View.GONE
+                binding.webView.visibility = View.GONE
+                binding.statusContainer.visibility = View.VISIBLE
+                binding.progressBar.visibility = View.VISIBLE
+                binding.statusText.text = "Syncing content..."
             }
             is PlayerUiState.NoContent -> {
-                // Show logo or placeholder
+                binding.playerViewActive.visibility = View.GONE
+                binding.imageView.visibility = View.GONE
+                binding.webView.visibility = View.GONE
+                binding.statusContainer.visibility = View.VISIBLE
+                binding.progressBar.visibility = View.GONE
+                binding.statusText.text = "No content assigned to this screen."
             }
         }
     }
