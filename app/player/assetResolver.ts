@@ -72,7 +72,7 @@ export async function resolveAsset({
 
     const cacheKey = `https://local-media-cache/${asset.file_path}`
 
-    if (typeof window !== 'undefined' && 'caches' in window) {
+    if (typeof window !== 'undefined' && 'caches' in (window as object)) {
       try {
         const cache = await caches.open('nuexis-media-cache')
         let response = await cache.match(cacheKey)
