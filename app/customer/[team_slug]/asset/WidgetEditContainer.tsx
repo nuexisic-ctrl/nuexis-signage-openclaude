@@ -9,7 +9,7 @@
 
 import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { YouTubeWidgetModal, YouTubePlaylistWidgetModal, RemoteUrlWidgetModal, HtmlWidgetModal, QRCodeWidgetModal, parseYouTubeConfig, parseYouTubePlaylistConfig } from './WidgetModals'
+import { YouTubeWidgetModal, YouTubePlaylistWidgetModal, RemoteUrlWidgetModal, HtmlWidgetModal, QRCodeWidgetModal, WebsiteWidgetModal, parseYouTubeConfig, parseYouTubePlaylistConfig } from './WidgetModals'
 import FlowWidgetModal from './FlowWidgetModal'
 import CountdownWidgetModal from './CountdownWidgetModal'
 import CountUpWidgetModal from './CountUpWidgetModal'
@@ -26,6 +26,7 @@ interface WidgetEditContainerProps {
   onClose: () => void
   /** Optimistically update the parent's asset list */
   onUpdated: (updatedAsset: Asset) => void
+  assets?: Asset[]
 }
 
 export function WidgetEditContainer({
@@ -33,6 +34,7 @@ export function WidgetEditContainer({
   teamSlug,
   onClose,
   onUpdated,
+  assets = [],
 }: WidgetEditContainerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [, startTransition] = useTransition()
@@ -103,6 +105,19 @@ export function WidgetEditContainer({
         onSubmit={(name, url) => saveWidget(name, url)}
         isSubmitting={isSubmitting}
         initialData={{ name: asset.file_name, url: asset.file_path }}
+      />
+    )
+  }
+
+  // ── Website ──────────────────────────────────────────────────────────────
+  if (asset.mime_type === 'application/x-widget-website') {
+    return (
+      <WebsiteWidgetModal
+        onClose={onClose}
+        onSubmit={(name, url) => saveWidget(name, url)}
+        isSubmitting={isSubmitting}
+        initialData={{ name: asset.file_name, url: asset.file_path }}
+        assets={assets}
       />
     )
   }

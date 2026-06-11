@@ -180,6 +180,8 @@ export function AssetCard({
                   <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
                 ) : asset.mime_type === 'application/x-widget-worldclock' ? (
                   <Globe size={72} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
+                ) : asset.mime_type === 'application/x-widget-website' ? (
+                  <Globe size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
                 ) : asset.mime_type === 'application/x-widget-countdown' ? (
                   <Hourglass size={72} style={{ stroke: '#eab308', color: '#eab308' }} />
                 ) : asset.mime_type === 'application/x-widget-qrcode' ? (
@@ -196,7 +198,7 @@ export function AssetCard({
         )}
         
         <div className={styles.mimeChip}>
-          {isFolder ? t('FOLDER') : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-worldclock' ? 'WORLD CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
+          {isFolder ? t('FOLDER') : asset.mime_type === 'application/x-widget-flow' ? 'CLOCK' : asset.mime_type === 'application/x-widget-worldclock' ? 'WORLD CLOCK' : asset.mime_type === 'application/x-widget-countdown' ? 'COUNTDOWN' : asset.mime_type === 'application/x-widget-website' ? 'WEBSITE' : isWidget(asset.mime_type) ? 'WIDGET' : (asset.mime_type.split('/')[1]?.toUpperCase() ?? 'FILE')}
         </div>
       </div>
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { WidgetSelectionModal, YouTubeWidgetModal, YouTubePlaylistWidgetModal, RemoteUrlWidgetModal, HtmlWidgetModal, QRCodeWidgetModal } from './WidgetModals'
+import { WidgetSelectionModal, YouTubeWidgetModal, YouTubePlaylistWidgetModal, RemoteUrlWidgetModal, HtmlWidgetModal, QRCodeWidgetModal, WebsiteWidgetModal } from './WidgetModals'
 import FlowWidgetModal from './FlowWidgetModal'
 import CountdownWidgetModal from './CountdownWidgetModal'
 import CountUpWidgetModal from './CountUpWidgetModal'
@@ -41,6 +41,7 @@ export function WidgetModalsContainer({
   const [showCountdownConfig, setShowCountdownConfig] = useState(false)
   const [showCountUpConfig, setShowCountUpConfig] = useState(false)
   const [showWorldClockConfig, setShowWorldClockConfig] = useState(false)
+  const [showWebsiteConfig, setShowWebsiteConfig] = useState(false)
   const [isSubmittingWidget, setIsSubmittingWidget] = useState(false)
   
   const [, startTransition] = useTransition()
@@ -341,6 +342,37 @@ export function WidgetModalsContainer({
     setIsSubmittingWidget(false)
   }
 
+  const handleCreateWebsiteWidget = async (name: string, url: string) => {
+    setIsSubmittingWidget(true)
+    const result = await insertAsset(teamSlug, {
+      file_name: name,
+      file_path: url,
+      mime_type: 'application/x-widget-website',
+      size_bytes: 0,
+      folder_id: folderId || null,
+    })
+
+    if (result.success) {
+      const newAsset: Asset = {
+        id: result.id!,
+        file_name: name,
+        file_path: url,
+        mime_type: 'application/x-widget-website',
+        size_bytes: 0,
+        created_at: new Date().toISOString(),
+        folder_id: folderId || null,
+      }
+      setAssets(prev => [newAsset, ...prev])
+      setShowWebsiteConfig(false)
+      toast.success(`Website widget "${name}" created successfully`)
+      startTransition(() => { router.refresh() })
+    } else {
+      toast.error(result.error || 'Failed to create Website widget.')
+    }
+    setIsSubmittingWidget(false)
+  }
+
+
   return (
     <>
       {showWidgetSelection && (
@@ -355,6 +387,20 @@ export function WidgetModalsContainer({
           onSelectCountdown={() => setShowCountdownConfig(true)}
           onSelectCountUp={() => setShowCountUpConfig(true)}
           onSelectWorldClock={() => setShowWorldClockConfig(true)}
+          onSelectWebsite={() => setShowWebsiteConfig(true)}
+        />
+      )}
+
+      {showWebsiteConfig && (
+        <WebsiteWidgetModal 
+          onClose={() => setShowWebsiteConfig(false)}
+          onBack={() => {
+            setShowWebsiteConfig(false)
+            setShowWidgetSelection(true)
+          }}
+          onSubmit={handleCreateWebsiteWidget}
+          isSubmitting={isSubmittingWidget}
+          assets={assets}
         />
       )}
 

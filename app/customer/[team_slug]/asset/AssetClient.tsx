@@ -238,8 +238,10 @@ export default function AssetClient({
   }, [initialFolders, initialFiles])
 
   useEffect(() => {
-    setActiveFolder(folder || null)
-  }, [folder])
+    if (folder?.id !== activeFolder?.id) {
+      setActiveFolder(folder || null)
+    }
+  }, [folder, activeFolder])
 
   // Caching: SWR file fetcher
   const loadFolderFiles = useCallback(async (folderId: string | null) => {
@@ -268,7 +270,8 @@ export default function AssetClient({
 
   useEffect(() => {
     loadFolderFiles(activeFolder?.id || null)
-  }, [activeFolder])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFolder?.id])
 
   const resolveFolderFromPath = useCallback((pathStr: string | null): Asset | null => {
     if (!pathStr || pathStr === '/') return null
@@ -297,12 +300,15 @@ export default function AssetClient({
       const params = new URLSearchParams(window.location.search)
       const pathParam = params.get('path') || '/'
       const resolved = resolveFolderFromPath(pathParam)
-      setActiveFolder(resolved)
+      if (resolved?.id !== activeFolder?.id) {
+        setActiveFolder(resolved)
+      }
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [resolveFolderFromPath])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolveFolderFromPath, activeFolder?.id])
 
   const navigateToFolder = useCallback((targetFolder: Asset | null, pathStr: string) => {
     setActiveFolder(targetFolder)
@@ -1136,6 +1142,7 @@ export default function AssetClient({
           onUpdated={(updatedAsset) => {
             setAssets(prev => prev.map(a => a.id === updatedAsset.id ? updatedAsset : a))
           }}
+          assets={assets}
         />
       )}
 

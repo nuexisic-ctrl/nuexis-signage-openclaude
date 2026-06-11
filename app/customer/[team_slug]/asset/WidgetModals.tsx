@@ -23,6 +23,7 @@ interface WidgetSelectionModalProps {
   onSelectCountdown: () => void
   onSelectCountUp: () => void
   onSelectWorldClock: () => void
+  onSelectWebsite: () => void
 }
 
 const WIDGET_SEARCH_HISTORY_KEY = 'widget_search_history'
@@ -66,7 +67,8 @@ export function WidgetSelectionModal({
   onSelectQRCode,
   onSelectCountdown,
   onSelectCountUp,
-  onSelectWorldClock
+  onSelectWorldClock,
+  onSelectWebsite
 }: WidgetSelectionModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchHistory, setSearchHistory] = useState<string[]>([])
@@ -127,6 +129,14 @@ export function WidgetSelectionModal({
       icon: Globe,
       color: '#f43f5e',
       action: onSelectWorldClock
+    },
+    {
+      id: 'website',
+      title: t('Website'),
+      description: t('Securely embed interactive webpages or web portals directly onto your screens.'),
+      icon: Globe,
+      color: '#10b981',
+      action: onSelectWebsite
     },
     {
       id: 'youtube',
@@ -2470,3 +2480,156 @@ export function YouTubePlaylistWidgetModal({
     </div>
   )
 }
+
+interface WebsiteWidgetModalProps {
+  onClose: () => void
+  onBack?: () => void
+  onSubmit: (name: string, url: string) => void
+  isSubmitting: boolean
+  initialData?: { name: string; url: string }
+  assets?: Asset[]
+}
+
+export function WebsiteWidgetModal({
+  onClose,
+  onBack,
+  onSubmit,
+  isSubmitting,
+  initialData,
+  assets = []
+}: WebsiteWidgetModalProps) {
+  const isEditMode = !!initialData
+  const [name, setName] = useState(initialData?.name ?? '')
+  const [url, setUrl] = useState(initialData?.url ?? '')
+  const [error, setError] = useState<string | null>(null)
+  const dragStartRef = useRef(false)
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      setError('Widget name is required')
+      return
+    }
+
+    // Duplicate name validation within same folder/team context
+    const hasDuplicate = assets.some(
+      asset =>
+        asset.file_name.toLowerCase() === trimmedName.toLowerCase() &&
+        (!initialData || asset.file_name.toLowerCase() !== initialData.name.toLowerCase())
+    )
+    if (hasDuplicate) {
+      setError('An asset or widget with this name already exists in this folder.')
+      return
+    }
+
+    const trimmedUrl = url.trim()
+    if (!trimmedUrl) {
+      setError('Website URL is required')
+      return
+    }
+
+    // Normalize URL
+    let normalizedUrl = trimmedUrl
+    if (!/^https?:\/\//i.test(normalizedUrl)) {
+      normalizedUrl = 'https://' + normalizedUrl
+    }
+
+    // Validate URL format
+    try {
+      new URL(normalizedUrl)
+    } catch {
+      setError('Invalid URL format')
+      return
+    }
+
+    onSubmit(trimmedName, normalizedUrl)
+  }
+
+  return (
+    <div 
+      className={styles.modalOverlay} 
+      onMouseDown={(e) => {
+        dragStartRef.current = e.target === e.currentTarget
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && dragStartRef.current) {
+          onClose()
+        }
+      }}
+    >
+      <div className={styles.modalContainer} style={{ padding: '24px', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onBack && (
+              <button 
+                type="button" 
+                onClick={onBack} 
+                className={styles.modalCloseBtn}
+                aria-label="Back to widget selection"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <h2 style={{ margin: 0, fontSize: '1.2rem', fontFamily: 'var(--font-serif)', color: 'var(--on-surface)' }}>
+              {isEditMode ? t('Edit Website Widget') : t('Configure Website Widget')}
+            </h2>
+            {isEditMode && (
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', padding: '2px 8px', borderRadius: '999px', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', fontFamily: 'var(--font-label)', marginLeft: '4px' }}>EDITING</span>
+            )}
+          </div>
+          <button onClick={onClose} className={styles.modalCloseBtn} type="button"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {error && (
+            <div className={styles.errorBanner} role="alert" style={{ margin: '0', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#ef4444', fontSize: '0.85rem' }}>
+              <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+              <span>{error}</span>
+            </div>
+          )}
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>{t('Widget Name*')}</label>
+            <input 
+              required
+              maxLength={100}
+              value={name}
+              onChange={e => { setName(e.target.value); setError(null); }}
+              placeholder={t('e.g. Corporate Website')}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.86rem', color: 'var(--on-surface-subtle)', fontFamily: 'var(--font-label)' }}>{t('Website URL*')}</label>
+            <input 
+              required
+              maxLength={255}
+              value={url}
+              onChange={e => { setUrl(e.target.value); setError(null); }}
+              placeholder={t('https://example.com')}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--outline-variant)', background: 'var(--surface-lowest)', color: 'var(--on-surface)' }}
+            />
+          </div>
+          <button 
+            type="submit" 
+            disabled={isSubmitting || !name || !url}
+            style={{ 
+              marginTop: '12px', padding: '12px', background: 'var(--primary)', color: 'var(--on-primary)', 
+              border: 'none', borderRadius: '8px', fontWeight: 600, cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting ? 0.7 : 1
+            }}
+          >
+            {isSubmitting ? t('Saving...') : isEditMode ? t('Save Changes') : t('Save Widget')}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+

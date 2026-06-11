@@ -5,6 +5,7 @@ import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
 import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
+import WebsiteRenderer from '@/app/components/WebsiteRenderer'
 import { useA11yModal } from '@/lib/utils/useA11yModal'
 
 interface Asset {
@@ -48,6 +49,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
   const isYouTube = asset.mime_type === 'application/x-widget-youtube'
   const isYouTubePlaylist = asset.mime_type === 'application/x-widget-youtube-playlist'
   const isRemoteUrl = asset.mime_type === 'application/x-widget-remote-url'
+  const isWebsite = asset.mime_type === 'application/x-widget-website'
   const isHtml = asset.mime_type === 'application/x-widget-html'
 
   let youtubeVideoId = ''
@@ -107,6 +109,8 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
                   ? 'YouTube Playlist Widget'
                   : isRemoteUrl
                     ? 'Remote URL Widget'
+                  : isWebsite
+                    ? 'Website Widget'
                   : isHtml
                     ? 'Text/HTML Widget'
                     : asset.mime_type === 'application/x-widget-flow'
@@ -200,7 +204,11 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
               console.error('Failed to parse HTML widget contents in preview:', err)
               return <div style={{ color: 'red', padding: '20px' }}>Error rendering custom HTML widget</div>
             }
-          })() : asset.mime_type === 'application/x-widget-countdown' ? (() => {
+          })() : isWebsite ? (
+            <div style={{ width: '100%', height: '100%', minHeight: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <WebsiteRenderer url={asset.file_path} preview={true} />
+            </div>
+          ) : asset.mime_type === 'application/x-widget-countdown' ? (() => {
             try {
               const config = JSON.parse(asset.file_path)
               return (

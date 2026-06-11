@@ -7,6 +7,7 @@ import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
 import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
+import WebsiteRenderer from '@/app/components/WebsiteRenderer'
 
 interface PlaylistItem {
   id: string
@@ -497,6 +498,14 @@ function PlayableItem({
         onLoad={() => setIsLoaded(true)}
         sandbox="allow-scripts allow-forms allow-presentation"
       />
+    )
+  }
+
+  if (item.assets?.mime_type === 'application/x-widget-website') {
+    return (
+      <div style={{ ...mediaStyle, overflow: 'hidden' }}>
+        <WebsiteRenderer url={mediaUrl} />
+      </div>
     )
   }
 

@@ -10,6 +10,7 @@ import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
 import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
+import WebsiteRenderer from '@/app/components/WebsiteRenderer'
 
 interface Props {
   device: Device
@@ -352,6 +353,14 @@ export function ScreenPreviewModal({
           allow="autoplay; encrypted-media; fullscreen"
           sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
         />
+      )
+    }
+
+    if (itemMime === 'application/x-widget-website') {
+      return (
+        <div style={{ ...mediaStyle, overflow: 'hidden' }}>
+          <WebsiteRenderer url={itemPath} preview={true} />
+        </div>
       )
     }
 

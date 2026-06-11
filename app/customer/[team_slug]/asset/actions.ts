@@ -5,6 +5,9 @@ import { revalidatePath } from 'next/cache'
 import sanitize from 'sanitize-filename'
 import { redis } from '@/lib/redis'
 import DOMPurify from 'isomorphic-dompurify'
+import dns from 'dns'
+import net from 'net'
+import { promisify } from 'util'
 
 export type InsertAssetResult =
   | { success: true; id: string }
@@ -46,6 +49,43 @@ export async function insertAsset(
     return { success: false, error: 'Asset name must be between 1 and 100 characters.' }
   }
   asset.file_name = trimmedName
+
+  // Check duplicate name within the same folder for this team (case-insensitive check in DB)
+  let duplicateQuery = supabase
+    .from('assets')
+    .select('id')
+    .eq('team_id', teamId)
+    .ilike('file_name', trimmedName)
+
+  if (asset.folder_id) {
+    duplicateQuery = duplicateQuery.eq('folder_id', asset.folder_id)
+  } else {
+    duplicateQuery = duplicateQuery.is('folder_id', null)
+  }
+
+  const { data: duplicateName, error: duplicateError } = await duplicateQuery
+  if (duplicateError) {
+    console.error('[insertAsset] Name duplicate check error:', duplicateError)
+  }
+  if (duplicateName && duplicateName.length > 0) {
+    return { success: false, error: 'An asset or widget with this name already exists in this folder.' }
+  }
+
+  if (asset.mime_type === 'application/x-widget-website') {
+    if (typeof asset.file_path !== 'string') {
+      return { success: false, error: 'Invalid Website URL.' }
+    }
+    let normalized = asset.file_path.trim()
+    if (!/^https?:\/\//i.test(normalized)) {
+      normalized = 'https://' + normalized
+    }
+    try {
+      new URL(normalized)
+    } catch {
+      return { success: false, error: 'Invalid URL format.' }
+    }
+    asset.file_path = normalized
+  }
 
   if (asset.mime_type === 'application/x-widget-worldclock') {
     try {
@@ -820,7 +860,7 @@ export async function updateWidgetAsset(
   // Verify the asset exists and belongs to the caller's team
   const { data: existing, error: fetchError } = await supabase
     .from('assets')
-    .select('id, team_id, mime_type, file_path, file_name')
+    .select('id, team_id, mime_type, file_path, file_name, folder_id')
     .eq('id', assetId)
     .single()
 
@@ -843,8 +883,43 @@ export async function updateWidgetAsset(
     return { success: false, error: 'Widget name must be between 1 and 100 characters.' }
   }
 
+  // Check duplicate name within the same folder, excluding the current asset
+  let duplicateQuery = supabase
+    .from('assets')
+    .select('id')
+    .eq('team_id', teamId)
+    .ilike('file_name', trimmedName)
+    .neq('id', assetId)
+
+  if (existing.folder_id) {
+    duplicateQuery = duplicateQuery.eq('folder_id', existing.folder_id)
+  } else {
+    duplicateQuery = duplicateQuery.is('folder_id', null)
+  }
+
+  const { data: duplicateName } = await duplicateQuery
+  if (duplicateName && duplicateName.length > 0) {
+    return { success: false, error: 'An asset or widget with this name already exists in this folder.' }
+  }
+
   // ── Per-type payload validation (mirrors insertAsset logic) ────────────────
   let sanitizedPath = newFilePath
+
+  if (mimeType === 'application/x-widget-website') {
+    if (typeof newFilePath !== 'string') {
+      return { success: false, error: 'Invalid Website URL.' }
+    }
+    let normalized = newFilePath.trim()
+    if (!/^https?:\/\//i.test(normalized)) {
+      normalized = 'https://' + normalized
+    }
+    try {
+      new URL(normalized)
+    } catch {
+      return { success: false, error: 'Invalid URL format.' }
+    }
+    sanitizedPath = normalized
+  }
 
   if (mimeType === 'application/x-widget-worldclock') {
     try {
@@ -1050,6 +1125,139 @@ export async function fetchFolderFiles(
     return { success: true, files: files || [] }
   } catch (err: any) {
     return { success: false, error: err.message || 'An unexpected error occurred.' }
+  }
+}
+
+const dnsLookup = promisify(dns.lookup)
+
+function isPrivateIp(ip: string): boolean {
+  if (ip === 'localhost' || ip === '::1' || ip === '0.0.0.0') return true
+  
+  if (net.isIPv4(ip)) {
+    const parts = ip.split('.').map(x => parseInt(x, 10))
+    if (parts.length === 4) {
+      const first = parts[0]
+      const second = parts[1]
+      
+      if (first === 127) return true // Loopback: 127.0.0.0/8
+      if (first === 10) return true  // Private: 10.0.0.0/8
+      if (first === 169 && second === 254) return true // Link-local: 169.254.0.0/16
+      if (first === 192 && second === 168) return true // Private: 192.168.0.0/16
+      if (first === 172 && second >= 16 && second <= 31) return true // Private: 172.16.0.0/12
+      if (first === 0) return true // Local broadcast
+      if (first >= 224) return true // Multicast/Reserved
+    }
+  } else if (net.isIPv6(ip)) {
+    const cleanIp = ip.toLowerCase()
+    if (cleanIp === '::1' || cleanIp === '::') return true
+    if (cleanIp.startsWith('fe80:') || cleanIp.startsWith('fc00:') || cleanIp.startsWith('fd00:')) {
+      return true
+    }
+  }
+  return false
+}
+
+export interface FrameabilityResult {
+  frameable: boolean
+  reason: 'x-frame-options' | 'csp-frame-ancestors' | 'network-error' | 'invalid-url' | 'ssrf-attempt' | null
+}
+
+export async function checkUrlFrameability(urlInput: string): Promise<FrameabilityResult> {
+  let normalized = urlInput.trim()
+  if (!normalized) {
+    return { frameable: false, reason: 'invalid-url' }
+  }
+
+  if (!/^https?:\/\//i.test(normalized)) {
+    normalized = 'https://' + normalized
+  }
+
+  let parsedUrl: URL
+  try {
+    parsedUrl = new URL(normalized)
+  } catch {
+    return { frameable: false, reason: 'invalid-url' }
+  }
+
+  // 1. SSRF check - Resolve DNS
+  try {
+    const hostname = parsedUrl.hostname
+    // Verify standard ports
+    if (parsedUrl.port && parsedUrl.port !== '80' && parsedUrl.port !== '443') {
+      return { frameable: false, reason: 'ssrf-attempt' }
+    }
+
+    const lookupResult = await dnsLookup(hostname).catch(() => null)
+    if (!lookupResult || !lookupResult.address) {
+      return { frameable: false, reason: 'network-error' }
+    }
+
+    const ip = lookupResult.address
+    if (isPrivateIp(ip)) {
+      console.warn(`[SSRF Prevention] Blocked request to private IP: ${ip} for host: ${hostname}`)
+      return { frameable: false, reason: 'ssrf-attempt' }
+    }
+  } catch (err) {
+    console.error('DNS Lookup Error in checkUrlFrameability:', err)
+    return { frameable: false, reason: 'network-error' }
+  }
+
+  // 2. Fetch the URL headers with a short timeout
+  try {
+    const controller = new AbortController()
+    const id = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+
+    // Perform request with redirect manually handled to prevent redirect-based SSRF
+    const response = await fetch(normalized, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) NuExisSignagePlayer/1.0',
+      },
+      signal: controller.signal,
+      redirect: 'manual',
+    })
+    clearTimeout(id)
+
+    // Redirect handling
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location')
+      if (location) {
+        const redirectUrl = new URL(location, normalized).toString()
+        return checkUrlFrameability(redirectUrl)
+      }
+    }
+
+    const headers = response.headers
+
+    // Check X-Frame-Options
+    const xfo = headers.get('x-frame-options')
+    if (xfo) {
+      const val = xfo.toUpperCase().trim()
+      if (val === 'DENY' || val === 'SAMEORIGIN' || val.startsWith('ALLOW-FROM')) {
+        return { frameable: false, reason: 'x-frame-options' }
+      }
+    }
+
+    // Check Content-Security-Policy (CSP)
+    const csp = headers.get('content-security-policy')
+    if (csp) {
+      const directives = csp.split(';')
+      for (const directive of directives) {
+        const trimmed = directive.trim()
+        if (trimmed.startsWith('frame-ancestors')) {
+          const parts = trimmed.split(/\s+/).slice(1)
+          const hasWildcard = parts.includes('*')
+          if (!hasWildcard) {
+            return { frameable: false, reason: 'csp-frame-ancestors' }
+          }
+        }
+      }
+    }
+
+    return { frameable: true, reason: null }
+  } catch (err: any) {
+    console.error('Error fetching frameability check:', err)
+    return { frameable: false, reason: 'network-error' }
   }
 }
 

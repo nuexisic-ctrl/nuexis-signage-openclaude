@@ -73,7 +73,7 @@ const nextConfig: NextConfig = {
               "media-src 'self' blob: https://*.supabase.co",
               "font-src 'self' https://fonts.gstatic.com data:",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+              "frame-src 'self' https: http: https://www.youtube.com https://www.youtube-nocookie.com",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

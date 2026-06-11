@@ -93,6 +93,8 @@ export function CardPreview({ asset, previewUrls }: CardPreviewProps) {
           <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
         ) : asset.mime_type === 'application/x-widget-worldclock' ? (
           <Globe size={72} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
+        ) : asset.mime_type === 'application/x-widget-website' ? (
+          <Globe size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
         ) : asset.mime_type === 'application/x-widget-countdown' ? (
           <Hourglass size={72} style={{ stroke: '#eab308', color: '#eab308' }} />
         ) : asset.mime_type === 'application/x-widget-countup' ? (
@@ -184,6 +186,9 @@ export function TableIcon({ asset, previewUrls }: TableIconProps) {
     }
     if (asset.mime_type === 'application/x-widget-worldclock') {
       return <Globe size={18} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
+    }
+    if (asset.mime_type === 'application/x-widget-website') {
+      return <Globe size={18} style={{ stroke: '#10b981', color: '#10b981' }} />
     }
     if (asset.mime_type === 'application/x-widget-countdown') {
       return <Hourglass size={18} style={{ stroke: '#eab308', color: '#eab308' }} />

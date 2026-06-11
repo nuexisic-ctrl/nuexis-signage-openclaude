@@ -6,6 +6,7 @@ import styles from './player.module.css'
 import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
+import WebsiteRenderer from '@/app/components/WebsiteRenderer'
 import { X, Monitor, RefreshCw, Volume2, VolumeX, Unlink } from 'lucide-react'
 
 interface PairedViewProps {
@@ -149,6 +150,12 @@ export default function PairedView({
           allow="autoplay; encrypted-media; fullscreen"
           sandbox="allow-scripts allow-forms allow-presentation"
         />
+      )
+    } else if (mimeType === 'application/x-widget-website') {
+      content = (
+        <div style={{ ...mediaStyle, width: '100%', height: '100%', overflow: 'hidden' }}>
+          <WebsiteRenderer url={assetUrl} />
+        </div>
       )
     } else if (mimeType === 'application/x-widget-html') {
       try {
