@@ -250,8 +250,9 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
   const endItem = Math.min(currentPage * pageSize, filteredPlaylists.length)
 
   return (
-    <>
-      <div className={styles.topbar}>
+    <div className={styles.pageLayout}>
+      <div className={styles.mainContent}>
+        <div className={styles.topbar}>
         <div>
           <h1 className={styles.pageTitle}>Playlists</h1>
           <p className={styles.pageSubtitle}>Create and schedule dynamic playback loops</p>
@@ -386,11 +387,11 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
             <table className={styles.playlistsTable}>
               <thead className={styles.tableHeader}>
                 <tr>
-                  <th>Playlist Name</th>
-                  <th>Total Items</th>
-                  <th>Total Playtime</th>
-                  <th>Created Date</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th style={{ width: '40%' }}>Playlist Name</th>
+                  <th style={{ width: '15%' }}>Total Items</th>
+                  <th style={{ width: '20%' }}>Total Playtime</th>
+                  <th style={{ width: '15%' }}>Created Date</th>
+                  <th style={{ width: '10%', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -572,6 +573,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
           </div>
         </div>
       )}
-    </>
+      </div>
+    </div>
   )
 }

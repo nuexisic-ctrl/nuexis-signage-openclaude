@@ -48,6 +48,14 @@ android {
     }
 }
 dependencies {
+    implementation(project(":core:network"))
+    implementation(project(":core:database"))
+    implementation(project(":core:domain"))
+    implementation(project(":core:media"))
+    implementation(project(":feature:player"))
+    implementation(project(":feature:pairing"))
+    implementation(project(":feature:sync"))
+
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     
     implementation("androidx.core:core-ktx:1.12.0")

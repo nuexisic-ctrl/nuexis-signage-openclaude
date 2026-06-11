@@ -104,17 +104,30 @@ class PlayerViewModel @Inject constructor(
         val item = playlistItems[currentIndex]
         val localUri = item.asset?.localFileUri
 
-        if (localUri != null) {
-            if (item.type == "video") {
-                playbackManager.preloadNext(localUri)
-                playbackManager.swapAndPlay()
-                _uiState.value = PlayerUiState.PlayingVideo(playbackManager)
-            } else if (item.type == "image") {
-                _uiState.value = PlayerUiState.PlayingImage(localUri, item.durationSeconds)
+        if (item.type == "video" && localUri != null) {
+            playbackManager.preloadNext(localUri)
+            playbackManager.swapAndPlay()
+            _uiState.value = PlayerUiState.PlayingVideo(playbackManager)
+        } else if (item.type == "image" && localUri != null) {
+            _uiState.value = PlayerUiState.PlayingImage(localUri, item.durationSeconds)
+        } else if (item.type == "widget" && (item.widgetType == "website" || item.widgetType == "webpage")) {
+            val url = extractUrlFromConfig(item.widgetConfig)
+            if (url != null) {
+                _uiState.value = PlayerUiState.PlayingWebsite(url, item.durationSeconds)
+            } else {
+                advanceToNext()
             }
         } else {
             advanceToNext()
         }
+    }
+
+    private fun extractUrlFromConfig(config: String?): String? {
+        if (config == null) return null
+        // Simple extraction for now, assuming JSON-like structure {"url":"..."}
+        // In a real app, use a JSON library
+        val regex = "\"url\"\\s*:\\s*\"([^\"]+)\"".toRegex()
+        return regex.find(config)?.groupValues?.get(1)
     }
 
     fun advanceToNext() {
@@ -134,4 +147,5 @@ sealed class PlayerUiState {
     object NoContent : PlayerUiState()
     data class PlayingVideo(val playbackManager: PlaybackManager) : PlayerUiState()
     data class PlayingImage(val uri: String, val durationSeconds: Int) : PlayerUiState()
+    data class PlayingWebsite(val url: String, val durationSeconds: Int) : PlayerUiState()
 }

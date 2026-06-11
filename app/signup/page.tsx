@@ -70,12 +70,34 @@ export default function SignupPage() {
     }
 
     setStatus('success')
-    toast.success('Workspace created! Redirecting to your login page…')
-    router.push(`/customer/${form.teamSlug}/login?signup=success`)
+    toast.success('Account created! Please check your email.')
+  }
+
+  if (status === 'success') {
+    return (
+      <div className={`auth-shell ${styles.lightThemeWrapper}`}>
+        <div className={styles.wrapper}>
+          <Link href="/" className="navbar-logo" style={{ display: 'block', textAlign: 'center', marginBottom: '16px' }}>
+            <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto', width: 'auto', height: 'auto' }} />
+          </Link>
+          <div className={styles.card} style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>📧</div>
+            <h1 className={styles.title}>Check your email</h1>
+            <p className={styles.subtitle} style={{ marginBottom: '24px' }}>
+              We've sent a verification link to <strong>{form.email}</strong>. 
+              Please click the link to verify your account and continue.
+            </p>
+            <Link href={`/customer/${form.teamSlug}/login`} className="btn btn-primary" style={{ display: 'inline-block', width: 'auto', padding: '12px 24px' }}>
+              Go to Login
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="auth-shell">
+    <div className={`auth-shell ${styles.lightThemeWrapper}`}>
       <div className={styles.wrapper}>
         {/* Logo */}
         <Link href="/" className="navbar-logo" style={{ display: 'block', textAlign: 'center', marginBottom: '16px' }}>

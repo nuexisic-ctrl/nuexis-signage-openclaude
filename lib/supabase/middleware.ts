@@ -106,9 +106,10 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (userTeamSlug !== teamSlug) {
-      const correctDashboard = request.nextUrl.clone()
-      correctDashboard.pathname = `/customer/${userTeamSlug}/dashboard`
-      return NextResponse.redirect(correctDashboard)
+      const correctUrl = request.nextUrl.clone()
+      const remainingPath = pathname.replace(`/customer/${teamSlug}`, '')
+      correctUrl.pathname = `/customer/${userTeamSlug}${remainingPath || '/dashboard'}`
+      return NextResponse.redirect(correctUrl)
     }
   }
 

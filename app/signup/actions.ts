@@ -80,10 +80,16 @@ export async function signupWithRateLimit(formData: {
 
   // 4. Perform auth sign up using the server client
   const supabase = await createClient()
+
+  const host = headersList.get('host') || 'localhost:3000'
+  const protocol = headersList.get('x-forwarded-proto') || 'http'
+  const siteUrl = `${protocol}://${host}`
+
   const { error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo: `${siteUrl}/auth/callback`,
       data: {
         full_name: fullName,
         team_name: teamName,

@@ -249,9 +249,10 @@ export default function AssetClient({
   const loadFolderFiles = useCallback(async (folderId: string | null) => {
     const cacheKey = folderId || 'root'
     const hasCache = !!filesCache[cacheKey]
-    if (!hasCache) {
-      setIsLoadingFiles(true)
+    if (hasCache) {
+      return
     }
+    setIsLoadingFiles(true)
 
     try {
       const result = await fetchFolderFiles(teamSlug, folderId)

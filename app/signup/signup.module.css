@@ -1,5 +1,51 @@
 /* signup.module.css */
 
+/* ─── Light Mode Theme Token Overrides ────────────────────────────────────── */
+.lightThemeWrapper {
+  /* Force light theme variables locally to ensure it is ALWAYS strictly in premium light mode */
+  --primary:           #094cb2;
+  --primary-container: #dce8ff;
+  --primary-gradient:  linear-gradient(135deg, var(--primary) 0%, #2563eb 100%);
+  --on-primary:        #ffffff;
+  --secondary:           #535f70;
+  --secondary-container: #d7e3f7;
+  --tertiary:           #6d5e00;
+  --tertiary-container: #f9e44e33;
+  --surface-dim:             #d9dae0;
+  --surface:                 #f8f9fc;
+  --surface-bright:          #f8f9fc;
+  --surface-container-lowest:#ffffff;
+  --surface-lowest:          #ffffff;
+  --surface-low:             #f1f3f8;
+  --surface-container:       #eceef4;
+  --surface-container-high:  #e6e8ee;
+  --surface-high:            #e6e8ee;
+  --on-surface:        #1a1c20;
+  --on-surface-muted:  #44474f;
+  --on-surface-subtle: #74777f;
+  --outline:         #74777f;
+  --outline-variant: rgba(116, 119, 127, 0.15);
+  --error:           #ba1a1a;
+  --error-container: #ffdad6;
+  --on-error:        #ffffff;
+  --shadow-modal: 0 8px 40px rgba(9, 76, 178, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-card:  0 2px 12px rgba(0, 0, 0, 0.06);
+
+  /* Force background matching light theme */
+  background: var(--surface) !important;
+  color: var(--on-surface) !important;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 16px;
+}
+
+.lightThemeWrapper::before {
+  background: radial-gradient(ellipse, rgba(9, 76, 178, 0.07) 0%, transparent 70%) !important;
+}
+
 .wrapper {
   width: 100%;
   max-width: 560px;

@@ -68,10 +68,25 @@ class PlayerFragment : Fragment() {
             }
             is PlayerUiState.PlayingImage -> {
                 binding.playerViewActive.visibility = View.GONE
+                binding.webView.visibility = View.GONE
                 binding.imageView.visibility = View.VISIBLE
                 binding.imageView.setImageURI(Uri.parse(state.uri))
                 
                 // Hold image for duration, then advance
+                viewLifecycleOwner.lifecycleScope.launch {
+                    delay(state.durationSeconds * 1000L)
+                    viewModel.advanceToNext()
+                }
+            }
+            is PlayerUiState.PlayingWebsite -> {
+                binding.playerViewActive.visibility = View.GONE
+                binding.imageView.visibility = View.GONE
+                binding.webView.visibility = View.VISIBLE
+                
+                binding.webView.settings.javaScriptEnabled = true
+                binding.webView.settings.domStorageEnabled = true
+                binding.webView.loadUrl(state.url)
+
                 viewLifecycleOwner.lifecycleScope.launch {
                     delay(state.durationSeconds * 1000L)
                     viewModel.advanceToNext()

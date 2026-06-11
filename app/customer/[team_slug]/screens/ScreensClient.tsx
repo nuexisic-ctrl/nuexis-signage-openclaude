@@ -23,7 +23,6 @@ import { ScreensModals } from './ScreensModals'
 import { useDevicePresence } from './useDevicePresence'
 import { deleteGroup } from '../groups/actions'
 import { SelectedActions } from './SelectedActions'
-import { GroupsSection } from './GroupsSection'
 import { toast } from '@/app/components/Toast'
 
 
@@ -423,20 +422,6 @@ export default function ScreensClient({
             onlineCount={onlineCount}
             offlineCount={offlineCount}
             totalPlaytimeSeconds={totalPlaytimeSeconds}
-          />
-
-          <GroupsSection
-            groups={groups}
-            devices={devices}
-            memberships={memberships}
-            assets={assets}
-            playlists={playlists}
-            teamSlug={teamSlug}
-            onlineDeviceIds={onlineDeviceIds}
-            onSelectGroup={(g) => setEditGroup(g)}
-            onDeleteGroup={handleDeleteGroup}
-            isRefreshing={isRefreshing}
-            showSuccessPulse={showSuccessPulse}
           />
 
           <div className={styles.mainBlockContainer}>
