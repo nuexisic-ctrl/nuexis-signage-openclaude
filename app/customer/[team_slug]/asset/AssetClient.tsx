@@ -226,18 +226,56 @@ export default function AssetClient({
     setIsMounted(true)
   }, [])
 
+  const isMountedRef = useRef(false)
+
   useEffect(() => {
-    setFolders(initialFolders)
-    
-    // Group all initial files by folder_id
-    const newCache: Record<string, Asset[]> = {}
-    initialFiles.forEach(file => {
-      const key = file.folder_id || 'root'
-      if (!newCache[key]) newCache[key] = []
-      newCache[key].push(file)
-    })
-    setFilesCache(newCache)
+    if (!isMountedRef.current) {
+      setFolders(initialFolders)
+      
+      const newCache: Record<string, Asset[]> = {}
+      initialFiles.forEach(file => {
+        const key = file.folder_id || 'root'
+        if (!newCache[key]) newCache[key] = []
+        newCache[key].push(file)
+      })
+      setFilesCache(newCache)
+      isMountedRef.current = true
+    }
   }, [initialFolders, initialFiles])
+
+  // Realtime subscription for assets
+  useEffect(() => {
+    if (!teamId) return
+
+    const channel = supabase
+      .channel('assets-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'assets', filter: `team_id=eq.${teamId}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setAssets((prev) => {
+              const existing = new Set(prev.map(a => a.id))
+              if (!existing.has(payload.new.id)) {
+                return [payload.new as Asset, ...prev]
+              }
+              return prev
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            setAssets((prev) =>
+              prev.map((a) => (a.id === payload.new.id ? { ...a, ...payload.new } as Asset : a))
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setAssets((prev) => prev.filter((a) => a.id !== payload.old.id))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [teamId, setAssets, supabase])
 
   useEffect(() => {
     if (folder?.id !== activeFolder?.id) {

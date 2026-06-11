@@ -470,7 +470,7 @@ function PlayableItem({
 
     if (!playlistId) {
       return (
-        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+        <div style={{ color: 'red', padding: '10px' }}>
           Error: Invalid YouTube playlist ID
         </div>
       )
@@ -520,7 +520,7 @@ function PlayableItem({
 
     if (!parsedConfig) {
       return (
-        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+        <div style={{ color: 'red', padding: '10px' }}>
           Error rendering custom HTML widget
         </div>
       )
@@ -562,14 +562,14 @@ function PlayableItem({
 
     if (!parsedConfig) {
       return (
-        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+        <div style={{ color: 'red', padding: '10px' }}>
           Error rendering Clock widget
         </div>
       )
     }
 
     return (
-      <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+      <div style={{ width: '100%', height: '100%' }}>
         <FlowClockRenderer
           style={parsedConfig.style}
           showSeconds={parsedConfig.showSeconds}
@@ -592,14 +592,14 @@ function PlayableItem({
 
     if (!parsedConfig) {
       return (
-        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+        <div style={{ color: 'red', padding: '10px' }}>
           Error rendering World Clock widget
         </div>
       )
     }
 
     return (
-      <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+      <div style={{ width: '100%', height: '100%' }}>
         <FlowWorldClockRenderer
           timezone={parsedConfig.timezone}
           clockType={parsedConfig.clockType}
@@ -625,14 +625,14 @@ function PlayableItem({
 
     if (!parsedConfig) {
       return (
-        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+        <div style={{ color: 'red', padding: '10px' }}>
           Error rendering Countdown widget
         </div>
       )
     }
 
     return (
-      <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+      <div style={{ width: '100%', height: '100%' }}>
         <FlowCountdownRenderer
           text={parsedConfig.text}
           endTime={parsedConfig.endTime}
@@ -657,14 +657,14 @@ function PlayableItem({
 
     if (!parsedConfig) {
       return (
-        <div style={{ color: 'red', padding: '10px' }} ref={() => setIsLoaded(true)}>
+        <div style={{ color: 'red', padding: '10px' }}>
           Error rendering CountUp widget
         </div>
       )
     }
 
     return (
-      <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+      <div style={{ width: '100%', height: '100%' }}>
         <FlowCountUpRenderer
           text={parsedConfig.text}
           startTime={parsedConfig.startTime}

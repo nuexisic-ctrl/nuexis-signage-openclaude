@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Plus, ListVideo, Trash2, X, Clock, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
 import styles from './playlists.module.css'
 import { createPlaylist, deletePlaylist, updatePlaylist, getPlaylistItems } from './actions'
@@ -34,23 +34,60 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     }
   }, [])
 
-  // Premium Dashboard States
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
-  const [isMounted, setIsMounted] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [showSuccessPulse, setShowSuccessPulse] = useState(false)
+  const isMountedRef = useRef(false)
 
   useEffect(() => {
-    if (isModalOpen) {
-      modalStack.push('playlist-editor-modal')
+    if (!isMountedRef.current) {
+      setPlaylists(initialPlaylists)
+      isMountedRef.current = true
     } else {
-      modalStack.pop('playlist-editor-modal')
+      // Merge only truly new playlists to avoid overriding realtime local edits
+      setPlaylists(prev => {
+        const existingIds = new Set(prev.map(p => p.id))
+        const missing = initialPlaylists.filter(p => !existingIds.has(p.id))
+        if (missing.length > 0) {
+          return [...missing, ...prev]
+        }
+        return prev
+      })
     }
+  }, [initialPlaylists])
+
+  // Realtime subscription for playlists
+  useEffect(() => {
+    if (!teamId) return
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel('playlists-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'playlists', filter: `team_id=eq.${teamId}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setPlaylists((prev) => {
+              const existing = new Set(prev.map(p => p.id))
+              if (!existing.has(payload.new.id)) {
+                // Wait for router refresh to bring items if needed, or just insert
+                return [payload.new as any, ...prev]
+              }
+              return prev
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            setPlaylists((prev) =>
+              prev.map((p) => (p.id === payload.new.id ? { ...p, ...payload.new } : p))
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setPlaylists((prev) => prev.filter((p) => p.id !== payload.old.id))
+          }
+        }
+      )
+      .subscribe()
+
     return () => {
-      modalStack.pop('playlist-editor-modal')
+      supabase.removeChannel(channel)
     }
-  }, [isModalOpen])
+  }, [teamId])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -96,7 +96,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
             <Link href="/" className={styles.logoLink} title="NuExis">
               <div className={styles.logoWrapper}>
                 <Image 
-                  src={isCollapsed ? "/Nuexis-logo-small.png" : "/Nuexis-logo.png"} 
+                  src={isCollapsed ? "/NuExis-logo-small.png" : "/NuExis-logo.png"} 
                   alt="NuExis Logo" 
                   fill 
                   className={styles.logoImage} 

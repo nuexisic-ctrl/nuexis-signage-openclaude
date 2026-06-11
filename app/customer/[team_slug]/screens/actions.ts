@@ -302,8 +302,7 @@ export async function updateDeviceLastSeen(
   const { error } = await supabase
     .from('devices')
     .update({
-      status: 'offline',
-      last_seen_at: new Date().toISOString(),
+      status: 'offline'
     })
     .in('id', deviceIds)
     .eq('team_id', teamId)

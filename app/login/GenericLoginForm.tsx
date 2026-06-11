@@ -59,7 +59,7 @@ export default function GenericLoginForm() {
         <div className={styles.loginHeader}>
           <Link href="/" className="navbar-logo" style={{ display: 'block', marginBottom: '4px', textAlign: 'center' }}>
             <Image 
-              src="/Nuexis-logo.png" 
+              src="/NuExis-logo.png" 
               alt="NuExis Logo" 
               width={140} 
               height={40} 

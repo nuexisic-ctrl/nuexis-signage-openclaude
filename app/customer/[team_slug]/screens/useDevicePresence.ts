@@ -41,9 +41,27 @@ export function useDevicePresence(
   const presenceKeyRef = useRef<string>('')
   const hasSyncedPresenceRef = useRef(false)
 
-  // Sync state when initialDevices update
+  // Track if we have performed initial mount
+  const isMountedRef = useRef(false)
+
+  // Sync state when initialDevices update ONLY on initial mount
+  // router.refresh() will cause this to fire again with potentially stale server cache data,
+  // which causes UI flickering and reverts optimistic updates. Let Realtime be the source of truth.
   useEffect(() => {
-    setDevices(initialDevices)
+    if (!isMountedRef.current) {
+      setDevices(initialDevices)
+      isMountedRef.current = true
+    } else {
+      // Merge only truly new devices that we might have missed via realtime
+      setDevices(prev => {
+        const existingIds = new Set(prev.map(d => d.id))
+        const missingFromClient = initialDevices.filter(d => !existingIds.has(d.id))
+        if (missingFromClient.length > 0) {
+          return [...missingFromClient, ...prev]
+        }
+        return prev
+      })
+    }
   }, [initialDevices])
 
   // Track devices in a ref to avoid stale closure or render phase side-effects

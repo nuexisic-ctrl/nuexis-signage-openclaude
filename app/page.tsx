@@ -91,7 +91,7 @@ export default function Home() {
       <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center">
-            <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={110} height={32} className="brightness-0 invert opacity-80" style={{ width: 'auto', height: 'auto' }} sizes="(max-width: 768px) 100vw, 110px" />
+            <Image src="/NuExis-logo.png" alt="NuExis Logo" width={110} height={32} className="brightness-0 invert opacity-80" style={{ width: 'auto', height: 'auto' }} sizes="(max-width: 768px) 100vw, 110px" />
           </div>
           <p className="text-sm">© {new Date().getFullYear()} NuExis. All rights reserved.</p>
         </div>

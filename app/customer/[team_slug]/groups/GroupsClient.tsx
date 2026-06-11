@@ -89,6 +89,35 @@ export default function GroupsClient({
   const [isPending, startTransition] = useTransition()
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
+  const isMountedRef = useRef(false)
+
+  // Sync state from server props when they update (only on first mount or careful merge)
+  useEffect(() => {
+    if (!isMountedRef.current) {
+      setGroups(initialGroups)
+      setDevices(initialDevices)
+      setMemberships(initialMemberships)
+      isMountedRef.current = true
+    } else {
+      // Merge only truly new groups
+      setGroups(prev => {
+        const existingIds = new Set(prev.map(g => g.id))
+        const missing = initialGroups.filter(g => !existingIds.has(g.id))
+        if (missing.length > 0) return [...missing, ...prev]
+        return prev
+      })
+      // Sync devices since they might have changed assignments
+      setDevices(prev => {
+        const existingIds = new Set(prev.map(d => d.id))
+        const missing = initialDevices.filter(d => !existingIds.has(d.id))
+        if (missing.length > 0) return [...missing, ...prev]
+        return prev
+      })
+      // Memberships are tricky to merge, we will overwrite if we aren't doing direct realtime merges
+      setMemberships(initialMemberships)
+    }
+  }, [initialGroups, initialDevices, initialMemberships])
+
   // ── Postgres changes realtime subscription ──────────────────────────
   useEffect(() => {
     if (!teamId) return
@@ -96,14 +125,31 @@ export default function GroupsClient({
     const channel = supabase
       .channel('groups-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'screen_groups', filter: `team_id=eq.${teamId}` }, 
-        async () => {
-          // Re-fetch groups server-side via router refresh
-          router.refresh()
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setGroups(prev => {
+              const existing = new Set(prev.map(g => g.id))
+              if (!existing.has(payload.new.id)) return [payload.new as Group, ...prev]
+              return prev
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            setGroups(prev => prev.map(g => g.id === payload.new.id ? { ...g, ...payload.new } as Group : g))
+          } else if (payload.eventType === 'DELETE') {
+            setGroups(prev => prev.filter(g => g.id !== payload.old.id))
+          }
         }
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'screen_group_members', filter: `team_id=eq.${teamId}` }, 
-        async () => {
-          router.refresh()
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setMemberships(prev => {
+              const existing = prev.some(m => m.group_id === payload.new.group_id && m.device_id === payload.new.device_id)
+              if (!existing) return [payload.new as Membership, ...prev]
+              return prev
+            })
+          } else if (payload.eventType === 'DELETE') {
+            setMemberships(prev => prev.filter(m => !(m.group_id === payload.old.group_id && m.device_id === payload.old.device_id)))
+          }
         }
       )
       .subscribe()
@@ -111,14 +157,7 @@ export default function GroupsClient({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [teamId, router, supabase])
-
-  // Sync state from server props when they update (realtime router.refresh triggers this)
-  useEffect(() => {
-    setGroups(initialGroups)
-    setDevices(initialDevices)
-    setMemberships(initialMemberships)
-  }, [initialGroups, initialDevices, initialMemberships])
+  }, [teamId, supabase])
 
   // Handle outside clicks to close the context menus
   useEffect(() => {

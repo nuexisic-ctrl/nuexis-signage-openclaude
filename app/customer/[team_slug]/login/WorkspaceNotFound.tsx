@@ -15,7 +15,7 @@ export default function WorkspaceNotFound({ teamSlug }: WorkspaceNotFoundProps) 
         {/* Logo */}
         <Link href="/" className="navbar-logo" style={{ display: 'block', textAlign: 'center', marginBottom: '8px' }}>
           <Image 
-            src="/Nuexis-logo.png" 
+            src="/NuExis-logo.png" 
             alt="NuExis Logo" 
             width={140} 
             height={40} 

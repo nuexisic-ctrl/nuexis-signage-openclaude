@@ -78,7 +78,7 @@ export default function SignupPage() {
       <div className={`auth-shell ${styles.lightThemeWrapper}`}>
         <div className={styles.wrapper}>
           <Link href="/" className="navbar-logo" style={{ display: 'block', textAlign: 'center', marginBottom: '16px' }}>
-            <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto', width: 'auto', height: 'auto' }} />
+            <Image src="/NuExis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto', width: 'auto', height: 'auto' }} />
           </Link>
           <div className={styles.card} style={{ textAlign: 'center', padding: '40px 20px' }}>
             <div style={{ fontSize: '48px', marginBottom: '20px' }}>📧</div>
@@ -101,7 +101,7 @@ export default function SignupPage() {
       <div className={styles.wrapper}>
         {/* Logo */}
         <Link href="/" className="navbar-logo" style={{ display: 'block', textAlign: 'center', marginBottom: '16px' }}>
-          <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto', width: 'auto', height: 'auto' }} />
+          <Image src="/NuExis-logo.png" alt="NuExis Logo" width={160} height={46} priority style={{ margin: '0 auto', width: 'auto', height: 'auto' }} />
         </Link>
 
         {/* Header */}

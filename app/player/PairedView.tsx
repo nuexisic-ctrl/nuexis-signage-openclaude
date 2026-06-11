@@ -337,7 +337,7 @@ export default function PairedView({
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img 
-                  src="/Nuexis-logo.png" 
+                  src="/NuExis-logo.png" 
                   alt="NuExis Logo" 
                   style={{ width: '180px', height: '50px', objectFit: 'contain', objectPosition: 'left center' }} 
                 />
