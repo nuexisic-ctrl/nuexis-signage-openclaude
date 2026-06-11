@@ -43,9 +43,9 @@ function SlideshowPreview({ filePath }: { filePath: string }) {
     const loadAndResolve = async () => {
       try {
         const config = JSON.parse(filePath)
-        const rawImages = config.images || []
+        const rawImages = (config.images || []) as SlideshowImage[]
         const resolved = await Promise.all(
-          rawImages.map(async (img: any) => {
+          rawImages.map(async (img) => {
             try {
               const url = await getCachedSignedUrl(supabase, img.file_path, 3600)
               return { ...img, url: url || undefined }
@@ -69,7 +69,7 @@ function SlideshowPreview({ filePath }: { filePath: string }) {
     return () => {
       isCancelled = true
     }
-  }, [filePath])
+  }, [filePath, supabase])
 
   if (loading) {
     return (
@@ -79,29 +79,74 @@ function SlideshowPreview({ filePath }: { filePath: string }) {
     )
   }
 
+  let config: { images?: { file_path: string }[]; animation?: "fade" | "slide-left" | "slide-right" | "zoom-in" | "zoom-out"; backgroundColor?: string; duration?: number } | null = null
   try {
-    const config = JSON.parse(filePath)
-    return (
-      <div style={{ width: '100%', height: '100%', minHeight: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <FlowSlideshowRenderer
-          images={images}
-          animation={config.animation}
-          backgroundColor={config.backgroundColor}
-          duration={config.duration}
-        />
-      </div>
-    )
+    config = JSON.parse(filePath)
   } catch {
     return <div style={{ color: 'red', padding: '20px' }}>Error rendering Slideshow widget</div>
   }
+
+  if (!config) {
+    return <div style={{ color: 'red', padding: '20px' }}>Error rendering Slideshow widget</div>
+  }
+
+  return (
+    <div style={{ width: '100%', height: '100%', minHeight: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <FlowSlideshowRenderer
+        images={images}
+        animation={config.animation}
+        backgroundColor={config.backgroundColor}
+        duration={config.duration}
+      />
+    </div>
+  )
 }
 
 export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
+  const [prevPreviewUrl, setPrevPreviewUrl] = useState(previewUrl)
+  const [resolvedUrl, setResolvedUrl] = useState(previewUrl)
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    if (resolvedUrl) return
+    const isImageOrVideo = isImage(asset.mime_type) || isVideo(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode'
+    if (!isImageOrVideo) return
+
+    let active = true
+    const resolveOnDemand = async () => {
+      try {
+        let filePathToSign = asset.file_path
+        if (asset.mime_type === 'application/x-widget-qrcode') {
+          try {
+            const config = JSON.parse(asset.file_path)
+            filePathToSign = config.png_path
+          } catch {}
+        }
+        const url = await getCachedSignedUrl(supabase, filePathToSign, 3600)
+        if (active && url) {
+          setResolvedUrl(url)
+        }
+      } catch (err) {
+        console.error('Failed to resolve signed URL on-demand in AssetPreviewModal:', err)
+      }
+    }
+    resolveOnDemand()
+    return () => {
+      active = false
+    }
+  }, [resolvedUrl, asset.mime_type, asset.file_path, supabase])
+
   const dialogRef = useA11yModal({
     id: 'asset-preview-modal',
     onClose,
     initialFocusSelector: 'button[data-modal-close="true"]',
   })
+
+  if (previewUrl !== prevPreviewUrl) {
+    setPrevPreviewUrl(previewUrl)
+    setResolvedUrl(previewUrl)
+  }
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -155,7 +200,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
   return (
     <div className={styles.modalOverlay} onClick={handleBackdropClick} role="presentation">
       <div
-        ref={dialogRef as any}
+        ref={dialogRef as unknown as React.RefObject<HTMLDivElement>}
         className={styles.modalContainer}
         style={{ maxWidth: '900px', width: '90vw' }}
         role="dialog"
@@ -213,11 +258,11 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
             overflow: 'hidden',
           }}
         >
-          {isImg && previewUrl ? (
+          {isImg && resolvedUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={previewUrl} alt={asset.file_name} className={styles.modalMedia} style={{ maxHeight: '70vh', objectFit: 'contain' }} />
-          ) : isVid && previewUrl ? (
-            <video src={previewUrl} controls autoPlay className={styles.modalMedia} style={{ maxHeight: '70vh', maxWidth: '100%' }} />
+            <img src={resolvedUrl} alt={asset.file_name} className={styles.modalMedia} style={{ maxHeight: '70vh', objectFit: 'contain' }} />
+          ) : isVid && resolvedUrl ? (
+            <video src={resolvedUrl} controls autoPlay className={styles.modalMedia} style={{ maxHeight: '70vh', maxWidth: '100%' }} />
           ) : isYouTube && youtubeVideoId ? (
             <iframe 
               src={`https://www.youtube.com/embed/${youtubeVideoId}?autoplay=1${youtubeCcEnabled ? '&cc_load_policy=1' : ''}`}

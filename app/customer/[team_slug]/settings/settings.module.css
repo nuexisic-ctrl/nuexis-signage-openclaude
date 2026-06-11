@@ -237,3 +237,60 @@
 .saveBtn:active {
   transform: translateY(0);
 }
+
+/* Allowed Domains Settings */
+.domainList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.domainTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  color: var(--on-surface);
+  font-size: 0.85rem;
+}
+
+.removeDomainBtn {
+  background: none;
+  border: none;
+  color: var(--on-surface-subtle);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.removeDomainBtn:hover {
+  color: #ef4444;
+}
+
+.domainInputGroup {
+  display: flex;
+  gap: 10px;
+}
+
+.addDomainBtn {
+  height: 44px;
+  padding: 0 16px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  color: var(--on-surface);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.addDomainBtn:hover {
+  background: var(--surface-container);
+}
+

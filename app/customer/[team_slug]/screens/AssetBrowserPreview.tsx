@@ -82,25 +82,25 @@ export function CardPreview({ asset, previewUrls }: CardPreviewProps) {
     return (
       <div className={styles.cardPreviewBox} style={{ background: 'var(--surface-low)', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {asset.mime_type === 'application/x-widget-youtube' ? (
-          <YoutubeIcon size={72} style={{ stroke: '#ff0000', color: '#ff0000' }} />
+          <YoutubeIcon size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
         ) : asset.mime_type === 'application/x-widget-youtube-playlist' ? (
-          <List size={72} style={{ stroke: '#ff4444', color: '#ff4444' }} />
+          <List size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
         ) : asset.mime_type === 'application/x-widget-remote-url' ? (
-          <FileText size={72} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
+          <FileText size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
         ) : asset.mime_type === 'application/x-widget-html' ? (
-          <Code size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
+          <Code size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
         ) : asset.mime_type === 'application/x-widget-flow' ? (
-          <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+          <Clock size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
         ) : asset.mime_type === 'application/x-widget-worldclock' ? (
-          <Globe size={72} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
+          <Globe size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
         ) : asset.mime_type === 'application/x-widget-countdown' ? (
-          <Hourglass size={72} style={{ stroke: '#eab308', color: '#eab308' }} />
+          <Hourglass size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
         ) : asset.mime_type === 'application/x-widget-countup' ? (
-          <Hourglass size={72} style={{ stroke: '#22c55e', color: '#22c55e' }} />
+          <Hourglass size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
         ) : asset.mime_type === 'application/x-widget-qrcode' ? (
-          <QrCode size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
+          <QrCode size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
         ) : (
-          <LayoutGrid size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
+          <LayoutGrid size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
         )}
       </div>
     )
@@ -152,63 +152,53 @@ interface TableIconProps {
   previewUrls: Record<string, string>
 }
 
-export function TableIcon({ asset, previewUrls }: TableIconProps) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function TableIcon({ asset, previewUrls: _previewUrls }: TableIconProps) {
   if (asset.mime_type === 'application/x-folder') {
-    return <Folder size={18} style={{ stroke: asset.color || '#78716c', fill: asset.color || '#78716c', fillOpacity: 0.15 }} />
+    return <Folder size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
   }
 
   const isWidget = asset.mime_type.startsWith('application/x-widget')
   const isVideo = asset.mime_type.startsWith('video/')
   const isImage = asset.mime_type.startsWith('image/')
-  const previewUrl = previewUrls[asset.file_path]
-
-  if (asset.mime_type === 'application/x-widget-qrcode' && previewUrl) {
-    return <img src={previewUrl} className={styles.tableThumbnail} alt="" />
-  }
 
   if (isWidget) {
     if (asset.mime_type === 'application/x-widget-youtube') {
-      return <YoutubeIcon size={18} style={{ stroke: '#ff0000', color: '#ff0000' }} />
+      return <YoutubeIcon size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
     }
     if (asset.mime_type === 'application/x-widget-youtube-playlist') {
-      return <List size={18} style={{ stroke: '#ff4444', color: '#ff4444' }} />
+      return <List size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
     }
     if (asset.mime_type === 'application/x-widget-remote-url') {
-      return <FileText size={18} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
+      return <FileText size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
     }
     if (asset.mime_type === 'application/x-widget-html') {
-      return <Code size={18} style={{ stroke: '#10b981', color: '#10b981' }} />
+      return <Code size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
     }
     if (asset.mime_type === 'application/x-widget-flow') {
-      return <Clock size={18} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+      return <Clock size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
     }
     if (asset.mime_type === 'application/x-widget-worldclock') {
-      return <Globe size={18} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
+      return <Globe size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
     }
     if (asset.mime_type === 'application/x-widget-countdown') {
-      return <Hourglass size={18} style={{ stroke: '#eab308', color: '#eab308' }} />
+      return <Hourglass size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
     }
     if (asset.mime_type === 'application/x-widget-countup') {
-      return <Hourglass size={18} style={{ stroke: '#22c55e', color: '#22c55e' }} />
+      return <Hourglass size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
     }
     if (asset.mime_type === 'application/x-widget-qrcode') {
-      return <QrCode size={18} style={{ stroke: '#a855f7', color: '#a855f7' }} />
+      return <QrCode size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
     }
-    return <LayoutGrid size={18} style={{ stroke: '#a855f7', color: '#a855f7' }} />
+    return <LayoutGrid size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
   }
   if (isImage) {
-    if (previewUrl) {
-      return <img src={previewUrl} className={styles.tableThumbnail} alt="" />
-    }
-    return <ImageIcon size={18} />
+    return <ImageIcon size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
   }
   if (isVideo) {
-    if (previewUrl) {
-      return <video src={`${previewUrl}#t=0.001`} className={styles.tableThumbnail} preload="metadata" muted playsInline />
-    }
-    return <Video size={18} />
+    return <Video size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
   }
-  return <FileText size={18} />
+  return <FileText size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
 }
 
 export function useFilteredAssets(allLoadedAssets: Asset[], activeFolder: Asset | null) {

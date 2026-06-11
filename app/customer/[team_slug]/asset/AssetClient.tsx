@@ -2,8 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder, X, ChevronDown } from 'lucide-react'
+import { Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder, X, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import { moveAssetsToFolder, fetchFolderFiles } from './actions'
@@ -63,6 +62,23 @@ export default function AssetClient({
   const [activeFolder, setActiveFolder] = useState<Asset | null>(folder || null)
   const [isLoadingFiles, setIsLoadingFiles] = useState(false)
 
+  // Track prev props for synchronization
+  const [prevInitialFolders, setPrevInitialFolders] = useState(initialFolders)
+  const [prevInitialFiles, setPrevInitialFiles] = useState(initialFiles)
+  const [prevFolder, setPrevFolder] = useState(folder)
+
+
+
+  const foldersRef = useRef(folders)
+  useEffect(() => {
+    foldersRef.current = folders
+  }, [folders])
+
+  const filesCacheRef = useRef(filesCache)
+  useEffect(() => {
+    filesCacheRef.current = filesCache
+  }, [filesCache])
+
   // Derived state to keep components fully compatible with the old assets variable
   const currentFiles = useMemo(() => 
     filesCache[activeFolder?.id || 'root'] || EMPTY_FILES_ARRAY,
@@ -77,8 +93,8 @@ export default function AssetClient({
   // Custom setAssets wrapper to update folders and filesCache dynamically
   const setAssets = useCallback((updater: Asset[] | ((prev: Asset[]) => Asset[])) => {
     const activeId = activeFolder?.id || 'root'
-    const currentFilesList = filesCache[activeId] || []
-    const currentSubfoldersList = folders.filter(f => (f.folder_id || null) === (activeFolder?.id || null))
+    const currentFilesList = filesCacheRef.current[activeId] || []
+    const currentSubfoldersList = foldersRef.current.filter(f => (f.folder_id || null) === (activeFolder?.id || null))
     const currentCombined = [...currentSubfoldersList, ...currentFilesList]
 
     const nextCombined = typeof updater === 'function' ? updater(currentCombined) : updater
@@ -129,7 +145,7 @@ export default function AssetClient({
 
       return next
     })
-  }, [folders, filesCache, activeFolder])
+  }, [activeFolder])
 
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null)
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null)
@@ -158,7 +174,13 @@ export default function AssetClient({
     })
   }, [])
   
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('assetsViewMode')
+      if (saved === 'grid' || saved === 'table') return saved
+    }
+    return 'table'
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(false)
   const [sortBy, setSortBy] = useState<string>('created-desc')
@@ -180,7 +202,16 @@ export default function AssetClient({
   const [showSuccessPulse, setShowSuccessPulse] = useState(false)
 
   const [currentPage, setCurrentPage] = useState(initialCurrentPage)
-  const [pageSize, setPageSize] = useState<number>(initialPageSize)
+  const [pageSize, setPageSize] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('nuexis_assets_per_page')
+      if (saved) return Number(saved) || 10
+    }
+    return initialPageSize
+  })
+
+  const [prevFilters, setPrevFilters] = useState({ searchQuery, filterType, filterDatePreset, filterSizePreset, sortBy })
+
 
   const [, startTransition] = useTransition()
   const router = useRouter()
@@ -258,16 +289,7 @@ export default function AssetClient({
     }
   }, [])
 
-  useEffect(() => {
-    const savedLimit = localStorage.getItem('nuexis_assets_per_page')
-    if (savedLimit) {
-      setPageSize(Number(savedLimit) || 10)
-    }
-  }, [])
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, filterType, filterDatePreset, filterSizePreset, sortBy])
 
   useEffect(() => {
     if (!isSortOpen) return
@@ -304,29 +326,9 @@ export default function AssetClient({
   })
 
   useEffect(() => {
-    const saved = localStorage.getItem('assetsViewMode')
-    if (saved === 'grid' || saved === 'table') {
-      setViewMode(saved)
-    }
-    setIsMounted(true)
+    const timer = setTimeout(() => setIsMounted(true), 0)
+    return () => clearTimeout(timer)
   }, [])
-
-  useEffect(() => {
-    setFolders(initialFolders)
-    
-    // Group all initial files by folder_id
-    const newCache: Record<string, Asset[]> = {}
-    initialFiles.forEach(file => {
-      const key = file.folder_id || 'root'
-      if (!newCache[key]) newCache[key] = []
-      newCache[key].push(file)
-    })
-    setFilesCache(newCache)
-  }, [initialFolders, initialFiles])
-
-  useEffect(() => {
-    setActiveFolder(folder || null)
-  }, [folder])
 
   const refreshData = useCallback(async (targetFolderId: string | null = activeFolder?.id || null) => {
     setIsRefreshing(true)
@@ -367,13 +369,13 @@ export default function AssetClient({
   }, [isRefreshing, refreshData, activeFolder])
 
   // Caching: SWR file fetcher
+
   const loadFolderFiles = useCallback(async (folderId: string | null) => {
     const cacheKey = folderId || 'root'
-    const hasCache = !!filesCache[cacheKey]
-    if (!hasCache) {
-      setIsLoadingFiles(true)
-    }
+    const hasCache = !!filesCacheRef.current[cacheKey]
+    if (hasCache) return
 
+    setIsLoadingFiles(true)
     try {
       if (folderId) {
         const { data: folderExists, error: folderCheckError } = await supabase
@@ -405,10 +407,17 @@ export default function AssetClient({
     } finally {
       setIsLoadingFiles(false)
     }
-  }, [teamSlug, filesCache, t, supabase, handleRefresh])
+  }, [teamSlug, t, supabase, handleRefresh])
 
   useEffect(() => {
-    loadFolderFiles(activeFolder?.id || null)
+    const activeId = activeFolder?.id || null
+    const cacheKey = activeId || 'root'
+    if (filesCacheRef.current[cacheKey]) return
+
+    const timer = setTimeout(() => {
+      loadFolderFiles(activeId)
+    }, 0)
+    return () => clearTimeout(timer)
   }, [activeFolder, loadFolderFiles])
 
   const resolveFolderFromPath = useCallback((pathStr: string | null): Asset | null => {
@@ -522,9 +531,11 @@ export default function AssetClient({
         pathStr = '/' + pathSegments.map(encodeURIComponent).join('/')
       }
       toast.warning(t('This folder no longer exists. Returning to parent folder...'))
-      navigateToFolder(newActive, pathStr)
+      setTimeout(() => {
+        navigateToFolder(newActive, pathStr)
+      }, 0)
     }
-  }, [folders, activeFolder, navigateToFolder, t])
+  }, [folders, activeFolder, navigateToFolder])
 
   const breadcrumbs = useMemo(() => {
     const list: { name: string; folder: Asset | null; path: string }[] = [
@@ -582,7 +593,6 @@ export default function AssetClient({
   }, [previewUrls])
 
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null)
-  const [isBreadcrumbDragOver, setIsBreadcrumbDragOver] = useState(false)
 
   const moveAssetsOptimistically = useCallback(async (assetIds: string[], targetFolderId: string | null, targetFolderName: string) => {
     const previousAssets = [...assets]
@@ -612,14 +622,15 @@ export default function AssetClient({
         toast.error(result.error || t('Failed to move assets.'))
         return false
       }
-    } catch (err) {
+    } catch {
       setAssets(previousAssets)
       setSelectedAssetIds(previousSelected)
       toast.error(t('Failed to move assets due to a network error.'))
       return false
     }
-  }, [assets, selectedAssetIds, teamSlug, router, refreshData])
+  }, [assets, selectedAssetIds, teamSlug, router, refreshData, setAssets])
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleMoveDrop = useCallback((draggedId: string, targetFolderId: string | null, targetFolderName: string) => {
     const draggedIds = draggedId.split(',').map(x => x.trim()).filter(Boolean)
     let finalIds = [...draggedIds]
@@ -634,63 +645,7 @@ export default function AssetClient({
     moveAssetsOptimistically(sanitized, targetFolderId, targetFolderName)
   }, [selectedAssetIds, moveAssetsOptimistically])
 
-  useEffect(() => {
-    let cancelled = false
-    const generateUrls = async () => {
-      const targetAssets = assets.map(asset => {
-        if (asset.mime_type === 'application/x-widget-qrcode') {
-          try {
-            const config = JSON.parse(asset.file_path)
-            return { originalPath: asset.file_path, filePathToSign: config.png_path }
-          } catch {
-            return null
-          }
-        }
-        if ((isImage(asset.mime_type) || isVideo(asset.mime_type)) && !asset.mime_type.startsWith('application/x-widget')) {
-          return { originalPath: asset.file_path, filePathToSign: asset.file_path }
-        }
-        return null
-      }).filter(Boolean) as { originalPath: string, filePathToSign: string }[]
 
-      const existing = previewUrlsRef.current
-      const missing = targetAssets.filter(item => !existing.has(item.originalPath))
-      const existingKeys = new Set(targetAssets.map(item => item.originalPath))
-
-      const results = missing.length === 0
-        ? []
-        : await Promise.all(
-            missing.map(async (item) => {
-              const url = await getCachedSignedUrl(supabase, item.filePathToSign, 3600)
-              return { path: item.originalPath, url }
-            })
-          )
-      if (cancelled) return
-
-      const hasPruned = Array.from(existing.keys()).some(key => !existingKeys.has(key))
-      const hasAdded = results.some(res => res.url && !existing.has(res.path))
-
-      if (hasPruned || hasAdded) {
-        setPreviewUrls(prev => {
-          const next = new Map(prev)
-          // Prune URLs for assets that no longer exist (keeps memory bounded).
-          Array.from(next.keys()).forEach(key => {
-            if (!existingKeys.has(key)) next.delete(key)
-          })
-          for (const res of results) {
-            if (res.url) next.set(res.path, res.url)
-          }
-          return next
-        })
-      }
-    }
-    generateUrls()
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assets, supabase])
-
-  const getPreviewUrl = useCallback((filePath: string) => {
-    return previewUrls.get(filePath) || null
-  }, [previewUrls])
 
   // handleRefresh is defined above loadFolderFiles
 
@@ -828,14 +783,9 @@ export default function AssetClient({
   const startItem = filteredAssets.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
   const endItem = Math.min(currentPage * pageSize, filteredAssets.length)
 
-  // Clamp current page when filters reduce results.
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages)
-    }
-  }, [currentPage, totalPages])
 
-  // Navigate to a new page ΓÇö update local state and localStorage
+
+  // Navigate to a new page — update local state and localStorage
   const navigatePage = (page: number, limit: number) => {
     setPageSize(limit)
     setCurrentPage(page)
@@ -846,6 +796,66 @@ export default function AssetClient({
     const from = (currentPage - 1) * pageSize
     return filteredAssets.slice(from, from + pageSize)
   }, [filteredAssets, currentPage, pageSize])
+
+  useEffect(() => {
+    let cancelled = false
+    const generateUrls = async () => {
+      if (viewMode === 'table') return
+
+      const targetAssets = paginatedAssets.map(asset => {
+        if (asset.mime_type === 'application/x-widget-qrcode') {
+          try {
+            const config = JSON.parse(asset.file_path)
+            return { originalPath: asset.file_path, filePathToSign: config.png_path }
+          } catch {
+            return null
+          }
+        }
+        if ((isImage(asset.mime_type) || isVideo(asset.mime_type)) && !asset.mime_type.startsWith('application/x-widget')) {
+          return { originalPath: asset.file_path, filePathToSign: asset.file_path }
+        }
+        return null
+      }).filter(Boolean) as { originalPath: string, filePathToSign: string }[]
+
+      const existing = previewUrlsRef.current
+      const missing = targetAssets.filter(item => !existing.has(item.originalPath))
+      const existingKeys = new Set(targetAssets.map(item => item.originalPath))
+
+      const results = missing.length === 0
+        ? []
+        : await Promise.all(
+            missing.map(async (item) => {
+              const url = await getCachedSignedUrl(supabase, item.filePathToSign, 3600)
+              return { path: item.originalPath, url }
+            })
+          )
+      if (cancelled) return
+
+      const hasPruned = Array.from(existing.keys()).some(key => !existingKeys.has(key))
+      const hasAdded = results.some(res => res.url && !existing.has(res.path))
+
+      if (hasPruned || hasAdded) {
+        setPreviewUrls(prev => {
+          const next = new Map(prev)
+          // Prune URLs for assets that no longer exist (keeps memory bounded).
+          Array.from(next.keys()).forEach(key => {
+            if (!existingKeys.has(key)) next.delete(key)
+          })
+          for (const res of results) {
+            if (res.url) next.set(res.path, res.url)
+          }
+          return next
+        })
+      }
+    }
+    generateUrls()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paginatedAssets, viewMode, supabase])
+
+  const getPreviewUrl = useCallback((filePath: string) => {
+    return previewUrls.get(filePath) || null
+  }, [previewUrls])
 
   const folderAssetsCount = useMemo(() => {
     if (!activeFolder) return 0
@@ -858,6 +868,42 @@ export default function AssetClient({
     (filterSizePreset !== 'all' && (filterSizePreset !== 'custom' || filterMinSize !== '' || filterMaxSize !== ''))
 
   const isFiltersActive = isFilterSidebarOpen || hasActiveFilters
+  // ── Render phase state synchronizations (must be placed after ALL hook declarations to avoid hook count mismatches) ──
+
+  if (initialFolders !== prevInitialFolders || initialFiles !== prevInitialFiles) {
+    setPrevInitialFolders(initialFolders)
+    setPrevInitialFiles(initialFiles)
+    setFolders(initialFolders)
+    const newCache: Record<string, Asset[]> = {}
+    initialFiles.forEach(file => {
+      const key = file.folder_id || 'root'
+      if (!newCache[key]) newCache[key] = []
+      newCache[key].push(file)
+    })
+    setFilesCache(newCache)
+  }
+
+  if (folder !== prevFolder) {
+    setPrevFolder(folder)
+    setActiveFolder(folder || null)
+  }
+
+  if (
+    searchQuery !== prevFilters.searchQuery ||
+    filterType !== prevFilters.filterType ||
+    filterDatePreset !== prevFilters.filterDatePreset ||
+    filterSizePreset !== prevFilters.filterSizePreset ||
+    sortBy !== prevFilters.sortBy
+  ) {
+    setPrevFilters({ searchQuery, filterType, filterDatePreset, filterSizePreset, sortBy })
+    setCurrentPage(1)
+  }
+
+  // Clamp current page when filters reduce results.
+  if (currentPage > totalPages) {
+    setCurrentPage(totalPages)
+  }
+
   const showFilterDot = hasActiveFilters
 
   return (

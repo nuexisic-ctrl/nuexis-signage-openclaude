@@ -1,25 +1,60 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
+import { redis } from '@/lib/redis'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Player is always public and uses device_secret for auth — no user session needed.
-  // We completely bypass Supabase Auth for /player routes to prevent massive API scaling issues
-  // where thousands of screens would constantly ping /auth/v1/user unnecessarily.
-  if (pathname.startsWith('/player')) {
-    return NextResponse.next()
+  // Fetch allowed domains from Redis
+  let allowedDomains: string[] = []
+  try {
+    if (redis) {
+      const cached = await redis.get<string | string[]>('allowed_domains:all')
+      if (cached) {
+        allowedDomains = typeof cached === 'string' ? JSON.parse(cached) : cached
+      }
+    }
+  } catch (err) {
+    console.error('[middleware] Failed to fetch allowed domains from Redis:', err)
   }
 
-  // Landing page is public — no session needed
-  if (pathname === '/') return NextResponse.next()
+  // Construct dynamic CSP
+  const allowedDomainsStr = allowedDomains.map(d => `https://${d} https://*.${d}`).join(' ')
+  const cspHeader = [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' blob: data: https://*.supabase.co",
+    "media-src 'self' blob: https://*.supabase.co",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    `frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com ${allowedDomainsStr}`,
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    ...(process.env.NODE_ENV === 'production' ? ["upgrade-insecure-requests"] : []),
+  ].join('; ')
 
-  // API routes handle their own auth
-  if (pathname.startsWith('/api/')) return NextResponse.next()
+  let response: NextResponse
 
-  const supabaseResponse = await updateSession(request)
+  if (pathname.startsWith('/player')) {
+    // Player is always public and uses device_secret for auth — no user session needed.
+    // We completely bypass Supabase Auth for /player routes to prevent massive API scaling issues
+    response = NextResponse.next()
+  } else if (pathname === '/') {
+    // Landing page is public — no session needed
+    response = NextResponse.next()
+  } else if (pathname.startsWith('/api/')) {
+    // API routes handle their own auth
+    response = NextResponse.next()
+  } else {
+    response = await updateSession(request)
+  }
 
-  return supabaseResponse
+  // Inject the dynamic CSP header
+  response.headers.set('Content-Security-Policy', cspHeader)
+  return response
 }
 
 export const config = {

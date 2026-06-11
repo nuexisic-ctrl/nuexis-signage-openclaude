@@ -3,7 +3,7 @@
 import { createPortal } from 'react-dom'
 import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Globe, Images, FileText, Music, Image as ImageIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
+import { Asset, ScreenDevice, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
 import styles from './AssetCard.module.css'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
@@ -28,7 +28,8 @@ const YoutubeIcon = ({ size = 20, style }: { size?: number; style?: React.CSSPro
 export function AssetCard({
   asset,
   previewUrl,
-  screens,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  screens: _screens,
   onDelete,
   onPreview,
   onRename,
@@ -227,23 +228,23 @@ export function AssetCard({
           <div className={styles.videoThumbWrapper} style={{ position: 'relative', width: '100%', height: '100%' }}>
              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-low)' }}>
                  {asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? (
-                  <YoutubeIcon size={72} style={{ stroke: '#ff0000', color: '#ff0000' }} />
+                  <YoutubeIcon size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
                 ) : asset.mime_type === 'application/x-widget-remote-url' ? (
-                  <Link size={72} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
+                  <Link size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
                 ) : asset.mime_type === 'application/x-widget-html' ? (
-                  <Code size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
+                  <Code size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
                 ) : asset.mime_type === 'application/x-widget-flow' ? (
-                  <Clock size={72} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                  <Clock size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
                 ) : asset.mime_type === 'application/x-widget-worldclock' ? (
-                  <Globe size={72} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
+                  <Globe size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
                 ) : asset.mime_type === 'application/x-widget-countdown' ? (
-                  <Hourglass size={72} style={{ stroke: '#eab308', color: '#eab308' }} />
+                  <Hourglass size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
                 ) : asset.mime_type === 'application/x-widget-slideshow' ? (
-                  <Images size={72} style={{ stroke: '#ec4899', color: '#ec4899' }} />
+                  <Images size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
                 ) : asset.mime_type === 'application/x-widget-qrcode' ? (
-                  <QrCode size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
+                  <QrCode size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
                 ) : (
-                  <LayoutTemplate size={72} style={{ stroke: '#a855f7', color: '#a855f7' }} />
+                  <LayoutTemplate size={72} style={{ stroke: 'var(--on-surface-subtle)', color: 'var(--on-surface-subtle)' }} />
                 )}
              </div>
           </div>
@@ -265,13 +266,13 @@ export function AssetCard({
           <span>{date}</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--on-surface-subtle)' }} title={asset.mime_type}>
             {(() => {
-              if (isFolder) return <Folder size={12} style={{ stroke: asset.color || '#78716c' }} />
-              if (isImage(asset.mime_type)) return <ImageIcon size={12} style={{ stroke: '#22c55e' }} />
-              if (isVideo(asset.mime_type)) return <Play size={12} style={{ stroke: '#3b82f6' }} />
-              if (asset.mime_type.startsWith('audio/')) return <Music size={12} style={{ stroke: '#f59e0b' }} />
-              if (asset.mime_type === 'application/pdf') return <FileText size={12} style={{ stroke: '#ef4444' }} />
-              if (isWidget(asset.mime_type)) return <Code size={12} style={{ stroke: '#a855f7' }} />
-              return <File size={12} style={{ stroke: '#64748b' }} />
+              if (isFolder) return <Folder size={12} style={{ stroke: 'var(--on-surface-subtle)' }} />
+              if (isImage(asset.mime_type)) return <ImageIcon size={12} style={{ stroke: 'var(--on-surface-subtle)' }} />
+              if (isVideo(asset.mime_type)) return <Play size={12} style={{ stroke: 'var(--on-surface-subtle)' }} />
+              if (asset.mime_type.startsWith('audio/')) return <Music size={12} style={{ stroke: 'var(--on-surface-subtle)' }} />
+              if (asset.mime_type === 'application/pdf') return <FileText size={12} style={{ stroke: 'var(--on-surface-subtle)' }} />
+              if (isWidget(asset.mime_type)) return <Code size={12} style={{ stroke: 'var(--on-surface-subtle)' }} />
+              return <File size={12} style={{ stroke: 'var(--on-surface-subtle)' }} />
             })()}
           </span>
         </div>

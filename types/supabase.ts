@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       activity_log: {
@@ -462,6 +437,7 @@ export type Database = {
       }
       teams: {
         Row: {
+          allowed_domains: string[] | null
           created_at: string | null
           historical_playtime_seconds: number
           id: string
@@ -469,6 +445,7 @@ export type Database = {
           slug: string
         }
         Insert: {
+          allowed_domains?: string[] | null
           created_at?: string | null
           historical_playtime_seconds?: number
           id?: string
@@ -476,6 +453,7 @@ export type Database = {
           slug: string
         }
         Update: {
+          allowed_domains?: string[] | null
           created_at?: string | null
           historical_playtime_seconds?: number
           id?: string
@@ -816,9 +794,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

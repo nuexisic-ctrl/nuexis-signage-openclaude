@@ -32,7 +32,8 @@ export function FolderContentsModal({
   onPreviewAsset,
   onRenameAsset,
   onDeleteAsset,
-  getPreviewUrl,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getPreviewUrl: _getPreviewUrl,
   onRefresh,
 }: {
   folder: Asset
@@ -136,35 +137,26 @@ export function FolderContentsModal({
                           flexShrink: 0
                         }}
                       >
-                        {isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode' ? (
-                          getPreviewUrl(asset.file_path) ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={getPreviewUrl(asset.file_path)!} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
-                          ) : asset.mime_type === 'application/x-widget-qrcode' ? (
-                            <QrCode size={18} style={{ stroke: '#a855f7', color: '#a855f7' }} />
-                          ) : (
-                            <ImageIcon size={18} />
-                          )
+                        {isImage(asset.mime_type) ? (
+                          <ImageIcon size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
                         ) : isVideo(asset.mime_type) ? (
-                          getPreviewUrl(asset.file_path) ? (
-                            <video src={getPreviewUrl(asset.file_path)! + '#t=0.001'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} preload="metadata" muted playsInline />
-                          ) : (
-                            <Play size={18} />
-                          )
+                          <Play size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
                         ) : asset.mime_type === 'application/x-widget-youtube' ? (
-                          <YoutubeIcon size={18} style={{ stroke: '#ff0000', color: '#ff0000' }} />
+                          <YoutubeIcon size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
                         ) : asset.mime_type === 'application/x-widget-remote-url' ? (
-                          <Link size={18} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
+                          <Link size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
                         ) : asset.mime_type === 'application/x-widget-html' ? (
-                          <Code size={18} style={{ stroke: '#10b981', color: '#10b981' }} />
+                          <Code size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
                         ) : asset.mime_type === 'application/x-widget-flow' ? (
-                          <Clock size={18} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                          <Clock size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
                         ) : asset.mime_type === 'application/x-widget-worldclock' ? (
-                          <Globe size={18} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
+                          <Globe size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
                         ) : asset.mime_type === 'application/x-widget-countdown' ? (
-                          <Hourglass size={18} style={{ stroke: '#eab308', color: '#eab308' }} />
+                          <Hourglass size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
+                        ) : asset.mime_type === 'application/x-widget-qrcode' ? (
+                          <QrCode size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
                         ) : (
-                          <File size={18} />
+                          <File size={18} style={{ stroke: 'var(--on-surface-subtle)' }} />
                         )}
                       </div>
                       

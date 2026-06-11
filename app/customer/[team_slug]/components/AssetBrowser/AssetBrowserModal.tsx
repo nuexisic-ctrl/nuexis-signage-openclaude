@@ -15,7 +15,6 @@ import { UploadPanel } from '../../asset/UploadPanel'
 import { WidgetModalsContainer } from '../../asset/WidgetModalsContainer'
 import { CreateFolderModal } from '../../asset/CreateFolderModal'
 import { useDragAndDrop } from '../../screens/AssetBrowserPreview'
-import { fetchFolderFiles } from '../../asset/actions'
 import { toast } from '@/app/components/Toast'
 import { Asset } from '../../asset/types'
 import styles from './AssetBrowser.module.css'
@@ -34,10 +33,8 @@ export interface AssetBrowserModalProps {
 
 function AssetBrowserModalContent() {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
   const {
-    allowedMimeTypes,
-    isMultiSelect,
     teamSlug,
     teamId,
     supabase,
@@ -45,8 +42,6 @@ function AssetBrowserModalContent() {
     folders,
     setFolders,
     activeFolder,
-    setActiveFolder,
-    filesCache,
     setFilesCache,
     searchQuery,
     setSearchQuery,
@@ -84,14 +79,15 @@ function AssetBrowserModalContent() {
   // Local state setAssets handler
   const handleSetAssets = useCallback((updater: Asset[] | ((prev: Asset[]) => Asset[])) => {
     const activeId = activeFolder?.id || 'root'
-    const currentFilesList = filesCache[activeId] || []
-    const nextFilesList = typeof updater === 'function' ? updater(currentFilesList) : updater
-    
-    setFilesCache(prev => ({
-      ...prev,
-      [activeId]: nextFilesList.filter(a => a.mime_type !== 'application/x-folder')
-    }))
-  }, [activeFolder, filesCache, setFilesCache])
+    setFilesCache(prev => {
+      const currentFilesList = prev[activeId] || []
+      const nextFilesList = typeof updater === 'function' ? updater(currentFilesList) : updater
+      return {
+        ...prev,
+        [activeId]: nextFilesList.filter(a => a.mime_type !== 'application/x-folder')
+      }
+    })
+  }, [activeFolder, setFilesCache])
 
   // Upload hooks & config
   const {

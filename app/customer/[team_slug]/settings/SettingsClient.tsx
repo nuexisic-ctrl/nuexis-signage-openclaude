@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import { User, Shield, Layout, Sun, Moon, Monitor } from 'lucide-react'
+import { User, Shield, Layout, Sun, Moon, Monitor, X, Globe } from 'lucide-react'
 import { toast } from '@/app/components/Toast'
 import styles from './settings.module.css'
 import { useTheme } from '@/app/components/ThemeProvider'
+import { updateTeamAllowedDomains } from './actions'
 
 interface SettingsClientProps {
   teamSlug: string
@@ -12,6 +13,7 @@ interface SettingsClientProps {
   userRole: string
   userEmail: string
   fullName: string
+  allowedDomains: string[]
 }
 
 export default function SettingsClient({
@@ -20,19 +22,61 @@ export default function SettingsClient({
   userRole,
   userEmail,
   fullName,
+  allowedDomains,
 }: SettingsClientProps) {
   const { theme: activeTheme, setTheme: setActiveTheme } = useTheme()
   const [profileName, setProfileName] = useState(fullName)
+  const [allowedDomainsList, setAllowedDomainsList] = useState<string[]>(allowedDomains)
+  const [newDomain, setNewDomain] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
   const handleSetTheme = (theme: 'light' | 'dark' | 'system') => {
     setActiveTheme(theme)
     toast.success(`Theme preference updated to ${theme}`)
   }
 
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault()
-    toast.success('Settings saved successfully (Demonstration)')
+  const handleAddDomain = () => {
+    const trimmed = newDomain.trim().toLowerCase()
+    if (!trimmed) return
+    const domainRegex = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/
+    if (!domainRegex.test(trimmed)) {
+      toast.error('Invalid domain format (e.g. example.com)')
+      return
+    }
+    if (allowedDomainsList.includes(trimmed)) {
+      toast.error('Domain already in the list')
+      return
+    }
+    setAllowedDomainsList([...allowedDomainsList, trimmed])
+    setNewDomain('')
   }
+
+  const handleRemoveDomain = (domain: string) => {
+    setAllowedDomainsList(allowedDomainsList.filter(d => d !== domain))
+  }
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSaving(true)
+    try {
+      if (userRole === 'Owner' || userRole === 'Admin') {
+        const res = await updateTeamAllowedDomains(teamSlug, allowedDomainsList)
+        if (res.success) {
+          toast.success('Workspace settings saved successfully')
+        } else {
+          toast.error(res.error || 'Failed to save settings')
+        }
+      } else {
+        toast.success('Profile settings updated (Demonstration)')
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'An error occurred while saving')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const isEditable = userRole === 'Owner' || userRole === 'Admin'
 
   return (
     <div className={styles.settingsArea}>
@@ -123,6 +167,71 @@ export default function SettingsClient({
             </div>
           </div>
 
+          {/* Section 2.5: Allowed Domains for Remote URLs */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <Globe size={18} className={styles.cardHeaderIcon} />
+              <h2 className={styles.cardTitle}>Remote URL Domain Allowlist</h2>
+            </div>
+            
+            <div className={styles.cardBody}>
+              <p className={styles.sectionDesc}>
+                Restrict remote iframe/website widget URLs to allowlisted domains for security against SSRF and XSS attacks.
+              </p>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="settings-new-domain">Add Allowed Domain</label>
+                <div className={styles.domainInputGroup}>
+                  <input
+                    id="settings-new-domain"
+                    type="text"
+                    className={styles.formInput}
+                    value={newDomain}
+                    onChange={(e) => setNewDomain(e.target.value)}
+                    placeholder="e.g. dashboard.example.com"
+                    disabled={!isEditable}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddDomain}
+                    className={styles.addDomainBtn}
+                    disabled={!isEditable}
+                  >
+                    Add
+                  </button>
+                </div>
+                {!isEditable && (
+                  <span className={styles.fieldHint}>Only workspace Owners or Admins can modify the domain allowlist.</span>
+                )}
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Currently Allowed Domains</label>
+                {allowedDomainsList.length === 0 ? (
+                  <span className={styles.fieldHint}>No domains allowlisted yet. Remote URL widgets will be blocked until a domain is added.</span>
+                ) : (
+                  <div className={styles.domainList}>
+                    {allowedDomainsList.map((domain) => (
+                      <span key={domain} className={styles.domainTag}>
+                        {domain}
+                        {isEditable && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDomain(domain)}
+                            className={styles.removeDomainBtn}
+                            title={`Remove ${domain}`}
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Section 3: Interface Themes */}
           <div className={styles.card}>
             <div className={styles.cardHeader}>
@@ -168,8 +277,8 @@ export default function SettingsClient({
 
           {/* Save Button */}
           <div className={styles.submitContainer}>
-            <button type="submit" className={styles.saveBtn}>
-              Save Changes
+            <button type="submit" className={styles.saveBtn} disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

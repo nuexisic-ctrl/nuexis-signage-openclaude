@@ -3,7 +3,7 @@
 import { createClient, requireOwner } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import sanitize from 'sanitize-filename'
-import { redis } from '@/lib/redis'
+import { redis, rateLimitAction } from '@/lib/redis'
 import DOMPurify from 'isomorphic-dompurify'
 
 export type InsertAssetResult =
@@ -33,6 +33,10 @@ export async function insertAsset(
 
   if (!teamId) {
     return { success: false, error: 'Could not determine your team. Please try again.' }
+  }
+
+  if (!(await rateLimitAction(user.id, 'insertAsset', 15, 60))) {
+    return { success: false, error: 'Rate limit exceeded. Please try again in a minute.' }
   }
 
   try {
@@ -165,6 +169,27 @@ export async function insertAsset(
       if (parsed.protocol !== 'https:') {
         return { success: false, error: 'Remote URLs must use HTTPS for security.' }
       }
+
+      const { data: teamData, error: teamError } = await supabase
+        .from('teams')
+        .select('allowed_domains')
+        .eq('id', teamId)
+        .single()
+
+      if (teamError || !teamData) {
+        return { success: false, error: 'Could not verify remote URL security configuration.' }
+      }
+
+      const allowedDomains = teamData.allowed_domains || []
+      const hostname = parsed.hostname.toLowerCase()
+      const isAllowed = allowedDomains.some((domain: string) => {
+        const d = domain.trim().toLowerCase()
+        return hostname === d || hostname.endsWith('.' + d)
+      })
+
+      if (!isAllowed) {
+        return { success: false, error: 'The remote URL domain is not in the allowed list of your workspace.' }
+      }
     } catch {
       return { success: false, error: 'Invalid URL.' }
     }
@@ -177,7 +202,7 @@ export async function insertAsset(
         ALLOWED_TAGS: [
           'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
           'br', 'img', 'a', 'strong', 'em', 'b', 'i', 'u', 'table', 'thead', 'tbody',
-          'tr', 'th', 'td', 'style'
+          'tr', 'th', 'td'
         ],
         ALLOWED_ATTR: ['class', 'style', 'src', 'href', 'target', 'alt', 'width', 'height']
       })
@@ -307,6 +332,10 @@ export async function deleteAsset(
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
+  if (!(await rateLimitAction(user.id, 'deleteAsset', 15, 60))) {
+    return { success: false, error: 'Rate limit exceeded. Please try again in a minute.' }
+  }
+
   try {
     await requireOwner(supabase, user.id)
   } catch (err: any) {
@@ -382,6 +411,10 @@ export async function updateAssetName(
 
   if (!teamId) {
     return { success: false, error: 'Could not determine your team.' }
+  }
+
+  if (!(await rateLimitAction(user.id, 'updateAssetName', 15, 60))) {
+    return { success: false, error: 'Rate limit exceeded. Please try again in a minute.' }
   }
 
   try {
@@ -552,6 +585,10 @@ export async function deleteAssetsBulk(
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
+  if (!(await rateLimitAction(user.id, 'deleteAssetsBulk', 15, 60))) {
+    return { success: false, error: 'Rate limit exceeded. Please try again in a minute.' }
+  }
+
   try {
     await requireOwner(supabase, user.id)
   } catch (err: any) {
@@ -627,6 +664,10 @@ export async function createFolder(
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
+  if (!(await rateLimitAction(user.id, 'createFolder', 15, 60))) {
+    return { success: false, error: 'Rate limit exceeded. Please try again in a minute.' }
+  }
+
   try {
     await requireOwner(supabase, user.id)
   } catch (err: any) {
@@ -678,6 +719,10 @@ export async function updateAssetFolder(
 
   if (!teamId) {
     return { success: false, error: 'Could not determine your team.' }
+  }
+
+  if (!(await rateLimitAction(user.id, 'updateAssetFolder', 15, 60))) {
+    return { success: false, error: 'Rate limit exceeded. Please try again in a minute.' }
   }
 
   try {
@@ -858,6 +903,10 @@ export async function updateWidgetAsset(
     return { success: false, error: 'Could not determine your team. Please try again.' }
   }
 
+  if (!(await rateLimitAction(user.id, 'updateWidgetAsset', 15, 60))) {
+    return { success: false, error: 'Rate limit exceeded. Please try again in a minute.' }
+  }
+
   try {
     await requireOwner(supabase, user.id)
   } catch (err: any) {
@@ -869,11 +918,12 @@ export async function updateWidgetAsset(
     return { success: false, error: 'Only widget assets can be edited with this action.' }
   }
 
-  // Verify the asset exists and belongs to the caller's team
+  // Verify the asset exists and belongs to the caller's team (scope strictly by teamId to prevent IDOR)
   const { data: existing, error: fetchError } = await supabase
     .from('assets')
     .select('id, team_id, mime_type, file_path, file_name')
     .eq('id', assetId)
+    .eq('team_id', teamId)
     .single()
 
   if (fetchError || !existing) {
@@ -1012,6 +1062,27 @@ export async function updateWidgetAsset(
       if (parsed.protocol !== 'https:') {
         return { success: false, error: 'Remote URLs must use HTTPS for security.' }
       }
+
+      const { data: teamData, error: teamError } = await supabase
+        .from('teams')
+        .select('allowed_domains')
+        .eq('id', teamId)
+        .single()
+
+      if (teamError || !teamData) {
+        return { success: false, error: 'Could not verify remote URL security configuration.' }
+      }
+
+      const allowedDomains = teamData.allowed_domains || []
+      const hostname = parsed.hostname.toLowerCase()
+      const isAllowed = allowedDomains.some((domain: string) => {
+        const d = domain.trim().toLowerCase()
+        return hostname === d || hostname.endsWith('.' + d)
+      })
+
+      if (!isAllowed) {
+        return { success: false, error: 'The remote URL domain is not in the allowed list of your workspace.' }
+      }
     } catch {
       return { success: false, error: 'Invalid URL.' }
     }
@@ -1024,7 +1095,7 @@ export async function updateWidgetAsset(
         ALLOWED_TAGS: [
           'div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li',
           'br', 'img', 'a', 'strong', 'em', 'b', 'i', 'u', 'table', 'thead', 'tbody',
-          'tr', 'th', 'td', 'style'
+          'tr', 'th', 'td'
         ],
         ALLOWED_ATTR: ['class', 'style', 'src', 'href', 'target', 'alt', 'width', 'height']
       })

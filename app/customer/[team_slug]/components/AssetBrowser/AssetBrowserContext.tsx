@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset } from '../../asset/types'
 import { fetchFolderFiles } from '../../asset/actions'
@@ -122,14 +122,18 @@ export function AssetBrowserProvider({
     setFolders(assets.filter(a => a.mime_type === 'application/x-folder'))
   }, [assets])
 
+  const filesCacheRef = useRef(filesCache)
+  useEffect(() => {
+    filesCacheRef.current = filesCache
+  }, [filesCache])
+
   const loadFolderFiles = useCallback(async (folderId: string | null) => {
     if (!teamSlug) return
     const cacheKey = folderId || 'root'
-    const hasCache = !!filesCache[cacheKey]
-    if (!hasCache) {
-      setIsLoadingFiles(true)
-    }
+    const hasCache = !!filesCacheRef.current[cacheKey]
+    if (hasCache) return
 
+    setIsLoadingFiles(true)
     try {
       if (folderId) {
         const { data: folderExists, error: folderCheckError } = await supabase
@@ -171,7 +175,7 @@ export function AssetBrowserProvider({
     } finally {
       setIsLoadingFiles(false)
     }
-  }, [teamSlug, filesCache, supabase, teamId])
+  }, [teamSlug, supabase, teamId])
 
   useEffect(() => {
     loadFolderFiles(activeFolder?.id || null)
@@ -411,7 +415,9 @@ export function AssetBrowserProvider({
   useEffect(() => {
     let isCancelled = false
     const generateUrls = async () => {
-      const targetAssets = allowedFilteredAssets.map(asset => {
+      if (viewMode === 'table') return
+
+      const targetAssets = paginatedAssets.map(asset => {
         if (asset.mime_type === 'application/x-widget-qrcode') {
           try {
             const config = JSON.parse(asset.file_path)
@@ -445,7 +451,7 @@ export function AssetBrowserProvider({
     return () => {
       isCancelled = true
     }
-  }, [allowedFilteredAssets, supabase])
+  }, [paginatedAssets, viewMode, supabase])
 
   const setViewModeWithStorage = useCallback((mode: 'grid' | 'table') => {
     setViewMode(mode)

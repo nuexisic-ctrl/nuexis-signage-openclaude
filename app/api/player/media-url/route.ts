@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { rateLimitAction } from '@/lib/redis'
 import { resilientFetch } from '@/lib/supabase/resilientFetch'
+import { createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,12 +44,34 @@ export async function POST(request: NextRequest) {
       }
       try {
         const parsedUrl = new URL(body.filePath)
+        
+        // Resolve allowed domains for this device's team
+        const adminClient = createAdminClient()
+        const { data: device, error: deviceError } = await adminClient
+          .from('devices')
+          .select('team_id')
+          .eq('id', body.deviceId)
+          .single()
+
+        if (deviceError || !device || !device.team_id) {
+          return NextResponse.json({ error: 'Device not found or not paired' }, { status: 400 })
+        }
+
+        const { data: team, error: teamError } = await adminClient
+          .from('teams')
+          .select('allowed_domains')
+          .eq('id', device.team_id)
+          .single()
+
+        const allowedDomains = team?.allowed_domains || []
+
         const allowedHosts = [
           'youtube.com',
           'www.youtube.com',
           'youtu.be',
           'youtube-nocookie.com',
           'www.youtube-nocookie.com',
+          ...allowedDomains
         ]
         
         if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -58,15 +81,18 @@ export async function POST(request: NextRequest) {
           } catch {}
         }
         
-        const isAllowed = allowedHosts.some(host => 
-          parsedUrl.hostname === host || parsedUrl.hostname.endsWith('.' + host)
-        )
+        const isAllowed = allowedHosts.some(host => {
+          const h = host.trim().toLowerCase()
+          if (!h) return false
+          return parsedUrl.hostname === h || parsedUrl.hostname.endsWith('.' + h)
+        })
         
         if (!isAllowed) {
           return NextResponse.json({ error: 'Untrusted external URL' }, { status: 400 })
         }
-      } catch {
-        return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 })
+      } catch (err: any) {
+        console.error('[player/media-url] URL verification exception:', err)
+        return NextResponse.json({ error: 'Invalid URL format or verification failed' }, { status: 400 })
       }
       return NextResponse.json({ signedUrl: body.filePath })
     }

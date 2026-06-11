@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe, Images, ChevronDown, FileText, Music } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
+import { Asset, ScreenDevice, isImage, isVideo, isWidget } from './types'
 import { t } from '@/lib/i18n'
 import styles from './AssetTableView.module.css'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
@@ -51,7 +51,8 @@ interface AssetTableViewProps {
 
 export function AssetTableView({
   filteredAssets,
-  screens,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  screens: _screens,
   openMenuId,
   menuPosition,
   setOpenMenuId,
@@ -61,7 +62,8 @@ export function AssetTableView({
   setDeleteModalAsset,
   setPushModalAsset,
   deletingIds,
-  getPreviewUrl,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getPreviewUrl: _getPreviewUrl,
   selectedAssetIds,
   setSelectedAssetIds,
   handleToggleSelect,
@@ -437,40 +439,29 @@ export function AssetTableView({
                   <div className={styles.nameCellContent}>
                     <div className={styles.deviceIconWrapper}>
                       {isFolder ? (
-                        <Folder size={20} style={{ stroke: asset.color || '#78716c', color: asset.color || '#78716c' }} />
-                      ) : isImage(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode' ? (
-                        getPreviewUrl(asset.file_path) ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={getPreviewUrl(asset.file_path)!} className={styles.tableThumbnail} alt="" />
-                        ) : asset.mime_type === 'application/x-widget-qrcode' ? (
-                          <QrCode size={20} style={{ stroke: '#a855f7', color: '#a855f7' }} />
-                        ) : (
-                          <ImageIcon size={20} />
-                        )
+                        <Folder size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
+                      ) : isImage(asset.mime_type) ? (
+                        <ImageIcon size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       ) : isVideo(asset.mime_type) ? (
-                        getPreviewUrl(asset.file_path) ? (
-                          <video src={getPreviewUrl(asset.file_path)! + '#t=0.001'} className={styles.tableThumbnail} preload="metadata" muted playsInline />
-                        ) : (
-                          <Play size={20} />
-                        )
+                        <Play size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       ) : asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? (
-                        <YoutubeIcon size={20} style={{ stroke: '#ff0000', color: '#ff0000' }} />
+                        <YoutubeIcon size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       ) : asset.mime_type === 'application/x-widget-remote-url' ? (
-                        <Link size={20} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
+                        <Link size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       ) : asset.mime_type === 'application/x-widget-html' ? (
-                        <Code size={20} style={{ stroke: '#10b981', color: '#10b981' }} />
+                        <Code size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       ) : asset.mime_type === 'application/x-widget-flow' ? (
-                        <Clock size={20} style={{ stroke: '#8b5cf6', color: '#8b5cf6' }} />
+                        <Clock size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       ) : asset.mime_type === 'application/x-widget-worldclock' ? (
-                        <Globe size={20} style={{ stroke: '#f43f5e', color: '#f43f5e' }} />
+                        <Globe size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       ) : asset.mime_type === 'application/x-widget-countdown' ? (
-                        <Hourglass size={20} style={{ stroke: '#eab308', color: '#eab308' }} />
+                        <Hourglass size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       ) : asset.mime_type === 'application/x-widget-slideshow' ? (
-                        <Images size={20} style={{ stroke: '#ec4899', color: '#ec4899' }} />
+                        <Images size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       ) : asset.mime_type === 'application/x-widget-qrcode' ? (
-                        <QrCode size={20} style={{ stroke: '#a855f7', color: '#a855f7' }} />
+                        <QrCode size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       ) : (
-                        <File size={20} />
+                        <File size={20} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       )}
                     </div>
                     <div className={styles.cellName}>
@@ -486,24 +477,24 @@ export function AssetTableView({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {(() => {
                       if (isFolder) {
-                        return <Folder size={16} style={{ stroke: asset.color || '#78716c' }} />
+                        return <Folder size={16} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       }
                       if (isImage(asset.mime_type)) {
-                        return <ImageIcon size={16} style={{ stroke: '#22c55e' }} />
+                        return <ImageIcon size={16} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       }
                       if (isVideo(asset.mime_type)) {
-                        return <Play size={16} style={{ stroke: '#3b82f6' }} />
+                        return <Play size={16} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       }
                       if (asset.mime_type.startsWith('audio/')) {
-                        return <Music size={16} style={{ stroke: '#f59e0b' }} />
+                        return <Music size={16} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       }
                       if (asset.mime_type === 'application/pdf') {
-                        return <FileText size={16} style={{ stroke: '#ef4444' }} />
+                        return <FileText size={16} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       }
                       if (isWidget(asset.mime_type)) {
-                        return <Code size={16} style={{ stroke: '#a855f7' }} />
+                        return <Code size={16} style={{ stroke: 'var(--on-surface-subtle)' }} />
                       }
-                      return <File size={16} style={{ stroke: '#64748b' }} />
+                      return <File size={16} style={{ stroke: 'var(--on-surface-subtle)' }} />
                     })()}
                     <span>
                       {(() => {

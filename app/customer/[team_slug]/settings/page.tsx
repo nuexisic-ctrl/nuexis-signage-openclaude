@@ -27,7 +27,7 @@ export default async function SettingsPage({ params }: Props) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, team_id, teams(slug, name)')
+    .select('role, team_id, teams(slug, name, allowed_domains)')
     .eq('id', user.id)
     .single()
 
@@ -38,6 +38,7 @@ export default async function SettingsPage({ params }: Props) {
 
   const teamName = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).name : 'Workspace'
   const userRole = profile?.role || 'Owner'
+  const allowedDomains = profile?.teams && !Array.isArray(profile.teams) ? ((profile.teams as any).allowed_domains || []) : []
 
   return (
     <SettingsClient
@@ -46,6 +47,8 @@ export default async function SettingsPage({ params }: Props) {
       userRole={userRole}
       userEmail={user.email ?? ''}
       fullName={user.user_metadata?.full_name ?? ''}
+      allowedDomains={allowedDomains}
     />
   )
 }
+

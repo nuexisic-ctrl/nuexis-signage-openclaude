@@ -64,24 +64,6 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: [
           {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              `script-src 'self' 'unsafe-inline' https://www.youtube.com https://s.ytimg.com${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ""}`,
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "img-src 'self' blob: data: https://*.supabase.co",
-              "media-src 'self' blob: https://*.supabase.co",
-              "font-src 'self' https://fonts.gstatic.com data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
-              "object-src 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-              "frame-ancestors 'none'",
-              ...(process.env.NODE_ENV === 'production' ? ["upgrade-insecure-requests"] : []),
-            ].join('; '),
-          },
-          {
             key: 'X-Frame-Options',
             value: 'DENY',
           },
