@@ -10,6 +10,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.nuexis.player.core.network.di.DownloadClient
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -17,7 +18,7 @@ import okhttp3.Request
 class AssetCacheWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
-    private val httpClient: OkHttpClient,
+    @DownloadClient private val httpClient: OkHttpClient,
     private val logger: StructuredLogger
 ) : CoroutineWorker(appContext, workerParams) {
 

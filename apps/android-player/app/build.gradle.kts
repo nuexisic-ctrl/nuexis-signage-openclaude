@@ -30,7 +30,7 @@ android {
             quotedBuildConfig(
                 localProperties.getProperty(
                     "PLAYER_URL",
-                    "https://signage.nuexis.com/player"
+                    "https://nuexis-signage-openclaude.vercel.app/player"
                 )
             )
         )
@@ -63,6 +63,8 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.webkit:webkit:1.11.0")
+    implementation("androidx.navigation:navigation-fragment-ktx:2.7.7")
+    implementation("androidx.navigation:navigation-ui-ktx:2.7.7")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("com.google.dagger:hilt-android:2.51")
     ksp("com.google.dagger:hilt-compiler:2.51")

@@ -30,82 +30,104 @@ export default async function ScreensPage({ params }: Props) {
   if (!user) redirect(`/customer/${team_slug}/login`)
 
   // Get the user's team_id, role, and team slug securely from their profile
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('team_id, role, teams(slug, historical_playtime_seconds)')
     .eq('id', user.id)
     .single()
+
+  if (profileError) {
+    console.error('[ScreensPage] Failed to load profile:', profileError.message)
+  }
 
   const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).slug : undefined
   if (userTeamSlug && userTeamSlug !== team_slug) {
     redirect(`/customer/${userTeamSlug}/screens`)
   }
 
-  const fullName = user.user_metadata?.full_name as string | undefined
-
   const userRole = profile?.role || 'Owner'
 
-  const query = supabase
-    .from('devices')
-    .select('id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds', { count: 'exact' })
-    .eq('team_id', profile?.team_id as string)
-    .order('created_at', { ascending: false })
-    .limit(1000)
+  // Execute all screen-related queries concurrently to eliminate waterfall delays.
+  // Wrapped in try/catch — if any query times out (authenticated role has 8s statement_timeout)
+  // or fails transiently, fall back to empty arrays instead of crashing the server render.
+  let devices: any[] = []
+  let totalScreens = 0
+  let assets: any[] = []
+  let playlists: any[] = []
+  let groups: any[] = []
+  let memberships: any[] = []
 
-  // Execute all screen-related queries concurrently to eliminate waterfall delays
-  const [response, assetsRes, playlistsRes, groupsRes, membershipsRes] = await Promise.all([
-    profile?.team_id ? query : Promise.resolve({ data: [], count: 0, error: null }),
-    profile?.team_id
-      ? supabase
+  if (profile?.team_id) {
+    try {
+      const [response, assetsRes, playlistsRes, groupsRes, membershipsRes] = await Promise.all([
+        supabase
+          .from('devices')
+          .select('id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds', { count: 'exact' })
+          .eq('team_id', profile.team_id)
+          .order('created_at', { ascending: false })
+          .limit(1000),
+        supabase
           .from('assets')
           .select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color')
           .eq('team_id', profile.team_id)
           .order('created_at', { ascending: false })
-      : Promise.resolve({ data: [], error: null }),
-    profile?.team_id
-      ? supabase
+          .limit(500),
+        supabase
           .from('playlists')
           .select('id, name, created_at, playlist_items(duration_seconds, widget_type, assets(mime_type))')
           .eq('team_id', profile.team_id)
           .order('created_at', { ascending: false })
-      : Promise.resolve({ data: [], error: null }),
-    profile?.team_id
-      ? supabase
+          .limit(200),
+        supabase
           .from('screen_groups')
           .select('*')
           .eq('team_id', profile.team_id)
           .order('name', { ascending: true })
-      : Promise.resolve({ data: [], error: null }),
-    profile?.team_id
-      ? supabase
+          .limit(200),
+        supabase
           .from('screen_group_members')
           .select('group_id, device_id, is_primary')
           .eq('team_id', profile.team_id)
-      : Promise.resolve({ data: [], error: null })
-  ])
+          .limit(2000),
+      ])
 
-  const devicesData = response.data ?? []
-  const totalScreens = response.count ?? 0
+      if (response.error) {
+        console.error('[ScreensPage] devices query error:', response.error.message)
+      } else {
+        totalScreens = response.count ?? 0
+        devices = (response.data ?? []).map((d) => ({
+          id: d.id,
+          name: d.name,
+          created_at: d.created_at,
+          content_type: d.content_type,
+          asset_id: d.asset_id,
+          playlist_id: d.playlist_id,
+          orientation: d.orientation,
+          status: d.status as 'online' | 'offline' | 'pairing',
+          last_seen_at: d.last_seen_at || null,
+          total_playtime_seconds: d.total_playtime_seconds || 0,
+        }))
+      }
 
-  const devices = devicesData.map((d) => {
-    return {
-      id: d.id,
-      name: d.name,
-      created_at: d.created_at,
-      content_type: d.content_type,
-      asset_id: d.asset_id,
-      playlist_id: d.playlist_id,
-      orientation: d.orientation,
-      status: d.status as 'online' | 'offline' | 'pairing',
-      last_seen_at: d.last_seen_at || null,
-      total_playtime_seconds: d.total_playtime_seconds || 0,
+      if (!assetsRes.error) assets = assetsRes.data ?? []
+      else console.error('[ScreensPage] assets query error:', assetsRes.error.message)
+
+      if (!playlistsRes.error) playlists = playlistsRes.data ?? []
+      else console.error('[ScreensPage] playlists query error:', playlistsRes.error.message)
+
+      if (!groupsRes.error) groups = groupsRes.data ?? []
+      else console.error('[ScreensPage] groups query error:', groupsRes.error.message)
+
+      if (!membershipsRes.error) memberships = membershipsRes.data ?? []
+      else console.error('[ScreensPage] memberships query error:', membershipsRes.error.message)
+
+    } catch (err: any) {
+      // Transient error (e.g. statement_timeout, network hiccup). Log and render with
+      // empty data so the user sees the page rather than a crash screen.
+      console.error('[ScreensPage] Concurrent query batch failed:', err?.message ?? err)
     }
-  })
+  }
 
-  const assets = assetsRes.data ?? []
-  const playlists = playlistsRes.data ?? []
-  const groups = groupsRes.data ?? []
-  const memberships = membershipsRes.data ?? []
   const historicalPlaytime = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).historical_playtime_seconds : 0
 
   return (

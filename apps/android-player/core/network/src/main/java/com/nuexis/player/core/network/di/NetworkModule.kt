@@ -1,3 +1,5 @@
+package com.nuexis.player.core.network.di
+
 import com.nuexis.player.core.network.BuildConfig
 import com.nuexis.player.core.network.SupabaseAuthInterceptor
 import com.nuexis.player.core.network.api.SupabaseApi
@@ -56,5 +58,11 @@ object NetworkModule {
     @Singleton
     @DownloadClient
     fun provideDownloadOkHttpClient(): OkHttpClient =
-        OkHttpClient.Builder().build()
+        OkHttpClient.Builder()
+            .connectTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
+            .writeTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
+            .followRedirects(true)
+            .retryOnConnectionFailure(true)
+            .build()
 }
