@@ -5,15 +5,28 @@ plugins {
     id("com.google.devtools.ksp")
     id("dagger.hilt.android.plugin")
 }
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use(::load)
+}
+
 android {
     namespace = "com.nuexis.player.feature.player"
     compileSdk = 34
     defaultConfig {
         minSdk = 24
+        buildConfigField(
+            "String",
+            "PLAYER_URL",
+            "\"${localProperties.getProperty("PLAYER_URL", "https://nuexis-signage-openclaude.vercel.app/player")}\""
+        )
     }
     buildFeatures {
         viewBinding = true
         compose = true
+        buildConfig = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

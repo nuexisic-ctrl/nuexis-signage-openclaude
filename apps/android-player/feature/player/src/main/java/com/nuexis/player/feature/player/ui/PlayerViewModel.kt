@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import com.nuexis.player.core.domain.sync.SyncWorkScheduler
+import com.nuexis.player.feature.player.BuildConfig
 import javax.inject.Inject
 
 @HiltViewModel
@@ -28,7 +30,8 @@ class PlayerViewModel @Inject constructor(
     private val playlistRepository: PlaylistRepository,
     private val deviceRepository: DeviceRepository,
     private val playerRealtimeManager: PlayerRealtimeManager,
-    private val assetDao: AssetDao
+    private val assetDao: AssetDao,
+    private val syncWorkScheduler: SyncWorkScheduler
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading)
@@ -37,6 +40,7 @@ class PlayerViewModel @Inject constructor(
     private var playlistItems: List<PlaylistItem> = emptyList()
     private var currentIndex = 0
     private var activePlaylistId: String? = null
+    private var skipCount = 0
 
     val deviceStateFlow = deviceRepository.observeLocalDeviceState()
 
@@ -47,10 +51,13 @@ class PlayerViewModel @Inject constructor(
 
     fun refreshContent() {
         viewModelScope.launch {
-            val device = deviceRepository.observeLocalDeviceState().firstOrNull()
-            val playlistId = device?.playlistId
-            if (playlistId != null) {
-                playlistRepository.syncPlaylist(playlistId)
+            val device = deviceRepository.observeLocalDeviceState().firstOrNull() ?: return@launch
+            if (device.contentType == "Playlist" && device.playlistId != null) {
+                playlistRepository.syncPlaylist(device.playlistId)
+                syncWorkScheduler.enqueueDownload()
+            } else if (device.contentType == "Asset" && device.assetId != null) {
+                deviceRepository.syncSingleAsset(device.assetId)
+                syncWorkScheduler.enqueueDownload()
             }
         }
     }
@@ -89,9 +96,13 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             deviceRepository.observeLocalDeviceState()
                 .filterNotNull()
-                .map { it.contentType to (it.playlistId ?: it.assetId) }
-                .distinctUntilChanged()
-                .collectLatest { (contentType, contentId) ->
+                .distinctUntilChanged { old, new ->
+                    old.contentType == new.contentType &&
+                    (old.playlistId ?: old.assetId) == (new.playlistId ?: new.assetId)
+                }
+                .collectLatest { device ->
+                    val contentType = device.contentType
+                    val contentId = device.playlistId ?: device.assetId
                     if (contentType == null || contentId == null) {
                         _uiState.value = PlayerUiState.NoContent
                         return@collectLatest
@@ -134,11 +145,22 @@ class PlayerViewModel @Inject constructor(
                                         else -> "image"
                                     }
                                     val widgetType = if (type == "widget") {
-                                        if (asset.mimeType == "application/x-widget-website" || asset.mimeType == "application/x-widget-remote-url") "website" else "unsupported"
+                                        when (asset.mimeType) {
+                                            "application/x-widget-website", "application/x-widget-remote-url" -> "website"
+                                            "application/x-widget-flow", "application/x-widget-countdown", "application/x-widget-worldclock", "application/x-widget-countup", "application/x-widget-html" -> "website"
+                                            else -> "unsupported"
+                                        }
                                     } else null
-                                    
-                                    // For remote-url widgets, we use the filePath as the URL if it's a URL
-                                    val widgetConfig = if (widgetType == "website") "{\"url\":\"${asset.filePath}\"}" else null
+
+                                    val widgetConfig = if (widgetType == "website") {
+                                        if (asset.mimeType == "application/x-widget-website" || asset.mimeType == "application/x-widget-remote-url") {
+                                            "{\"url\":\"${asset.filePath}\"}"
+                                        } else {
+                                            val secretParam = device.secret ?: ""
+                                            val widgetUrl = "${BuildConfig.PLAYER_URL}/widget/${asset.id}?hardwareId=${device.id}&secret=${secretParam}"
+                                            "{\"url\":\"${widgetUrl}\"}"
+                                        }
+                                    } else null
 
                                     val singleItem = PlaylistItem(
                                         id = "single_asset_item",
@@ -175,6 +197,13 @@ class PlayerViewModel @Inject constructor(
             return
         }
 
+        if (skipCount >= playlistItems.size) {
+            // We have skipped all items in the playlist, meaning none of them are playable
+            _uiState.value = PlayerUiState.NoContent
+            skipCount = 0
+            return
+        }
+
         val item = playlistItems[currentIndex]
         val asset = item.asset
         
@@ -182,6 +211,7 @@ class PlayerViewModel @Inject constructor(
         if ((item.type == "video" || item.type == "image")) {
             val localUri = asset?.localFileUri
             if (localUri != null && asset.downloadStatus == com.nuexis.player.core.domain.model.DownloadStatus.COMPLETED) {
+                skipCount = 0 // Reset skip count on successful play
                 if (item.type == "video") {
                     playbackManager.preloadNext(localUri)
                     playbackManager.swapAndPlay()
@@ -196,18 +226,38 @@ class PlayerViewModel @Inject constructor(
                 if (playlistItems.size > 1) {
                     viewModelScope.launch {
                         delay(2000)
+                        skipCount++
                         advanceToNext()
                     }
                 }
             }
-        } else if (item.type == "widget" && (item.widgetType == "website" || item.widgetType == "webpage")) {
-            val url = extractUrlFromConfig(item.widgetConfig)
-            if (url != null) {
-                _uiState.value = PlayerUiState.PlayingWebsite(url, item.durationSeconds)
-            } else {
-                advanceToNext()
+        } else if (item.type == "widget") {
+            val isNativeWebsite = item.widgetType == "website" || item.widgetType == "webpage" || item.widgetType == "remote-url"
+            
+            viewModelScope.launch {
+                val url = if (isNativeWebsite) {
+                    extractUrlFromConfig(item.widgetConfig)
+                } else if (item.widgetType == "flow" || item.widgetType == "countdown" || item.widgetType == "worldclock" || item.widgetType == "countup" || item.widgetType == "html") {
+                    // Fetch device state once to construct widget URL with auth query parameters
+                    val device = deviceRepository.observeLocalDeviceState().firstOrNull()
+                    val secretParam = device?.secret ?: ""
+                    val hwId = device?.id ?: ""
+                    val assetId = item.assetId
+                    if (assetId != null) {
+                        "${BuildConfig.PLAYER_URL}/widget/${assetId}?hardwareId=${hwId}&secret=${secretParam}"
+                    } else null
+                } else null
+
+                if (url != null) {
+                    skipCount = 0 // Reset skip count on successful play
+                    _uiState.value = PlayerUiState.PlayingWebsite(url, item.durationSeconds)
+                } else {
+                    skipCount++
+                    advanceToNext()
+                }
             }
         } else {
+            skipCount++
             advanceToNext()
         }
     }
