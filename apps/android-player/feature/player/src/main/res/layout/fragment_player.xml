@@ -32,4 +32,10 @@
         android:layout_height="match_parent"
         android:visibility="gone" />
 
+    <!-- ComposeView for Overlay UI (Sidebar, Controls) -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/composeOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
 </FrameLayout>

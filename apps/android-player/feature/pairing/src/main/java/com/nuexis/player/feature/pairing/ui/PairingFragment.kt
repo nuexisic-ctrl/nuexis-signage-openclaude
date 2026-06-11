@@ -18,15 +18,10 @@ class PairingFragment : Fragment() {
             setContent {
                 PairingScreen(
                     onPaired = {
-                        // Signal MainActivity to switch to PlayerFragment
-                        (requireActivity() as? PairingListener)?.onDevicePaired()
+                        // MainActivity observes deviceStateFlow and will transition automatically
                     }
                 )
             }
         }
     }
-}
-
-interface PairingListener {
-    fun onDevicePaired()
 }

@@ -38,6 +38,17 @@ class PlayerFragment : Fragment() {
         binding.playerViewActive.useController = false
         binding.playerViewBackground.useController = false
 
+        binding.composeOverlay.setContent {
+            PlayerOverlay(
+                viewModel = viewModel,
+                onReloadPlayer = {
+                    // Logic to hard reload the player if necessary.
+                    // E.g., stopping playback and resetting states.
+                    viewModel.playCurrentItem()
+                }
+            )
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->

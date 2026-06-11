@@ -15,6 +15,7 @@ interface DeviceRepository {
     fun observeLocalDeviceState(): Flow<Device?>
     suspend fun updateLocalDeviceState(device: Device)
     suspend fun incrementPlaytime(deviceId: String, hardwareId: String, secret: String, seconds: Long)
+    suspend fun syncSingleAsset(assetId: String)
 }
 
 interface PlaylistRepository {

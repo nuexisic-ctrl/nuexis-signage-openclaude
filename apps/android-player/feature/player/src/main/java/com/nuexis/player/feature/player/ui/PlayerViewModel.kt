@@ -2,6 +2,7 @@ package com.nuexis.player.feature.player.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nuexis.player.core.database.dao.AssetDao
 import com.nuexis.player.core.domain.model.PlaylistItem
 import com.nuexis.player.core.domain.realtime.PlayerRealtimeSession
 import com.nuexis.player.core.domain.repository.PlaylistRepository
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,7 +26,8 @@ class PlayerViewModel @Inject constructor(
     private val playbackManager: PlaybackManager,
     private val playlistRepository: PlaylistRepository,
     private val deviceRepository: DeviceRepository,
-    private val playerRealtimeManager: PlayerRealtimeManager
+    private val playerRealtimeManager: PlayerRealtimeManager,
+    private val assetDao: AssetDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading)
@@ -34,9 +37,21 @@ class PlayerViewModel @Inject constructor(
     private var currentIndex = 0
     private var activePlaylistId: String? = null
 
+    val deviceStateFlow = deviceRepository.observeLocalDeviceState()
+
     init {
         observeDeviceAndStartRealtime()
         observePlaylist()
+    }
+
+    fun refreshContent() {
+        viewModelScope.launch {
+            val device = deviceRepository.observeLocalDeviceState().firstOrNull()
+            val playlistId = device?.playlistId
+            if (playlistId != null) {
+                playlistRepository.syncPlaylist(playlistId)
+            }
+        }
     }
 
     private fun observeDeviceAndStartRealtime() {
@@ -62,7 +77,7 @@ class PlayerViewModel @Inject constructor(
                     )
                     playerRealtimeManager.updateSession(session)
 
-                    if (device.playlistId == null) {
+                    if (device.playlistId == null && device.contentType != "Asset") {
                         _uiState.value = PlayerUiState.NoContent
                     }
                 }
@@ -73,26 +88,71 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             deviceRepository.observeLocalDeviceState()
                 .filterNotNull()
-                .map { it.playlistId }
+                .map { it.contentType to (it.playlistId ?: it.assetId) }
                 .distinctUntilChanged()
-                .collectLatest { playlistId ->
-                    if (playlistId == null) {
+                .collectLatest { (contentType, contentId) ->
+                    if (contentType == null || contentId == null) {
                         _uiState.value = PlayerUiState.NoContent
                         return@collectLatest
                     }
-                    activePlaylistId = playlistId
 
-                    playlistRepository.observeLocalPlaylist(playlistId).collect { playlist ->
-                        if (playlist != null && playlist.items.isNotEmpty()) {
-                            playlistItems = playlist.items
-                            if (_uiState.value is PlayerUiState.Loading ||
-                                _uiState.value is PlayerUiState.NoContent
-                            ) {
-                                playCurrentItem()
+                    if (contentType == "Playlist") {
+                        activePlaylistId = contentId
+                        playlistRepository.observeLocalPlaylist(contentId).collect { playlist ->
+                            if (playlist != null && playlist.items.isNotEmpty()) {
+                                playlistItems = playlist.items
+                                if (_uiState.value is PlayerUiState.Loading ||
+                                    _uiState.value is PlayerUiState.NoContent
+                                ) {
+                                    playCurrentItem()
+                                }
+                            } else {
+                                _uiState.value = PlayerUiState.NoContent
                             }
-                        } else {
-                            _uiState.value = PlayerUiState.NoContent
                         }
+                    } else if (contentType == "Asset") {
+                        activePlaylistId = null
+                        assetDao.observeAsset(contentId).collect { asset ->
+                            if (asset != null && asset.downloadStatus == com.nuexis.player.core.domain.model.DownloadStatus.COMPLETED) {
+                                val type = when {
+                                    asset.mimeType.startsWith("video/") -> "video"
+                                    asset.mimeType.startsWith("image/") -> "image"
+                                    asset.mimeType.startsWith("application/x-widget") -> "widget"
+                                    else -> "image"
+                                }
+                                val widgetType = if (type == "widget") {
+                                    if (asset.mimeType == "application/x-widget-website" || asset.mimeType == "application/x-widget-remote-url") "website" else "unsupported"
+                                } else null
+                                val widgetConfig = if (widgetType == "website") "{\"url\":\"${asset.localFileUri}\"}" else null
+
+                                val domainAsset = com.nuexis.player.core.domain.model.Asset(
+                                    id = asset.id,
+                                    filePath = asset.filePath,
+                                    mimeType = asset.mimeType,
+                                    sizeBytes = asset.sizeBytes,
+                                    localFileUri = asset.localFileUri,
+                                    downloadStatus = asset.downloadStatus
+                                )
+                                val singleItem = PlaylistItem(
+                                    id = "single_asset_item",
+                                    playlistId = null,
+                                    type = type,
+                                    assetId = asset.id,
+                                    widgetType = widgetType,
+                                    widgetConfig = widgetConfig,
+                                    durationSeconds = 30,
+                                    sortOrder = 0,
+                                    asset = domainAsset
+                                )
+                                playlistItems = listOf(singleItem)
+                                currentIndex = 0
+                                playCurrentItem()
+                            } else {
+                                _uiState.value = PlayerUiState.Loading
+                            }
+                        }
+                    } else {
+                        _uiState.value = PlayerUiState.NoContent
                     }
                 }
         }

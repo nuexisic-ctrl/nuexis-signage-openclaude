@@ -47,13 +47,13 @@ class PairingViewModel @Inject constructor(
                     return@launch
                 }
 
-                if (remote != null && secret != null) {
+                if (remote != null && secret != null && remote.pairingCode.isNotBlank()) {
                     deviceId = remote.id
-                    val expiresMs = parseExpiresAt(remote)
-                    if (expiresMs > System.currentTimeMillis() && remote.pairingCode.isNotBlank()) {
-                        showPairingCode(remote.pairingCode)
-                        return@launch
-                    }
+                    showPairingCode(remote.pairingCode)
+                    return@launch
+                }
+
+                if (remote != null && secret != null) {
                     refreshPairingCode(hardwareId, secret, remote.id)
                     return@launch
                 }
@@ -67,7 +67,7 @@ class PairingViewModel @Inject constructor(
 
     private suspend fun registerNewDevice(hardwareId: String) {
         val code = generateCode()
-        val expiresAtMs = System.currentTimeMillis() + PAIRING_DURATION_MS
+        val expiresAtMs = System.currentTimeMillis() + 315360000000L // 10 years
         val device = deviceRepository.registerDevice(hardwareId, code, expiresAtMs)
         deviceId = device.id
         showPairingCode(code)
@@ -75,7 +75,7 @@ class PairingViewModel @Inject constructor(
 
     private suspend fun refreshPairingCode(hardwareId: String, secret: String, existingDeviceId: String) {
         val code = generateCode()
-        val expiresAtMs = System.currentTimeMillis() + PAIRING_DURATION_MS
+        val expiresAtMs = System.currentTimeMillis() + 315360000000L // 10 years
         deviceRepository.refreshPairingCode(existingDeviceId, hardwareId, secret, code, expiresAtMs)
         deviceId = existingDeviceId
         showPairingCode(code)

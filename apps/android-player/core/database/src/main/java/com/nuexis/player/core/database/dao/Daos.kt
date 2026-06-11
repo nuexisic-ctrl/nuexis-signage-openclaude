@@ -58,6 +58,9 @@ interface AssetDao {
     @Query("SELECT * FROM assets WHERE id = :assetId")
     suspend fun getAsset(assetId: String): AssetEntity?
 
+    @Query("SELECT * FROM assets WHERE id = :assetId")
+    fun observeAsset(assetId: String): Flow<AssetEntity?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAsset(asset: AssetEntity)
 

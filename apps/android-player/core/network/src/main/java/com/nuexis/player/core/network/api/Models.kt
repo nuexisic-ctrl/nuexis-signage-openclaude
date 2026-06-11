@@ -82,3 +82,15 @@ data class RpcSignedMediaUrlRequest(
     @SerializedName("p_file_path") val pFilePath: String,
     @SerializedName("p_expires_in") val pExpiresIn: Int = 3600
 )
+
+data class RpcGetAssetRequest(
+    @SerializedName("p_hardware_id") val pHardwareId: String,
+    @SerializedName("p_secret") val pSecret: String,
+    @SerializedName("p_asset_id") val pAssetId: String
+)
+
+data class RpcGetAssetResponse(
+    @SerializedName("file_path") val filePath: String,
+    @SerializedName("mime_type") val mimeType: String,
+    @SerializedName("size_bytes") val sizeBytes: Long? = null
+)

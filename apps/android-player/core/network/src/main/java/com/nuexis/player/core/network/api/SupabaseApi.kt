@@ -35,4 +35,9 @@ interface SupabaseApi {
     suspend fun getPlayerSignedMediaUrl(
         @Body request: RpcSignedMediaUrlRequest
     ): Response<String>
+
+    @POST("rest/v1/rpc/get_player_asset")
+    suspend fun getPlayerAsset(
+        @Body request: RpcGetAssetRequest
+    ): Response<RpcGetAssetResponse>
 }

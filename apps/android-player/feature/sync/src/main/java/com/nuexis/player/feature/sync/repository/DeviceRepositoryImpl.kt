@@ -28,6 +28,7 @@ import javax.inject.Singleton
 class DeviceRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val deviceDao: DeviceDao,
+    private val assetDao: com.nuexis.player.core.database.dao.AssetDao,
     private val supabaseApi: SupabaseApi
 ) : DeviceRepository {
 
@@ -228,4 +229,32 @@ class DeviceRepositoryImpl @Inject constructor(
         orientation = orientation,
         secret = sharedPrefs.getString("device_secret", null)
     )
+
+    override suspend fun syncSingleAsset(assetId: String) = withContext(Dispatchers.IO) {
+        val hardwareId = getHardwareId()
+        val secret = getSecret() ?: return@withContext
+
+        val request = com.nuexis.player.core.network.api.RpcGetAssetRequest(
+            pHardwareId = hardwareId,
+            pSecret = secret,
+            pAssetId = assetId
+        )
+        val response = supabaseApi.getPlayerAsset(request)
+        if (response.isSuccessful) {
+            val assetData = response.body() ?: return@withContext
+            val existing = assetDao.getAsset(assetId)
+            if (existing == null) {
+                assetDao.insertAsset(
+                    com.nuexis.player.core.database.entity.AssetEntity(
+                        id = assetId,
+                        filePath = assetData.filePath,
+                        mimeType = assetData.mimeType,
+                        sizeBytes = assetData.sizeBytes ?: 0,
+                        localFileUri = null,
+                        downloadStatus = com.nuexis.player.core.domain.model.DownloadStatus.PENDING
+                    )
+                )
+            }
+        }
+    }
 }

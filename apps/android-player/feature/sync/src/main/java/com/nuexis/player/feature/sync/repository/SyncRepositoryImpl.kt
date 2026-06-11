@@ -53,6 +53,9 @@ class SyncRepositoryImpl @Inject constructor(
             if (state.content_type == "Playlist" && state.playlist_id != null) {
                 playlistRepository.syncPlaylist(state.playlist_id!!)
                 syncWorkScheduler.enqueueDownload()
+            } else if (state.content_type == "Asset" && state.asset_id != null) {
+                deviceRepository.syncSingleAsset(state.asset_id!!)
+                syncWorkScheduler.enqueueDownload()
             }
         }
     }
