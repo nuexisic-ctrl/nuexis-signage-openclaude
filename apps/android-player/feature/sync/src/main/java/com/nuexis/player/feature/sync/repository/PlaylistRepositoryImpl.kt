@@ -18,10 +18,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class PlaylistRepositoryImpl @Inject constructor(
     private val playlistDao: PlaylistDao,
@@ -36,17 +39,22 @@ class PlaylistRepositoryImpl @Inject constructor(
     }
 
     override fun observeLocalPlaylist(playlistId: String): Flow<Playlist?> {
-        return combine(
-            playlistDao.observePlaylist(playlistId),
-            playlistDao.observePlaylistItems(playlistId)
-        ) { playlist, items -> playlist to items }
-            .flatMapLatest { (playlist, items) ->
-                if (playlist == null) {
-                    flowOf(null)
-                } else {
-                    flow { emit(buildPlaylist(playlist, items)) }
+        return playlistDao.observePlaylist(playlistId).flatMapLatest { playlist ->
+            if (playlist == null) {
+                flowOf(null)
+            } else {
+                playlistDao.observePlaylistItems(playlistId).flatMapLatest { items ->
+                    val assetIds = items.mapNotNull { it.assetId }
+                    if (assetIds.isEmpty()) {
+                        flowOf(buildPlaylist(playlist, items, emptyList()))
+                    } else {
+                        assetDao.observeAssets(assetIds).map { assets ->
+                            buildPlaylist(playlist, items, assets)
+                        }
+                    }
                 }
             }
+        }
     }
 
     override suspend fun syncPlaylist(playlistId: String) = withContext(Dispatchers.IO) {
@@ -65,15 +73,19 @@ class PlaylistRepositoryImpl @Inject constructor(
             item.assets?.let { assetData ->
                 if (item.asset_id != null) {
                     val existingAsset = assetDao.getAsset(item.asset_id!!)
-                    if (existingAsset == null) {
+                    if (existingAsset == null || existingAsset.filePath != assetData.file_path || existingAsset.mimeType != assetData.mime_type || existingAsset.downloadStatus == DownloadStatus.FAILED) {
                         assetDao.insertAsset(
                             AssetEntity(
                                 id = item.asset_id!!,
                                 filePath = assetData.file_path,
                                 mimeType = assetData.mime_type,
                                 sizeBytes = assetData.size_bytes ?: 0,
-                                localFileUri = null,
-                                downloadStatus = DownloadStatus.PENDING
+                                localFileUri = if (existingAsset != null && existingAsset.filePath == assetData.file_path) existingAsset.localFileUri else null,
+                                downloadStatus = if (existingAsset != null && existingAsset.filePath == assetData.file_path && existingAsset.downloadStatus == DownloadStatus.COMPLETED) {
+                                    DownloadStatus.COMPLETED
+                                } else {
+                                    DownloadStatus.PENDING
+                                }
                             )
                         )
                     }
@@ -94,6 +106,29 @@ class PlaylistRepositoryImpl @Inject constructor(
 
         playlistDao.replacePlaylistItems(playlistId, entities)
         assetDao.deleteUnusedAssets(entities.mapNotNull { it.assetId })
+    }
+
+    private fun buildPlaylist(
+        playlist: PlaylistEntity,
+        items: List<PlaylistItemEntity>,
+        assets: List<AssetEntity>
+    ): Playlist {
+        val assetMap = assets.associateBy { it.id }
+        val domainItems = items.map { item ->
+            val asset = item.assetId?.let { assetMap[it]?.toDomain() }
+            PlaylistItem(
+                id = item.id,
+                playlistId = item.playlistId,
+                type = item.type,
+                assetId = item.assetId,
+                widgetType = item.widgetType,
+                widgetConfig = item.widgetConfig,
+                durationSeconds = item.durationSeconds,
+                sortOrder = item.sortOrder,
+                asset = asset
+            )
+        }
+        return Playlist(id = playlist.id, name = playlist.name, items = domainItems)
     }
 
     private suspend fun buildPlaylist(

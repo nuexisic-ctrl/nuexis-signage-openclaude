@@ -40,4 +40,14 @@ interface SupabaseApi {
     suspend fun getPlayerAsset(
         @Body request: RpcGetAssetRequest
     ): Response<RpcGetAssetResponse>
+
+    @POST("rest/v1/rpc/unpair_player_device")
+    suspend fun unpairDevice(
+        @Body request: RpcUnpairDeviceRequest
+    ): Response<Unit>
+
+    @POST("rest/v1/rpc/update_player_device_orientation")
+    suspend fun updateDeviceOrientation(
+        @Body request: RpcUpdateOrientationRequest
+    ): Response<Unit>
 }

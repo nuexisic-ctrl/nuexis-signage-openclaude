@@ -18,6 +18,19 @@
         android:theme="@style/Theme.AppCompat.NoActionBar"
         android:hardwareAccelerated="true"
         android:largeHeap="false">
+
+        <!-- Disable default WorkManager initializer for Hilt custom initialization -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
         <activity
             android:name="com.nuexis.player.app.MainActivity"
             android:exported="true"

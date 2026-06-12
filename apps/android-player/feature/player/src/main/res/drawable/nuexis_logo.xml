@@ -3,10 +3,25 @@
     android:height="50dp"
     android:viewportWidth="200"
     android:viewportHeight="50">
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M20,10 L40,10 L40,40 L20,40 Z" />
+    <!-- Stylized "N" mark -->
     <path
         android:fillColor="#094CB2"
-        android:pathData="M50,10 L70,10 L70,40 L50,40 Z" />
+        android:pathData="M16,8 L16,42 L24,42 L24,22 L40,42 L48,42 L48,8 L40,8 L40,28 L24,8 Z" />
+    <!-- Dot accent -->
+    <path
+        android:fillColor="#60A5FA"
+        android:pathData="M54,34 A5,5 0 1,1 64,34 A5,5 0 1,1 54,34 Z" />
+    <!-- "UEXIS" text paths -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M72,42 L72,8 L80,8 L80,34 L92,34 L92,8 L100,8 L100,42 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M106,8 L130,8 L130,16 L114,16 L114,21 L128,21 L128,29 L114,29 L114,34 L130,34 L130,42 L106,42 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M134,8 L148,8 L155,18 L162,8 L176,8 L163,25 L176,42 L162,42 L155,32 L148,42 L134,42 L147,25 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M180,8 L188,8 L188,42 L180,42 Z" />
 </vector>

@@ -60,6 +60,9 @@ class PlayerFragment : Fragment() {
     private fun handleUiState(state: PlayerUiState) {
         // Reset feedback container by default
         binding.statusContainer.visibility = View.GONE
+        binding.errorIcon.visibility = View.GONE
+        binding.errorDetailText.visibility = View.GONE
+        binding.progressBar.visibility = View.GONE
         
         when (state) {
             is PlayerUiState.PlayingVideo -> {
@@ -114,8 +117,17 @@ class PlayerFragment : Fragment() {
                 binding.imageView.visibility = View.GONE
                 binding.webView.visibility = View.GONE
                 binding.statusContainer.visibility = View.VISIBLE
-                binding.progressBar.visibility = View.GONE
                 binding.statusText.text = "No content assigned to this screen."
+            }
+            is PlayerUiState.Error -> {
+                binding.playerViewActive.visibility = View.GONE
+                binding.imageView.visibility = View.GONE
+                binding.webView.visibility = View.GONE
+                binding.statusContainer.visibility = View.VISIBLE
+                binding.errorIcon.visibility = View.VISIBLE
+                binding.statusText.text = "Something went wrong"
+                binding.errorDetailText.visibility = View.VISIBLE
+                binding.errorDetailText.text = state.message
             }
         }
     }

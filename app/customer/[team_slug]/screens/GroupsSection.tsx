@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
-  Users, Monitor, Edit3, Trash2, FolderTree, ChevronLeft, ChevronRight
+  Users, Monitor, Edit3, Trash2, FolderTree, ChevronLeft, ChevronRight, Check
 } from 'lucide-react'
 import { ContentIcon, ContentKind } from './DeviceIcon'
 import styles from './GroupsSection.module.css'
@@ -19,6 +19,7 @@ interface Group {
   asset_id: string | null
   playlist_id: string | null
   orientation: number | null
+  created_at?: string
 }
 
 interface Membership {
@@ -86,6 +87,9 @@ export function GroupsSection({
   const [isPending, startTransition] = useTransition()
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [isMounted, setIsMounted] = useState(false)
+  const [showSelectionDropdown, setShowSelectionDropdown] = useState(false)
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
+  const [sortOption, setSortOption] = useState<string>('updated_newest')
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(5)
@@ -145,42 +149,146 @@ export function GroupsSection({
     return groups.filter(g => (g.name || '').toLowerCase().includes(q))
   }, [groups, searchQuery])
 
-  const totalPages = Math.ceil(filteredGroups.length / pageSize) || 1
+  const sortedGroups = React.useMemo(() => {
+    return [...filteredGroups].sort((a, b) => {
+      switch (sortOption) {
+        case 'updated_newest':
+          return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
+        case 'updated_oldest':
+          return new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
+        case 'created_newest':
+          return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
+        case 'created_oldest':
+          return new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
+        case 'name_az':
+          return (a.name || '').localeCompare(b.name || '')
+        case 'name_za':
+          return (b.name || '').localeCompare(a.name || '')
+        default:
+          return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()
+      }
+    })
+  }, [filteredGroups, sortOption])
+
+  const totalPages = Math.ceil(sortedGroups.length / pageSize) || 1
 
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages)
     }
-  }, [filteredGroups, currentPage, totalPages])
+  }, [sortedGroups, currentPage, totalPages])
 
   const paginatedGroups = React.useMemo(() => {
     const from = (currentPage - 1) * pageSize
-    return filteredGroups.slice(from, from + pageSize)
-  }, [filteredGroups, currentPage, pageSize])
+    return sortedGroups.slice(from, from + pageSize)
+  }, [sortedGroups, currentPage, pageSize])
 
-  const startItem = filteredGroups.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
-  const endItem = Math.min(currentPage * pageSize, filteredGroups.length)
+  const startItem = sortedGroups.length === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const endItem = Math.min(currentPage * pageSize, sortedGroups.length)
 
   return (
     <div className={styles.sectionContainer}>
       <div className={styles.mainBlockContainer}>
         <div className={styles.controlsBar}>
           {isMounted && groups.length > 0 && (
-            <div className={styles.searchBox}>
-              <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-              <input 
-                type="text" 
-                className={styles.searchInput}
-                placeholder="Search groups..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setCurrentPage(1)
-                }}
-              />
-            </div>
+            <>
+              {/* Selection checkbox + dropdown — left side */}
+              <div className={styles.selectionDropdownWrapper}>
+                <div className={styles.selectionCheckboxGroup}>
+                  <input
+                    type="checkbox"
+                    id="group-select-all-header"
+                    className={styles.selectionCheckboxInput}
+                    checked={filteredGroups.length > 0 && filteredGroups.every(g => selectedGroupIds.has(g.id))}
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate = selectedGroupIds.size > 0 && !filteredGroups.every(g => selectedGroupIds.has(g.id))
+                      }
+                    }}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedGroupIds(new Set(filteredGroups.map(g => g.id)))
+                      } else {
+                        setSelectedGroupIds(new Set())
+                      }
+                    }}
+                    aria-label="Select all items"
+                  />
+                  <button
+                    type="button"
+                    className={styles.selectionDropdownArrow}
+                    onClick={() => setShowSelectionDropdown(v => !v)}
+                    aria-label="Selection options"
+                    aria-expanded={showSelectionDropdown}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                </div>
+                {showSelectionDropdown && (
+                  <>
+                    <div
+                      className={styles.selectionDropdownBackdrop}
+                      onClick={() => setShowSelectionDropdown(false)}
+                    />
+                    <div className={styles.selectionDropdownMenu}>
+                      <button
+                        type="button"
+                        className={`${styles.selectionDropdownItem} ${selectedGroupIds.size === filteredGroups.length && filteredGroups.length > 0 ? styles.selectionDropdownItemActive : ''}`}
+                        onClick={() => {
+                          setSelectedGroupIds(new Set(filteredGroups.map(g => g.id)))
+                          setShowSelectionDropdown(false)
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><polyline points="9 11 12 14 22 4" /></svg>
+                        All Groups ({filteredGroups.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.selectionDropdownItem}
+                        onClick={() => {
+                          const withScreens = filteredGroups.filter(g => memberships.some(m => m.group_id === g.id))
+                          setSelectedGroupIds(new Set(withScreens.map(g => g.id)))
+                          setShowSelectionDropdown(false)
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        With Screens
+                      </button>
+                      <div className={styles.selectionDropdownDivider} />
+                      <button
+                        type="button"
+                        className={styles.selectionDropdownItem}
+                        onClick={() => {
+                          setSelectedGroupIds(new Set())
+                          setShowSelectionDropdown(false)
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        Deselect All
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className={styles.searchBox}>
+                <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input 
+                  type="text" 
+                  className={styles.searchInput}
+                  placeholder="Search groups..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                />
+              </div>
+            </>
           )}
           {isMounted && groups.length > 0 && (
             <div className={styles.controlsRight}>
@@ -213,7 +321,46 @@ export function GroupsSection({
                   </button>
                 </div>
               )}
-              <div className={styles.viewToggleGroup}>
+              <div className={styles.sortDropdownWrapper}>
+                 <button 
+                   className={styles.sortBtn}
+                   onClick={() => setShowSortDropdown(!showSortDropdown)}
+                   type="button"
+                 >
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="M3 6h18M6 12h12m-9 6h6" />
+                   </svg>
+                   Sort By
+                 </button>
+                 {showSortDropdown && (
+                   <>
+                     <div className={styles.selectionDropdownBackdrop} onClick={() => setShowSortDropdown(false)} />
+                     <div className={styles.sortDropdownMenu}>
+                       {[
+                         { id: 'updated_newest', label: 'Updated Date (Newest)' },
+                         { id: 'updated_oldest', label: 'Updated Date (Oldest)' },
+                         { id: 'created_newest', label: 'Created Date (Newest)' },
+                         { id: 'created_oldest', label: 'Created Date (Oldest)' },
+                         { id: 'name_az', label: 'Name (A-Z)' },
+                         { id: 'name_za', label: 'Name (Z-A)' },
+                       ].map((option) => (
+                         <button
+                           key={option.id}
+                           className={`${styles.sortDropdownItem} ${sortOption === option.id ? styles.sortDropdownItemActive : ''}`}
+                           onClick={() => {
+                             setSortOption(option.id)
+                             setShowSortDropdown(false)
+                           }}
+                         >
+                           {option.label}
+                           {sortOption === option.id && <Check size={14} className={styles.sortCheckIcon} />}
+                         </button>
+                       ))}
+                     </div>
+                   </>
+                 )}
+               </div>
+               <div className={styles.viewToggleGroup}>
                 <button 
                   className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
                   onClick={() => handleSetViewMode('table')}

@@ -97,3 +97,16 @@ data class RpcGetAssetResponse(
     @SerializedName("mime_type") val mimeType: String,
     @SerializedName("size_bytes") val sizeBytes: Long? = null
 )
+
+data class RpcUnpairDeviceRequest(
+    @SerializedName("p_device_id") val pDeviceId: String,
+    @SerializedName("p_hardware_id") val pHardwareId: String,
+    @SerializedName("p_secret") val pSecret: String
+)
+
+data class RpcUpdateOrientationRequest(
+    @SerializedName("p_device_id") val pDeviceId: String,
+    @SerializedName("p_hardware_id") val pHardwareId: String,
+    @SerializedName("p_secret") val pSecret: String,
+    @SerializedName("p_orientation") val pOrientation: Int
+)

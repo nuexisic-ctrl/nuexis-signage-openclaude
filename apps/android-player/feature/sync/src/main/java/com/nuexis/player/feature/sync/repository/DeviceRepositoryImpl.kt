@@ -243,18 +243,70 @@ class DeviceRepositoryImpl @Inject constructor(
         if (response.isSuccessful) {
             val assetData = response.body() ?: return@withContext
             val existing = assetDao.getAsset(assetId)
-            if (existing == null) {
+            if (existing == null || existing.filePath != assetData.filePath || existing.mimeType != assetData.mimeType || existing.downloadStatus == com.nuexis.player.core.domain.model.DownloadStatus.FAILED) {
                 assetDao.insertAsset(
                     com.nuexis.player.core.database.entity.AssetEntity(
                         id = assetId,
                         filePath = assetData.filePath,
                         mimeType = assetData.mimeType,
                         sizeBytes = assetData.sizeBytes ?: 0,
-                        localFileUri = null,
-                        downloadStatus = com.nuexis.player.core.domain.model.DownloadStatus.PENDING
+                        localFileUri = if (existing != null && existing.filePath == assetData.filePath) existing.localFileUri else null,
+                        downloadStatus = if (existing != null && existing.filePath == assetData.filePath && existing.downloadStatus == com.nuexis.player.core.domain.model.DownloadStatus.COMPLETED) {
+                            com.nuexis.player.core.domain.model.DownloadStatus.COMPLETED
+                        } else {
+                            com.nuexis.player.core.domain.model.DownloadStatus.PENDING
+                        }
                     )
                 )
             }
         }
+    }
+
+    override suspend fun unpairDevice(
+        deviceId: String,
+        hardwareId: String,
+        secret: String
+    ) = withContext(Dispatchers.IO) {
+        val request = com.nuexis.player.core.network.api.RpcUnpairDeviceRequest(
+            pDeviceId = deviceId,
+            pHardwareId = hardwareId,
+            pSecret = secret
+        )
+        val response = supabaseApi.unpairDevice(request)
+        if (!response.isSuccessful) {
+            throw apiException("unpair device", response.code(), response.errorBody()?.string())
+        }
+        clearLocalDeviceData()
+    }
+
+    override suspend fun updateOrientation(
+        deviceId: String,
+        hardwareId: String,
+        secret: String,
+        orientation: Int
+    ) = withContext(Dispatchers.IO) {
+        val request = com.nuexis.player.core.network.api.RpcUpdateOrientationRequest(
+            pDeviceId = deviceId,
+            pHardwareId = hardwareId,
+            pSecret = secret,
+            pOrientation = orientation
+        )
+        val response = supabaseApi.updateDeviceOrientation(request)
+        if (!response.isSuccessful) {
+            throw apiException("update orientation", response.code(), response.errorBody()?.string())
+        }
+        // Update local state
+        val device = deviceDao.getDevice()
+        if (device != null) {
+            deviceDao.insertOrUpdateDevice(device.copy(orientation = orientation))
+        }
+    }
+
+    override suspend fun clearLocalDeviceData() = withContext(Dispatchers.IO) {
+        deviceDao.deleteAllDevices()
+        sharedPrefs.edit()
+            .remove("device_secret")
+            .remove("hardware_id")
+            .apply()
     }
 }

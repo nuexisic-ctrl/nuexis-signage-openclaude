@@ -51,20 +51,7 @@ export function DeviceTable({
       <table className={styles.screensTable}>
         <thead className={styles.tableHeader}>
           <tr>
-            <th style={{ width: '40px', textAlign: 'center' }}>
-              <input 
-                type="checkbox" 
-                checked={filteredDevices.length > 0 && filteredDevices.every(d => selectedDeviceIds.has(d.id))}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedDeviceIds(new Set(filteredDevices.map(d => d.id)))
-                  } else {
-                    setSelectedDeviceIds(new Set())
-                  }
-                }}
-                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-              />
-            </th>
+            <th style={{ width: '40px' }}></th>
             <th style={{ width: '25%' }}>Screen Name</th>
             <th style={{ width: '15%' }}>Status</th>
             <th style={{ width: '20%' }}>Last Seen</th>

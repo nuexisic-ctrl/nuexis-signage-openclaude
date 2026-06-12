@@ -140,11 +140,16 @@ export default function AssetClient({
   const [renameModalAsset, setRenameModalAsset] = useState<Asset | null>(null)
   const [deleteModalAsset, setDeleteModalAsset] = useState<Asset | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showSelectionDropdown, setShowSelectionDropdown] = useState(false)
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
+  const [sortOption, setSortOption] = useState<string>('updated_newest')
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [showCreateFolder, setShowCreateFolder] = useState(false)
   const [showBulkMoveModal, setShowBulkMoveModal] = useState(false)
   const [pushModalAsset, setPushModalAsset] = useState<Asset | null>(null)
+  const [showSuccessPulse, setShowSuccessPulse] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
   const handleToggleSelect = useCallback((assetId: string) => {
     setSelectedAssetIds(prev => {
@@ -173,9 +178,6 @@ export default function AssetClient({
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPosition, setMenuPosition] = useState<{ top: number, right: number } | null>(null)
-  const [isMounted, setIsMounted] = useState(false)
-  const [showSuccessPulse, setShowSuccessPulse] = useState(false)
-  const [showSelectionDropdown, setShowSelectionDropdown] = useState(false)
   const [filterScope, setFilterScope] = useState<'all' | 'files' | 'folders'>('all')
 
   const [currentPage, setCurrentPage] = useState(initialCurrentPage)
@@ -594,16 +596,16 @@ export default function AssetClient({
     localStorage.setItem('nuexis_folders_cache', JSON.stringify(cachedFolders))
   }, [assets])
 
-  const allLoadedAssets = useMemo(() => {
-    return [...folders, ...Object.values(filesCache).flat()]
-  }, [folders, filesCache])
-
   const filteredAssets = useMemo(() => {
-    // eslint-disable-next-line react-hooks/purity
     const now = Date.now()
     const today = new Date().setHours(0,0,0,0)
-    
-    const filtered = allLoadedAssets.filter(a => {
+
+    // Optimization: If no search query, only filter items in the current folder (assets)
+    // If search is active, we search across all loaded files for a better UX
+    const source = searchQuery ? [...folders, ...Object.values(filesCache).flat()] : assets
+
+    const filtered = source.filter(a => {
+      // Type Filter
       if (filterType !== 'all') {
         if (filterType === 'image' && !isImage(a.mime_type)) return false
         if (filterType === 'video' && !isVideo(a.mime_type)) return false
@@ -614,6 +616,7 @@ export default function AssetClient({
       if (filterScope === 'files' && a.mime_type === 'application/x-folder') return false
       if (filterScope === 'folders' && a.mime_type !== 'application/x-folder') return false
 
+      // Date Filter
       if (filterDatePreset !== 'all') {
         const dDate = new Date(a.created_at).getTime()
         if (filterDatePreset === 'today' && dDate < today) return false
@@ -625,7 +628,7 @@ export default function AssetClient({
         }
       }
 
-      // Storage Size Filtering (size is computed in decimal MB)
+      // Storage Size Filtering
       if (filterSizePreset !== 'all') {
         const sizeMB = (a.size_bytes || 0) / (1024 * 1024)
         if (filterSizePreset === 'under1' && sizeMB >= 1) return false
@@ -645,25 +648,50 @@ export default function AssetClient({
 
       if (searchQuery) {
         const matchesSearch = a.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+        // Global search if at root, otherwise folder-scoped search
         if (activeFolder) {
           return matchesSearch && a.folder_id === activeFolder.id
         }
         return matchesSearch
       }
-      
-      // Root level assets (or folders) when no search is active, or assets within the active folder
-      return activeFolder ? a.folder_id === activeFolder.id : !a.folder_id
+
+      // If we used 'assets' as source, it's already folder-scoped. 
+      // If we used something else, we'd need to check folder_id here.
+      // But we check it anyway for safety if searchQuery was somehow empty but source was flattened.
+      if (!searchQuery && source !== assets) {
+        return (a.folder_id || null) === (activeFolder?.id || null)
+      }
+
+      return true
     })
 
-    // Sort folders at the top, then by created_at descending
+    // Sorting Logic
     return filtered.sort((a, b) => {
+      // Always keep folders at the top regardless of sort option
       const aIsFolder = a.mime_type === 'application/x-folder'
       const bIsFolder = b.mime_type === 'application/x-folder'
       if (aIsFolder && !bIsFolder) return -1
       if (!aIsFolder && bIsFolder) return 1
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+
+      switch (sortOption) {
+        case 'updated_newest':
+          // We use created_at as a proxy for updated_at if not available
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        case 'updated_oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        case 'created_newest':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        case 'created_oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        case 'name_az':
+          return a.file_name.localeCompare(b.file_name)
+        case 'name_za':
+          return b.file_name.localeCompare(a.file_name)
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
     })
-  }, [allLoadedAssets, filterType, filterScope, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery, activeFolder])
+  }, [assets, folders, filesCache, filterType, filterScope, filterDatePreset, filterStartDate, filterEndDate, filterSizePreset, filterMinSize, filterMaxSize, searchQuery, activeFolder, sortOption])
 
   const totalPages = Math.ceil(filteredAssets.length / pageSize) || 1
   const hasNextPage = currentPage < totalPages
@@ -1007,6 +1035,45 @@ export default function AssetClient({
                     </button>
                   </div>
                 )}
+                <div className={styles.sortDropdownWrapper}>
+                  <button 
+                    className={styles.sortBtn}
+                    onClick={() => setShowSortDropdown(!showSortDropdown)}
+                    type="button"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18M6 12h12m-9 6h6" />
+                    </svg>
+                    {t('Sort By')}
+                  </button>
+                  {showSortDropdown && (
+                    <>
+                      <div className={styles.selectionDropdownBackdrop} onClick={() => setShowSortDropdown(false)} />
+                      <div className={styles.sortDropdownMenu}>
+                        {[
+                          { id: 'updated_newest', label: t('Updated Date (Newest)') },
+                          { id: 'updated_oldest', label: t('Updated Date (Oldest)') },
+                          { id: 'created_newest', label: t('Created Date (Newest)') },
+                          { id: 'created_oldest', label: t('Created Date (Oldest)') },
+                          { id: 'name_az', label: t('Name (A-Z)') },
+                          { id: 'name_za', label: t('Name (Z-A)') },
+                        ].map((option) => (
+                          <button
+                            key={option.id}
+                            className={`${styles.sortDropdownItem} ${sortOption === option.id ? styles.sortDropdownItemActive : ''}`}
+                            onClick={() => {
+                              setSortOption(option.id)
+                              setShowSortDropdown(false)
+                            }}
+                          >
+                            {option.label}
+                            {sortOption === option.id && <Check size={14} className={styles.sortCheckIcon} />}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
                 <button 
                   className={`${styles.filterBtn} ${isFiltersActive ? styles.active : ''}`}
                   onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}

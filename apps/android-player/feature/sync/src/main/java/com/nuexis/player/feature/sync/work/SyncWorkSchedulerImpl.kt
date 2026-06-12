@@ -25,7 +25,6 @@ class SyncWorkSchedulerImpl @Inject constructor(
 
     override fun syncOnce() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
-            .setConstraints(connectedConstraints())
             .build()
         workManager.enqueueUniqueWork(
             SYNC_ONCE_WORK,
@@ -36,7 +35,6 @@ class SyncWorkSchedulerImpl @Inject constructor(
 
     override fun enqueueDownload() {
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
-            .setConstraints(connectedConstraints())
             .build()
         workManager.enqueueUniqueWork(
             DOWNLOAD_WORK,

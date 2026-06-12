@@ -82,6 +82,110 @@
   opacity: 0.6;
 }
 
+/* ── Selection Dropdown (left of search) ─────────────────────────── */
+.selectionDropdownWrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.selectionCheckboxGroup {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  height: auto;
+}
+
+.selectionCheckboxInput {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.selectionDropdownArrow {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: color 150ms ease;
+  padding: 0;
+  margin-left: 2px;
+}
+
+.selectionDropdownArrow:hover {
+  color: var(--on-surface);
+}
+
+.selectionDropdownBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
+.selectionDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06);
+  padding: 6px;
+  z-index: 1000;
+  animation: dropdownSlideIn 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes dropdownSlideIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.selectionDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--on-surface);
+  font-family: var(--font-label);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 100ms ease;
+  white-space: nowrap;
+}
+
+.selectionDropdownItem:hover {
+  background: var(--surface-low);
+}
+
+.selectionDropdownItemActive {
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-low)) !important;
+  color: var(--primary) !important;
+}
+
+.selectionDropdownDivider {
+  height: 1px;
+  background: var(--outline-variant);
+  margin: 4px 8px;
+}
+
 .topbarActions {
   display: flex;
   align-items: center;
@@ -160,15 +264,16 @@
 .controlsBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
   padding: 16px;
   border-bottom: 1px solid var(--outline-variant);
 }
 
 .searchBox {
   position: relative;
-  width: min(420px, 100%);
+  flex: 1;
+  min-width: 0;
+  max-width: 420px;
 }
 
 .searchIcon {
@@ -205,6 +310,7 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .viewToggleGroup {
@@ -243,7 +349,11 @@
   color: var(--primary);
 }
 
-.filterBtn {
+.filterBtn:hover {
+  background: var(--surface-high);
+}
+
+.sortBtn {
   height: 42px;
   display: inline-flex;
   align-items: center;
@@ -257,15 +367,61 @@
   font-size: 0.84rem;
   font-weight: 800;
   cursor: pointer;
+  position: relative;
 }
 
-.filterDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--primary);
-  display: inline-block;
-  margin-left: 4px;
+.sortBtn:hover {
+  background: var(--surface-high);
+}
+
+.sortDropdownWrapper {
+  position: relative;
+}
+
+.sortDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06);
+  padding: 6px;
+  z-index: 1000;
+  animation: dropdownSlideIn 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sortDropdownItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--on-surface);
+  font-family: var(--font-label);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 100ms ease;
+}
+
+.sortDropdownItem:hover {
+  background: var(--surface-low);
+}
+
+.sortDropdownItemActive {
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-low)) !important;
+  color: var(--primary) !important;
+}
+
+.sortCheckIcon {
+  color: var(--primary);
+  flex-shrink: 0;
 }
 
 .grid {
@@ -860,33 +1016,6 @@
   color: #ef4444;
 }
 
-.desktopOnlyRefreshBtn {
-  display: none;
+@media (max-width: 1024px) and (min-width: 769px) {
+
 }
-
-@media (min-width: 769px) {
-  .desktopOnlyRefreshBtn {
-    display: inline-flex !important;
-  }
-  .mobileOnlyRefreshBtn {
-    display: none !important;
-  }
-}
-
-@media (max-width: 768px) {
-  .desktopOnlyRefreshBtn {
-    display: none !important;
-  }
-  .mobileOnlyRefreshBtn {
-    display: inline-flex !important;
-  }
-}
-
-.iconOnlyRefreshBtn {
-  width: 42px;
-  padding: 0;
-  justify-content: center;
-}
-
-
-

@@ -30,6 +30,8 @@ android {
         minSdk = 24
         buildConfigField("String", "SUPABASE_URL", "\"https://dpdabdbqhjkmxvwnukev.supabase.co/\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+        val playerUrl = localProperties.getProperty("PLAYER_URL", "https://nuexis-signage-openclaude.vercel.app/player")
+        buildConfigField("String", "PLAYER_URL", "\"$playerUrl\"")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

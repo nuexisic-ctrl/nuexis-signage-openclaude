@@ -17,6 +17,9 @@ interface DeviceRepository {
     suspend fun updateLocalDeviceState(device: Device)
     suspend fun incrementPlaytime(deviceId: String, hardwareId: String, secret: String, seconds: Long)
     suspend fun syncSingleAsset(assetId: String)
+    suspend fun unpairDevice(deviceId: String, hardwareId: String, secret: String)
+    suspend fun updateOrientation(deviceId: String, hardwareId: String, secret: String, orientation: Int)
+    suspend fun clearLocalDeviceData()
 }
 
 interface PlaylistRepository {
@@ -30,6 +33,7 @@ interface AssetRepository {
     fun observePendingDownloads(): Flow<List<Asset>>
     suspend fun updateAssetStatus(assetId: String, status: com.nuexis.player.core.domain.model.DownloadStatus, localUri: String? = null)
     suspend fun cleanupUnusedAssets(activeAssetIds: List<String>)
+    suspend fun resetFailedDownloads()
 }
 
 interface SyncRepository {

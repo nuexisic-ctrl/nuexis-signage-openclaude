@@ -32,7 +32,7 @@
         android:layout_height="match_parent"
         android:visibility="gone" />
 
-    <!-- Loading / No Content State -->
+    <!-- Loading / No Content / Error State -->
     <LinearLayout
         android:id="@+id/statusContainer"
         android:layout_width="wrap_content"
@@ -57,6 +57,16 @@
             android:layout_marginTop="24dp"
             android:indeterminateTint="#094CB2" />
 
+        <!-- Error icon (hidden by default, shown on error) -->
+        <ImageView
+            android:id="@+id/errorIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginTop="24dp"
+            android:src="@android:drawable/ic_dialog_alert"
+            android:contentDescription="Error"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/statusText"
             android:layout_width="wrap_content"
@@ -64,7 +74,21 @@
             android:layout_marginTop="16dp"
             android:text="Syncing content..."
             android:textColor="#66FFFFFF"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:gravity="center"
+            android:maxWidth="400dp" />
+
+        <!-- Error details (hidden by default) -->
+        <TextView
+            android:id="@+id/errorDetailText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#66FF6B6B"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:maxWidth="400dp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <!-- ComposeView for Overlay UI (Sidebar, Controls) -->

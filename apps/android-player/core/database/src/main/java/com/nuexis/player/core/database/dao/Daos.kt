@@ -21,6 +21,9 @@ interface DeviceDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateDevice(device: DeviceEntity)
+
+    @Query("DELETE FROM devices")
+    suspend fun deleteAllDevices()
 }
 
 @Dao
@@ -61,6 +64,9 @@ interface AssetDao {
     @Query("SELECT * FROM assets WHERE id = :assetId")
     fun observeAsset(assetId: String): Flow<AssetEntity?>
 
+    @Query("SELECT * FROM assets WHERE id IN (:assetIds)")
+    fun observeAssets(assetIds: List<String>): Flow<List<AssetEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAsset(asset: AssetEntity)
 
@@ -69,6 +75,9 @@ interface AssetDao {
 
     @Query("SELECT * FROM assets WHERE downloadStatus = 'PENDING'")
     fun observePendingDownloads(): Flow<List<AssetEntity>>
+
+    @Query("UPDATE assets SET downloadStatus = 'PENDING' WHERE downloadStatus = 'FAILED'")
+    suspend fun resetFailedDownloads()
 
     @Query("DELETE FROM assets WHERE id NOT IN (:activeAssetIds)")
     suspend fun deleteUnusedAssets(activeAssetIds: List<String>)

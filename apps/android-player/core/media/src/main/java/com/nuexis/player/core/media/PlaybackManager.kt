@@ -23,6 +23,9 @@ class PlaybackManager @Inject constructor(
     private val _playbackState = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
+    private val _isMuted = MutableStateFlow(false)
+    val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
+
     fun getActivePlayer(): ExoPlayer {
         return if (activePlayerIndex == 1) {
             if (exoPlayer1 == null) exoPlayer1 = buildPlayer()
@@ -47,6 +50,7 @@ class PlaybackManager @Inject constructor(
         return ExoPlayer.Builder(context)
             .build().apply {
                 repeatMode = Player.REPEAT_MODE_OFF
+                volume = if (_isMuted.value) 0f else 1f
                 addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(state: Int) {
                         if (state == Player.STATE_ENDED) {
@@ -71,6 +75,13 @@ class PlaybackManager @Inject constructor(
         val player = getActivePlayer()
         player.playWhenReady = true
         _playbackState.value = PlaybackState.Playing
+    }
+
+    fun setMuted(muted: Boolean) {
+        _isMuted.value = muted
+        val volume = if (muted) 0f else 1f
+        exoPlayer1?.volume = volume
+        exoPlayer2?.volume = volume
     }
     
     fun release() {

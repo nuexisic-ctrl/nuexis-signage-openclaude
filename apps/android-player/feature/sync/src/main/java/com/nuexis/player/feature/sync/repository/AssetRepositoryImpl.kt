@@ -62,6 +62,10 @@ class AssetRepositoryImpl @Inject constructor(
         assetDao.deleteUnusedAssets(activeAssetIds)
     }
 
+    override suspend fun resetFailedDownloads() {
+        assetDao.resetFailedDownloads()
+    }
+
     private fun AssetEntity.toDomain() = Asset(
         id = id,
         filePath = filePath,
