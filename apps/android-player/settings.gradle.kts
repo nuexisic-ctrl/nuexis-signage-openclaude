@@ -10,17 +10,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://jitpack.io") }
     }
 }
-
-rootProject.name = "NuExisPlayer"
-
+rootProject.name = "android-player"
 include(":app")
-include(":core:network")
-include(":core:database")
-include(":core:domain")
-include(":core:media")
-include(":feature:player")
-include(":feature:pairing")
-include(":feature:sync")

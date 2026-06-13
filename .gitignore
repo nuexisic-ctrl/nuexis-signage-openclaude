@@ -42,3 +42,8 @@ next-env.d.ts
 
 testsprite_tests\tmp\config.json
 supabase/.temp
+
+# Android Player ignores
+/apps/android-player/app/build/
+/apps/android-player/.gradle/
+/apps/android-player/local.properties

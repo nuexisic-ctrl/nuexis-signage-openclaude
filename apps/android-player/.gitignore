@@ -1,9 +1,0 @@
-# Build outputs (regenerate locally; avoids Windows file-lock churn in VCS)
-**/build/
-.gradle/
-local.properties
-
-# IDE
-.idea/caches/
-.idea/libraries/
-*.iml
