@@ -46,6 +46,13 @@ export function DeviceTableRow({
   onToggleSelect,
   onGroupClick
 }: DeviceTableRowProps) {
+  const [now, setNow] = React.useState(Date.now())
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
   const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online')
   const isMenuOpen = openMenuId === device.id
   const isOnline = liveStatus === 'online'
@@ -56,8 +63,8 @@ export function DeviceTableRow({
 
   // Resolve content from group if device has no explicit content set
   const resolvedDevice = resolveDeviceContent(device, groups, memberships)
-  const kind = getContentKind(resolvedDevice, assets, playlists)
-  const label = getContentLabel(resolvedDevice, assets, playlists)
+  const kind = getContentKind(resolvedDevice, assets, playlists, now)
+  const label = getContentLabel(resolvedDevice, assets, playlists, now)
   const isEmpty = kind === 'empty'
   const isInherited = !device.content_type && resolvedDevice.content_type
 

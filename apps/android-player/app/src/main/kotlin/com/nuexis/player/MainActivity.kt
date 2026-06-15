@@ -82,6 +82,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
     private var lastAssetId: String? = null
     private var lastPlaylistId: String? = null
     private var lastOrientation: Int? = null
+    private var lastScaleMode: String? = null
 
     private fun checkAndRequestStoragePermission() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
@@ -291,6 +292,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                             lastAssetId = state.asset_id
                             lastPlaylistId = state.playlist_id
                             lastOrientation = state.orientation
+                            lastScaleMode = state.scale_mode
 
                             val expiresAt = try {
                                 val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
@@ -304,6 +306,9 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
 
                             if (!state.team_id.isNullOrEmpty()) {
                                 storageManager.setOrientation(state.orientation ?: 0)
+                                val baselineScaleMode = state.scale_mode ?: "Fit"
+                                storageManager.setScaleMode(baselineScaleMode)
+                                currentScaleMode = baselineScaleMode
                                 startPairedPlayer(state.team_id, state.id)
                             } else {
                                 val timeLeft = expiresAt - Date().time
@@ -472,6 +477,11 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                                 storageManager.setOrientation(state.orientation)
                                 applyNativeOrientation(state.orientation)
                                 updateOrientationButtonText()
+                            }
+
+                            if (state.scale_mode != null) {
+                                storageManager.setScaleMode(state.scale_mode)
+                                currentScaleMode = state.scale_mode
                             }
 
                             // Update cached content configuration
@@ -822,12 +832,14 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
             val assetId = record.get("asset_id")?.let { if (it.isJsonNull) null else it.asString }
             val playlistId = record.get("playlist_id")?.let { if (it.isJsonNull) null else it.asString }
             val orientation = record.get("orientation")?.let { if (it.isJsonNull) null else it.asInt }
+            val scaleMode = record.get("scale_mode")?.let { if (it.isJsonNull) null else it.asString }
 
             val changed = teamId != lastTeamId ||
                     orientation != lastOrientation ||
                     contentType != lastContentType ||
                     assetId != lastAssetId ||
-                    playlistId != lastPlaylistId
+                    playlistId != lastPlaylistId ||
+                    scaleMode != lastScaleMode
 
             if (!changed) {
                 // Ignore status updates, last_seen_at updates, or heartbeat updates to save HTTP load
@@ -840,6 +852,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
             lastContentType = contentType
             lastAssetId = assetId
             lastPlaylistId = playlistId
+            lastScaleMode = scaleMode
 
             if (teamId != null) {
                 // Device paired or orientation updated
@@ -894,9 +907,9 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
         t.printStackTrace()
     }
 
-    override fun onScreenshotRequested() {
+    override fun onScreenshotRequested(backendUrl: String?) {
         lifecycleScope.launch(Dispatchers.Main) {
-            Log.d("MainActivity", "Screenshot requested from CMS")
+            Log.d("MainActivity", "Screenshot requested from CMS, backendUrl: $backendUrl")
             try {
                 val rootView = window.decorView.rootView
                 val width = rootView.width
@@ -924,7 +937,13 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                         addProperty("base64Data", base64Data)
                     }
 
-                    val url = "$supabaseUrl/api/player/screenshot"
+                    val baseUrl = if (!backendUrl.isNullOrEmpty()) {
+                        backendUrl
+                    } else {
+                        supabaseUrl
+                    }
+                    val url = if (baseUrl.endsWith("/")) "${baseUrl}api/player/screenshot" else "$baseUrl/api/player/screenshot"
+
                     val requestBody = Gson().toJson(payload).toRequestBody("application/json; charset=utf-8".toMediaType())
                     val request = Request.Builder()
                         .url(url)

@@ -121,6 +121,7 @@ export function ScreensModals({
         <ScreenPreviewModal
           device={previewState.device} 
           teamSlug={teamSlug} 
+          teamId={teamId}
           onClose={() => setPreviewState(null)}
           contentType={previewState.contentType} 
           assetId={previewState.assetId} 

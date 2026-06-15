@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Maximize, Minimize, Move, Tv } from 'lucide-react'
+import { X, Maximize, Minimize, Move, Tv, Camera, RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import styles from './ScreenPreviewModal.module.css'
@@ -23,6 +23,7 @@ interface Props {
   orientation: number
   assets: Asset[]
   playlists: Playlist[]
+  teamId?: string
 }
 
 interface PlaylistItem {
@@ -49,9 +50,15 @@ export function ScreenPreviewModal({
   scaleMode,
   orientation,
   assets,
-  playlists
+  playlists,
+  teamId
 }: Props) {
   const supabase = createClient()
+  const [activeTab, setActiveTab] = useState<'simulator' | 'live'>('simulator')
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null)
+  const [screenshotError, setScreenshotError] = useState<boolean>(false)
+  const [capturing, setCapturing] = useState<boolean>(false)
+
   const [previewMode, setPreviewMode] = useState<'landscape' | 'portrait' | 'custom'>('landscape')
   const [customWidth, setCustomWidth] = useState(960)
   const [customHeight, setCustomHeight] = useState(540)
@@ -65,6 +72,64 @@ export function ScreenPreviewModal({
 
   const dragStartRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const fetchScreenshotUrl = useCallback(async () => {
+    if (!teamId) return
+    try {
+      const filePath = `${teamId}/screenshots/${device.id}.png`
+      const { data, error } = await supabase.storage
+        .from('workspace-media')
+        .createSignedUrl(filePath, 3600)
+      
+      if (error) {
+        throw error
+      }
+      if (data?.signedUrl) {
+        setScreenshotUrl(`${data.signedUrl}&t=${Date.now()}`)
+        setScreenshotError(false)
+      } else {
+        setScreenshotUrl(null)
+      }
+    } catch (err) {
+      console.error('Failed to get screenshot URL:', err)
+      setScreenshotError(true)
+      setScreenshotUrl(null)
+    }
+  }, [device.id, teamId, supabase])
+
+  useEffect(() => {
+    if (activeTab === 'live') {
+      fetchScreenshotUrl()
+    }
+  }, [activeTab, fetchScreenshotUrl])
+
+  const handleCaptureScreen = async () => {
+    if (capturing) return
+    setCapturing(true)
+    try {
+      const channel = supabase.channel(`device-pair-${device.id}`)
+      
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[CMS] Broadcasting request_screenshot to device')
+          await channel.send({
+            type: 'broadcast',
+            event: 'request_screenshot',
+            payload: { backendUrl: window.location.origin }
+          })
+          
+          setTimeout(async () => {
+            await fetchScreenshotUrl()
+            setCapturing(false)
+            supabase.removeChannel(channel)
+          }, 3500)
+        }
+      })
+    } catch (err) {
+      console.error('[CMS] Failed to trigger capture:', err)
+      setCapturing(false)
+    }
+  }
 
   // ── 1. Fetch Playlist items if Content Type is Playlist ─────────────────
   useEffect(() => {
@@ -344,7 +409,7 @@ export function ScreenPreviewModal({
       )
     }
 
-    if (itemMime === 'application/x-widget-remote-url') {
+    if (itemMime === 'application/x-widget-remote-url' || itemMime === 'application/x-widget-website') {
       return (
         <iframe
           src={itemPath}
@@ -560,7 +625,23 @@ export function ScreenPreviewModal({
       {/* ── Header Toolbar ── */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <h2 className={styles.title}>{device.name || 'Unnamed Screen'} simulator</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <h2 className={styles.title}>{device.name || 'Unnamed Screen'}</h2>
+            <div className={styles.tabsContainer}>
+              <button
+                onClick={() => setActiveTab('simulator')}
+                className={`${styles.tabBtn} ${activeTab === 'simulator' ? styles.tabBtnActive : ''}`}
+              >
+                Simulator
+              </button>
+              <button
+                onClick={() => setActiveTab('live')}
+                className={`${styles.tabBtn} ${activeTab === 'live' ? styles.tabBtnActive : ''}`}
+              >
+                Live View
+              </button>
+            </div>
+          </div>
           <div className={styles.metaInfo}>
             <span className={styles.badge}>{fit.toUpperCase()}</span>
             <span className={styles.badge}>{orientation}° orientation</span>
@@ -568,66 +649,89 @@ export function ScreenPreviewModal({
           </div>
         </div>
 
-        {/* ── Mode selector ── */}
-        <div className={styles.controlsCenter}>
-          <button
-            onClick={() => setPreviewMode('landscape')}
-            className={`${styles.modeBtn} ${previewMode === 'landscape' ? styles.modeBtnActive : ''}`}
-          >
-            Landscape (16:9)
-          </button>
-          <button
-            onClick={() => setPreviewMode('portrait')}
-            className={`${styles.modeBtn} ${previewMode === 'portrait' ? styles.modeBtnActive : ''}`}
-          >
-            Portrait (9:16)
-          </button>
-          <button
-            onClick={() => setPreviewMode('custom')}
-            className={`${styles.modeBtn} ${previewMode === 'custom' ? styles.modeBtnActive : ''}`}
-          >
-            Custom Sizing
-          </button>
+        {/* ── Mode selector / Capture action ── */}
+        {activeTab === 'simulator' ? (
+          <div className={styles.controlsCenter}>
+            <button
+              onClick={() => setPreviewMode('landscape')}
+              className={`${styles.modeBtn} ${previewMode === 'landscape' ? styles.modeBtnActive : ''}`}
+            >
+              Landscape (16:9)
+            </button>
+            <button
+              onClick={() => setPreviewMode('portrait')}
+              className={`${styles.modeBtn} ${previewMode === 'portrait' ? styles.modeBtnActive : ''}`}
+            >
+              Portrait (9:16)
+            </button>
+            <button
+              onClick={() => setPreviewMode('custom')}
+              className={`${styles.modeBtn} ${previewMode === 'custom' ? styles.modeBtnActive : ''}`}
+            >
+              Custom Sizing
+            </button>
 
-          {previewMode === 'custom' && (
-            <div className={styles.customInputs}>
-              <div className={styles.inputGroup}>
-                <label>W</label>
-                <input
-                  type="number"
-                  value={customWidth}
-                  min={280}
-                  max={2560}
-                  onChange={(e) => setCustomWidth(Number(e.target.value))}
-                  className={styles.dimensionInput}
-                />
+            {previewMode === 'custom' && (
+              <div className={styles.customInputs}>
+                <div className={styles.inputGroup}>
+                  <label>W</label>
+                  <input
+                    type="number"
+                    value={customWidth}
+                    min={280}
+                    max={2560}
+                    onChange={(e) => setCustomWidth(Number(e.target.value))}
+                    className={styles.dimensionInput}
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label>H</label>
+                  <input
+                    type="number"
+                    value={customHeight}
+                    min={180}
+                    max={1440}
+                    onChange={(e) => setCustomHeight(Number(e.target.value))}
+                    className={styles.dimensionInput}
+                  />
+                </div>
+                <select
+                  value={customRatio}
+                  onChange={(e) => handleRatioChange(e.target.value)}
+                  className={styles.aspectSelect}
+                >
+                  <option value="custom">Custom Ratio</option>
+                  <option value="16:9">16:9</option>
+                  <option value="9:16">9:16</option>
+                  <option value="16:10">16:10</option>
+                  <option value="4:3">4:3</option>
+                  <option value="1:1">1:1</option>
+                </select>
               </div>
-              <div className={styles.inputGroup}>
-                <label>H</label>
-                <input
-                  type="number"
-                  value={customHeight}
-                  min={180}
-                  max={1440}
-                  onChange={(e) => setCustomHeight(Number(e.target.value))}
-                  className={styles.dimensionInput}
-                />
-              </div>
-              <select
-                value={customRatio}
-                onChange={(e) => handleRatioChange(e.target.value)}
-                className={styles.aspectSelect}
-              >
-                <option value="custom">Custom Ratio</option>
-                <option value="16:9">16:9</option>
-                <option value="9:16">9:16</option>
-                <option value="16:10">16:10</option>
-                <option value="4:3">4:3</option>
-                <option value="1:1">1:1</option>
-              </select>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div className={styles.controlsCenter}>
+            <button
+              onClick={handleCaptureScreen}
+              disabled={capturing}
+              className={`${styles.modeBtn} ${styles.captureBtn} ${capturing ? styles.captureBtnLoading : ''}`}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              {capturing ? (
+                <>
+                  <RefreshCw size={16} className={styles.spinnerIcon} />
+                  Capturing Live Screen...
+                </>
+              ) : (
+                <>
+                  <Camera size={16} />
+                  Capture Screen
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* ── Fullscreen and Close actions ── */}
         <div className={styles.actionsRight}>
@@ -648,29 +752,59 @@ export function ScreenPreviewModal({
         </div>
       </div>
 
-      {/* ── Simulator Viewing Window ── */}
+      {/* ── Simulator/Live View Area ── */}
       <div className={styles.simulatorArea}>
-        <div
-          className={`${styles.displayWrapper} ${resizing ? styles.resizing : ''}`}
-          style={{ width: `${width}px`, height: `${height}px` }}
-        >
-          <div className={styles.displayFrame}>
-            <div style={rotationStyle}>
-              {contentNode}
+        {activeTab === 'simulator' ? (
+          <div
+            className={`${styles.displayWrapper} ${resizing ? styles.resizing : ''}`}
+            style={{ width: `${width}px`, height: `${height}px` }}
+          >
+            <div className={styles.displayFrame}>
+              <div style={rotationStyle}>
+                {contentNode}
+              </div>
             </div>
-          </div>
 
-          {/* Sizing Grab Handle */}
-          {previewMode === 'custom' && (
-            <div
-              className={styles.resizeHandle}
-              onMouseDown={handleMouseDown}
-              title="Drag to resize simulated display"
-            >
-              <Move className={styles.resizeIcon} />
-            </div>
-          )}
-        </div>
+            {/* Sizing Grab Handle */}
+            {previewMode === 'custom' && (
+              <div
+                className={styles.resizeHandle}
+                onMouseDown={handleMouseDown}
+                title="Drag to resize simulated display"
+              >
+                <Move className={styles.resizeIcon} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className={styles.liveViewContainer}>
+            {capturing && (
+              <div className={styles.capturingOverlay}>
+                <div className={styles.spinner} />
+                <p className={styles.capturingText}>Requesting capture from device...</p>
+              </div>
+            )}
+            
+            {screenshotUrl && !screenshotError ? (
+              <div className={styles.screenshotFrame}>
+                <img
+                  src={screenshotUrl}
+                  alt={`${device.name || 'Device'} Live Screen`}
+                  className={styles.liveScreenshot}
+                  onError={() => setScreenshotError(true)}
+                />
+              </div>
+            ) : (
+              <div className={styles.livePlaceholder}>
+                <Tv size={48} className={styles.placeholderIcon} />
+                <p className={styles.placeholderText}>No screenshot captured yet</p>
+                <span className={styles.placeholderSubtext}>
+                  Click "Capture Screen" to request a live screenshot from this device.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

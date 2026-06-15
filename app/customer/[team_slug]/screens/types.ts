@@ -13,6 +13,7 @@ export interface Device {
   total_playtime_seconds?: number | null
   app_version?: string | null
   os_version?: string | null
+  scale_mode?: string | null
 }
 
 import { Asset } from '../assets/types'
@@ -21,7 +22,7 @@ export type { Asset }
 export interface PlaylistItem {
   duration_seconds: number
   widget_type?: string | null
-  assets?: { mime_type: string } | null
+  assets?: Asset | null
 }
 
 export interface Playlist {

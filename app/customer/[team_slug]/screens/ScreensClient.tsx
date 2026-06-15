@@ -30,7 +30,7 @@ import { toast } from '@/app/components/Toast'
 // (was 15s which caused 4 full re-renders/min of the device list for no user-visible benefit)
 const RELATIVE_TIME_TICK_MS = 60 * 1000
 const DEVICE_SELECT_FIELDS =
-  'id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds'
+  'id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds, scale_mode, app_version, os_version'
 
 const mapDevice = (d: any): Device => ({
   id: d.id,
@@ -43,6 +43,9 @@ const mapDevice = (d: any): Device => ({
   orientation: d.orientation,
   last_seen_at: d.last_seen_at || null,
   total_playtime_seconds: Number(d.total_playtime_seconds) || 0,
+  app_version: d.app_version || null,
+  os_version: d.os_version || null,
+  scale_mode: d.scale_mode || null,
 })
 
 interface Props {

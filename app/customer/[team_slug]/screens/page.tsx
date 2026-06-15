@@ -49,7 +49,7 @@ export default async function ScreensPage({ params }: Props) {
 
   const query = supabase
     .from('devices')
-    .select('id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds, app_version, os_version', { count: 'exact' })
+    .select('id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds, app_version, os_version, scale_mode', { count: 'exact' })
     .eq('team_id', profile?.team_id as string)
     .order('created_at', { ascending: false })
     .limit(1000)
@@ -67,7 +67,7 @@ export default async function ScreensPage({ params }: Props) {
     profile?.team_id
       ? supabase
           .from('playlists')
-          .select('id, name, created_at, playlist_items(duration_seconds, widget_type, assets(mime_type))')
+          .select('id, name, created_at, playlist_items(duration_seconds, widget_type, assets(id, file_name, file_path, mime_type, size_bytes, created_at))')
           .eq('team_id', profile.team_id)
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [], error: null }),
@@ -103,6 +103,7 @@ export default async function ScreensPage({ params }: Props) {
       total_playtime_seconds: d.total_playtime_seconds || 0,
       app_version: d.app_version || null,
       os_version: d.os_version || null,
+      scale_mode: d.scale_mode || null,
     }
   })
 

@@ -313,27 +313,29 @@
 
 .body {
   flex: 1;
-  overflow-y: auto;
-  padding: 24px;
+  display: flex;
+  overflow: hidden; /* Main body doesn't scroll, inner content does */
   background: var(--surface-lowest);
   position: relative;
-}
-
-.bodyWithSidebar {
-  display: flex;
-  flex-direction: row;
-  gap: 20px;
 }
 
 .bodyMain {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  overflow-y: auto; /* This scrolls */
+  transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bodyWithSidebar .bodyMain {
+  margin-right: 0; /* Sidebar will be a flex item */
 }
 
 /* Table View Styles */
 .tableContainer {
   width: 100%;
-  overflow-x: auto;
 }
 
 .table {
@@ -343,9 +345,9 @@
 }
 
 .table th {
-  padding: 12px 16px;
+  padding: 8px 12px;
   font-family: var(--font-label);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -358,8 +360,8 @@
 }
 
 .table td {
-  padding: 14px 16px;
-  font-size: 0.9rem;
+  padding: 6px 12px;
+  font-size: 0.875rem;
   color: var(--on-surface);
   border-bottom: 1px solid var(--outline-variant);
   vertical-align: middle;
@@ -371,7 +373,7 @@
 
 .row {
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 
 .row:hover {
@@ -381,15 +383,15 @@
 .fileNameCell {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .fileIconWrapper {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   background: var(--surface-low);
   border: 1px solid var(--outline-variant);
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -401,7 +403,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 7px;
+  border-radius: 5px;
 }
 
 .fileNameText {
@@ -417,13 +419,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 9px;
+  padding: 3px 7px;
   background: rgba(7, 17, 31, 0.66);
   backdrop-filter: blur(8px);
   color: rgba(255, 255, 255, 0.92);
   border-radius: 9999px;
   font-family: var(--font-label);
-  font-size: 0.64rem;
+  font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -434,8 +436,8 @@
 }
 
 .actionIconBtn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   border: 0;
   background: transparent;
@@ -455,14 +457,14 @@
 /* Grid View Styles */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
 }
 
 .card {
   background: var(--surface-lowest);
   border: 1px solid var(--outline-variant);
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
   display: flex;
@@ -478,7 +480,7 @@
 }
 
 .cardPreviewBox {
-  height: 120px;
+  height: 100px;
   background: var(--surface-container);
   position: relative;
   display: flex;
@@ -490,8 +492,8 @@
 
 .cardTypeBadge {
   position: absolute;
-  bottom: 8px;
-  left: 8px;
+  bottom: 6px;
+  left: 6px;
   z-index: 5;
 }
 
@@ -526,17 +528,17 @@
 }
 
 .cardBody {
-  padding: 12px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   position: relative;
   flex: 1;
 }
 
 .cardTitle {
   font-family: var(--font-label);
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   font-weight: 800;
   color: var(--on-surface);
   margin: 0;
@@ -548,7 +550,7 @@
 
 .cardDetails {
   font-family: var(--font-label);
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   color: var(--on-surface-subtle);
   display: flex;
   flex-direction: column;
@@ -563,12 +565,12 @@
 
 /* Footer Section Styles */
 .footer {
-  padding: 16px 24px;
+  padding: 12px 24px;
   border-top: 1px solid var(--outline-variant);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--on-surface-subtle);
   background: var(--surface-lowest);
 }
@@ -580,8 +582,8 @@
 }
 
 .pageBtn {
-  min-width: 32px;
-  height: 32px;
+  min-width: 30px;
+  height: 30px;
   border-radius: 6px;
   border: 1px solid var(--outline-variant);
   background: var(--surface-low);
@@ -593,6 +595,7 @@
   font-family: var(--font-label);
   font-weight: 800;
   transition: all 0.2s ease;
+  font-size: 0.8rem;
 }
 
 .pageBtn:hover:not(:disabled) {
@@ -613,14 +616,14 @@
 
 /* Empty State */
 .emptyState {
-  min-height: 200px;
+  min-height: 180px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 12px;
-  padding: 32px;
+  gap: 10px;
+  padding: 24px;
   background: var(--surface-low);
   border: 1px dashed var(--outline-variant);
   border-radius: 12px;
@@ -628,7 +631,7 @@
 
 .emptyText {
   color: var(--on-surface-subtle);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   margin: 0;
 }
 
@@ -644,20 +647,20 @@
 }
 
 .createBtn {
-  height: 40px;
-  padding: 0 16px;
+  height: 36px;
+  padding: 0 14px;
   background: var(--primary);
   border: none;
   border-radius: 8px;
   color: var(--on-primary);
   font-family: var(--font-label);
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   font-weight: 800;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(9, 76, 178, 0.2);
+  gap: 6px;
+  box-shadow: 0 4px 10px rgba(9, 76, 178, 0.15);
   transition: all 0.2s ease;
 }
 
@@ -670,7 +673,7 @@
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  width: 160px;
+  width: 150px;
   background: var(--surface-lowest);
   border: 1px solid var(--outline-variant);
   border-radius: 8px;
@@ -682,17 +685,17 @@
 }
 
 .dropdownItem {
-  height: 40px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 12px;
   background: transparent;
   border: none;
   color: var(--on-surface);
   font-family: var(--font-body);
-  font-size: 0.875rem;
+  font-size: 0.825rem;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   text-align: left;
   transition: background-color 0.2s ease;
 }
@@ -712,9 +715,9 @@
   flex-wrap: wrap;
   gap: 6px;
   font-family: var(--font-label);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--on-surface-subtle);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .breadcrumbLink {
@@ -760,7 +763,7 @@
 .dragOver::before {
   content: "Drop files here to upload";
   position: absolute;
-  inset: 16px;
+  inset: 12px;
   background: rgba(9, 76, 178, 0.92);
   border: 2px dashed rgba(255, 255, 255, 0.6);
   border-radius: 12px;
@@ -769,7 +772,7 @@
   justify-content: center;
   color: #fff;
   font-family: var(--font-label);
-  font-size: 1.2rem;
+  font-size: 1rem;
   font-weight: 800;
   z-index: 100;
   pointer-events: none;
@@ -805,10 +808,10 @@
 
 .selectionBubble {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 20px;
-  height: 20px;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 1.5px solid var(--outline-variant);
   background: rgba(255, 255, 255, 0.8);
@@ -832,7 +835,7 @@
   right: 0;
   background: var(--surface-lowest);
   border-top: 1px solid var(--outline-variant);
-  padding: 14px 24px;
+  padding: 12px 24px;
   z-index: 200;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
   animation: slideUpFooter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -857,18 +860,18 @@
 }
 
 .selectionCountLabel {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--on-surface);
 }
 
 .selectionClearBtn {
   font-family: var(--font-label);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 800;
   color: var(--on-surface-subtle);
   background: var(--surface-low);
   border: 1px solid var(--outline-variant);
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
@@ -884,17 +887,17 @@
 .selectionFooterRight {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .selectionCancelBtn {
   font-family: var(--font-label);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 800;
   color: var(--on-surface-subtle);
   background: transparent;
   border: 0;
-  padding: 8px 16px;
+  padding: 6px 12px;
   cursor: pointer;
   transition: color 0.2s ease;
 }
@@ -905,17 +908,17 @@
 
 .selectionConfirmBtn {
   font-family: var(--font-label);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 800;
   color: var(--on-primary);
   background: var(--primary);
   border: 0;
-  padding: 8px 18px;
+  padding: 8px 16px;
   border-radius: 8px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  box-shadow: 0 4px 12px rgba(9, 76, 178, 0.2);
+  box-shadow: 0 4px 10px rgba(9, 76, 178, 0.15);
   transition: all 0.2s ease;
 }
 
@@ -930,27 +933,26 @@
 }
 
 .filterSidebar {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  height: 100%;
-  width: 320px;
+  width: 280px;
   z-index: 150;
   background: var(--surface-lowest);
   border-left: 1px solid var(--outline-variant);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transform: translateX(100%);
+  transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+}
+
+.filterSidebar:not(.isOpen) {
+  width: 0;
+  border-left: 0;
   opacity: 0;
   pointer-events: none;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.25s ease;
 }
 
 .filterSidebar.isOpen {
-  transform: translateX(0);
   opacity: 1;
   pointer-events: auto;
 }

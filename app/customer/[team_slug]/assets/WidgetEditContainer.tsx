@@ -102,7 +102,7 @@ export function WidgetEditContainer({
   }
 
   // ── Remote URL ───────────────────────────────────────────────────────────
-  if (asset.mime_type === 'application/x-widget-remote-url') {
+  if (asset.mime_type === 'application/x-widget-remote-url' || asset.mime_type === 'application/x-widget-website') {
     return (
       <RemoteUrlWidgetModal
         onClose={onClose}

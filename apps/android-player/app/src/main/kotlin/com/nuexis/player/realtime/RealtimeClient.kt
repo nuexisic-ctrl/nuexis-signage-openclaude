@@ -22,7 +22,7 @@ class RealtimeClient(
         fun onDeviceUpdated(record: JsonObject)
         fun onDeviceDeleted()
         fun onPlaylistRefresh()
-        fun onScreenshotRequested()
+        fun onScreenshotRequested(backendUrl: String?)
         fun onError(t: Throwable)
         fun onConnected()
         fun onDisconnected()
@@ -111,7 +111,8 @@ class RealtimeClient(
                     } else if (event == "refresh" && (topic?.startsWith("realtime:playlist-broadcast-") == true || topic?.startsWith("playlist-broadcast-") == true)) {
                         listener.onPlaylistRefresh()
                     } else if (event == "request_screenshot" && (topic?.startsWith("realtime:device-pair-") == true || topic?.startsWith("device-pair-") == true)) {
-                        listener.onScreenshotRequested()
+                        val backendUrl = payload?.get("backendUrl")?.asString
+                        listener.onScreenshotRequested(backendUrl)
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()

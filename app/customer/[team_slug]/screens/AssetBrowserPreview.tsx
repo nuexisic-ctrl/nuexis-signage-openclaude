@@ -85,7 +85,7 @@ export function CardPreview({ asset, previewUrls }: CardPreviewProps) {
           <YoutubeIcon size={72} style={{ stroke: '#ff0000', color: '#ff0000' }} />
         ) : asset.mime_type === 'application/x-widget-youtube-playlist' ? (
           <List size={72} style={{ stroke: '#ff4444', color: '#ff4444' }} />
-        ) : asset.mime_type === 'application/x-widget-remote-url' ? (
+        ) : asset.mime_type === 'application/x-widget-remote-url' || asset.mime_type === 'application/x-widget-website' ? (
           <FileText size={72} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
         ) : asset.mime_type === 'application/x-widget-html' ? (
           <Code size={72} style={{ stroke: '#10b981', color: '#10b981' }} />
@@ -173,7 +173,7 @@ export function TableIcon({ asset, previewUrls }: TableIconProps) {
     if (asset.mime_type === 'application/x-widget-youtube-playlist') {
       return <List size={18} style={{ stroke: '#ff4444', color: '#ff4444' }} />
     }
-    if (asset.mime_type === 'application/x-widget-remote-url') {
+    if (asset.mime_type === 'application/x-widget-remote-url' || asset.mime_type === 'application/x-widget-website') {
       return <FileText size={18} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
     }
     if (asset.mime_type === 'application/x-widget-html') {

@@ -79,7 +79,8 @@ class SupabaseClient(
         val content_type: String?,
         val asset_id: String?,
         val playlist_id: String?,
-        val orientation: Int?
+        val orientation: Int?,
+        val scale_mode: String?
     )
 
     data class PlaylistItem(

@@ -113,7 +113,7 @@ export function AssetPreviewModal({ asset, previewUrl, onClose }: Props) {
   const isVid = isVideo(asset.mime_type)
   const isYouTube = asset.mime_type === 'application/x-widget-youtube'
   const isYouTubePlaylist = asset.mime_type === 'application/x-widget-youtube-playlist'
-  const isRemoteUrl = asset.mime_type === 'application/x-widget-remote-url'
+  const isRemoteUrl = asset.mime_type === 'application/x-widget-remote-url' || asset.mime_type === 'application/x-widget-website'
   const isHtml = asset.mime_type === 'application/x-widget-html'
 
   let youtubeVideoId = ''

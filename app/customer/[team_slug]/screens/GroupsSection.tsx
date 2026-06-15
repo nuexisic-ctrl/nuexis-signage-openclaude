@@ -46,7 +46,7 @@ function getGroupContentKind(group: Group, assets: any[]): ContentKind {
     const asset = assets.find(a => a.id === group.asset_id)
     if (asset?.mime_type) {
       if (asset.mime_type === 'application/x-widget-youtube') return 'youtube'
-      if (asset.mime_type === 'application/x-widget-remote-url') return 'remote-url'
+      if (asset.mime_type === 'application/x-widget-remote-url' || asset.mime_type === 'application/x-widget-website') return 'remote-url'
       if (asset.mime_type === 'application/x-widget-html') return 'html-widget'
       if (asset.mime_type === 'application/x-widget-flow') return 'clock'
       if (asset.mime_type === 'application/x-widget-countdown') return 'countdown'

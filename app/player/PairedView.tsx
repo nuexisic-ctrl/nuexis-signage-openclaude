@@ -144,7 +144,7 @@ export default function PairedView({
           />
         </div>
       )
-    } else if (mimeType === 'application/x-widget-remote-url') {
+    } else if (mimeType === 'application/x-widget-remote-url' || mimeType === 'application/x-widget-website') {
       content = (
         <ShadowDOMRemoteURLRenderer
           key={assetUrl}

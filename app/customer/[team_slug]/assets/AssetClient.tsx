@@ -366,9 +366,16 @@ export default function AssetClient({
     setTimeout(() => setShowSuccessPulse(false), 600)
   }, [isRefreshing, refreshData, activeFolder])
 
+  const loadingRef = useRef<Set<string>>(new Set())
+
   // Caching: SWR file fetcher
   const loadFolderFiles = useCallback(async (folderId: string | null) => {
     const cacheKey = folderId || 'root'
+    
+    // Prevent redundant concurrent fetches for the same folder
+    if (loadingRef.current.has(cacheKey)) return
+    loadingRef.current.add(cacheKey)
+
     const hasCache = !!filesCache[cacheKey]
     if (!hasCache) {
       setIsLoadingFiles(true)
@@ -392,10 +399,17 @@ export default function AssetClient({
 
       const result = await fetchFolderFiles(teamSlug, folderId)
       if (result.success && result.files) {
-        setFilesCache(prev => ({
-          ...prev,
-          [cacheKey]: result.files as Asset[]
-        }))
+        setFilesCache(prev => {
+          // Only update if data actually changed or is new to avoid unnecessary re-renders
+          const existing = prev[cacheKey]
+          if (existing && JSON.stringify(existing) === JSON.stringify(result.files)) {
+            return prev
+          }
+          return {
+            ...prev,
+            [cacheKey]: result.files as Asset[]
+          }
+        })
       } else {
         toast.error(result.error || t('Failed to refresh folder contents.'))
       }
@@ -404,8 +418,9 @@ export default function AssetClient({
       toast.error(t('An error occurred while loading folder contents.'))
     } finally {
       setIsLoadingFiles(false)
+      loadingRef.current.delete(cacheKey)
     }
-  }, [teamSlug, filesCache, t, supabase, handleRefresh])
+  }, [teamSlug, t, supabase, handleRefresh]) // Removed filesCache from deps
 
   useEffect(() => {
     loadFolderFiles(activeFolder?.id || null)

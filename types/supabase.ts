@@ -179,6 +179,7 @@ export type Database = {
           total_playtime_seconds: number
           app_version: string | null
           os_version: string | null
+          scale_mode: string | null
         }
         Insert: {
           asset_id?: string | null
@@ -199,6 +200,7 @@ export type Database = {
           total_playtime_seconds?: number
           app_version?: string | null
           os_version?: string | null
+          scale_mode?: string | null
         }
         Update: {
           asset_id?: string | null
@@ -219,6 +221,7 @@ export type Database = {
           total_playtime_seconds?: number
           app_version?: string | null
           os_version?: string | null
+          scale_mode?: string | null
         }
         Relationships: [
           {

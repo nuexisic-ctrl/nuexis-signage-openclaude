@@ -1,7 +1,6 @@
 'use client'
 
 import React from 'react'
-import { MoreVertical, Folder, Image as ImageIcon, Play, Music, FileText, Code, File } from 'lucide-react'
 import { useAssetBrowser } from './AssetBrowserContext'
 import { TableIcon, formatDate, formatSize } from '../../screens/AssetBrowserPreview'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
@@ -69,17 +68,13 @@ export function AssetBrowserTable() {
         <thead>
           <tr>
             {isMultiSelect && <th style={{ width: '40px', paddingLeft: '16px' }} />}
-            <th style={{ width: '35%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleHeaderSort('name')}>
+            <th style={{ width: '50%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleHeaderSort('name')}>
               File Name {renderSortIcon('name')}
             </th>
-            <th style={{ width: '20%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleHeaderSort('type')}>
-              Content Type {renderSortIcon('type')}
-            </th>
-            <th style={{ width: '15%' }}>Size</th>
-            <th style={{ width: '20%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleHeaderSort('created')}>
+            <th style={{ width: '20%' }}>Size</th>
+            <th style={{ width: '30%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleHeaderSort('created')}>
               Date Added {renderSortIcon('created')}
             </th>
-            <th style={{ width: '10%', textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -117,54 +112,8 @@ export function AssetBrowserTable() {
                     </span>
                   </div>
                 </td>
-                <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.86rem' }}>
-                    {(() => {
-                      if (asset.mime_type === 'application/x-folder') {
-                        return <Folder size={14} style={{ stroke: asset.color || '#78716c' }} />
-                      }
-                      if (asset.mime_type.startsWith('image/')) {
-                        return <ImageIcon size={14} style={{ stroke: '#22c55e' }} />
-                      }
-                      if (asset.mime_type.startsWith('video/')) {
-                        return <Play size={14} style={{ stroke: '#3b82f6' }} />
-                      }
-                      if (asset.mime_type.startsWith('audio/')) {
-                        return <Music size={14} style={{ stroke: '#f59e0b' }} />
-                      }
-                      if (asset.mime_type === 'application/pdf') {
-                        return <FileText size={14} style={{ stroke: '#ef4444' }} />
-                      }
-                      if (asset.mime_type.startsWith('application/x-widget')) {
-                        return <Code size={14} style={{ stroke: '#a855f7' }} />
-                      }
-                      return <File size={14} style={{ stroke: '#64748b' }} />
-                    })()}
-                    <span>
-                      {(() => {
-                        if (asset.mime_type === 'application/x-folder') return 'Folder'
-                        if (asset.mime_type.startsWith('image/')) return 'Image'
-                        if (asset.mime_type.startsWith('video/')) return 'Video'
-                        if (asset.mime_type.startsWith('audio/')) return 'Audio'
-                        if (asset.mime_type === 'application/pdf') return 'PDF'
-                        if (asset.mime_type.startsWith('application/x-widget')) return 'Widget'
-                        return 'Document'
-                      })()}
-                    </span>
-                  </div>
-                </td>
                 <td>{asset.mime_type === 'application/x-folder' ? '--' : formatSize(asset.size_bytes)}</td>
                 <td>{formatDate(asset.created_at)}</td>
-                <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'right' }}>
-                  <button
-                    className={styles.actionIconBtn}
-                    onClick={() => handleAssetClick(asset)}
-                    title={asset.mime_type === 'application/x-folder' ? "Open Folder" : "Select Asset"}
-                    type="button"
-                  >
-                    <MoreVertical size={16} />
-                  </button>
-                </td>
               </tr>
             )
           })}

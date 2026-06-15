@@ -15,7 +15,6 @@ import { UploadPanel } from '../../assets/UploadPanel'
 import { WidgetModalsContainer } from '../../assets/WidgetModalsContainer'
 import { CreateFolderModal } from '../../assets/CreateFolderModal'
 import { useDragAndDrop } from '../../screens/AssetBrowserPreview'
-import { fetchFolderFiles } from '../../assets/actions'
 import { toast } from '@/app/components/Toast'
 import { Asset } from '../../assets/types'
 import styles from './AssetBrowser.module.css'
@@ -34,10 +33,8 @@ export interface AssetBrowserModalProps {
 
 function AssetBrowserModalContent() {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
   const {
-    allowedMimeTypes,
-    isMultiSelect,
     teamSlug,
     teamId,
     supabase,
@@ -45,7 +42,6 @@ function AssetBrowserModalContent() {
     folders,
     setFolders,
     activeFolder,
-    setActiveFolder,
     filesCache,
     setFilesCache,
     searchQuery,

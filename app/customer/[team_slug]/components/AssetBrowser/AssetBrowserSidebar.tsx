@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect } from 'react'
-import { X } from 'lucide-react'
 import { useAssetBrowser } from './AssetBrowserContext'
 import CustomSelect from '../CustomSelect'
 import styles from './AssetBrowser.module.css'
@@ -73,12 +72,6 @@ export function AssetBrowserSidebar({ isOpen, onClose }: AssetBrowserSidebarProp
         aria-hidden={!isOpen}
         aria-labelledby="browser-filter-sidebar-title"
       >
-        <div className={styles.sidebarHeader}>
-          <h3 id="browser-filter-sidebar-title" className={styles.sidebarTitle}>Advanced Filters</h3>
-          <button className={styles.closeSidebarBtn} onClick={onClose} type="button" aria-label="Close filters">
-            <X size={20} />
-          </button>
-        </div>
         <div className={styles.sidebarBody}>
           {showTypeFilter && (
             <div className={styles.filterGroup}>

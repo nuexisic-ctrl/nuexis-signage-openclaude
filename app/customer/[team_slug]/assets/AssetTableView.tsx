@@ -455,7 +455,7 @@ export function AssetTableView({
                         )
                       ) : asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist' ? (
                         <YoutubeIcon size={20} style={{ stroke: '#ff0000', color: '#ff0000' }} />
-                      ) : asset.mime_type === 'application/x-widget-remote-url' ? (
+                      ) : asset.mime_type === 'application/x-widget-remote-url' || asset.mime_type === 'application/x-widget-website' ? (
                         <Link size={20} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
                       ) : asset.mime_type === 'application/x-widget-html' ? (
                         <Code size={20} style={{ stroke: '#10b981', color: '#10b981' }} />

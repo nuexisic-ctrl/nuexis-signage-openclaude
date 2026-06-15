@@ -43,6 +43,7 @@ export function AssignModal({
   const [assetId, setAssetId] = useState<string>(device.asset_id || '')
   const [playlistId, setPlaylistId] = useState<string>(device.playlist_id || '')
   const [scaleMode, setScaleMode] = useState<'None' | 'Fit' | 'Stretch' | 'Zoom'>(() => {
+    if (device.scale_mode) return device.scale_mode as 'None' | 'Fit' | 'Stretch' | 'Zoom'
     if (typeof window !== 'undefined') {
       return (localStorage.getItem(`scale_mode_${device.id}`) as 'None' | 'Fit' | 'Stretch' | 'Zoom') || 'Fit'
     }
@@ -147,6 +148,7 @@ export function AssignModal({
         asset_id: contentType === 'Asset' ? (assetId || null) : null,
         playlist_id: contentType === 'Playlist' ? (playlistId || null) : null,
         orientation,
+        scale_mode: scaleMode,
       }
       const result = await updateDeviceAssignment(teamSlug, device.id, data)
       if (result.success) {

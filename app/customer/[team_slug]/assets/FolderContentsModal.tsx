@@ -153,7 +153,7 @@ export function FolderContentsModal({
                           )
                         ) : asset.mime_type === 'application/x-widget-youtube' ? (
                           <YoutubeIcon size={18} style={{ stroke: '#ff0000', color: '#ff0000' }} />
-                        ) : asset.mime_type === 'application/x-widget-remote-url' ? (
+                        ) : asset.mime_type === 'application/x-widget-remote-url' || asset.mime_type === 'application/x-widget-website' ? (
                           <Link size={18} style={{ stroke: '#0ea5e9', color: '#0ea5e9' }} />
                         ) : asset.mime_type === 'application/x-widget-html' ? (
                           <Code size={18} style={{ stroke: '#10b981', color: '#10b981' }} />

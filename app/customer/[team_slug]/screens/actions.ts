@@ -91,6 +91,7 @@ export interface AssignmentData {
   asset_id: string | null
   playlist_id?: string | null
   orientation: 0 | 90 | 180 | 270
+  scale_mode?: 'None' | 'Fit' | 'Stretch' | 'Zoom' | null
 }
 
 export async function updateDeviceAssignment(
@@ -151,6 +152,7 @@ export async function updateDeviceAssignment(
       asset_id: data.asset_id,
       playlist_id: data.playlist_id,
       orientation: data.orientation,
+      scale_mode: data.scale_mode,
     })
 
   const { data: updated, error: updateError } = deviceId.includes(',')

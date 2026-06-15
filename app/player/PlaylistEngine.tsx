@@ -492,7 +492,7 @@ function PlayableItem({
     )
   }
 
-  if (item.assets?.mime_type === 'application/x-widget-remote-url') {
+  if (item.assets?.mime_type === 'application/x-widget-remote-url' || item.assets?.mime_type === 'application/x-widget-website') {
     return (
       <ShadowDOMRemoteURLRenderer
         url={mediaUrl}

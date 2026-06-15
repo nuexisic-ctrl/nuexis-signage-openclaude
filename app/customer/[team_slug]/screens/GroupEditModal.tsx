@@ -258,6 +258,7 @@ export function GroupEditModal({
         asset_id: contentType === 'Asset' ? (assetId || null) : null,
         playlist_id: contentType === 'Playlist' ? (playlistId || null) : null,
         orientation,
+        scale_mode: scaleMode,
         deviceIds: selectedDeviceIds
       }
 

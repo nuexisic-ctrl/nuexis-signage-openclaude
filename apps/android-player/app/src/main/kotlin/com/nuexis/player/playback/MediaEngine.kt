@@ -114,7 +114,7 @@ class MediaEngine(private val context: Context, private val container: FrameLayo
             playerView.visibility = View.GONE
             stopVideo()
 
-            if (mimeType == "application/x-widget-remote-url") {
+            if (mimeType == "application/x-widget-remote-url" || mimeType == "application/x-widget-website") {
                 webView.webViewClient = WebViewClient()
                 var targetUrl = configJson
                 try {

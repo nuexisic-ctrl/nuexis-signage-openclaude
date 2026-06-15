@@ -58,12 +58,14 @@ export default function PlayerPage() {
     contentType: string | null
     assetId: string | null
     playlistId: string | null
+    scaleMode: string | null
   }>({
     teamId: null,
     orientation: null,
     contentType: null,
     assetId: null,
     playlistId: null,
+    scaleMode: null,
   })
 
   const playtimeAccumulatorRef = useRef(0)
@@ -210,7 +212,7 @@ export default function PlayerPage() {
 
     function applyDeviceState(device: DeviceState) {
       setContentType(device.content_type)
-      setScaleMode(localStorage.getItem(`scale_mode_${device.id}`) || 'Fit')
+      setScaleMode(device.scale_mode || 'Fit')
       setOrientation(device.orientation || 0)
       if (device.content_type === 'Asset') {
         setPlaylistId(null)
@@ -422,6 +424,7 @@ export default function PlayerPage() {
         contentType: activeDevice.content_type || null,
         assetId: activeDevice.asset_id || null,
         playlistId: activeDevice.playlist_id || null,
+        scaleMode: activeDevice.scale_mode || null,
       }
 
       // ── Realtime subscription ─────────────────────────────────────
@@ -490,13 +493,15 @@ export default function PlayerPage() {
               const newContentType = payload.new.content_type || null
               const newAssetId = payload.new.asset_id || null
               const newPlaylistId = payload.new.playlist_id || null
+              const newScaleMode = payload.new.scale_mode || null
 
               const configChanged =
                 newTeamId !== lastConfigRef.current.teamId ||
                 newOrientation !== lastConfigRef.current.orientation ||
                 newContentType !== lastConfigRef.current.contentType ||
                 newAssetId !== lastConfigRef.current.assetId ||
-                newPlaylistId !== lastConfigRef.current.playlistId
+                newPlaylistId !== lastConfigRef.current.playlistId ||
+                newScaleMode !== lastConfigRef.current.scaleMode
 
               if (!configChanged) {
                 // Ignore status updates, last_seen_at updates, or heartbeat updates to save HTTP load
@@ -510,6 +515,7 @@ export default function PlayerPage() {
                 contentType: newContentType,
                 assetId: newAssetId,
                 playlistId: newPlaylistId,
+                scaleMode: newScaleMode,
               }
               if (!isPairedRef.current) {
                 isPairedRef.current = true

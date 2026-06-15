@@ -441,6 +441,7 @@ export async function saveGroupChanges(
     asset_id: string | null
     playlist_id: string | null
     orientation: 0 | 90 | 180 | 270
+    scale_mode?: 'None' | 'Fit' | 'Stretch' | 'Zoom' | null
     deviceIds: string[]
   }
 ): Promise<GroupActionResult> {
@@ -523,6 +524,7 @@ export async function saveGroupChanges(
         asset_id: data.content_type === 'Asset' ? data.asset_id : null,
         playlist_id: data.content_type === 'Playlist' ? data.playlist_id : null,
         orientation: data.orientation,
+        scale_mode: data.scale_mode,
         last_seen_at: new Date().toISOString() // Touch to trigger realtime sync
       })
       .in('id', data.deviceIds)

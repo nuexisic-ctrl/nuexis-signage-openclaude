@@ -112,6 +112,7 @@ export async function getDeviceState(
     asset_id: string | null
     playlist_id: string | null
     orientation: number | null
+    scale_mode: string | null
     created_at: string
     last_seen_at: string | null
   }) || null

@@ -6,7 +6,7 @@ import { Device } from './types'
 
 const RELATIVE_TIME_TICK_MS = 60 * 1000
 const DEVICE_SELECT_FIELDS =
-  'id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds'
+  'id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds, scale_mode'
 
 const mapDevice = (d: any): Device => ({
   id: d.id,
@@ -21,6 +21,7 @@ const mapDevice = (d: any): Device => ({
   total_playtime_seconds: Number(d.total_playtime_seconds) || 0,
   app_version: d.app_version || null,
   os_version: d.os_version || null,
+  scale_mode: d.scale_mode || null,
 })
 
 export function useDevicePresence(
@@ -96,6 +97,8 @@ export function useDevicePresence(
 
     let isUnmounting = false
     isInitialSyncRef.current = true
+    hasSyncedPresenceRef.current = false
+    setHasSyncedPresence(false)
 
     const channel = supabase
       .channel(`team-status:${teamId}`)
@@ -117,6 +120,9 @@ export function useDevicePresence(
         if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
           if (isUnmounting) return
           console.warn(`[Dashboard] Presence channel ${status}. Auto-reconnecting...`)
+          hasSyncedPresenceRef.current = false
+          setHasSyncedPresence(false)
+          isInitialSyncRef.current = true
         }
       })
 
@@ -180,10 +186,22 @@ export function useDevicePresence(
         { event: '*', schema: 'public', table: 'devices', filter: `team_id=eq.${teamId}` },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setDevices((prev) => [payload.new as Device, ...prev])
+            setDevices((prev) => [mapDevice(payload.new), ...prev])
           } else if (payload.eventType === 'UPDATE') {
             setDevices((prev) =>
-              prev.map((d) => (d.id === payload.new.id ? { ...d, ...payload.new } as Device : d))
+              prev.map((d) => {
+                if (d.id === payload.new.id) {
+                  const mappedNew = mapDevice(payload.new)
+                  // Merge the update from Postgres but preserve frontend real-time presence status & last_seen_at
+                  return {
+                    ...d,
+                    ...mappedNew,
+                    status: d.status,
+                    last_seen_at: d.status === 'online' ? d.last_seen_at : (mappedNew.last_seen_at || d.last_seen_at)
+                  } as Device
+                }
+                return d
+              })
             )
           } else if (payload.eventType === 'DELETE') {
             setDevices((prev) => prev.filter((d) => d.id !== payload.old.id))
@@ -238,10 +256,11 @@ export function useDevicePresence(
             return prev.map(d => {
               const update = updatesMap.get(d.id)
               if (update) {
+                const isOnline = onlineDeviceIds.has(d.id)
                 return {
                   ...d,
-                  status: update.status,
-                  last_seen_at: update.last_seen_at,
+                  status: isOnline ? 'online' : update.status,
+                  last_seen_at: isOnline ? d.last_seen_at : update.last_seen_at,
                 }
               }
               return d
@@ -256,8 +275,7 @@ export function useDevicePresence(
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId])
+  }, [teamId, onlineDeviceIds, supabase])
 
   return {
     devices,

@@ -67,7 +67,7 @@ export function getContentKind(
   device: Device,
   assets: Asset[] = [],
   playlists: Playlist[] = [],
-  nowMs: number = 0
+  nowMs: number = Date.now()
 ): ContentKind {
   if (device.content_type === 'Playlist' && device.playlist_id) {
     const pl = playlists.find(p => p.id === device.playlist_id)
@@ -79,7 +79,7 @@ export function getContentKind(
     if (item.assets) {
       const mime = item.assets.mime_type
       if (mime === 'application/x-widget-youtube' || mime === 'application/x-widget-youtube-playlist') return 'youtube'
-      if (mime === 'application/x-widget-remote-url') return 'remote-url'
+      if (mime === 'application/x-widget-remote-url' || mime === 'application/x-widget-website') return 'remote-url'
       if (mime === 'application/x-widget-html') return 'html-widget'
       if (mime === 'application/x-widget-flow' || mime === 'application/x-widget-worldclock') return 'clock'
       if (mime === 'application/x-widget-countdown') return 'countdown'
@@ -92,7 +92,7 @@ export function getContentKind(
   const asset = assets.find(a => a.id === device.asset_id)
   if (!asset) return 'empty'
   if (asset.mime_type === 'application/x-widget-youtube' || asset.mime_type === 'application/x-widget-youtube-playlist') return 'youtube'
-  if (asset.mime_type === 'application/x-widget-remote-url') return 'remote-url'
+  if (asset.mime_type === 'application/x-widget-remote-url' || asset.mime_type === 'application/x-widget-website') return 'remote-url'
   if (asset.mime_type === 'application/x-widget-html') return 'html-widget'
   if (asset.mime_type === 'application/x-widget-flow' || asset.mime_type === 'application/x-widget-worldclock') return 'clock'
   if (asset.mime_type === 'application/x-widget-countdown') return 'countdown'
@@ -119,19 +119,11 @@ export function getClockStyleName(filePathOrConfig: string): string {
   }
 }
 
-// ── Human-readable label (column text) ────────────────────────────────────────
-export function getContentLabel(device: Device, assets: Asset[] = [], playlists: Playlist[] = []) {
-  if (device.content_type === 'Playlist') {
-    if (!device.playlist_id) return 'no content'
-    const pl = playlists.find(p => p.id === device.playlist_id)
-    return pl ? pl.name : 'Unknown Playlist'
-  }
-  if (!device.asset_id) return 'no content'
-  const asset = assets.find(a => a.id === device.asset_id)
-  if (!asset) return 'Assigned Asset'
+function getAssetDisplayName(asset: Asset): string {
   if (asset.mime_type === 'application/x-widget-youtube') return 'YouTube'
   if (asset.mime_type === 'application/x-widget-youtube-playlist') return 'YouTube Playlist'
   if (asset.mime_type === 'application/x-widget-remote-url') return 'Remote URL'
+  if (asset.mime_type === 'application/x-widget-website') return 'Website'
   if (asset.mime_type === 'application/x-widget-html') return 'Custom HTML'
   if (asset.mime_type === 'application/x-widget-flow') {
     return `${asset.file_name} (${getClockStyleName(asset.file_path)})`
@@ -148,6 +140,30 @@ export function getContentLabel(device: Device, assets: Asset[] = [], playlists:
     return `${asset.file_name} (Countdown)`
   }
   return asset.file_name
+}
+
+// ── Human-readable label (column text) ────────────────────────────────────────
+export function getContentLabel(
+  device: Device, 
+  assets: Asset[] = [], 
+  playlists: Playlist[] = [],
+  nowMs: number = Date.now()
+) {
+  if (device.content_type === 'Playlist') {
+    if (!device.playlist_id) return 'no content'
+    const pl = playlists.find(p => p.id === device.playlist_id)
+    if (!pl) return 'Unknown Playlist'
+
+    const { item } = getActivePlaylistItem(pl, nowMs)
+    if (item && item.assets) {
+      return `${getAssetDisplayName(item.assets)} (${pl.name})`
+    }
+    return pl.name
+  }
+  if (!device.asset_id) return 'no content'
+  const asset = assets.find(a => a.id === device.asset_id)
+  if (!asset) return 'Assigned Asset'
+  return getAssetDisplayName(asset)
 }
 
 // ── Tooltip info builder ───────────────────────────────────────────────────────
@@ -188,7 +204,7 @@ function describePrimaryPlaylistContent(items: Playlist['playlist_items']): stri
     else if (item.assets?.mime_type?.startsWith('image/')) kind = 'Image'
     else if (item.assets?.mime_type === 'application/x-widget-youtube') kind = 'YouTube'
     else if (item.assets?.mime_type === 'application/x-widget-youtube-playlist') kind = 'YouTube Playlist'
-    else if (item.assets?.mime_type === 'application/x-widget-remote-url') kind = 'Remote URL'
+    else if (item.assets?.mime_type === 'application/x-widget-remote-url' || item.assets?.mime_type === 'application/x-widget-website') kind = 'Remote URL'
     else if (item.assets?.mime_type === 'application/x-widget-html') kind = 'Custom HTML'
     kinds[kind] = (kinds[kind] || 0) + 1
   }
