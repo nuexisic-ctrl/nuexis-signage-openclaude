@@ -15,7 +15,6 @@ import { AssignModal } from './AssignModal'
 import { DeleteModal } from './DeleteModal'
 import { RenameModal } from './RenameModal'
 import { FilterSidebar } from './FilterSidebar'
-import { StatsGrid } from './StatsGrid'
 import { ScreenPreviewModal } from './ScreenPreviewModal'
 import { DeviceTable } from './DeviceTable'
 import { ScreensModals } from './ScreensModals'
@@ -394,11 +393,6 @@ export default function ScreensClient({
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
   }, [devices, filterStatus, filterOrientation, filterGroupIds, filterDatePreset, filterStartDate, filterEndDate, searchQuery, sortBy, memberships, onlineDeviceIds])
-
-  const onlineCount = devices.filter(d => getLiveStatus(d) === 'online').length;
-  const offlineCount = devices.length - onlineCount;
-  const totalPlaytimeSeconds = historicalPlaytimeState + devices.reduce((acc, d) => acc + (Number(d.total_playtime_seconds) || 0), 0);
-
   const totalPages = Math.ceil(filteredDevices.length / pageSize) || 1
   const hasNextPage = currentPage < totalPages
   const hasPrevPage = currentPage > 1
@@ -467,13 +461,6 @@ export default function ScreensClient({
 
       <div className={styles.pageLayout}>
         <div className={`${styles.mainContent} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
-
-          <StatsGrid
-            totalScreens={devices.length}
-            onlineCount={onlineCount}
-            offlineCount={offlineCount}
-            totalPlaytimeSeconds={totalPlaytimeSeconds}
-          />
 
           {groups && groups.length > 0 && (
             <GroupsSection

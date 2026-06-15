@@ -9,6 +9,82 @@ import {
 } from './DeviceIcon'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 
+function getKindBadgeInfo(kind: string, isEmpty: boolean) {
+  if (isEmpty) {
+    return {
+      label: 'No Content',
+      bgColor: 'rgba(100, 116, 139, 0.08)',
+      borderColor: 'rgba(100, 116, 139, 0.15)',
+      color: '#94a3b8',
+    }
+  }
+  switch (kind) {
+    case 'playlist':
+      return {
+        label: 'Playlist',
+        bgColor: 'rgba(139, 92, 246, 0.08)',
+        borderColor: 'rgba(139, 92, 246, 0.15)',
+        color: '#a78bfa',
+      }
+    case 'image':
+      return {
+        label: 'Image',
+        bgColor: 'rgba(34, 197, 94, 0.08)',
+        borderColor: 'rgba(34, 197, 94, 0.15)',
+        color: '#4ade80',
+      }
+    case 'video':
+      return {
+        label: 'Video',
+        bgColor: 'rgba(59, 130, 246, 0.08)',
+        borderColor: 'rgba(59, 130, 246, 0.15)',
+        color: '#60a5fa',
+      }
+    case 'clock':
+      return {
+        label: 'Clock Widget',
+        bgColor: 'rgba(244, 63, 94, 0.08)',
+        borderColor: 'rgba(244, 63, 94, 0.15)',
+        color: '#fb7185',
+      }
+    case 'countdown':
+      return {
+        label: 'Countdown',
+        bgColor: 'rgba(234, 179, 8, 0.08)',
+        borderColor: 'rgba(234, 179, 8, 0.15)',
+        color: '#facc15',
+      }
+    case 'youtube':
+      return {
+        label: 'YouTube',
+        bgColor: 'rgba(239, 68, 68, 0.08)',
+        borderColor: 'rgba(239, 68, 68, 0.15)',
+        color: '#f87171',
+      }
+    case 'remote-url':
+      return {
+        label: 'Website',
+        bgColor: 'rgba(14, 165, 233, 0.08)',
+        borderColor: 'rgba(14, 165, 233, 0.15)',
+        color: '#38bdf8',
+      }
+    case 'html-widget':
+      return {
+        label: 'HTML Widget',
+        bgColor: 'rgba(16, 185, 129, 0.08)',
+        borderColor: 'rgba(16, 185, 129, 0.15)',
+        color: '#34d399',
+      }
+    default:
+      return {
+        label: 'Content',
+        bgColor: 'rgba(100, 116, 139, 0.08)',
+        borderColor: 'rgba(100, 116, 139, 0.15)',
+        color: '#94a3b8',
+      }
+  }
+}
+
 export interface DeviceTableRowProps {
   device: Device
   liveStatus: LiveStatus
@@ -177,18 +253,43 @@ export function DeviceTableRow({
 
       {/* ── Playing Now cell ── */}
       <td className={styles.tableCell}>
-        <div className={`${styles.playlistCell} ${isEmpty ? styles.playlistCellEmpty : ''}`}>
-          <span className={`${styles.contentIconWrap} ${kindClassMap[kind] ?? ''}`}>
-            <ContentIcon kind={kind} size={16} />
-          </span>
-          <span className={isEmpty ? styles.playlistCellEmptyText : styles.playlistCellText}>
-            {isEmpty ? label : <FilenameTruncator filename={label} />} {isInherited && (
-              <span style={{ fontSize: '0.72rem', color: 'var(--primary)', opacity: 0.85, fontWeight: 500, fontStyle: 'italic', marginLeft: '4px' }}>
-                (Group)
+        {(() => {
+          const badgeInfo = getKindBadgeInfo(kind, isEmpty)
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div 
+                style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '3px 8px',
+                  borderRadius: '20px',
+                  backgroundColor: badgeInfo.bgColor,
+                  border: `1px solid ${badgeInfo.borderColor}`,
+                  color: badgeInfo.color,
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  lineHeight: 1,
+                  userSelect: 'none',
+                  flexShrink: 0
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ContentIcon kind={kind} size={13} />
+                </span>
+                <span>{badgeInfo.label}</span>
+              </div>
+              <span className={isEmpty ? styles.playlistCellEmptyText : styles.playlistCellText} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {isEmpty ? label : <FilenameTruncator filename={label} />}
+                {isInherited && (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--primary)', opacity: 0.85, fontWeight: 500, fontStyle: 'italic', marginLeft: '4px' }}>
+                    (Group)
+                  </span>
+                )}
               </span>
-            )}
-          </span>
-        </div>
+            </div>
+          )
+        })()}
       </td>
 
       <td className={styles.tableCell} style={{ textAlign: 'right' }}>

@@ -52,17 +52,21 @@ export function useDevicePresence(
     const channel = supabase
       .channel(`team-status:${teamId}`)
       .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState<{ device_id: string }>()
-        const ids = new Set(
-          Object.values(state)
-            .flat()
-            .map((p) => p.device_id)
-            .filter(Boolean)
-        )
-        setOnlineDeviceIds(ids)
-        if (!hasSyncedPresenceRef.current) {
-          hasSyncedPresenceRef.current = true
-          setHasSyncedPresence(true)
+        try {
+          const state = channel.presenceState<{ device_id: string }>()
+          const ids = new Set(
+            Object.values(state)
+              .flat()
+              .map((p) => p.device_id)
+              .filter(Boolean)
+          )
+          setOnlineDeviceIds(ids)
+          if (!hasSyncedPresenceRef.current) {
+            hasSyncedPresenceRef.current = true
+            setHasSyncedPresence(true)
+          }
+        } catch (err) {
+          console.error('[useDevicePresence] Error syncing presence state:', err)
         }
       })
       .subscribe((status) => {
@@ -95,14 +99,34 @@ export function useDevicePresence(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'devices', filter: `team_id=eq.${teamId}` },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setDevices((prev) => [mapDevice(payload.new), ...prev])
-          } else if (payload.eventType === 'UPDATE') {
-            setDevices((prev) =>
-              prev.map((d) => (d.id === payload.new.id ? mapDevice(payload.new) : d))
-            )
-          } else if (payload.eventType === 'DELETE') {
-            setDevices((prev) => prev.filter((d) => d.id !== payload.old.id))
+          try {
+            if (payload.eventType === 'INSERT') {
+              if (payload.new && payload.new.id) {
+                const inserted = mapDevice(payload.new)
+                setDevices((prev) => {
+                  if (prev.some((d) => d.id === inserted.id)) return prev
+                  return [inserted, ...prev]
+                })
+              }
+            } else if (payload.eventType === 'UPDATE') {
+              if (payload.new && payload.new.id) {
+                setDevices((prev) =>
+                  prev.map((d) => {
+                    if (d.id === payload.new.id) {
+                      // Merge payload.new into existing device to preserve non-updated columns
+                      return mapDevice({ ...d, ...payload.new })
+                    }
+                    return d
+                  })
+                )
+              }
+            } else if (payload.eventType === 'DELETE') {
+              if (payload.old && payload.old.id) {
+                setDevices((prev) => prev.filter((d) => d.id !== payload.old.id))
+              }
+            }
+          } catch (err) {
+            console.error('[useDevicePresence] Error handling postgres_changes payload:', err, payload)
           }
         }
       )

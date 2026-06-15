@@ -44,7 +44,7 @@ export async function registerDevice(hardwareId: string, pairingCode: string, ex
     throw new Error('Failed to register device')
   }
 
-  const result = data as unknown as { id: string; expires_at: string; secret: string }
+  const result = data as unknown as { id: string; expires_at: string; secret: string; pairing_code: string }
   return result
 }
 

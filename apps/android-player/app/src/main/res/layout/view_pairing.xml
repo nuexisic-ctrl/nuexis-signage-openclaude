@@ -50,7 +50,7 @@
         android:paddingRight="32dp"
         android:paddingTop="16dp"
         android:paddingBottom="16dp"
-        android:layout_marginBottom="24dp">
+        android:layout_marginBottom="48dp">
 
         <TextView
             android:id="@+id/tv_pairing_code"
@@ -62,42 +62,6 @@
             android:textStyle="bold"
             android:letterSpacing="0.2" />
     </FrameLayout>
-
-    <!-- Countdown Timer Row -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="16dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/code_expiry_label"
-            android:textColor="@color/text_secondary"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/tv_countdown"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="15:00"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <!-- Progress Bar (expiring timer) -->
-    <ProgressBar
-        android:id="@+id/pb_pairing_progress"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="260dp"
-        android:layout_height="6dp"
-        android:progress="100"
-        android:progressTint="@color/primary_brand"
-        android:progressBackgroundTint="#33ffffff"
-        android:layout_marginBottom="40dp" />
 
     <!-- Instructions Card -->
     <LinearLayout

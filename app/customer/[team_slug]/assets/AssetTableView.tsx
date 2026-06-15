@@ -26,6 +26,133 @@ const YoutubeIcon = ({ size = 20, style }: { size?: number; style?: React.CSSPro
   </svg>
 )
 
+function getContentTypeInfo(mimeType: string, isFolder: boolean, folderColor?: string | null) {
+  if (isFolder) {
+    return {
+      label: t('Folder'),
+      icon: <Folder size={14} style={{ stroke: folderColor || '#78716c' }} />,
+      bgColor: 'rgba(120, 113, 108, 0.08)',
+      borderColor: 'rgba(120, 113, 108, 0.15)',
+      color: folderColor || '#a8a29e',
+    }
+  }
+  if (mimeType.startsWith('image/')) {
+    return {
+      label: t('Image'),
+      icon: <ImageIcon size={14} />,
+      bgColor: 'rgba(34, 197, 94, 0.08)',
+      borderColor: 'rgba(34, 197, 94, 0.15)',
+      color: '#4ade80',
+    }
+  }
+  if (mimeType.startsWith('video/')) {
+    return {
+      label: t('Video'),
+      icon: <Play size={14} />,
+      bgColor: 'rgba(59, 130, 246, 0.08)',
+      borderColor: 'rgba(59, 130, 246, 0.15)',
+      color: '#60a5fa',
+    }
+  }
+  if (mimeType.startsWith('audio/')) {
+    return {
+      label: t('Audio'),
+      icon: <Music size={14} />,
+      bgColor: 'rgba(234, 179, 8, 0.08)',
+      borderColor: 'rgba(234, 179, 8, 0.15)',
+      color: '#facc15',
+    }
+  }
+  if (mimeType === 'application/pdf') {
+    return {
+      label: t('PDF'),
+      icon: <FileText size={14} />,
+      bgColor: 'rgba(239, 68, 68, 0.08)',
+      borderColor: 'rgba(239, 68, 68, 0.15)',
+      color: '#f87171',
+    }
+  }
+  if (mimeType === 'application/x-widget-qrcode') {
+    return {
+      label: t('QR Code'),
+      icon: <QrCode size={14} />,
+      bgColor: 'rgba(168, 85, 247, 0.08)',
+      borderColor: 'rgba(168, 85, 247, 0.15)',
+      color: '#c084fc',
+    }
+  }
+  if (mimeType === 'application/x-widget-youtube' || mimeType === 'application/x-widget-youtube-playlist') {
+    return {
+      label: t('YouTube'),
+      icon: <YoutubeIcon size={14} />,
+      bgColor: 'rgba(239, 68, 68, 0.08)',
+      borderColor: 'rgba(239, 68, 68, 0.15)',
+      color: '#f87171',
+    }
+  }
+  if (mimeType === 'application/x-widget-remote-url' || mimeType === 'application/x-widget-website') {
+    return {
+      label: t('Website'),
+      icon: <Link size={14} />,
+      bgColor: 'rgba(14, 165, 233, 0.08)',
+      borderColor: 'rgba(14, 165, 233, 0.15)',
+      color: '#38bdf8',
+    }
+  }
+  if (mimeType === 'application/x-widget-html') {
+    return {
+      label: t('HTML'),
+      icon: <Code size={14} />,
+      bgColor: 'rgba(16, 185, 129, 0.08)',
+      borderColor: 'rgba(16, 185, 129, 0.15)',
+      color: '#34d399',
+    }
+  }
+  if (mimeType === 'application/x-widget-flow') {
+    return {
+      label: t('Flow'),
+      icon: <Clock size={14} />,
+      bgColor: 'rgba(139, 92, 246, 0.08)',
+      borderColor: 'rgba(139, 92, 246, 0.15)',
+      color: '#a78bfa',
+    }
+  }
+  if (mimeType === 'application/x-widget-worldclock') {
+    return {
+      label: t('World Clock'),
+      icon: <Globe size={14} />,
+      bgColor: 'rgba(244, 63, 94, 0.08)',
+      borderColor: 'rgba(244, 63, 94, 0.15)',
+      color: '#fb7185',
+    }
+  }
+  if (mimeType === 'application/x-widget-countdown') {
+    return {
+      label: t('Countdown'),
+      icon: <Hourglass size={14} />,
+      bgColor: 'rgba(234, 179, 8, 0.08)',
+      borderColor: 'rgba(234, 179, 8, 0.15)',
+      color: '#facc15',
+    }
+  }
+  if (mimeType === 'application/x-widget-slideshow') {
+    return {
+      label: t('Slideshow'),
+      icon: <Images size={14} />,
+      bgColor: 'rgba(236, 72, 153, 0.08)',
+      borderColor: 'rgba(236, 72, 153, 0.15)',
+      color: '#f472b6',
+    }
+  }
+  return {
+    label: t('Document'),
+    icon: <File size={14} />,
+    bgColor: 'rgba(100, 116, 139, 0.08)',
+    borderColor: 'rgba(100, 116, 139, 0.15)',
+    color: '#94a3b8',
+  }
+}
+
 interface AssetTableViewProps {
   filteredAssets: Asset[]
   screens: ScreenDevice[]
@@ -321,7 +448,7 @@ export function AssetTableView({
               {sortBy === 'name-desc' && ' ▼'}
             </th>
             <th 
-              style={{ width: '135px', cursor: setSortBy ? 'pointer' : 'default', userSelect: 'none' }}
+              style={{ width: '135px', cursor: setSortBy ? 'pointer' : 'default', userSelect: 'none', textAlign: 'center' }}
               onClick={() => {
                 if (setSortBy && sortBy) {
                   setSortBy(sortBy === 'type-asc' ? 'type-desc' : 'type-asc')
@@ -481,45 +608,33 @@ export function AssetTableView({
 
                 <td
                   className={styles.tableCell}
-                  style={{ fontSize: '0.88rem', color: 'var(--on-surface-subtle)' }}
+                  style={{ fontSize: '0.88rem', color: 'var(--on-surface-subtle)', textAlign: 'center' }}
                 >
                   {(() => {
-                    const typeLabel = (() => {
-                      if (isFolder) return t('Folder')
-                      if (isImage(asset.mime_type)) return t('Image')
-                      if (isVideo(asset.mime_type)) return t('Video')
-                      if (asset.mime_type.startsWith('audio/')) return t('Audio')
-                      if (asset.mime_type === 'application/pdf') return t('PDF')
-                      if (isWidget(asset.mime_type)) return t('Widget')
-                      return t('Document')
-                    })()
+                    const info = getContentTypeInfo(asset.mime_type, isFolder, asset.color)
                     return (
                       <div 
-                        style={{ display: 'inline-flex', alignItems: 'center' }} 
-                        title={typeLabel}
-                        aria-label={typeLabel}
+                        style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 10px',
+                          borderRadius: '20px',
+                          backgroundColor: info.bgColor,
+                          border: `1px solid ${info.borderColor}`,
+                          color: info.color,
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          lineHeight: 1,
+                          userSelect: 'none',
+                        }} 
+                        title={info.label}
+                        aria-label={info.label}
                       >
-                        {(() => {
-                          if (isFolder) {
-                            return <Folder size={16} style={{ stroke: asset.color || '#78716c' }} />
-                          }
-                          if (isImage(asset.mime_type)) {
-                            return <ImageIcon size={16} style={{ stroke: '#22c55e' }} />
-                          }
-                          if (isVideo(asset.mime_type)) {
-                            return <Play size={16} style={{ stroke: '#3b82f6' }} />
-                          }
-                          if (asset.mime_type.startsWith('audio/')) {
-                            return <Music size={16} style={{ stroke: '#f59e0b' }} />
-                          }
-                          if (asset.mime_type === 'application/pdf') {
-                            return <FileText size={16} style={{ stroke: '#ef4444' }} />
-                          }
-                          if (isWidget(asset.mime_type)) {
-                            return <Code size={16} style={{ stroke: '#a855f7' }} />
-                          }
-                          return <File size={16} style={{ stroke: '#64748b' }} />
-                        })()}
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {info.icon}
+                        </span>
+                        <span>{info.label}</span>
                       </div>
                     )
                   })()}

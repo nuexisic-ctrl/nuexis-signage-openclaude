@@ -4,21 +4,20 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getHardwareId } from '@/lib/utils/fingerprint'
 import {
-  registerDevice, refreshDeviceCode, getDeviceState,
+  registerDevice, getDeviceState,
   unpairDevice, updateDeviceOrientation, incrementPlaytime,
   pingDevice,
 } from './actions'
 import PairingView from './PairingView'
 import PairedView from './PairedView'
 import { ExpiredView, LoadingView } from './StatusViews'
-import { PAIRING_DURATION_MS, generateCode } from './types'
+import { generateCode } from './types'
 import type { PlayerState, DeviceState, RealtimeChannel } from './types'
 import { resolveAsset } from './assetResolver'
 
 export default function PlayerPage() {
   const [state, setState] = useState<PlayerState>('loading')
   const [code, setCode] = useState<string>('')
-  const [remainingMs, setRemainingMs] = useState(PAIRING_DURATION_MS)
 
   const [contentType, setContentType] = useState<string | null>(null)
   const [assetUrl, setAssetUrl] = useState<string | null>(null)
@@ -332,13 +331,19 @@ export default function PlayerPage() {
       setHardwareId(hardwareId)
 
       const savedSecret = window.Android ? window.Android.getNativeSecret() : localStorage.getItem('nuexis_device_secret')
-      const existing = await getDeviceState(hardwareId, savedSecret || undefined, 'Web Player 1.0', window.navigator.userAgent)
+      const savedCode = window.Android ? null : localStorage.getItem('nuexis_pairing_code')
+      
+      const permanentExpiry = Date.now() + (100 * 365 * 24 * 60 * 60 * 1000) // 100 years
+
+      let existing = null
+      if (savedSecret) {
+        existing = await getDeviceState(hardwareId, savedSecret, 'Web Player 1.0', window.navigator.userAgent)
+      }
 
       if (cancelled) return
 
       let activeDevice: DeviceState | null = null
       let activeCode = ''
-      let expiresAtMs = Date.now() + PAIRING_DURATION_MS
 
       if (existing) {
         secretRef.current = savedSecret
@@ -350,44 +355,42 @@ export default function PlayerPage() {
           setState('paired')
           activeDevice = existing
           applyDeviceState(existing)
+          if (!window.Android) {
+            localStorage.removeItem('nuexis_pairing_code')
+          }
           startPresenceTracking(existing.team_id, existing.id)
           startStatePolling()
         } else {
-          const existingExpiry = new Date(existing.expires_at).getTime()
-          if (existingExpiry > Date.now() && existing.pairing_code) {
-            deviceIdRef.current = existing.id
-            activeCode = existing.pairing_code
-            expiresAtMs = existingExpiry
-            setCode(activeCode)
-            setState('pairing')
-            activeDevice = existing
-          } else {
-            activeCode = generateCode()
-            expiresAtMs = Date.now() + PAIRING_DURATION_MS
-            const updated = await refreshDeviceCode(existing.id, hardwareId, savedSecret!, activeCode, expiresAtMs).catch(() => null)
-            if (updated && !cancelled) {
-              deviceIdRef.current = updated.id
-              setCode(activeCode)
-              setState('pairing')
-              activeDevice = updated as unknown as DeviceState
-              startStatePolling()
-            }
+          deviceIdRef.current = existing.id
+          activeCode = existing.pairing_code
+          setCode(activeCode)
+          setState('pairing')
+          activeDevice = existing
+          if (!window.Android) {
+            localStorage.setItem('nuexis_pairing_code', activeCode)
           }
         }
       } else {
-        activeCode = generateCode()
-        expiresAtMs = Date.now() + PAIRING_DURATION_MS
+        activeCode = savedCode || generateCode()
         let data = null
-        try { data = await registerDevice(hardwareId, activeCode, expiresAtMs) } catch {}
+        try {
+          data = await registerDevice(hardwareId, activeCode, permanentExpiry)
+        } catch (err) {
+          console.error('[Player] Registration failed:', err)
+        }
 
         if (data && !cancelled) {
           if (data.secret) {
             if (window.Android) window.Android.setNativeSecret(data.secret)
-            else localStorage.setItem('nuexis_device_secret', data.secret)
+            else {
+              localStorage.setItem('nuexis_device_secret', data.secret)
+              localStorage.setItem('nuexis_pairing_code', data.pairing_code)
+            }
           }
           secretRef.current = data.secret
           setSecret(data.secret)
           deviceIdRef.current = data.id
+          activeCode = data.pairing_code
           setCode(activeCode)
           setState('pairing')
           activeDevice = data as unknown as DeviceState
@@ -399,25 +402,6 @@ export default function PlayerPage() {
 
       if (cancelled || !activeDevice) return
       if (!existing && activeDevice) startStatePolling()
-
-      // ── Countdown timer ───────────────────────────────────────────
-      if (!isPairedRef.current) {
-        const left = expiresAtMs - Date.now()
-        setRemainingMs(left > 0 ? left : 0)
-
-        intervalRef.current = setInterval(() => {
-          const timeLeft = expiresAtMs - Date.now()
-          setRemainingMs(timeLeft)
-          if (timeLeft <= 0) clearInterval(intervalRef.current!)
-        }, 1000)
-
-        timerRef.current = setTimeout(() => {
-          if (!cancelled) {
-            setState('expired')
-            clearInterval(intervalRef.current!)
-          }
-        }, Math.max(0, expiresAtMs - Date.now()))
-      }
 
       // Initialize lastConfigRef with current activeDevice config values
       lastConfigRef.current = {
@@ -671,8 +655,6 @@ export default function PlayerPage() {
     currentView = (
       <PairingView
         code={code}
-        remainingMs={remainingMs}
-        pairingDurationMs={PAIRING_DURATION_MS}
       />
     )
   }

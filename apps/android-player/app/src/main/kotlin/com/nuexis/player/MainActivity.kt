@@ -70,6 +70,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
 
     private val supabaseUrl = "https://dpdabdbqhjkmxvwnukev.supabase.co"
     private val supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZGFiZGJxaGprbXh2d251a2V2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzMxMTIsImV4cCI6MjA5MzkwOTExMn0.VR0ZMijdHRokIFiXiIZ6rQsKoGtokp8GZh5C-vSvcpI"
+    private val permanentExpiry = 253402300799000L // 9999-12-31 23:59:59 UTC
 
     private var countdownJob: Job? = null
     private var statusTrackingJob: Job? = null
@@ -305,6 +306,13 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                 }
             }
 
+            if (secret == null) {
+                withContext(Dispatchers.Main) {
+                    registerNewDevice()
+                }
+                return@launch
+            }
+
             val result = supabaseClient.getDeviceState(hardwareId, secret)
 
             withContext(Dispatchers.Main) {
@@ -313,7 +321,6 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                         val state = result.state
                         if (state != null) {
                             storageManager.setDeviceId(state.id)
-                            storageManager.setPairingCode(state.pairing_code)
                             
                             // Set baseline config values to support client-side change-detection
                             lastTeamId = state.team_id
@@ -324,30 +331,17 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                             lastScaleMode = state.scale_mode
                             lastUpdatedAt = state.updated_at
 
-                            val expiresAt = try {
-                                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                                    timeZone = TimeZone.getTimeZone("UTC")
-                                }
-                                sdf.parse(state.expires_at)?.time ?: (Date().time + 900000)
-                            } catch (e: Exception) {
-                                Date().time + 900000
-                            }
-                            storageManager.setExpiresAt(expiresAt)
-
                             if (!state.team_id.isNullOrEmpty()) {
+                                storageManager.setPairingCode(null)
                                 storageManager.setOrientation(state.orientation ?: 0)
                                 val baselineScaleMode = state.scale_mode ?: "Fit"
                                 storageManager.setScaleMode(baselineScaleMode)
                                 currentScaleMode = baselineScaleMode
                                 startPairedPlayer(state.team_id, state.id)
                             } else {
-                                val timeLeft = expiresAt - Date().time
-                                if (timeLeft > 0) {
-                                    startPairingFlow(state.id, state.pairing_code, expiresAt)
-                                } else {
-                                    // Automatically renew the existing pairing code in the background
-                                    refreshPairingCode(state.pairing_code)
-                                }
+                                storageManager.setPairingCode(state.pairing_code)
+                                storageManager.setExpiresAt(permanentExpiry)
+                                startPairingFlow(state.id, state.pairing_code, permanentExpiry)
                             }
                         } else {
                             // Device deleted from DB or invalid secret
@@ -375,8 +369,9 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
         showLoading()
         lifecycleScope.launch(Dispatchers.IO) {
             val hardwareId = storageManager.getHardwareId()
-            val initialCode = generateRandomPairingCode()
-            val expiresAt = Date().time + 900000
+            val existingCode = storageManager.getPairingCode()
+            val initialCode = existingCode ?: generateRandomPairingCode()
+            val expiresAt = permanentExpiry
 
             try {
                 val result = supabaseClient.registerDevice(hardwareId, initialCode, expiresAt)
@@ -403,7 +398,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
             val hardwareId = storageManager.getHardwareId()
             val secret = storageManager.getSecret() ?: return@launch
             val finalCode = codeToKeep ?: generateRandomPairingCode()
-            val expiresAt = Date().time + 900000
+            val expiresAt = permanentExpiry
 
             try {
                 val result = supabaseClient.refreshDeviceCode(deviceId, hardwareId, secret, finalCode, expiresAt)
@@ -424,31 +419,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
     private fun startPairingFlow(deviceId: String, code: String, expiresAt: Long) {
         showPairing(code)
         startRealtime(deviceId)
-
         countdownJob?.cancel()
-        countdownJob = lifecycleScope.launch {
-            val pbProgress = currentView?.findViewById<ProgressBar>(R.id.pb_pairing_progress)
-            val tvCountdown = currentView?.findViewById<TextView>(R.id.tv_countdown)
-            val totalDuration = 900000.0
-
-            while (true) {
-                val timeLeft = expiresAt - Date().time
-                if (timeLeft <= 0) {
-                    // Automatically refresh the existing code in the background to extend its expiry
-                    refreshPairingCode(code)
-                    break
-                }
-
-                val mins = timeLeft / 60000
-                val secs = (timeLeft % 60000) / 1000
-                tvCountdown?.text = String.format(Locale.US, "%02d:%02d", mins, secs)
-
-                val pct = ((timeLeft / totalDuration) * 100).toInt()
-                pbProgress?.progress = pct
-
-                delay(1000)
-            }
-        }
     }
 
     private fun startPairedPlayer(teamId: String, deviceId: String) {

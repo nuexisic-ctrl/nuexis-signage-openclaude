@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset } from '../../assets/types'
 import { fetchFolderFiles } from '../../assets/actions'
@@ -114,8 +114,15 @@ export function AssetBrowserProvider({
     const rootFiles = assets.filter(a => a.mime_type !== 'application/x-folder' && !a.folder_id)
     return { root: rootFiles }
   })
-  const [activeFolder, setActiveFolder] = useState<Asset | null>(null)
+    const [activeFolder, setActiveFolder] = useState<Asset | null>(null)
   const [isLoadingFiles, setIsLoadingFiles] = useState(false)
+
+  const filesCacheRef = useRef(filesCache)
+  useEffect(() => {
+    filesCacheRef.current = filesCache
+  }, [filesCache])
+
+  const loadingRef = useRef<Set<string>>(new Set())
 
   // Synchronize initial folder list when assets prop updates
   useEffect(() => {
@@ -125,7 +132,12 @@ export function AssetBrowserProvider({
   const loadFolderFiles = useCallback(async (folderId: string | null) => {
     if (!teamSlug) return
     const cacheKey = folderId || 'root'
-    const hasCache = !!filesCache[cacheKey]
+
+    // Prevent redundant concurrent fetches for the same folder
+    if (loadingRef.current.has(cacheKey)) return
+    loadingRef.current.add(cacheKey)
+
+    const hasCache = !!filesCacheRef.current[cacheKey]
     if (!hasCache) {
       setIsLoadingFiles(true)
     }
@@ -158,10 +170,16 @@ export function AssetBrowserProvider({
 
       const result = await fetchFolderFiles(teamSlug, folderId)
       if (result.success && result.files) {
-        setFilesCache(prev => ({
-          ...prev,
-          [cacheKey]: result.files as Asset[]
-        }))
+        setFilesCache(prev => {
+          const existing = prev[cacheKey]
+          if (existing && JSON.stringify(existing) === JSON.stringify(result.files)) {
+            return prev
+          }
+          return {
+            ...prev,
+            [cacheKey]: result.files as Asset[]
+          }
+        })
       } else {
         toast.error(result.error || 'Failed to refresh folder contents.')
       }
@@ -170,8 +188,9 @@ export function AssetBrowserProvider({
       toast.error('An error occurred while loading folder contents.')
     } finally {
       setIsLoadingFiles(false)
+      loadingRef.current.delete(cacheKey)
     }
-  }, [teamSlug, filesCache, supabase, teamId])
+  }, [teamSlug, supabase, teamId])
 
   useEffect(() => {
     loadFolderFiles(activeFolder?.id || null)
