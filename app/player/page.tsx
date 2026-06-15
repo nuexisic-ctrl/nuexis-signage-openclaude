@@ -6,7 +6,7 @@ import { getHardwareId } from '@/lib/utils/fingerprint'
 import {
   registerDevice, refreshDeviceCode, getDeviceState,
   unpairDevice, updateDeviceOrientation, incrementPlaytime,
-  sendHeartbeat,
+  pingDevice,
 } from './actions'
 import PairingView from './PairingView'
 import PairedView from './PairedView'
@@ -59,6 +59,7 @@ export default function PlayerPage() {
     assetId: string | null
     playlistId: string | null
     scaleMode: string | null
+    updatedAt: string | null
   }>({
     teamId: null,
     orientation: null,
@@ -66,6 +67,7 @@ export default function PlayerPage() {
     assetId: null,
     playlistId: null,
     scaleMode: null,
+    updatedAt: null,
   })
 
   const playtimeAccumulatorRef = useRef(0)
@@ -111,8 +113,8 @@ export default function PlayerPage() {
       if (stateRef.current === 'paired' && teamChannelRef.current && devId) {
         const tId = teamIdRef.current
         if (tId && hwId && secret) {
-          sendHeartbeat(devId, tId, hwId).catch((err: any) => {
-            console.warn('[Player] Heartbeat deferred (transient network or extension override):', err.message || err)
+          pingDevice(devId, hwId, secret).catch((err: any) => {
+            console.warn('[Player] Ping deferred (transient network or extension override):', err.message || err)
           })
         }
       }
@@ -425,6 +427,7 @@ export default function PlayerPage() {
         assetId: activeDevice.asset_id || null,
         playlistId: activeDevice.playlist_id || null,
         scaleMode: activeDevice.scale_mode || null,
+        updatedAt: activeDevice.updated_at || null,
       }
 
       // ── Realtime subscription ─────────────────────────────────────
@@ -494,6 +497,7 @@ export default function PlayerPage() {
               const newAssetId = payload.new.asset_id || null
               const newPlaylistId = payload.new.playlist_id || null
               const newScaleMode = payload.new.scale_mode || null
+              const newUpdatedAt = payload.new.updated_at || null
 
               const configChanged =
                 newTeamId !== lastConfigRef.current.teamId ||
@@ -501,7 +505,8 @@ export default function PlayerPage() {
                 newContentType !== lastConfigRef.current.contentType ||
                 newAssetId !== lastConfigRef.current.assetId ||
                 newPlaylistId !== lastConfigRef.current.playlistId ||
-                newScaleMode !== lastConfigRef.current.scaleMode
+                newScaleMode !== lastConfigRef.current.scaleMode ||
+                newUpdatedAt !== lastConfigRef.current.updatedAt
 
               if (!configChanged) {
                 // Ignore status updates, last_seen_at updates, or heartbeat updates to save HTTP load
@@ -516,6 +521,7 @@ export default function PlayerPage() {
                 assetId: newAssetId,
                 playlistId: newPlaylistId,
                 scaleMode: newScaleMode,
+                updatedAt: newUpdatedAt,
               }
               if (!isPairedRef.current) {
                 isPairedRef.current = true
@@ -535,6 +541,7 @@ export default function PlayerPage() {
                   .then((fresh) => {
                     if (fresh && !cancelled) {
                       applyDeviceState(fresh)
+                      lastConfigRef.current.updatedAt = fresh.updated_at || null
                     }
                   })
                   .catch(console.error)
@@ -574,6 +581,7 @@ export default function PlayerPage() {
                   } else if (fresh.team_id && isPairedRef.current) {
                     applyDeviceState(fresh)
                   }
+                  lastConfigRef.current.updatedAt = fresh.updated_at || null
                 })
                 .catch(console.error)
             }

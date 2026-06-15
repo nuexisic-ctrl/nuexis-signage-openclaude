@@ -180,6 +180,7 @@ export type Database = {
           app_version: string | null
           os_version: string | null
           scale_mode: string | null
+          updated_at: string
         }
         Insert: {
           asset_id?: string | null
@@ -201,6 +202,7 @@ export type Database = {
           app_version?: string | null
           os_version?: string | null
           scale_mode?: string | null
+          updated_at?: string
         }
         Update: {
           asset_id?: string | null
@@ -222,6 +224,7 @@ export type Database = {
           app_version?: string | null
           os_version?: string | null
           scale_mode?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -690,6 +693,15 @@ export type Database = {
           p_name: string
           p_playlist_id: string
           p_team_id: string
+        }
+        Returns: Json
+      }
+      ping_device: {
+        Args: {
+          p_device_id: string
+          p_hardware_id?: string
+          p_secret?: string
+          p_session_token?: string
         }
         Returns: Json
       }

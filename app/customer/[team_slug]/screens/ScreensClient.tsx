@@ -194,23 +194,7 @@ export default function ScreensClient({
 
   const supabase = createClient()
 
-  // ── Postgres changes realtime subscription for assets ────────────────
-  useEffect(() => {
-    if (!teamId) return
 
-    const channel = supabase
-      .channel('assets-realtime-screens')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'assets', filter: `team_id=eq.${teamId}` }, 
-        async () => {
-          router.refresh()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [teamId, router, supabase])
 
   useEffect(() => {
     const handleClick = () => {
@@ -290,20 +274,7 @@ export default function ScreensClient({
       ])
 
       if (!devicesRes.error && devicesRes.data) {
-        const newData = (devicesRes.data as any[]).map(mapDevice)
-        setDevices(prev => {
-          const existingMap = new Map(prev.map(d => [d.id, d]))
-          return newData.map(newDev => {
-            const existing = existingMap.get(newDev.id)
-            if (!existing) return newDev
-            // Preserve real-time status and last_seen_at to prevent "just now" flicker
-            return {
-              ...newDev,
-              status: existing.status === 'online' ? 'online' : newDev.status,
-              last_seen_at: existing.status === 'online' ? existing.last_seen_at : newDev.last_seen_at
-            }
-          })
-        })
+        setDevices((devicesRes.data as any[]).map(mapDevice))
       }
 
       if (!groupsRes.error && groupsRes.data) {

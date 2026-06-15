@@ -48,6 +48,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.google.gson.Gson
+import android.view.MotionEvent
+import android.os.Handler
+import android.os.Looper
+import com.google.android.material.button.MaterialButton
 
 class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
 
@@ -61,6 +65,8 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var mainContentContainer: FrameLayout
     private lateinit var sidebarDrawer: View
+    private var controlOverlayHideRunnable: Runnable? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private val supabaseUrl = "https://dpdabdbqhjkmxvwnukev.supabase.co"
     private val supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZGFiZGJxaGprbXh2d251a2V2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzMxMTIsImV4cCI6MjA5MzkwOTExMn0.VR0ZMijdHRokIFiXiIZ6rQsKoGtokp8GZh5C-vSvcpI"
@@ -83,6 +89,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
     private var lastPlaylistId: String? = null
     private var lastOrientation: Int? = null
     private var lastScaleMode: String? = null
+    private var lastUpdatedAt: String? = null
 
     private fun checkAndRequestStoragePermission() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
@@ -132,6 +139,21 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
         sidebarDrawer = findViewById(R.id.sidebar_drawer)
 
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+        drawerLayout.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
+            override fun onDrawerClosed(drawerView: View) {
+                super.onDrawerClosed(drawerView)
+                showControlOverlayTemporarily()
+            }
+            override fun onDrawerOpened(drawerView: View) {
+                super.onDrawerOpened(drawerView)
+                val overlay = currentView?.findViewById<View>(R.id.control_overlay)
+                overlay?.let {
+                    it.visibility = View.VISIBLE
+                    it.alpha = 1f
+                }
+                controlOverlayHideRunnable?.let { mainHandler.removeCallbacks(it) }
+            }
+        })
 
         storageManager = StorageManager(this)
         supabaseClient = SupabaseClient(supabaseUrl, supabaseAnonKey)
@@ -144,10 +166,15 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
     }
 
     private fun setupSidebar() {
-        val btnRefresh = findViewById<Button>(R.id.btn_refresh)
-        val btnUnpair = findViewById<Button>(R.id.btn_unpair)
-        val btnMute = findViewById<Button>(R.id.btn_mute)
-        val btnOrientation = findViewById<Button>(R.id.btn_orientation)
+        val btnRefresh = findViewById<MaterialButton>(R.id.btn_refresh)
+        val btnUnpair = findViewById<MaterialButton>(R.id.btn_unpair)
+        val btnMute = findViewById<MaterialButton>(R.id.btn_mute)
+        val btnOrientation = findViewById<MaterialButton>(R.id.btn_orientation)
+        val btnCloseDrawer = findViewById<View>(R.id.btn_close_drawer)
+
+        btnCloseDrawer?.setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.START)
+        }
 
         btnRefresh?.setOnClickListener {
             drawerLayout.closeDrawer(GravityCompat.START)
@@ -169,9 +196,11 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
             storageManager.setMuted(nextMute)
             mediaEngine?.setMuted(nextMute)
             btnMute.text = if (nextMute) "Unmute" else "Mute"
+            btnMute.setIconResource(if (nextMute) R.drawable.ic_volume_off else R.drawable.ic_volume)
             drawerLayout.closeDrawer(GravityCompat.START)
         }
         btnMute?.text = if (storageManager.isMuted()) "Unmute" else "Mute"
+        btnMute?.setIconResource(if (storageManager.isMuted()) R.drawable.ic_volume_off else R.drawable.ic_volume)
 
         btnOrientation?.setOnClickListener {
             showOrientationSelector()
@@ -293,6 +322,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                             lastPlaylistId = state.playlist_id
                             lastOrientation = state.orientation
                             lastScaleMode = state.scale_mode
+                            lastUpdatedAt = state.updated_at
 
                             val expiresAt = try {
                                 val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
@@ -451,9 +481,13 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                 delay(60000)
                 val hardwareId = storageManager.getHardwareId()
                 val secret = storageManager.getSecret()
+                val sessionToken = storageManager.getSessionToken()
                 if (secret != null) {
                     withContext(Dispatchers.IO) {
                         supabaseClient.incrementPlaytime(deviceId, hardwareId, secret, 60)
+                        if (sessionToken != null) {
+                            supabaseClient.pingDevice(deviceId, sessionToken)
+                        }
                     }
                 }
             }
@@ -486,6 +520,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
 
                             // Update cached content configuration
                             storageManager.setCachedContentType(state.content_type)
+                            lastUpdatedAt = state.updated_at
 
                             if (state.content_type == "Asset" && !state.asset_id.isNullOrEmpty()) {
                                 storageManager.setCachedAssetId(state.asset_id)
@@ -658,6 +693,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
         applyImmersiveMode(isImmersive)
 
         mainContentContainer.addView(currentView)
+        showControlOverlayTemporarily()
     }
 
     private fun toggleImmersiveMode() {
@@ -668,6 +704,37 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
         btnFullscreen?.setImageResource(
             if (isImmersive) R.drawable.ic_fullscreen_exit else R.drawable.ic_fullscreen
         )
+    }
+
+    private fun showControlOverlayTemporarily() {
+        val overlay = currentView?.findViewById<View>(R.id.control_overlay) ?: return
+        
+        controlOverlayHideRunnable?.let { mainHandler.removeCallbacks(it) }
+        
+        if (overlay.visibility != View.VISIBLE) {
+            overlay.alpha = 0f
+            overlay.visibility = View.VISIBLE
+            overlay.animate().alpha(1f).setDuration(250).start()
+        }
+        
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            return
+        }
+        
+        val hideRunnable = Runnable {
+            overlay.animate().alpha(0f).setDuration(250).withEndAction {
+                overlay.visibility = View.GONE
+            }.start()
+        }
+        controlOverlayHideRunnable = hideRunnable
+        mainHandler.postDelayed(hideRunnable, 3000)
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        if (ev?.action == MotionEvent.ACTION_DOWN) {
+            showControlOverlayTemporarily()
+        }
+        return super.dispatchTouchEvent(ev)
     }
 
     private fun applyImmersiveMode(enable: Boolean) {
@@ -833,13 +900,15 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
             val playlistId = record.get("playlist_id")?.let { if (it.isJsonNull) null else it.asString }
             val orientation = record.get("orientation")?.let { if (it.isJsonNull) null else it.asInt }
             val scaleMode = record.get("scale_mode")?.let { if (it.isJsonNull) null else it.asString }
+            val updatedAt = record.get("updated_at")?.let { if (it.isJsonNull) null else it.asString }
 
             val changed = teamId != lastTeamId ||
                     orientation != lastOrientation ||
                     contentType != lastContentType ||
                     assetId != lastAssetId ||
                     playlistId != lastPlaylistId ||
-                    scaleMode != lastScaleMode
+                    scaleMode != lastScaleMode ||
+                    updatedAt != lastUpdatedAt
 
             if (!changed) {
                 // Ignore status updates, last_seen_at updates, or heartbeat updates to save HTTP load
@@ -853,6 +922,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
             lastAssetId = assetId
             lastPlaylistId = playlistId
             lastScaleMode = scaleMode
+            lastUpdatedAt = updatedAt
 
             if (teamId != null) {
                 // Device paired or orientation updated

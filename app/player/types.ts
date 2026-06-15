@@ -39,6 +39,7 @@ export interface DeviceState {
   scale_mode: string | null
   created_at: string
   last_seen_at: string | null
+  updated_at?: string | null
 }
 
 declare global {

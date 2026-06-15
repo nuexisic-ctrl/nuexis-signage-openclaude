@@ -483,40 +483,46 @@ export function AssetTableView({
                   className={styles.tableCell}
                   style={{ fontSize: '0.88rem', color: 'var(--on-surface-subtle)' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {(() => {
-                      if (isFolder) {
-                        return <Folder size={16} style={{ stroke: asset.color || '#78716c' }} />
-                      }
-                      if (isImage(asset.mime_type)) {
-                        return <ImageIcon size={16} style={{ stroke: '#22c55e' }} />
-                      }
-                      if (isVideo(asset.mime_type)) {
-                        return <Play size={16} style={{ stroke: '#3b82f6' }} />
-                      }
-                      if (asset.mime_type.startsWith('audio/')) {
-                        return <Music size={16} style={{ stroke: '#f59e0b' }} />
-                      }
-                      if (asset.mime_type === 'application/pdf') {
-                        return <FileText size={16} style={{ stroke: '#ef4444' }} />
-                      }
-                      if (isWidget(asset.mime_type)) {
-                        return <Code size={16} style={{ stroke: '#a855f7' }} />
-                      }
-                      return <File size={16} style={{ stroke: '#64748b' }} />
-                    })()}
-                    <span>
-                      {(() => {
-                        if (isFolder) return t('Folder')
-                        if (isImage(asset.mime_type)) return t('Image')
-                        if (isVideo(asset.mime_type)) return t('Video')
-                        if (asset.mime_type.startsWith('audio/')) return t('Audio')
-                        if (asset.mime_type === 'application/pdf') return t('PDF')
-                        if (isWidget(asset.mime_type)) return t('Widget')
-                        return t('Document')
-                      })()}
-                    </span>
-                  </div>
+                  {(() => {
+                    const typeLabel = (() => {
+                      if (isFolder) return t('Folder')
+                      if (isImage(asset.mime_type)) return t('Image')
+                      if (isVideo(asset.mime_type)) return t('Video')
+                      if (asset.mime_type.startsWith('audio/')) return t('Audio')
+                      if (asset.mime_type === 'application/pdf') return t('PDF')
+                      if (isWidget(asset.mime_type)) return t('Widget')
+                      return t('Document')
+                    })()
+                    return (
+                      <div 
+                        style={{ display: 'inline-flex', alignItems: 'center' }} 
+                        title={typeLabel}
+                        aria-label={typeLabel}
+                      >
+                        {(() => {
+                          if (isFolder) {
+                            return <Folder size={16} style={{ stroke: asset.color || '#78716c' }} />
+                          }
+                          if (isImage(asset.mime_type)) {
+                            return <ImageIcon size={16} style={{ stroke: '#22c55e' }} />
+                          }
+                          if (isVideo(asset.mime_type)) {
+                            return <Play size={16} style={{ stroke: '#3b82f6' }} />
+                          }
+                          if (asset.mime_type.startsWith('audio/')) {
+                            return <Music size={16} style={{ stroke: '#f59e0b' }} />
+                          }
+                          if (asset.mime_type === 'application/pdf') {
+                            return <FileText size={16} style={{ stroke: '#ef4444' }} />
+                          }
+                          if (isWidget(asset.mime_type)) {
+                            return <Code size={16} style={{ stroke: '#a855f7' }} />
+                          }
+                          return <File size={16} style={{ stroke: '#64748b' }} />
+                        })()}
+                      </div>
+                    )
+                  })()}
                 </td>
                 <td className={styles.tableCell}>
                   <div className={styles.cellLastSeen}>{date}</div>

@@ -884,7 +884,7 @@ export default function AssetClient({
       onDrop={handleDropPage}
     >
       <div className={`${styles.topbar} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
-        <div>
+        <div className={styles.headerTitleRow}>
           <div className={styles.titleContainer}>
             <h1 className={styles.pageTitle}>{t('Asset Library')}</h1>
             <button

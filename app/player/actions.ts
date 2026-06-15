@@ -115,6 +115,7 @@ export async function getDeviceState(
     scale_mode: string | null
     created_at: string
     last_seen_at: string | null
+    updated_at?: string | null
   }) || null
 }
 
@@ -184,31 +185,21 @@ export async function incrementPlaytime(
   }
 }
 
-export async function sendHeartbeat(deviceId: string, teamId: string, hardwareId: string) {
-  if (!(await rateLimitAction(hardwareId, 'sendHeartbeat', 20, 60))) {
-    console.warn('[sendHeartbeat] Rate limit hit for device:', hardwareId)
+export async function pingDevice(deviceId: string, hardwareId: string, secret: string) {
+  if (!(await rateLimitAction(hardwareId, 'pingDevice', 30, 60))) {
+    console.warn('[pingDevice] Rate limit hit for device:', hardwareId)
     return
   }
 
-  // Write presence to Redis only — no DB round-trip needed.
-  // The device is already authenticated (secret was validated at pair-time and stored
-  // in refs). The rate limiter prevents abuse. Skipping the bcrypt RPC call here
-  // saves one full DB query + bcrypt evaluation per device per minute.
-  try {
-    if (redis) {
-      const presenceKey = `heartbeat:${teamId}:${deviceId}`
-      const indexKey = `heartbeats:index:${teamId}`
-      await Promise.all([
-        redis.setex(presenceKey, 120, new Date().toISOString()),
-        redis.sadd(indexKey, deviceId)
-      ])
-    } else {
-      console.warn('[sendHeartbeat] Redis not configured. Skipping active heartbeat tracking.')
-    }
-  } catch (error) {
-    console.error('[sendHeartbeat] Redis error:', error)
-    // Non-fatal — presence will naturally expire from Redis; device will show offline
-    // after 120s which is the expected behavior on connection loss anyway.
+  const supabase = getPlayerClient()
+  const { error } = await supabase.rpc('ping_device', {
+    p_device_id: deviceId,
+    p_hardware_id: hardwareId,
+    p_secret: secret,
+  })
+
+  if (error) {
+    console.error('[pingDevice] Error:', error)
   }
 }
 

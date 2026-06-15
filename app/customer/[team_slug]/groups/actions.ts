@@ -228,7 +228,7 @@ export async function assignContentToGroup(
     const { error: pushError } = await supabase
       .from('devices')
       .update({
-        last_seen_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .in('id', deviceIds)
       .eq('team_id', teamId)
@@ -525,7 +525,7 @@ export async function saveGroupChanges(
         playlist_id: data.content_type === 'Playlist' ? data.playlist_id : null,
         orientation: data.orientation,
         scale_mode: data.scale_mode,
-        last_seen_at: new Date().toISOString() // Touch to trigger realtime sync
+        updated_at: new Date().toISOString() // Touch to trigger realtime sync
       })
       .in('id', data.deviceIds)
       .eq('team_id', teamId)

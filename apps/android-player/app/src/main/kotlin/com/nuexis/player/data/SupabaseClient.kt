@@ -80,7 +80,8 @@ class SupabaseClient(
         val asset_id: String?,
         val playlist_id: String?,
         val orientation: Int?,
-        val scale_mode: String?
+        val scale_mode: String?,
+        val updated_at: String?
     )
 
     data class PlaylistItem(
@@ -295,6 +296,18 @@ class SupabaseClient(
         }
         try {
             post("report_device_health", gson.toJson(params))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    fun pingDevice(deviceId: String, sessionToken: String) {
+        val params = JsonObject().apply {
+            addProperty("p_device_id", deviceId)
+            addProperty("p_session_token", sessionToken)
+        }
+        try {
+            post("ping_device", gson.toJson(params))
         } catch (e: Exception) {
             e.printStackTrace()
         }

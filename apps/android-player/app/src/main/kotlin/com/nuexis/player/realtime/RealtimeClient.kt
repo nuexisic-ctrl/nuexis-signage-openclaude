@@ -265,26 +265,6 @@ class RealtimeClient(
                     }
                     webSocket?.send(gson.toJson(heartbeatMsg))
                     ref++
-
-                    // Re-track presence periodically to maintain online status (Supabase Realtime Presence Protocol)
-                    val currentTeamId = teamId
-                    if (currentTeamId != null) {
-                        val presenceTrackPayload = JsonObject().apply {
-                            addProperty("type", "presence")
-                            addProperty("event", "track")
-                            add("payload", JsonObject().apply {
-                                addProperty("device_id", deviceId)
-                                addProperty("online_at", getISO8601String(Date()))
-                            })
-                        }
-                        val trackMsg = JsonObject().apply {
-                            addProperty("topic", "realtime:team-status:$currentTeamId")
-                            addProperty("event", "presence")
-                            add("payload", presenceTrackPayload)
-                            addProperty("ref", "track_presence_$ref")
-                        }
-                        webSocket?.send(gson.toJson(trackMsg))
-                    }
                 }
             } catch (e: InterruptedException) {
                 // Exit thread

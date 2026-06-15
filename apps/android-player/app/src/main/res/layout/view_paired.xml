@@ -12,6 +12,7 @@
 
     <!-- Control Overlay (Fullscreen and Menu buttons in top right) -->
     <LinearLayout
+        android:id="@+id/control_overlay"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|end"
@@ -24,10 +25,11 @@
             android:id="@+id/btn_fullscreen"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/control_button_bg"
             android:src="@drawable/ic_fullscreen"
             android:scaleType="fitCenter"
-            android:padding="8dp"
+            android:padding="10dp"
+            android:tint="@color/white"
             android:contentDescription="Toggle Fullscreen" />
 
         <!-- Hamburger button -->
@@ -36,10 +38,11 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginStart="16dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@drawable/control_button_bg"
             android:src="@drawable/ic_menu_hamburger"
             android:scaleType="fitCenter"
-            android:padding="8dp"
+            android:padding="10dp"
+            android:tint="@color/white"
             android:contentDescription="Open Sidebar" />
     </LinearLayout>
 
