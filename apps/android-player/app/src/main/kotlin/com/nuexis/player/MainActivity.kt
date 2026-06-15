@@ -43,6 +43,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import com.google.gson.Gson
 
 class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
 
@@ -887,6 +892,57 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
     override fun onDisconnected() {}
     override fun onError(t: Throwable) {
         t.printStackTrace()
+    }
+
+    override fun onScreenshotRequested() {
+        lifecycleScope.launch(Dispatchers.Main) {
+            Log.d("MainActivity", "Screenshot requested from CMS")
+            try {
+                val rootView = window.decorView.rootView
+                val width = rootView.width
+                val height = rootView.height
+                if (width <= 0 || height <= 0) return@launch
+
+                val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(bitmap)
+                rootView.draw(canvas)
+
+                val byteArrayOutputStream = java.io.ByteArrayOutputStream()
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 80, byteArrayOutputStream)
+                val byteArray = byteArrayOutputStream.toByteArray()
+                val base64Data = android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT)
+
+                withContext(Dispatchers.IO) {
+                    val deviceId = storageManager.getDeviceId() ?: return@withContext
+                    val hardwareId = storageManager.getHardwareId()
+                    val secret = storageManager.getSecret() ?: return@withContext
+
+                    val payload = JsonObject().apply {
+                        addProperty("deviceId", deviceId)
+                        addProperty("hardwareId", hardwareId)
+                        addProperty("secret", secret)
+                        addProperty("base64Data", base64Data)
+                    }
+
+                    val url = "$supabaseUrl/api/player/screenshot"
+                    val requestBody = Gson().toJson(payload).toRequestBody("application/json; charset=utf-8".toMediaType())
+                    val request = Request.Builder()
+                        .url(url)
+                        .post(requestBody)
+                        .build()
+
+                    OkHttpClient().newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) {
+                            Log.e("MainActivity", "Screenshot upload failed: ${response.code} ${response.body?.string()}")
+                        } else {
+                            Log.d("MainActivity", "Screenshot uploaded successfully")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Failed to capture or upload screenshot", e)
+            }
+        }
     }
 
     override fun onResume() {

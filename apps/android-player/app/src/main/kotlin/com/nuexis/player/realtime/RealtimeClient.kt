@@ -22,6 +22,7 @@ class RealtimeClient(
         fun onDeviceUpdated(record: JsonObject)
         fun onDeviceDeleted()
         fun onPlaylistRefresh()
+        fun onScreenshotRequested()
         fun onError(t: Throwable)
         fun onConnected()
         fun onDisconnected()
@@ -72,6 +73,7 @@ class RealtimeClient(
                 }
                 listener.onConnected()
                 joinDeviceChannel()
+                joinDevicePairChannel()
                 startHeartbeat()
                 
                 // If we already had a teamId set, rejoin presence channel
@@ -108,6 +110,8 @@ class RealtimeClient(
                         }
                     } else if (event == "refresh" && (topic?.startsWith("realtime:playlist-broadcast-") == true || topic?.startsWith("playlist-broadcast-") == true)) {
                         listener.onPlaylistRefresh()
+                    } else if (event == "request_screenshot" && (topic?.startsWith("realtime:device-pair-") == true || topic?.startsWith("device-pair-") == true)) {
+                        listener.onScreenshotRequested()
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -157,6 +161,17 @@ class RealtimeClient(
             addProperty("ref", "1")
         }
 
+        webSocket?.send(gson.toJson(joinMsg))
+    }
+
+    private fun joinDevicePairChannel() {
+        val topic = "realtime:device-pair-$deviceId"
+        val joinMsg = JsonObject().apply {
+            addProperty("topic", topic)
+            addProperty("event", "phx_join")
+            add("payload", JsonObject())
+            addProperty("ref", "join_device_pair")
+        }
         webSocket?.send(gson.toJson(joinMsg))
     }
 

@@ -114,6 +114,27 @@ class MediaEngine(private val context: Context, private val container: FrameLayo
             playerView.visibility = View.GONE
             stopVideo()
 
+            if (mimeType == "application/x-widget-remote-url") {
+                webView.webViewClient = WebViewClient()
+                var targetUrl = configJson
+                try {
+                    val jsonObject = com.google.gson.JsonParser.parseString(configJson).asJsonObject
+                    if (jsonObject.has("url")) {
+                        targetUrl = jsonObject.get("url").asString
+                    }
+                } catch (e: Exception) {
+                    // Not JSON or missing url key, use raw string
+                }
+                
+                if (targetUrl.startsWith("http://") || targetUrl.startsWith("https://")) {
+                    webView.loadUrl(targetUrl)
+                } else {
+                    webView.loadUrl("about:blank")
+                }
+                webView.visibility = View.VISIBLE
+                return
+            }
+
             webView.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)

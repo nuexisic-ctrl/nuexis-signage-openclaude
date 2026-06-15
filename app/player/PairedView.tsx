@@ -8,6 +8,9 @@ import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
 import FlowSlideshowRenderer from '@/app/components/FlowSlideshowRenderer'
 import { X, Monitor, RefreshCw, Volume2, VolumeX, Unlink } from 'lucide-react'
+import { ShadowDOMHtmlRenderer, ShadowDOMRemoteURLRenderer } from './ShadowDOMRenderer'
+import WeatherRenderer from '@/app/components/WeatherRenderer'
+import NewsTickerRenderer from '@/app/components/NewsTickerRenderer'
 
 interface PairedViewProps {
   contentType: string | null
@@ -143,38 +146,21 @@ export default function PairedView({
       )
     } else if (mimeType === 'application/x-widget-remote-url') {
       content = (
-        <iframe
+        <ShadowDOMRemoteURLRenderer
           key={assetUrl}
-          src={assetUrl}
-          style={{ ...mediaStyle, border: 'none' }}
-          allow="autoplay; encrypted-media; fullscreen"
-          sandbox="allow-scripts allow-forms allow-presentation"
+          url={assetUrl}
+          style={mediaStyle}
         />
       )
     } else if (mimeType === 'application/x-widget-html') {
       try {
         const { html = '', css = '' } = JSON.parse(assetUrl)
-        const iframeSrcDoc = `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <style>
-                body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
-                ${css}
-              </style>
-            </head>
-            <body>
-              ${html}
-            </body>
-          </html>
-        `
         content = (
-          <iframe
+          <ShadowDOMHtmlRenderer
             key={assetUrl}
-            title="widget-html-paired"
-            srcDoc={iframeSrcDoc}
-            style={{ ...mediaStyle, border: 'none' }}
-            sandbox=""
+            html={html}
+            css={css}
+            style={mediaStyle}
           />
         )
       } catch (err) {
@@ -253,6 +239,35 @@ export default function PairedView({
       } catch (err) {
         console.error('Failed to parse Slideshow widget config in PairedView:', err)
         content = <div style={{ color: 'red', padding: '10px' }}>Error rendering Slideshow widget</div>
+      }
+    } else if (mimeType === 'application/x-widget-weather') {
+      try {
+        const config = JSON.parse(assetUrl)
+        content = (
+          <WeatherRenderer
+            city={config.city}
+            unit={config.unit}
+            theme={config.theme}
+          />
+        )
+      } catch (err) {
+        console.error('Failed to parse weather widget config in PairedView:', err)
+        content = <div style={{ color: 'red', padding: '10px' }}>Error rendering Weather widget</div>
+      }
+    } else if (mimeType === 'application/x-widget-newsticker') {
+      try {
+        const config = JSON.parse(assetUrl)
+        content = (
+          <NewsTickerRenderer
+            feedUrl={config.feedUrl}
+            speed={config.speed}
+            theme={config.theme}
+            title={config.title}
+          />
+        )
+      } catch (err) {
+        console.error('Failed to parse news ticker widget config in PairedView:', err)
+        content = <div style={{ color: 'red', padding: '10px' }}>Error rendering News Ticker widget</div>
       }
     } else if (mimeType?.startsWith('video/')) {
       content = (

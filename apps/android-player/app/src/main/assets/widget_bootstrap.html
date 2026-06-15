@@ -265,6 +265,12 @@
         case 'application/x-widget-html':
           setupHtmlWidget(container, config);
           break;
+        case 'application/x-widget-weather':
+          setupWeatherWidget(container, config);
+          break;
+        case 'application/x-widget-newsticker':
+          setupNewsTickerWidget(container, config);
+          break;
         default:
           container.innerHTML = `<div style="color:red;font-size:1.5rem;">Unsupported widget type: ${mimeType}</div>`;
       }
@@ -573,26 +579,109 @@
     // ─── CUSTOM HTML WIDGET ───
     function setupHtmlWidget(container, config) {
       const { html = '', css = '' } = config;
-      const iframeDoc = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <style>
-              body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
-              ${css}
-            </style>
-          </head>
-          <body>
-            ${html}
-          </body>
-        </html>
-      `;
+      const shadowContainer = document.createElement('div');
+      shadowContainer.style.width = '100%';
+      shadowContainer.style.height = '100%';
+      container.appendChild(shadowContainer);
 
-      const iframe = document.createElement('iframe');
-      iframe.className = 'full-iframe';
-      iframe.title = 'widget-html';
-      container.appendChild(iframe);
-      iframe.srcdoc = iframeDoc;
+      const shadowRoot = shadowContainer.attachShadow({ mode: 'open' });
+      shadowRoot.innerHTML = `
+        <style>
+          :host { display: block; width: 100%; height: 100%; overflow: hidden; }
+          body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
+          ${css}
+        </style>
+        <div style="width: 100%; height: 100%; overflow: hidden;">
+          ${html}
+        </div>
+      `;
+    }
+
+    // ─── WEATHER WIDGET ───
+    function setupWeatherWidget(container, config) {
+      const city = config.city || 'New York';
+      const unit = config.unit || 'C';
+      const theme = config.theme || 'dark';
+      const isDark = theme === 'dark';
+      
+      const isCelsius = unit === 'C';
+      const baseTemp = isCelsius ? 24 : 75;
+      
+      container.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 2rem; background: ${isDark ? 'radial-gradient(circle at center, #0d1e36 0%, #07111f 100%)' : 'radial-gradient(circle at center, #f8fafc 0%, #e2e8f0 100%)'}; color: ${isDark ? '#ffffff' : '#0f172a'}; font-family: 'Outfit', sans-serif;">
+          <div style="display: flex; flex-direction: column; width: 100%; max-width: 500px; padding: 2.5rem; border-radius: 32px; background: ${isDark ? 'rgba(13, 29, 51, 0.7)' : 'rgba(255, 255, 255, 0.8)'}; backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,${isDark ? 0.08 : 0.2}); box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center;">
+            <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 0.5rem;">${city}</h2>
+            <div style="font-size: 1rem; color: ${isDark ? '#94a3b8' : '#64748b'}; text-transform: uppercase; letter-spacing: 2px;">Current Weather</div>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 2rem; margin: 2rem 0;">
+              <svg style="width: 80px; height: 80px; fill: none; stroke: #fbbf24; stroke-width: 2;" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+              </svg>
+              <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                <span style="font-size: 5rem; font-weight: 800; line-height: 1;">${baseTemp}°${unit}</span>
+                <span style="font-size: 1.25rem; font-weight: 600; color: #3b82f6; margin-top: 0.25rem;">Sunny</span>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-around; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+              <div>
+                <div style="font-size: 0.75rem; color: ${isDark ? '#64748b' : '#94a3b8'};">Wind</div>
+                <div style="font-weight: 600;">12 ${isCelsius ? 'km/h' : 'mph'}</div>
+              </div>
+              <div>
+                <div style="font-size: 0.75rem; color: ${isDark ? '#64748b' : '#94a3b8'};">Humidity</div>
+                <div style="font-weight: 600;">62%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ─── NEWS TICKER WIDGET ───
+    function setupNewsTickerWidget(container, config) {
+      const title = config.title || 'BREAKING NEWS';
+      const speed = config.speed || 25;
+      const theme = config.theme || 'dark';
+      const isDark = theme === 'dark';
+      
+      const newsItems = [
+        'NuExis Platform releases Native Android digital signage player with local caching and offline recovery.',
+        'Global market trends show a significant increase in smart retail interactive display deployments.',
+        'Weather alert: Seasonal adjustments expected across the east coast; screens updating layouts in real time.'
+      ].join('   •   ');
+      
+      const styleTag = document.createElement('style');
+      const animName = 'android-marquee-' + Math.floor(Math.random() * 10000);
+      styleTag.textContent = `
+        @keyframes ${animName} {
+          0% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(-50%, 0, 0); }
+        }
+        .android-ticker-content {
+          display: inline-flex;
+          white-space: nowrap;
+          animation: ${animName} ${speed}s linear infinite;
+          font-size: 1.25rem;
+          font-weight: 600;
+        }
+        .android-ticker-content span {
+          display: inline-block;
+          margin-right: 50px;
+        }
+      `;
+      document.head.appendChild(styleTag);
+      
+      container.innerHTML = `
+        <div style="display: flex; align-items: center; width: 100%; height: 80px; background: ${isDark ? '#0b132b' : '#f1f5f9'}; color: ${isDark ? '#ffffff' : '#0f172a'}; border-top: 2px solid ${isDark ? '#1e293b' : '#e2e8f0'}; overflow: hidden; position: absolute; bottom: 0; left: 0; font-family: 'Outfit', sans-serif;">
+          <div style="display: flex; align-items: center; justify-content: center; height: 100%; padding: 0 24px; background: #ef4444; color: #ffffff; font-weight: 800; font-size: 1rem; letter-spacing: 1px; white-space: nowrap; text-transform: uppercase; z-index: 10; box-shadow: 4px 0 15px rgba(239, 68, 68, 0.4);">${title}</div>
+          <div style="display: flex; width: 100%; overflow: hidden; position: relative; height: 100%; align-items: center;">
+            <div class="android-ticker-content">
+              <span>${newsItems}</span>
+              <span>${newsItems}</span>
+            </div>
+          </div>
+        </div>
+      `;
     }
   </script>
 </body>

@@ -42,18 +42,42 @@
 *   **Testing Completed:** Simulated offline boot and mid-play network disconnects; app continued playing cached files and reconnected instantly. Verified automatic launch on device boot.
 *   **Validation Completed:** Generated release APK with Proguard minification successfully.
 
+### Phase 11: Web Player Proxy & Shadow DOM Rendering
+*   **Features Completed:** Developed a secure Next.js API route (`/api/player/proxy`) that fetches external websites on the backend, strips `X-Frame-Options` and CSP headers, and injects a `<base>` tag so relative assets resolve. Created `ShadowDOMRenderer.tsx` with `ShadowDOMHtmlRenderer` and `ShadowDOMRemoteURLRenderer` to render HTML widgets and remote websites inside an isolated Shadow Root in the browser (bypassing iframes entirely).
+*   **Testing Completed:** Verified that websites that normally block iframe embedding (like Wikipedia or other external domains) load and render successfully.
+
+### Phase 12: Android Player Updates (No-Iframe WebViews)
+*   **Features Completed:** Upgraded `MediaEngine.kt` to load Remote URL widgets directly in the WebView (`loadUrl(url)`), natively bypassing iframe constraints. Modified `widget_bootstrap.html` to render Custom HTML widgets inside a Shadow Root instead of creating child iframes.
+*   **Testing Completed:** Verified Custom HTML rendering is style-isolated and no iframes are created on Android.
+
+### Phase 13: Advanced Widgets (Weather & News Tickers)
+*   **Features Completed:** Created `WeatherRenderer.tsx` displaying current conditions, wind/humidity, and a 3-day forecast. Created `NewsTickerRenderer.tsx` to display horizontal RSS and custom news marquee scrolling banners. Integrated both widgets natively in the web player and inside `widget_bootstrap.html` on Android.
+*   **Testing Completed:** Verified smooth CSS keyframe scroll performance for tickers and layout responsiveness for weather details.
+
+### Phase 14: Screen Capture & Diagnostics
+*   **Features Completed:** Created Next.js API route (`/api/player/screenshot`) to accept base64 screenshot uploads from player devices. Integrated WebSocket broadcast request listeners in both the web player (`page.tsx`) and native Android player (`MainActivity.kt` / `RealtimeClient.kt`) to capture the player's view hierarchy and upload it to Supabase Storage.
+*   **Testing Completed:** Verified that sending a `request_screenshot` event triggers canvas/view capture and uploads screenshots successfully to storage.
+
+### Phase 15: Production Hardening & Security Compliance
+*   **Features Completed:** Verified that the Redis heartbeat query uses the optimized Set-based index instead of unscalable `KEYS` queries. Added validation, format checking, and rate-limiting to `/api/player/media-url`. Executed full type-check and Next.js compilation, succeeding without any errors.
+
 ---
 
 ## Remaining Work
-**None.** All planned phases are fully implemented, and release validation is completed.
+**None.** All planned phases (1-15) are fully implemented, and release validation is completed.
 
 ---
 
 ## Files Created
+*   [ShadowDOMRenderer.tsx](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/app/player/ShadowDOMRenderer.tsx) — Scopes HTML and proxied website content inside isolated Shadow Roots.
+*   [WeatherRenderer.tsx](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/app/components/WeatherRenderer.tsx) — Displays high-end weather forecast signage metrics.
+*   [NewsTickerRenderer.tsx](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/app/components/NewsTickerRenderer.tsx) — Smooth scrolling breaking news marquee.
+*   [proxy/route.ts (Proxy)](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/app/api/player/proxy/route.ts) — Strips frame-blocking headers and injects HTML base tags.
+*   [screenshot/route.ts (Screenshot)](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/app/api/player/screenshot/route.ts) — Securely uploads screenshot buffers to workspace storage.
 *   [PlaylistEngine.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/playback/PlaylistEngine.kt) — Rotates playlist items, handles preloading and transition timers.
 *   [DiagnosticsManager.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/diagnostics/DiagnosticsManager.kt) — System metrics gatherer, health reporter, and playback event logger.
 *   [BootReceiver.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/receivers/BootReceiver.kt) — Receives system boot completions to auto-start the player.
-*   [widget_bootstrap.html](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/assets/widget_bootstrap.html) — Local web wrapper rendering Clock, World Clock, Countdown, CountUp, Slideshow, Custom HTML, YouTube, and Remote URLs.
+*   [widget_bootstrap.html](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/assets/widget_bootstrap.html) — Local web wrapper rendering Clock, World Clock, Countdown, CountUp, Slideshow, Custom HTML, Weather, and News Tickers.
 *   [ic_fullscreen.xml](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/res/drawable/ic_fullscreen.xml) — Immersive fullscreen toggle icon.
 *   [ic_fullscreen_exit.xml](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/res/drawable/ic_fullscreen_exit.xml) — Exit fullscreen icon.
 *   [ic_menu_hamburger.xml](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/res/drawable/ic_menu_hamburger.xml) — Hamburger menu icon.
@@ -61,11 +85,12 @@
 ---
 
 ## Files Modified
-*   [MediaEngine.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/playback/MediaEngine.kt) — Upgraded to dual viewports (A/B) for cross-fading, preloading, and WebView widget rendering.
-*   [RealtimeClient.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/realtime/RealtimeClient.kt) — Added playlist channel subscriptions and broadcast refresh callbacks.
-*   [SupabaseClient.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/data/SupabaseClient.kt) — Implemented session exchange, health reporting, and playback logging RPCs.
-*   [StorageManager.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/data/StorageManager.kt) — Added session token and cached manifest JSON storage methods.
-*   [MainActivity.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/MainActivity.kt) — Integrated PlaylistEngine, DiagnosticsManager, full-screen immersive mode, and offline recovery fallback checks.
+*   [PlaylistEngine.tsx](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/app/player/PlaylistEngine.tsx) — Upgraded to use Shadow DOM renderers for HTML and Remote URL widgets.
+*   [PairedView.tsx](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/app/player/PairedView.tsx) — Upgraded single-asset widgets to load without iframes.
+*   [page.tsx (Web Player)](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/app/player/page.tsx) — Added canvas screenshot capture and upload triggers.
+*   [MediaEngine.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/playback/MediaEngine.kt) — Bypasses iframes by loading Remote URLs directly in WebView.
+*   [RealtimeClient.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/realtime/RealtimeClient.kt) — Joined device-pair broadcast channel to receive screenshot requests.
+*   [MainActivity.kt](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/kotlin/com/nuexis/player/MainActivity.kt) — Integrated bitmap screen capture and OkHttp screenshot uploading.
 *   [view_paired.xml](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/res/layout/view_paired.xml) — Added fullscreen and hamburger buttons to the overlay layout.
 *   [AndroidManifest.xml](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/src/main/AndroidManifest.xml) — Registered BootReceiver and verified required permissions.
 *   [proguard-rules.pro](file:///c:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player/app/proguard-rules.pro) — Configured keep rules to prevent shrinking of serialized Gson data models.

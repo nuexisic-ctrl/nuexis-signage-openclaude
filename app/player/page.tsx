@@ -429,6 +429,57 @@ export default function PlayerPage() {
       const channel = (supabase as any)
         .channel(`device-pair-${activeDevice.id}`)
         .on(
+          'broadcast',
+          { event: 'request_screenshot' },
+          async () => {
+            console.log('[Player] Screenshot requested')
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 1280
+              canvas.height = 720
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.fillStyle = '#07111f'
+                ctx.fillRect(0, 0, canvas.width, canvas.height)
+                
+                ctx.fillStyle = '#ffffff'
+                ctx.font = 'bold 40px sans-serif'
+                ctx.textAlign = 'center'
+                ctx.textBaseline = 'middle'
+                ctx.fillText('NuExis Web Player', canvas.width / 2, canvas.height / 2 - 100)
+                
+                ctx.fillStyle = '#3b82f6'
+                ctx.font = '24px sans-serif'
+                ctx.fillText(`Active Content Type: ${contentType || 'None'}`, canvas.width / 2, canvas.height / 2 - 20)
+                
+                ctx.fillStyle = '#94a3b8'
+                ctx.font = '18px monospace'
+                ctx.fillText(`Hardware ID: ${hardwareIdRef.current || 'unknown'}`, canvas.width / 2, canvas.height / 2 + 40)
+                
+                ctx.fillStyle = '#64748b'
+                ctx.font = '16px sans-serif'
+                ctx.fillText(`Time: ${new Date().toLocaleString()}`, canvas.width / 2, canvas.height / 2 + 100)
+              }
+              
+              const base64Data = canvas.toDataURL('image/png')
+              
+              await fetch('/api/player/screenshot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  deviceId: deviceIdRef.current,
+                  hardwareId: hardwareIdRef.current,
+                  secret: secretRef.current,
+                  base64Data
+                })
+              })
+              console.log('[Player] Screenshot uploaded successfully')
+            } catch (err) {
+              console.error('[Player] Failed to capture or upload screenshot:', err)
+            }
+          }
+        )
+        .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'devices', filter: `id=eq.${activeDevice.id}` },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

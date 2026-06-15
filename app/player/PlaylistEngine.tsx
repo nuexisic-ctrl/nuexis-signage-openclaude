@@ -8,6 +8,9 @@ import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
 import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
 import FlowSlideshowRenderer from '@/app/components/FlowSlideshowRenderer'
+import { ShadowDOMHtmlRenderer, ShadowDOMRemoteURLRenderer } from './ShadowDOMRenderer'
+import WeatherRenderer from '@/app/components/WeatherRenderer'
+import NewsTickerRenderer from '@/app/components/NewsTickerRenderer'
 
 interface PlaylistItem {
   id: string
@@ -491,12 +494,10 @@ function PlayableItem({
 
   if (item.assets?.mime_type === 'application/x-widget-remote-url') {
     return (
-      <iframe
-        src={mediaUrl}
-        style={{ ...mediaStyle, border: 'none' }}
-        allow="autoplay; encrypted-media; fullscreen"
-        onLoad={() => setIsLoaded(true)}
-        sandbox="allow-scripts allow-forms allow-presentation"
+      <ShadowDOMRemoteURLRenderer
+        url={mediaUrl}
+        onLoadComplete={() => setIsLoaded(true)}
+        style={mediaStyle}
       />
     )
   }
@@ -518,27 +519,12 @@ function PlayableItem({
     }
 
     const { html = '', css = '' } = parsedConfig
-    const iframeSrcDoc = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
-            ${css}
-          </style>
-        </head>
-        <body>
-          ${html}
-        </body>
-      </html>
-    `
     return (
-      <iframe
-        title="widget-html-playlist"
-        srcDoc={iframeSrcDoc}
-        style={{ ...mediaStyle, border: 'none' }}
-        onLoad={() => setIsLoaded(true)}
-        sandbox=""
+      <ShadowDOMHtmlRenderer
+        html={html}
+        css={css}
+        onLoadComplete={() => setIsLoaded(true)}
+        style={mediaStyle}
       />
     )
   }
@@ -696,6 +682,43 @@ function PlayableItem({
           themeSettings={parsedConfig.themeSettings}
           advancedSettings={parsedConfig.advancedSettings}
         />
+      </div>
+    )
+  }
+
+  if (item.assets?.mime_type === 'application/x-widget-weather') {
+    let parsedConfig: any = null
+    try {
+      parsedConfig = JSON.parse(mediaUrl)
+    } catch (err) {
+      console.error('Failed to parse weather widget config in PlaylistEngine:', err)
+    }
+    const city = parsedConfig?.city || 'New York'
+    const unit = parsedConfig?.unit || 'C'
+    const theme = parsedConfig?.theme || 'dark'
+
+    return (
+      <div style={{ width: '100%', height: '100%' }} ref={() => setIsLoaded(true)}>
+        <WeatherRenderer city={city} unit={unit} theme={theme} />
+      </div>
+    )
+  }
+
+  if (item.assets?.mime_type === 'application/x-widget-newsticker') {
+    let parsedConfig: any = null
+    try {
+      parsedConfig = JSON.parse(mediaUrl)
+    } catch (err) {
+      console.error('Failed to parse news ticker widget config in PlaylistEngine:', err)
+    }
+    const feedUrl = parsedConfig?.feedUrl || ''
+    const speed = parsedConfig?.speed || 25
+    const theme = parsedConfig?.theme || 'dark'
+    const title = parsedConfig?.title || 'BREAKING NEWS'
+
+    return (
+      <div style={{ width: '100%', height: '100%', position: 'relative' }} ref={() => setIsLoaded(true)}>
+        <NewsTickerRenderer feedUrl={feedUrl} speed={speed} theme={theme} title={title} />
       </div>
     )
   }
