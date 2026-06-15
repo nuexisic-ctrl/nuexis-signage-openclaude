@@ -42,6 +42,7 @@ export function useDevicePresence(
   const presenceKeyRef = useRef<string>('')
   const hasSyncedPresenceRef = useRef(false)
   const isInitialLoadRef = useRef(true)
+  const isInitialSyncRef = useRef(true)
 
   // Sync state when initialDevices update (smart merge to prevent real-time state overwrites)
   useEffect(() => {
@@ -94,6 +95,7 @@ export function useDevicePresence(
     if (!teamId) return
 
     let isUnmounting = false
+    isInitialSyncRef.current = true
 
     const channel = supabase
       .channel(`team-status:${teamId}`)
@@ -146,16 +148,24 @@ export function useDevicePresence(
       .filter(d => d.status !== 'online' && onlineDeviceIds.has(d.id))
       .map(d => d.id)
 
-    if (leftIds.length === 0 && joinedIds.length === 0) return
+    if (leftIds.length === 0 && joinedIds.length === 0) {
+      isInitialSyncRef.current = false
+      return
+    }
 
     const now = new Date().toISOString()
 
     // Frontend purely updates local state to 'offline' (removed database updateDeviceLastSeen call to fix Thundering Herd)
     setDevices(prev => prev.map(d => {
-      if (leftIds.includes(d.id)) return { ...d, status: 'offline', last_seen_at: now }
+      if (leftIds.includes(d.id)) {
+        const updatedLastSeen = isInitialSyncRef.current ? d.last_seen_at : now
+        return { ...d, status: 'offline', last_seen_at: updatedLastSeen }
+      }
       if (joinedIds.includes(d.id)) return { ...d, status: 'online' }
       return d
     }))
+
+    isInitialSyncRef.current = false
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onlineDeviceIds])
 

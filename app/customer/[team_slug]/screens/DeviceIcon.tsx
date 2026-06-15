@@ -533,22 +533,22 @@ export function detectDeviceType(
   const isTv = tvKeywords.some(kw => n.includes(kw) || ov.includes(kw) || av.includes(kw))
   if (isTv) return 'tv'
 
-  // 2. Check for Kiosk
-  const kioskKeywords = ['kiosk', 'totem', 'terminal', 'booth', 'vertical-display']
-  const isKiosk = kioskKeywords.some(kw => n.includes(kw) || ov.includes(kw)) || orientation === 90 || orientation === 270
-  if (isKiosk) return 'kiosk'
-
-  // 3. Check for Tablet
+  // 2. Check for Tablet
   const tabletKeywords = ['tablet', 'ipad', 'tab', 'android-tab', 'nexus 7', 'nexus 9', 'nexus 10', 'kindle', 'playbook']
   const isTabletUA = ov.includes('ipad') || (ov.includes('android') && !ov.includes('mobi'))
   const isTablet = tabletKeywords.some(kw => n.includes(kw)) || isTabletUA
   if (isTablet) return 'tablet'
 
-  // 4. Check for Mobile Phone
+  // 3. Check for Mobile Phone
   const mobileKeywords = ['phone', 'iphone', 'mobile', 'android', 'pixel', 'galaxy', 'nexus']
   const isMobileUA = ov.includes('mobi') || ov.includes('iphone') || ov.includes('ipod')
   const isMobile = mobileKeywords.some(kw => n.includes(kw)) || isMobileUA
   if (isMobile) return 'mobile'
+
+  // 4. Check for Kiosk (Explicit keywords or orientation fallback)
+  const kioskKeywords = ['kiosk', 'totem', 'terminal', 'booth', 'vertical-display']
+  const isKiosk = kioskKeywords.some(kw => n.includes(kw) || ov.includes(kw)) || orientation === 90 || orientation === 270
+  if (isKiosk) return 'kiosk'
 
   // 5. Check for Laptop
   const laptopKeywords = ['macbook', 'laptop', 'notebook', 'chromebook', 'book', 'thinkpad', 'zenbook', 'latitude', 'inspiron', 'yoga']
@@ -588,7 +588,6 @@ export function DeviceIcon({ name, orientation, app_version, os_version }: Devic
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <title>Kiosk</title>
       <rect x="6" y="2" width="12" height="17" rx="1.5" />
-      <rect x="8" y="4" width="8" height="11" rx="0.5" />
       <path d="M4 21h16" strokeWidth="2" />
       <path d="M7 19h10" />
     </svg>

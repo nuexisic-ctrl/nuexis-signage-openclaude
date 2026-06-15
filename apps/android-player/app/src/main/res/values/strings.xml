@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NuExis Player</string>
+    <string name="app_name">NuExis</string>
     <string name="brand_part1">Nu</string>
     <string name="brand_part2">Exis</string>
     <string name="pairing_code_label">Pairing Code</string>

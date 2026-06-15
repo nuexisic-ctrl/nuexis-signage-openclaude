@@ -15,6 +15,7 @@ class RealtimeClient(
     private val baseUrl: String,
     private val anonKey: String,
     private val deviceId: String,
+    private val presenceKey: String,
     private val listener: RealtimeListener
 ) {
     interface RealtimeListener {
@@ -35,7 +36,14 @@ class RealtimeClient(
     private var heartbeatThread: Thread? = null
     private var teamId: String? = null
     private var activePlaylistId: String? = null
-    private val presenceKey = UUID.randomUUID().toString().replace("-", "")
+
+    @Volatile
+    private var isConnected = false
+
+    @Volatile
+    private var isConnecting = false
+
+    fun isConnected(): Boolean = isConnected
 
     private fun getISO8601String(date: Date): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
@@ -44,14 +52,24 @@ class RealtimeClient(
     }
 
     fun connect() {
-        isClosed = false
+        if (isClosed) return
+        if (isConnected || isConnecting) {
+            android.util.Log.d("RealtimeClient", "Already connected or connecting. Skipping connect.")
+            return
+        }
+        isConnecting = true
         val wsUrl = baseUrl.replace("http://", "ws://").replace("https://", "wss://") +
                 "/realtime/v1/websocket?apikey=$anonKey&vsn=1.0.0"
 
         val request = Request.Builder().url(wsUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                if (isClosed) return
+                isConnecting = false
+                isConnected = true
+                if (isClosed) {
+                    webSocket.close(1000, "Closed")
+                    return
+                }
                 listener.onConnected()
                 joinDeviceChannel()
                 startHeartbeat()
@@ -97,12 +115,16 @@ class RealtimeClient(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                isConnecting = false
+                isConnected = false
                 if (isClosed) return
                 listener.onError(t)
                 reconnect()
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                isConnecting = false
+                isConnected = false
                 if (isClosed) return
                 listener.onDisconnected()
                 reconnect()
@@ -193,15 +215,19 @@ class RealtimeClient(
         }
         webSocket?.send(gson.toJson(joinMsg))
 
-        // Immediately track ourselves
-        val trackPayload = JsonObject().apply {
-            addProperty("device_id", deviceId)
-            addProperty("online_at", getISO8601String(Date()))
+        // Immediately track ourselves (Supabase Realtime Presence Protocol)
+        val presenceTrackPayload = JsonObject().apply {
+            addProperty("type", "presence")
+            addProperty("event", "track")
+            add("payload", JsonObject().apply {
+                addProperty("device_id", deviceId)
+                addProperty("online_at", getISO8601String(Date()))
+            })
         }
         val trackMsg = JsonObject().apply {
             addProperty("topic", topic)
-            addProperty("event", "presence_track") // or "track"
-            add("payload", trackPayload)
+            addProperty("event", "presence")
+            add("payload", presenceTrackPayload)
             addProperty("ref", "track_presence")
         }
         webSocket?.send(gson.toJson(trackMsg))
@@ -223,17 +249,21 @@ class RealtimeClient(
                     webSocket?.send(gson.toJson(heartbeatMsg))
                     ref++
 
-                    // Re-track presence periodically to maintain online status
+                    // Re-track presence periodically to maintain online status (Supabase Realtime Presence Protocol)
                     val currentTeamId = teamId
                     if (currentTeamId != null) {
-                        val trackPayload = JsonObject().apply {
-                            addProperty("device_id", deviceId)
-                            addProperty("online_at", getISO8601String(Date()))
+                        val presenceTrackPayload = JsonObject().apply {
+                            addProperty("type", "presence")
+                            addProperty("event", "track")
+                            add("payload", JsonObject().apply {
+                                addProperty("device_id", deviceId)
+                                addProperty("online_at", getISO8601String(Date()))
+                            })
                         }
                         val trackMsg = JsonObject().apply {
                             addProperty("topic", "team-status:$currentTeamId")
-                            addProperty("event", "presence_track")
-                            add("payload", trackPayload)
+                            addProperty("event", "presence")
+                            add("payload", presenceTrackPayload)
                             addProperty("ref", "track_presence_$ref")
                         }
                         webSocket?.send(gson.toJson(trackMsg))
@@ -243,6 +273,14 @@ class RealtimeClient(
                 // Exit thread
             }
         }.apply { isDaemon = true; start() }
+    }
+
+    fun refreshPresence() {
+        val currentTeamId = teamId
+        if (currentTeamId != null && isConnected) {
+            android.util.Log.d("RealtimeClient", "Refreshing presence track manually.")
+            joinPresenceChannel(currentTeamId)
+        }
     }
 
     private fun reconnect() {
@@ -263,6 +301,8 @@ class RealtimeClient(
     private fun cleanup() {
         heartbeatThread?.interrupt()
         heartbeatThread = null
+        isConnected = false
+        isConnecting = false
         try {
             webSocket?.close(1000, "Reconnecting")
         } catch (e: Exception) {

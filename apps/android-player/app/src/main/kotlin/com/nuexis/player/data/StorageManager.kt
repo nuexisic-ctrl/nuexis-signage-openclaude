@@ -79,6 +79,15 @@ class StorageManager(private val context: Context) {
     fun getSessionToken(): String? = prefs.getString("nuexis_session_token", null)
     fun setSessionToken(token: String?) = prefs.edit().putString("nuexis_session_token", token).apply()
 
+    fun getPresenceKey(): String {
+        var key = prefs.getString("nuexis_presence_key", null)
+        if (key == null) {
+            key = UUID.randomUUID().toString()
+            prefs.edit().putString("nuexis_presence_key", key).apply()
+        }
+        return key
+    }
+
     fun getCachedManifest(): String? = prefs.getString("nuexis_cached_manifest", null)
     fun setCachedManifest(manifestJson: String?) = prefs.edit().putString("nuexis_cached_manifest", manifestJson).apply()
 

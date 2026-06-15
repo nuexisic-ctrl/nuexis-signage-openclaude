@@ -256,7 +256,9 @@ export default function ScreensClient({
     setIsRefreshing(true)
 
     try {
-      setPresenceRefreshKey(prev => prev + 1)
+      // Do not increment presenceRefreshKey on every manual refresh - it's disruptive 
+      // as it tears down the presence channel and re-subscribes.
+      // setPresenceRefreshKey(prev => prev + 1)
 
       const from = (currentPage - 1) * pageSize
       const to = from + pageSize - 1
@@ -285,7 +287,20 @@ export default function ScreensClient({
       ])
 
       if (!devicesRes.error && devicesRes.data) {
-        setDevices((devicesRes.data as any[]).map(mapDevice))
+        const newData = (devicesRes.data as any[]).map(mapDevice)
+        setDevices(prev => {
+          const existingMap = new Map(prev.map(d => [d.id, d]))
+          return newData.map(newDev => {
+            const existing = existingMap.get(newDev.id)
+            if (!existing) return newDev
+            // Preserve real-time status and last_seen_at to prevent "just now" flicker
+            return {
+              ...newDev,
+              status: existing.status === 'online' ? 'online' : newDev.status,
+              last_seen_at: existing.status === 'online' ? existing.last_seen_at : newDev.last_seen_at
+            }
+          })
+        })
       }
 
       if (!groupsRes.error && groupsRes.data) {

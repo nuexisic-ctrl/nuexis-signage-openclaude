@@ -2,7 +2,9 @@ package com.nuexis.player
 
 import android.Manifest
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -66,6 +68,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
     private var diagnosticsManager: com.nuexis.player.diagnostics.DiagnosticsManager? = null
     private var lastManifestVersion: String? = null
     private var onlineCheckJob: Job? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     private val STORAGE_PERMISSION_CODE = 1001
 
@@ -130,6 +133,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
 
         setupSidebar()
         checkAndRequestStoragePermission()
+        registerConnectivityListener()
         loadDeviceState()
     }
 
@@ -565,7 +569,8 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
 
     private fun startRealtime(deviceId: String) {
         if (realtimeClient != null) return
-        realtimeClient = RealtimeClient(supabaseUrl, supabaseAnonKey, deviceId, this).apply {
+        val presenceKey = storageManager.getPresenceKey()
+        realtimeClient = RealtimeClient(supabaseUrl, supabaseAnonKey, deviceId, presenceKey, this).apply {
             connect()
         }
     }
@@ -884,8 +889,77 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
         t.printStackTrace()
     }
 
+    override fun onResume() {
+        super.onResume()
+        Log.d("MainActivity", "onResume: Checking realtime client connection status.")
+        val deviceId = storageManager.getDeviceId()
+        val teamId = lastTeamId
+        if (deviceId != null && teamId != null) {
+            val client = realtimeClient
+            if (client == null) {
+                startRealtime(deviceId)
+            } else {
+                if (!client.isConnected()) {
+                    Log.d("MainActivity", "realtimeClient is disconnected in onResume. Reconnecting.")
+                    client.connect()
+                } else {
+                    Log.d("MainActivity", "realtimeClient is active. Refreshing presence track.")
+                    client.refreshPresence()
+                }
+            }
+        }
+    }
+
+    private fun registerConnectivityListener() {
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val networkRequest = android.net.NetworkRequest.Builder()
+                .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+
+            networkCallback = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    Log.d("MainActivity", "Network callback: onAvailable. Reconnecting realtime client if disconnected.")
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        val deviceId = storageManager.getDeviceId()
+                        val teamId = lastTeamId
+                        if (deviceId != null && teamId != null) {
+                            val client = realtimeClient
+                            if (client == null) {
+                                startRealtime(deviceId)
+                            } else {
+                                if (!client.isConnected()) {
+                                    client.connect()
+                                } else {
+                                    client.refreshPresence()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            connectivityManager.registerNetworkCallback(networkRequest, networkCallback!!)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to register network callback: ${e.message}", e)
+        }
+    }
+
+    private fun unregisterConnectivityListener() {
+        try {
+            val callback = networkCallback
+            if (callback != null) {
+                val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                connectivityManager.unregisterNetworkCallback(callback)
+                networkCallback = null
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to unregister network callback: ${e.message}", e)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        unregisterConnectivityListener()
         realtimeClient?.disconnect()
         playlistEngine?.stop()
         playlistEngine = null
