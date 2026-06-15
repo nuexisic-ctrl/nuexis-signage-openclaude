@@ -106,7 +106,7 @@ class RealtimeClient(
                                 }
                             }
                         }
-                    } else if (event == "refresh" && topic?.startsWith("playlist-broadcast-") == true) {
+                    } else if (event == "refresh" && (topic?.startsWith("realtime:playlist-broadcast-") == true || topic?.startsWith("playlist-broadcast-") == true)) {
                         listener.onPlaylistRefresh()
                     }
                 } catch (e: Exception) {
@@ -170,14 +170,14 @@ class RealtimeClient(
         if (oldPlaylistId == playlistId) return
         
         if (oldPlaylistId != null) {
-            leaveChannel("playlist-broadcast-$oldPlaylistId")
+            leaveChannel("realtime:playlist-broadcast-$oldPlaylistId")
         }
         activePlaylistId = playlistId
         joinPlaylistChannel(playlistId)
     }
 
     private fun joinPlaylistChannel(playlistId: String) {
-        val topic = "playlist-broadcast-$playlistId"
+        val topic = "realtime:playlist-broadcast-$playlistId"
         val joinMsg = JsonObject().apply {
             addProperty("topic", topic)
             addProperty("event", "phx_join")
@@ -198,10 +198,11 @@ class RealtimeClient(
     }
 
     private fun joinPresenceChannel(teamId: String) {
-        val topic = "team-status:$teamId"
+        val topic = "realtime:team-status:$teamId"
         val config = JsonObject().apply {
             add("presence", JsonObject().apply {
                 addProperty("key", "$deviceId:$presenceKey")
+                addProperty("enabled", true)
             })
         }
         val payload = JsonObject().apply {
@@ -261,7 +262,7 @@ class RealtimeClient(
                             })
                         }
                         val trackMsg = JsonObject().apply {
-                            addProperty("topic", "team-status:$currentTeamId")
+                            addProperty("topic", "realtime:team-status:$currentTeamId")
                             addProperty("event", "presence")
                             add("payload", presenceTrackPayload)
                             addProperty("ref", "track_presence_$ref")
