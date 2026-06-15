@@ -2,7 +2,10 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="primary">#3B82F6</color>
-    <color name="background">#07111F</color>
-    <color name="card_bg">#0E1E33</color>
+    <color name="dark_bg">#07111f</color>
+    <color name="primary_brand">#2563eb</color> <!-- Blue -->
+    <color name="accent_brand">#f97316</color>  <!-- Orange -->
+    <color name="card_bg">#0d1d33</color>
+    <color name="text_secondary">#94a3b8</color>
+    <color name="urgent_red">#ef4444</color>
 </resources>

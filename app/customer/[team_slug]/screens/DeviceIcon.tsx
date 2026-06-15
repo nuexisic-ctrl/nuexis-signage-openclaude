@@ -516,36 +516,106 @@ export function ContentTooltipWrapper({ info, children }: ContentTooltipProps) {
 }
 
 // ── Device icon ───────────────────────────────────────────────────────────────
-export function DeviceIcon({ name, orientation }: { name: string, orientation?: number | null }) {
-  const nameLower = name.toLowerCase()
-  const isMobile = nameLower.includes('mobile') || nameLower.includes('phone')
-  const isTablet = nameLower.includes('tablet') || nameLower.includes('ipad')
-  const isKiosk = nameLower.includes('kiosk') || orientation === 90 || orientation === 270
+export type DeviceType = 'tv' | 'kiosk' | 'mobile' | 'tablet' | 'laptop' | 'desktop'
 
-  if (isMobile) return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-      <line x1="12" y1="18" x2="12.01" y2="18" />
+export function detectDeviceType(
+  name: string | null | undefined,
+  orientation: number | null | undefined,
+  appVersion: string | null | undefined,
+  osVersion: string | null | undefined
+): DeviceType {
+  const n = (name || '').toLowerCase()
+  const ov = (osVersion || '').toLowerCase()
+  const av = (appVersion || '').toLowerCase()
+
+  // 1. Check for TV / Digital Signage
+  const tvKeywords = ['tv', 'television', 'signage', 'display', 'monitor', 'tizen', 'webos', 'androidtv', 'smarttv', 'firetv', 'apple tv', 'apple-tv', 'appletv', 'chromecast', 'sony', 'lg', 'samsung']
+  const isTv = tvKeywords.some(kw => n.includes(kw) || ov.includes(kw) || av.includes(kw))
+  if (isTv) return 'tv'
+
+  // 2. Check for Kiosk
+  const kioskKeywords = ['kiosk', 'totem', 'terminal', 'booth', 'vertical-display']
+  const isKiosk = kioskKeywords.some(kw => n.includes(kw) || ov.includes(kw)) || orientation === 90 || orientation === 270
+  if (isKiosk) return 'kiosk'
+
+  // 3. Check for Tablet
+  const tabletKeywords = ['tablet', 'ipad', 'tab', 'android-tab', 'nexus 7', 'nexus 9', 'nexus 10', 'kindle', 'playbook']
+  const isTabletUA = ov.includes('ipad') || (ov.includes('android') && !ov.includes('mobi'))
+  const isTablet = tabletKeywords.some(kw => n.includes(kw)) || isTabletUA
+  if (isTablet) return 'tablet'
+
+  // 4. Check for Mobile Phone
+  const mobileKeywords = ['phone', 'iphone', 'mobile', 'android', 'pixel', 'galaxy', 'nexus']
+  const isMobileUA = ov.includes('mobi') || ov.includes('iphone') || ov.includes('ipod')
+  const isMobile = mobileKeywords.some(kw => n.includes(kw)) || isMobileUA
+  if (isMobile) return 'mobile'
+
+  // 5. Check for Laptop
+  const laptopKeywords = ['macbook', 'laptop', 'notebook', 'chromebook', 'book', 'thinkpad', 'zenbook', 'latitude', 'inspiron', 'yoga']
+  const isLaptop = laptopKeywords.some(kw => n.includes(kw))
+  if (isLaptop) return 'laptop'
+
+  // 6. Default to Desktop
+  return 'desktop'
+}
+
+interface DeviceIconProps {
+  name: string | null | undefined
+  orientation?: number | null
+  app_version?: string | null
+  os_version?: string | null
+}
+
+export function DeviceIcon({ name, orientation, app_version, os_version }: DeviceIconProps) {
+  const deviceType = detectDeviceType(name, orientation, app_version, os_version)
+
+  if (deviceType === 'mobile') return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <title>Mobile Phone</title>
+      <rect x="6" y="2" width="12" height="20" rx="2.5" />
+      <path d="M11 5h2" />
+      <path d="M10 19h4" />
     </svg>
   )
-  if (isTablet) return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-      <line x1="12" y1="18" x2="12.01" y2="18" />
+  if (deviceType === 'tablet') return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <title>Tablet</title>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <circle cx="12" cy="18.5" r="0.75" fill="currentColor" />
     </svg>
   )
-  if (isKiosk) return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="7" y="2" width="10" height="14" rx="1" ry="1" />
-      <line x1="12" y1="16" x2="12" y2="20" />
-      <line x1="8" y1="20" x2="16" y2="20" />
+  if (deviceType === 'kiosk') return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <title>Kiosk</title>
+      <rect x="6" y="2" width="12" height="17" rx="1.5" />
+      <rect x="8" y="4" width="8" height="11" rx="0.5" />
+      <path d="M4 21h16" strokeWidth="2" />
+      <path d="M7 19h10" />
     </svg>
   )
+  if (deviceType === 'tv') return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <title>TV / Digital Signage</title>
+      <rect x="2" y="3" width="20" height="13" rx="2" />
+      <path d="M12 16v4" />
+      <path d="M9 20h6" />
+      <path d="M6 13h12" strokeWidth="1.2" opacity="0.4" />
+    </svg>
+  )
+  if (deviceType === 'laptop') return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <title>Laptop</title>
+      <rect x="4" y="5" width="16" height="11" rx="1" />
+      <path d="M2 19h20c0-1.5-1-3-3-3H5c-2 0-3 1.5-3 3z" />
+    </svg>
+  )
+  // Default to Desktop
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="20" height="12" rx="2" ry="2" />
-      <line x1="12" y1="16" x2="12" y2="20" />
-      <line x1="8" y1="20" x2="16" y2="20" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <title>Desktop PC</title>
+      <rect x="3" y="4" width="18" height="12" rx="1.5" />
+      <path d="M12 16v4" />
+      <path d="M8 20h8" />
     </svg>
   )
 }

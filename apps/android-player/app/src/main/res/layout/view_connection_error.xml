@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/dark_bg"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/tv_error_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connection Error"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tv_error_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Unable to connect to the server. Please check your internet connection."
+        android:textColor="@color/text_secondary"
+        android:textSize="16sp"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
+
+    <Button
+        android:id="@+id/btn_retry"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Retry Connection"
+        android:backgroundTint="@color/primary_brand"
+        android:textColor="@color/white" />
+</LinearLayout>

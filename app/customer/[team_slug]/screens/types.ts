@@ -11,9 +11,11 @@ export interface Device {
   orientation?: number | null
   last_seen_at?: string | null
   total_playtime_seconds?: number | null
+  app_version?: string | null
+  os_version?: string | null
 }
 
-import { Asset } from '../asset/types'
+import { Asset } from '../assets/types'
 export type { Asset }
 
 export interface PlaylistItem {

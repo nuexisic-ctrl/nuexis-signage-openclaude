@@ -34,9 +34,10 @@ export default async function PlaylistsPage({ params, searchParams }: Props) {
     .eq('id', user.id)
     .single()
 
-  const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? profile.teams.slug : undefined
+  const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).slug : undefined
+
   if (userTeamSlug && userTeamSlug !== team_slug) {
-    redirect(`/customer/${userTeamSlug}/playlists`)
+    notFound()
   }
 
   const fullName = user.user_metadata?.full_name as string | undefined

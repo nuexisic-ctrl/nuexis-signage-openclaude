@@ -1,5 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { SupabaseClient, createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cache } from 'react'
 import type { Database } from '@/types/supabase'
@@ -56,6 +56,25 @@ export async function createClient() {
  * With cache(), all callers within the same server render share a single result.
  */
 export const getCachedUser = cache(async () => {
+  try {
+    const headersList = await headers()
+    const userId = headersList.get('x-user-id')
+    if (userId) {
+      const email = headersList.get('x-user-email') || undefined
+      const metadataStr = headersList.get('x-user-metadata') || '{}'
+      const appMetadataStr = headersList.get('x-user-app-metadata') || '{}'
+      
+      return {
+        id: userId,
+        email: email,
+        user_metadata: JSON.parse(metadataStr),
+        app_metadata: JSON.parse(appMetadataStr)
+      } as any
+    }
+  } catch (e) {
+    console.warn('[getCachedUser] Failed to read from headers, falling back to Supabase:', e)
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   return user

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react'
 import { Folder, FileText, Video, Image as ImageIcon, Play, LayoutGrid, List, Code, Clock, Hourglass, QrCode, Globe } from 'lucide-react'
-import { Asset } from '../asset/types'
+import { Asset } from '../assets/types'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import styles from '../components/AssetBrowser/AssetBrowser.module.css'
 

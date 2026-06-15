@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/dark_bg"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp">
+
+    <!-- Brand Header -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="40dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/brand_part1"
+            android:textColor="@color/white"
+            android:textSize="48sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/brand_part2"
+            android:textColor="@color/accent_brand"
+            android:textSize="48sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Label -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/pairing_code_label"
+        android:textColor="@color/text_secondary"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Code Display Box -->
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@color/card_bg"
+        android:paddingLeft="32dp"
+        android:paddingRight="32dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:layout_marginBottom="24dp">
+
+        <TextView
+            android:id="@+id/tv_pairing_code"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="------"
+            android:textColor="@color/white"
+            android:textSize="54sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.2" />
+    </FrameLayout>
+
+    <!-- Countdown Timer Row -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/code_expiry_label"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tv_countdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="15:00"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Progress Bar (expiring timer) -->
+    <ProgressBar
+        android:id="@+id/pb_pairing_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="260dp"
+        android:layout_height="6dp"
+        android:progress="100"
+        android:progressTint="@color/primary_brand"
+        android:progressBackgroundTint="#33ffffff"
+        android:layout_marginBottom="40dp" />
+
+    <!-- Instructions Card -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/how_to_pair_title"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/how_to_pair_path"
+            android:textColor="@color/accent_brand"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+    </LinearLayout>
+
+</LinearLayout>

@@ -106,7 +106,7 @@ export function DeviceCard({
             </div>
           )}
           <div className={styles.deviceCardIcon}>
-            <DeviceIcon name={device.name || ''} orientation={device.orientation} />
+            <DeviceIcon name={device.name || ''} orientation={device.orientation} app_version={device.app_version} os_version={device.os_version} />
           </div>
           <div>
             <h3 className={styles.deviceName}>

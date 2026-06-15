@@ -53,7 +53,7 @@ export default async function DashboardPage({ params }: Props) {
   const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as { slug: string }).slug : undefined
 
   if (userTeamSlug && userTeamSlug !== team_slug) {
-    redirect(`/customer/${userTeamSlug}/dashboard`)
+    notFound()
   }
 
   const [

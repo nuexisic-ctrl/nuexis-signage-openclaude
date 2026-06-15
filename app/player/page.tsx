@@ -52,6 +52,19 @@ export default function PlayerPage() {
   const teamChannelRef   = useRef<RealtimeChannel>(null)
   const reconnectPresenceRef = useRef<(() => void) | null>(null)
   const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastConfigRef = useRef<{
+    teamId: string | null
+    orientation: number | null
+    contentType: string | null
+    assetId: string | null
+    playlistId: string | null
+  }>({
+    teamId: null,
+    orientation: null,
+    contentType: null,
+    assetId: null,
+    playlistId: null,
+  })
 
   const playtimeAccumulatorRef = useRef(0)
   const playtimeFlushCyclesRef = useRef(0)
@@ -277,7 +290,7 @@ export default function PlayerPage() {
         if (!hwId) return
 
         try {
-          const fresh = await getDeviceState(hwId, sec || undefined)
+          const fresh = await getDeviceState(hwId, sec || undefined, 'Web Player 1.0', window.navigator.userAgent)
           if (fresh) {
             if (fresh.team_id && !isPairedRef.current) {
               isPairedRef.current = true
@@ -315,7 +328,7 @@ export default function PlayerPage() {
       setHardwareId(hardwareId)
 
       const savedSecret = window.Android ? window.Android.getNativeSecret() : localStorage.getItem('nuexis_device_secret')
-      const existing = await getDeviceState(hardwareId, savedSecret || undefined)
+      const existing = await getDeviceState(hardwareId, savedSecret || undefined, 'Web Player 1.0', window.navigator.userAgent)
 
       if (cancelled) return
 
@@ -402,6 +415,15 @@ export default function PlayerPage() {
         }, Math.max(0, expiresAtMs - Date.now()))
       }
 
+      // Initialize lastConfigRef with current activeDevice config values
+      lastConfigRef.current = {
+        teamId: activeDevice.team_id || null,
+        orientation: activeDevice.orientation ?? null,
+        contentType: activeDevice.content_type || null,
+        assetId: activeDevice.asset_id || null,
+        playlistId: activeDevice.playlist_id || null,
+      }
+
       // ── Realtime subscription ─────────────────────────────────────
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const channel = (supabase as any)
@@ -412,6 +434,32 @@ export default function PlayerPage() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (payload: any) => {
             if (payload.new?.team_id) {
+              const newTeamId = payload.new.team_id || null
+              const newOrientation = payload.new.orientation ?? null
+              const newContentType = payload.new.content_type || null
+              const newAssetId = payload.new.asset_id || null
+              const newPlaylistId = payload.new.playlist_id || null
+
+              const configChanged =
+                newTeamId !== lastConfigRef.current.teamId ||
+                newOrientation !== lastConfigRef.current.orientation ||
+                newContentType !== lastConfigRef.current.contentType ||
+                newAssetId !== lastConfigRef.current.assetId ||
+                newPlaylistId !== lastConfigRef.current.playlistId
+
+              if (!configChanged) {
+                // Ignore status updates, last_seen_at updates, or heartbeat updates to save HTTP load
+                return
+              }
+
+              // Update stored ref values
+              lastConfigRef.current = {
+                teamId: newTeamId,
+                orientation: newOrientation,
+                contentType: newContentType,
+                assetId: newAssetId,
+                playlistId: newPlaylistId,
+              }
               if (!isPairedRef.current) {
                 isPairedRef.current = true
                 teamIdRef.current = payload.new.team_id
@@ -426,7 +474,7 @@ export default function PlayerPage() {
                 applyDeviceState(payload.new)
               } else {
                 // Device inherits from group, resolve it dynamically by fetching resolved state
-                getDeviceState(hardwareIdRef.current!, secretRef.current || undefined)
+                getDeviceState(hardwareIdRef.current!, secretRef.current || undefined, 'Web Player 1.0', window.navigator.userAgent)
                   .then((fresh) => {
                     if (fresh && !cancelled) {
                       applyDeviceState(fresh)
@@ -455,7 +503,7 @@ export default function PlayerPage() {
             const hwId = hardwareIdRef.current
             const sec = secretRef.current
             if (hwId) {
-              getDeviceState(hwId, sec || undefined)
+              getDeviceState(hwId, sec || undefined, 'Web Player 1.0', window.navigator.userAgent)
                 .then((fresh) => {
                   if (!fresh || cancelled) return
                   if (fresh.team_id && !isPairedRef.current) {

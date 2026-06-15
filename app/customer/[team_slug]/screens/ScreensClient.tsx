@@ -5,7 +5,6 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
-import { updateDeviceLastSeen } from './actions'
 import styles from './screens.module.css'
 
 import { Device, Asset, Playlist, LiveStatus } from './types'
@@ -286,7 +285,6 @@ export default function ScreensClient({
       ])
 
       if (!devicesRes.error && devicesRes.data) {
-        await new Promise(resolve => setTimeout(resolve, 550))
         setDevices((devicesRes.data as any[]).map(mapDevice))
       }
 
@@ -488,19 +486,21 @@ export default function ScreensClient({
             totalPlaytimeSeconds={totalPlaytimeSeconds}
           />
 
-          <GroupsSection
-            groups={groups}
-            devices={devices}
-            memberships={memberships}
-            assets={assets}
-            playlists={playlists}
-            teamSlug={teamSlug}
-            onlineDeviceIds={onlineDeviceIds}
-            onSelectGroup={(g) => setEditGroup(g)}
-            onDeleteGroup={handleDeleteGroup}
-            isRefreshing={isRefreshing}
-            showSuccessPulse={showSuccessPulse}
-          />
+          {groups && groups.length > 0 && (
+            <GroupsSection
+              groups={groups}
+              devices={devices}
+              memberships={memberships}
+              assets={assets}
+              playlists={playlists}
+              teamSlug={teamSlug}
+              onlineDeviceIds={onlineDeviceIds}
+              onSelectGroup={(g) => setEditGroup(g)}
+              onDeleteGroup={handleDeleteGroup}
+              isRefreshing={isRefreshing}
+              showSuccessPulse={showSuccessPulse}
+            />
+          )}
 
           <div className={styles.mainBlockContainer}>
             <div className={styles.controlsBar}>

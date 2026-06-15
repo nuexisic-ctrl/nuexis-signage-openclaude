@@ -54,7 +54,7 @@ async function HeaderWrapper({ teamSlug }: { teamSlug: string }) {
 
   const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? profile.teams.slug : undefined
   if (userTeamSlug && userTeamSlug !== teamSlug) {
-    redirect(`/customer/${userTeamSlug}/dashboard`)
+    notFound()
   }
 
   const fullName = user.user_metadata?.full_name as string | undefined

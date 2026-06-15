@@ -13,7 +13,7 @@ export function QuickActionsWidget({ teamSlug }: Props) {
 
   const actions = [
     { icon: Monitor, label: 'Add Screen', href: `/${teamSlug}/screens`, color: '#2563eb' },
-    { icon: Upload, label: 'Upload Asset', href: `/${teamSlug}/asset`, color: '#7c3aed' },
+    { icon: Upload, label: 'Upload Asset', href: `/${teamSlug}/assets`, color: '#7c3aed' },
     { icon: List, label: 'Create Playlist', href: `/${teamSlug}/playlists`, color: '#059669' },
     { icon: Plus, label: 'View All', href: `/${teamSlug}/screens`, color: '#d97706' },
   ]

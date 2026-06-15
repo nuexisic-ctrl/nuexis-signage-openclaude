@@ -7,6 +7,47 @@ export async function updateSession(request: NextRequest) {
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-pathname', request.nextUrl.pathname)
 
+  // Prevent header spoofing by deleting any client-provided x-user headers
+  requestHeaders.delete('x-user-id')
+  requestHeaders.delete('x-user-email')
+  requestHeaders.delete('x-user-metadata')
+  requestHeaders.delete('x-user-app-metadata')
+
+  const { pathname } = request.nextUrl
+
+  // Check if this is a Next.js prefetch request
+  const isPrefetch =
+    request.headers.get('x-middleware-prefetch') === '1' ||
+    request.headers.get('purpose') === 'prefetch'
+
+  const hasAuthCookie = request.cookies.getAll().some(cookie =>
+    cookie.name.includes('auth-token')
+  )
+
+  // Extract team_slug from /customer/[team_slug]/...
+  const customerMatch = pathname.match(/^\/customer\/([^/]+)/)
+  const teamSlug = customerMatch?.[1]
+
+  // Protected routes — all non-login routes under /customer/[team_slug]/
+  const isProtectedRoute =
+    teamSlug &&
+    !pathname.endsWith('/login') &&
+    pathname.startsWith(`/customer/${teamSlug}/`)
+
+  // If it's a prefetch request, bypass getUser() API call if they have an auth cookie
+  if (isPrefetch) {
+    if (isProtectedRoute && !hasAuthCookie) {
+      const loginUrl = request.nextUrl.clone()
+      loginUrl.pathname = `/customer/${teamSlug}/login`
+      return NextResponse.redirect(loginUrl)
+    }
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+  }
+
   let supabaseResponse = NextResponse.next({
     request: {
       headers: requestHeaders,
@@ -42,19 +83,17 @@ export async function updateSession(request: NextRequest) {
   // Refresh session — important: do NOT add logic between createServerClient and getUser()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
+  // Propagate user metadata securely through request headers to Server Components
+  // to avoid redundant auth.getUser() calls in layouts and pages
+  if (user) {
+    requestHeaders.set('x-user-id', user.id)
+    requestHeaders.set('x-user-email', user.email || '')
+    requestHeaders.set('x-user-metadata', JSON.stringify(user.user_metadata || {}))
+    requestHeaders.set('x-user-app-metadata', JSON.stringify(user.app_metadata || {}))
+  }
 
   // ─── Auth Guard Rules ──────────────────────────────────────────────────────
 
-  // Extract team_slug from /customer/[team_slug]/...
-  const customerMatch = pathname.match(/^\/customer\/([^/]+)/)
-  const teamSlug = customerMatch?.[1]
-
-  // Protected routes — all non-login routes under /customer/[team_slug]/
-  const isProtectedRoute =
-    teamSlug &&
-    !pathname.endsWith('/login') &&
-    pathname.startsWith(`/customer/${teamSlug}/`)
 
   // 1. Require authentication on protected routes
   if (isProtectedRoute) {
@@ -106,9 +145,7 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (userTeamSlug !== teamSlug) {
-      const correctDashboard = request.nextUrl.clone()
-      correctDashboard.pathname = `/customer/${userTeamSlug}/dashboard`
-      return NextResponse.redirect(correctDashboard)
+      return NextResponse.rewrite(new URL('/404', request.url))
     }
   }
 
@@ -157,5 +194,24 @@ export async function updateSession(request: NextRequest) {
     return response
   }
 
-  return supabaseResponse
+  // Ensure the request headers are forwarded in the response
+  const finalResponse = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
+  
+  supabaseResponse.cookies.getAll().forEach(cookie => {
+    finalResponse.cookies.set(cookie.name, cookie.value, {
+      path: cookie.path,
+      domain: cookie.domain,
+      secure: cookie.secure,
+      httpOnly: cookie.httpOnly,
+      sameSite: cookie.sameSite,
+      maxAge: cookie.maxAge,
+      expires: cookie.expires
+    })
+  })
+  
+  return finalResponse
 }

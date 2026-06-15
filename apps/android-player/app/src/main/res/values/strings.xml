@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NuExis</string>
+    <string name="app_name">NuExis Player</string>
+    <string name="brand_part1">Nu</string>
+    <string name="brand_part2">Exis</string>
+    <string name="pairing_code_label">Pairing Code</string>
+    <string name="code_expiry_label">Code expires in </string>
+    <string name="how_to_pair_title">Enter this code in your NuExis dashboard to pair this screen.</string>
+    <string name="how_to_pair_path">Dashboard → Screens → Add Screen</string>
+    <string name="waiting_content">Screen Connected. Waiting for content...</string>
+    <string name="loading_playlist">Loading Playlist...</string>
+    <string name="empty_playlist">Playlist is empty</string>
+    <string name="code_expired">Code expired</string>
 </resources>

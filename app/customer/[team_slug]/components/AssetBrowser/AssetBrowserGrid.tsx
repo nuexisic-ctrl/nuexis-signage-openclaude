@@ -5,7 +5,7 @@ import { MoreVertical, Check, Folder, Image as ImageIcon, Play, Music, FileText,
 import { useAssetBrowser } from './AssetBrowserContext'
 import { CardPreview, formatDate, formatSize } from '../../screens/AssetBrowserPreview'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
-import { Asset } from '../../asset/types'
+import { Asset } from '../../assets/types'
 import styles from './AssetBrowser.module.css'
 
 export function AssetBrowserGrid() {

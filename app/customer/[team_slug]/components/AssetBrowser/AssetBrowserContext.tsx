@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Asset } from '../../asset/types'
-import { fetchFolderFiles } from '../../asset/actions'
+import { Asset } from '../../assets/types'
+import { fetchFolderFiles } from '../../assets/actions'
 import { toast } from '@/app/components/Toast'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 

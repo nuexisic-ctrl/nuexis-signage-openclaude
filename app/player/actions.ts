@@ -77,7 +77,12 @@ export async function refreshDeviceCode(
   return result
 }
 
-export async function getDeviceState(hardwareId: string, secret?: string) {
+export async function getDeviceState(
+  hardwareId: string,
+  secret?: string,
+  appVersion?: string,
+  osVersion?: string
+) {
   if (!(await rateLimitAction(hardwareId, 'getDeviceState', 40, 60))) {
     console.warn('[getDeviceState] Rate limit hit for device:', hardwareId)
     return null
@@ -87,6 +92,8 @@ export async function getDeviceState(hardwareId: string, secret?: string) {
   const { data, error } = await supabase.rpc('get_player_device_state', {
     p_hardware_id: hardwareId,
     p_secret: secret ?? undefined,
+    p_app_version: appVersion ?? null,
+    p_os_version: osVersion ?? null,
   })
 
   if (error) {

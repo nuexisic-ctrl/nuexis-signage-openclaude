@@ -78,7 +78,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: `/customer/${teamSlug}/dashboard` },
     { icon: Monitor,         label: 'Screens',   href: `/customer/${teamSlug}/screens` },
-    { icon: ImageIcon,       label: 'Assets',    href: `/customer/${teamSlug}/asset` },
+    { icon: ImageIcon,       label: 'Assets',    href: `/customer/${teamSlug}/assets` },
     { icon: ListVideo,       label: 'Playlists', href: `/customer/${teamSlug}/playlists` },
     { icon: CalendarClock,   label: 'Schedules', href: '#' },
   ]
@@ -93,7 +93,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
       <aside data-sidebar-nav className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
         <div className={styles.sidebarHeader}>
           <div className={styles.logoContainer}>
-            <Link href="/" className={styles.logoLink} title="NuExis">
+            <Link href="/" prefetch={false} className={styles.logoLink} title="NuExis">
               <div className={styles.logoWrapper}>
                 <Image 
                   src={isCollapsed ? "/Nuexis-logo-small.png" : "/Nuexis-logo.png"} 
@@ -121,6 +121,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
               <Link
                 key={item.label}
                 href={item.href}
+                prefetch={false}
                 className={`${styles.navItem} ${isActive ? styles.active : ''}`}
                 title={isCollapsed ? item.label : undefined}
               >
@@ -132,8 +133,9 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
         </nav>
 
         <div className={styles.sidebarFooter}>
-          <Link
+           <Link
             href={`/customer/${teamSlug}/settings`}
+            prefetch={false}
             className={`${styles.navItem} ${pathname.includes('/settings') ? styles.active : ''}`}
             title={isCollapsed ? "Settings" : undefined}
             style={{ 
@@ -170,6 +172,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
                 <li key={item.label} className={styles.bottomNavListItem}>
                   <Link
                     href={item.href}
+                    prefetch={false}
                     className={`${styles.bottomNavItem} ${isActive ? styles.active : ''}`}
                   >
                     <item.icon size={20} />

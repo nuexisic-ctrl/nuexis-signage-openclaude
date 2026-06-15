@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NuExis Signage Widget Bootstrap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@300;400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: transparent;
+      color: #ffffff;
+      font-family: 'Outfit', 'Inter', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #widget-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* ─── CLOCK WIDGET STYLES ─── */
+    .clock-container {
+      text-align: center;
+      padding: 2rem;
+      border-radius: 24px;
+      background: rgba(13, 29, 51, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    }
+    .clock-time {
+      font-size: 5rem;
+      font-weight: 800;
+      font-family: 'Share Tech Mono', monospace;
+      background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+    .clock-date {
+      font-size: 1.5rem;
+      color: #94a3b8;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    /* Modern Minimalist style */
+    .clock-minimalist {
+      background: transparent;
+      border: none;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+    .clock-minimalist .clock-time {
+      font-size: 6rem;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 300;
+      letter-spacing: -2px;
+      -webkit-text-fill-color: initial;
+      color: #ffffff;
+    }
+
+    /* Analog Clock */
+    .analog-clock {
+      width: 300px;
+      height: 300px;
+      border: 8px solid rgba(255, 255, 255, 0.8);
+      border-radius: 50px;
+      position: relative;
+      background: rgba(13, 29, 51, 0.4);
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .clock-round {
+      border-radius: 50% !important;
+    }
+    .analog-clock .hand {
+      position: absolute;
+      bottom: 50%;
+      left: 50%;
+      transform-origin: bottom center;
+      background: #ffffff;
+      border-radius: 4px;
+    }
+    .analog-clock .hour-hand {
+      width: 6px;
+      height: 70px;
+      margin-left: -3px;
+      background: #ffffff;
+    }
+    .analog-clock .minute-hand {
+      width: 4px;
+      height: 100px;
+      margin-left: -2px;
+      background: #a5b4fc;
+    }
+    .analog-clock .second-hand {
+      width: 2px;
+      height: 110px;
+      margin-left: -1px;
+      background: #ef4444;
+    }
+    .analog-clock .center-dot {
+      width: 12px;
+      height: 12px;
+      background: #ef4444;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      margin-top: -6px;
+      margin-left: -6px;
+      border-radius: 50%;
+      z-index: 10;
+    }
+
+    /* ─── COUNTDOWN/COUNTUP STYLES ─── */
+    .timer-container {
+      text-align: center;
+      padding: 3rem;
+      border-radius: 32px;
+      background: linear-gradient(145deg, rgba(10, 25, 47, 0.7) 0%, rgba(13, 29, 51, 0.7) 100%);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      max-width: 90%;
+    }
+    .timer-label {
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 2rem;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+    }
+    .timer-grid {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      align-items: center;
+    }
+    .timer-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 1.5rem;
+      border-radius: 16px;
+      min-width: 120px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+    .timer-card-val {
+      font-size: 4rem;
+      font-weight: 800;
+      font-family: 'Share Tech Mono', monospace;
+      color: #6366f1;
+      line-height: 1;
+    }
+    .timer-card-label {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      margin-top: 0.5rem;
+      letter-spacing: 1px;
+    }
+    .timer-msg {
+      font-size: 3rem;
+      font-weight: 800;
+      color: #34d399;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ─── SLIDESHOW STYLES ─── */
+    .slideshow-img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+    }
+    .slideshow-img.active {
+      opacity: 1;
+    }
+
+    /* ─── IFRAME WIDGETS ─── */
+    .full-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background-color: #000000;
+    }
+  </style>
+</head>
+<body>
+  <div id="widget-container">
+    <div style="font-size:1.5rem;color:#94a3b8;">Initializing NuExis Signage...</div>
+  </div>
+
+  <script>
+    let timerInterval = null;
+
+    function renderWidget(mimeType, configJson) {
+      // Clear any previous running intervals
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+
+      const container = document.getElementById('widget-container');
+      container.innerHTML = '';
+
+      let config = {};
+      try {
+        if (configJson) {
+          config = typeof configJson === 'string' ? JSON.parse(configJson) : configJson;
+        }
+      } catch (e) {
+        console.error('Failed to parse widget config:', e);
+      }
+
+      LogNative(`Rendering widget: ${mimeType}`);
+
+      switch (mimeType) {
+        case 'application/x-widget-flow':
+        case 'application/x-widget-worldclock':
+          setupClockWidget(container, mimeType, config);
+          break;
+        case 'application/x-widget-countdown':
+          setupCountdownWidget(container, config);
+          break;
+        case 'application/x-widget-countup':
+          setupCountUpWidget(container, config);
+          break;
+        case 'application/x-widget-slideshow':
+          setupSlideshowWidget(container, config);
+          break;
+        case 'application/x-widget-youtube':
+          setupYouTubeWidget(container, config);
+          break;
+        case 'application/x-widget-youtube-playlist':
+          setupYouTubePlaylistWidget(container, config);
+          break;
+        case 'application/x-widget-remote-url':
+          setupRemoteUrlWidget(container, config);
+          break;
+        case 'application/x-widget-html':
+          setupHtmlWidget(container, config);
+          break;
+        default:
+          container.innerHTML = `<div style="color:red;font-size:1.5rem;">Unsupported widget type: ${mimeType}</div>`;
+      }
+    }
+
+    function LogNative(msg) {
+      try {
+        console.log(msg);
+      } catch(e){}
+    }
+
+    // ─── CLOCK RUNNER ───
+    function setupClockWidget(container, type, config) {
+      const style = config.style || 'classic-digital';
+      const showSeconds = config.showSeconds !== false;
+      const showDate = config.showDate !== false;
+      const use24Hour = !!config.use24Hour;
+      const timezone = config.timezone || null; // for world clock
+
+      if (style.endsWith('-analog')) {
+        // Render Analog Clock
+        container.innerHTML = `
+          <div class="analog-clock ${style === 'classic-analog' ? '' : 'clock-round'}">
+            <div class="hand hour-hand" id="hour-hand"></div>
+            <div class="hand minute-hand" id="min-hand"></div>
+            <div class="hand second-hand" id="sec-hand" style="${showSeconds ? '' : 'display:none;'}"></div>
+            <div class="center-dot"></div>
+          </div>
+        `;
+
+        const hr = document.getElementById('hour-hand');
+        const min = document.getElementById('min-hand');
+        const sec = document.getElementById('sec-hand');
+
+        function updateAnalog() {
+          const now = getLocalOrTimezoneDate(timezone);
+          const s = now.getSeconds();
+          const m = now.getMinutes();
+          const h = now.getHours();
+
+          const sDeg = (s * 6) + 180;
+          const mDeg = (m * 6) + (s * 0.1) + 180;
+          const hDeg = (h * 30) + (m * 0.5) + 180;
+
+          hr.style.transform = `rotate(${hDeg}deg)`;
+          min.style.transform = `rotate(${mDeg}deg)`;
+          if (showSeconds) sec.style.transform = `rotate(${sDeg}deg)`;
+        }
+
+        updateAnalog();
+        timerInterval = setInterval(updateAnalog, 1000);
+      } else {
+        // Render Digital Clock
+        const minimalClass = style === 'minimalist' ? 'clock-minimalist' : '';
+        container.innerHTML = `
+          <div class="clock-container ${minimalClass}">
+            <div class="clock-time" id="clock-time">00:00:00</div>
+            <div class="clock-date" id="clock-date" style="${showDate ? '' : 'display:none;'}">DATE</div>
+          </div>
+        `;
+
+        const timeEl = document.getElementById('clock-time');
+        const dateEl = document.getElementById('clock-date');
+
+        function updateDigital() {
+          const now = getLocalOrTimezoneDate(timezone);
+          
+          let h = now.getHours();
+          const m = String(now.getMinutes()).padStart(2, '0');
+          const s = String(now.getSeconds()).padStart(2, '0');
+          let ampm = '';
+
+          if (!use24Hour) {
+            ampm = h >= 12 ? ' PM' : ' AM';
+            h = h % 12;
+            h = h ? h : 12; // 0 should be 12
+          }
+          const hoursStr = String(h).padStart(2, '0');
+          
+          timeEl.innerText = showSeconds 
+            ? `${hoursStr}:${m}:${s}${ampm}` 
+            : `${hoursStr}:${m}${ampm}`;
+
+          if (showDate) {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateEl.innerText = now.toLocaleDateString('en-US', options);
+          }
+        }
+
+        updateDigital();
+        timerInterval = setInterval(updateDigital, 1000);
+      }
+    }
+
+    function getLocalOrTimezoneDate(tz) {
+      const now = new Date();
+      if (!tz) return now;
+      try {
+        return new Date(now.toLocaleString('en-US', { timeZone: tz }));
+      } catch (e) {
+        console.error('Invalid timezone:', tz);
+        return now;
+      }
+    }
+
+    // ─── COUNTDOWN RUNNER ───
+    function setupCountdownWidget(container, config) {
+      const endTime = new Date(config.endTime || Date.now() + 86400000).getTime();
+      const endMsg = config.endMessage || "COUNTDOWN COMPLETED";
+      const label = config.text || "COUNTDOWN";
+      const daysOnly = !!config.daysOnly;
+
+      container.innerHTML = `
+        <div class="timer-container">
+          <div class="timer-label">${label}</div>
+          <div class="timer-grid" id="timer-grid">
+            <div class="timer-card">
+              <div class="timer-card-val" id="days-val">00</div>
+              <div class="timer-card-label">Days</div>
+            </div>
+            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
+              <div class="timer-card-val" id="hours-val">00</div>
+              <div class="timer-card-label">Hours</div>
+            </div>
+            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
+              <div class="timer-card-val" id="mins-val">00</div>
+              <div class="timer-card-label">Mins</div>
+            </div>
+            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
+              <div class="timer-card-val" id="secs-val">00</div>
+              <div class="timer-card-label">Secs</div>
+            </div>
+          </div>
+          <div class="timer-msg" id="timer-msg" style="display:none;">${endMsg}</div>
+        </div>
+      `;
+
+      const grid = document.getElementById('timer-grid');
+      const msg = document.getElementById('timer-msg');
+      const dVal = document.getElementById('days-val');
+      const hVal = document.getElementById('hours-val');
+      const mVal = document.getElementById('mins-val');
+      const sVal = document.getElementById('secs-val');
+
+      function updateCountdown() {
+        const diff = endTime - Date.now();
+        if (diff <= 0) {
+          grid.style.display = 'none';
+          msg.style.display = 'block';
+          clearInterval(timerInterval);
+          return;
+        }
+
+        const days = Math.floor(diff / 86400000);
+        const hours = Math.floor((diff % 86400000) / 3600000);
+        const mins = Math.floor((diff % 3600000) / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+
+        dVal.innerText = String(days).padStart(2, '0');
+        if (!daysOnly) {
+          hVal.innerText = String(hours).padStart(2, '0');
+          mVal.innerText = String(mins).padStart(2, '0');
+          sVal.innerText = String(secs).padStart(2, '0');
+        }
+      }
+
+      updateCountdown();
+      timerInterval = setInterval(updateCountdown, 1000);
+    }
+
+    // ─── COUNTUP RUNNER ───
+    function setupCountUpWidget(container, config) {
+      const startTime = new Date(config.startTime || Date.now() - 86400000).getTime();
+      const label = config.text || "COUNT UP";
+      const daysOnly = !!config.daysOnly;
+
+      container.innerHTML = `
+        <div class="timer-container">
+          <div class="timer-label">${label}</div>
+          <div class="timer-grid">
+            <div class="timer-card">
+              <div class="timer-card-val" id="days-val">00</div>
+              <div class="timer-card-label">Days</div>
+            </div>
+            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
+              <div class="timer-card-val" id="hours-val">00</div>
+              <div class="timer-card-label">Hours</div>
+            </div>
+            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
+              <div class="timer-card-val" id="mins-val">00</div>
+              <div class="timer-card-label">Mins</div>
+            </div>
+            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
+              <div class="timer-card-val" id="secs-val">00</div>
+              <div class="timer-card-label">Secs</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const dVal = document.getElementById('days-val');
+      const hVal = document.getElementById('hours-val');
+      const mVal = document.getElementById('mins-val');
+      const sVal = document.getElementById('secs-val');
+
+      function updateCountUp() {
+        const diff = Date.now() - startTime;
+
+        const days = Math.floor(diff / 86400000);
+        const hours = Math.floor((diff % 86400000) / 3600000);
+        const mins = Math.floor((diff % 3600000) / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+
+        dVal.innerText = String(days).padStart(2, '0');
+        if (!daysOnly) {
+          hVal.innerText = String(hours).padStart(2, '0');
+          mVal.innerText = String(mins).padStart(2, '0');
+          sVal.innerText = String(secs).padStart(2, '0');
+        }
+      }
+
+      updateCountUp();
+      timerInterval = setInterval(updateCountUp, 1000);
+    }
+
+    // ─── SLIDESHOW RUNNER ───
+    function setupSlideshowWidget(container, config) {
+      const images = config.images || [];
+      const duration = (config.duration || 5) * 1000;
+      if (images.length === 0) {
+        container.innerHTML = '<div style="color:white;">Slideshow Empty</div>';
+        return;
+      }
+
+      images.forEach((imgUrl, i) => {
+        const img = document.createElement('img');
+        img.src = imgUrl;
+        img.className = `slideshow-img ${i === 0 ? 'active' : ''}`;
+        container.appendChild(img);
+      });
+
+      let currentImg = 0;
+      const imgs = container.querySelectorAll('.slideshow-img');
+
+      if (imgs.length > 1) {
+        timerInterval = setInterval(() => {
+          imgs[currentImg].classList.remove('active');
+          currentImg = (currentImg + 1) % imgs.length;
+          imgs[currentImg].classList.add('active');
+        }, duration);
+      }
+    }
+
+    // ─── YOUTUBE COMPONENT ───
+    function setupYouTubeWidget(container, config) {
+      let youtubeUrl = typeof config === 'string' ? config : (config.url || '');
+      const ccEnabled = !!config.ccEnabled;
+      const videoId = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || '';
+      const ccParam = ccEnabled ? '&cc_load_policy=1' : '';
+
+      container.innerHTML = `
+        <iframe
+          class="full-iframe"
+          src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0${ccParam}"
+          allow="autoplay; encrypted-media"
+          allowfullscreen
+        ></iframe>
+      `;
+    }
+
+    function setupYouTubePlaylistWidget(container, config) {
+      let playlistUrl = config.url || '';
+      let playlistId = '';
+      const listParam = playlistUrl.match(/[?&]list=([^#\&\?]+)/);
+      if (listParam) {
+        playlistId = listParam[1];
+      } else {
+        const trimmed = playlistUrl.trim();
+        if (/^[A-Za-z0-9_-]{18,40}$/.test(trimmed)) {
+          playlistId = trimmed;
+        }
+      }
+
+      container.innerHTML = `
+        <iframe
+          class="full-iframe"
+          src="https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&mute=1&controls=0&loop=1"
+          allow="autoplay; encrypted-media"
+          allowfullscreen
+        ></iframe>
+      `;
+    }
+
+    // ─── REMOTE URL WIDGET ───
+    function setupRemoteUrlWidget(container, config) {
+      let url = typeof config === 'string' ? config : (config.url || '');
+      container.innerHTML = `
+        <iframe
+          class="full-iframe"
+          src="${url}"
+          allow="autoplay; encrypted-media; fullscreen"
+        ></iframe>
+      `;
+    }
+
+    // ─── CUSTOM HTML WIDGET ───
+    function setupHtmlWidget(container, config) {
+      const { html = '', css = '' } = config;
+      const iframeDoc = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body { margin: 0; padding: 0; box-sizing: border-box; overflow: hidden; background: transparent; }
+              ${css}
+            </style>
+          </head>
+          <body>
+            ${html}
+          </body>
+        </html>
+      `;
+
+      const iframe = document.createElement('iframe');
+      iframe.className = 'full-iframe';
+      iframe.title = 'widget-html';
+      container.appendChild(iframe);
+      iframe.srcdoc = iframeDoc;
+    }
+  </script>
+</body>
+</html>

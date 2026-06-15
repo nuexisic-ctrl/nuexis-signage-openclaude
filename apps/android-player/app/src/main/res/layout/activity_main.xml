@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/dark_bg">
+
+    <!-- The main content container -->
+    <FrameLayout
+        android:id="@+id/main_content_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Custom Sidebar Menu (drawer) sliding from left -->
+    <LinearLayout
+        android:id="@+id/sidebar_drawer"
+        android:layout_width="300dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="#E60D1D33"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <!-- Sidebar Header (Logo) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="32dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/brand_part1"
+                android:textColor="@color/white"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/brand_part2"
+                android:textColor="@color/accent_brand"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Sidebar Options -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Device Actions"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Refresh"
+            android:backgroundTint="@color/primary_brand"
+            android:textColor="@color/white"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btn_unpair"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Unpair Device"
+            android:backgroundTint="@color/urgent_red"
+            android:textColor="@color/white"
+            android:layout_marginBottom="24dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Audio"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_mute"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Mute"
+            android:backgroundTint="@color/primary_brand"
+            android:textColor="@color/white"
+            android:layout_marginBottom="24dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Orientation"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_orientation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="0° — Landscape"
+            android:backgroundTint="@color/primary_brand"
+            android:textColor="@color/white" />
+
+    </LinearLayout>
+
+</androidx.drawerlayout.widget.DrawerLayout>

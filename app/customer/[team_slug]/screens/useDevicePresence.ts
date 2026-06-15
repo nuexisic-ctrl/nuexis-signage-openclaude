@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { updateDeviceLastSeen } from './actions'
 import { Device } from './types'
 
 const RELATIVE_TIME_TICK_MS = 60 * 1000
@@ -20,6 +19,8 @@ const mapDevice = (d: any): Device => ({
   orientation: d.orientation,
   last_seen_at: d.last_seen_at || null,
   total_playtime_seconds: Number(d.total_playtime_seconds) || 0,
+  app_version: d.app_version || null,
+  os_version: d.os_version || null,
 })
 
 export function useDevicePresence(
@@ -40,10 +41,29 @@ export function useDevicePresence(
   const teamChannelRef = useRef<any>(null)
   const presenceKeyRef = useRef<string>('')
   const hasSyncedPresenceRef = useRef(false)
+  const isInitialLoadRef = useRef(true)
 
-  // Sync state when initialDevices update
+  // Sync state when initialDevices update (smart merge to prevent real-time state overwrites)
   useEffect(() => {
-    setDevices(initialDevices)
+    if (isInitialLoadRef.current) {
+      setDevices(initialDevices)
+      isInitialLoadRef.current = false
+    } else {
+      setDevices(prev => {
+        const existingMap = new Map(prev.map(d => [d.id, d]))
+        return initialDevices.map(initDev => {
+          const existing = existingMap.get(initDev.id)
+          if (!existing) return initDev
+          
+          // Preserve real-time status and last_seen_at
+          return {
+            ...initDev,
+            status: existing.status,
+            last_seen_at: existing.last_seen_at || initDev.last_seen_at
+          }
+        })
+      })
+    }
   }, [initialDevices])
 
   // Track devices in a ref to avoid stale closure or render phase side-effects
@@ -130,20 +150,14 @@ export function useDevicePresence(
 
     const now = new Date().toISOString()
 
-    // Safely fire side-effect here (in the useEffect body, not during the render/updater phase)
-    if (leftIds.length > 0) {
-      updateDeviceLastSeen(teamSlug, leftIds).catch(err =>
-          console.error('[Dashboard] Error updating last seen:', err)
-      )
-    }
-
+    // Frontend purely updates local state to 'offline' (removed database updateDeviceLastSeen call to fix Thundering Herd)
     setDevices(prev => prev.map(d => {
       if (leftIds.includes(d.id)) return { ...d, status: 'offline', last_seen_at: now }
       if (joinedIds.includes(d.id)) return { ...d, status: 'online' }
       return d
     }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlineDeviceIds, teamSlug])
+  }, [onlineDeviceIds])
 
   // ── Postgres Changes for device list (INSERT/UPDATE/DELETE) ───────────
   useEffect(() => {
@@ -194,15 +208,35 @@ export function useDevicePresence(
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
+        // Fetch only id, status, last_seen_at fields, and remove the .limit(1000) constraint
         const { data, error } = await supabase
           .from('devices')
-          .select(DEVICE_SELECT_FIELDS)
+          .select('id, status, last_seen_at')
           .eq('team_id', teamId)
-          .order('created_at', { ascending: false })
-          .limit(1000)
         
         if (!error && data) {
-          setDevices((data as any[]).map(mapDevice))
+          setDevices(prev => {
+            const updatesMap = new Map<string, { status: Device['status']; last_seen_at: string | null }>(
+              (data as any[]).map((d) => [
+                d.id,
+                {
+                  status: d.status as Device['status'],
+                  last_seen_at: d.last_seen_at || null
+                }
+              ])
+            )
+            return prev.map(d => {
+              const update = updatesMap.get(d.id)
+              if (update) {
+                return {
+                  ...d,
+                  status: update.status,
+                  last_seen_at: update.last_seen_at,
+                }
+              }
+              return d
+            })
+          })
         }
       }
     }

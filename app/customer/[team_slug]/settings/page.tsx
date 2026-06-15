@@ -32,8 +32,9 @@ export default async function SettingsPage({ params }: Props) {
     .single()
 
   const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).slug : undefined
+
   if (userTeamSlug && userTeamSlug !== team_slug) {
-    redirect(`/customer/${userTeamSlug}/settings`)
+    notFound()
   }
 
   const teamName = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).name : 'Workspace'

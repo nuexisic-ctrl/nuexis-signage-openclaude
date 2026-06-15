@@ -37,9 +37,10 @@ export default async function ScreensPage({ params }: Props) {
     .eq('id', user.id)
     .single()
 
-  const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).slug : undefined
+  const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).slug : null
+
   if (userTeamSlug && userTeamSlug !== team_slug) {
-    redirect(`/customer/${userTeamSlug}/screens`)
+    notFound()
   }
 
   const fullName = user.user_metadata?.full_name as string | undefined
@@ -48,7 +49,7 @@ export default async function ScreensPage({ params }: Props) {
 
   const query = supabase
     .from('devices')
-    .select('id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds', { count: 'exact' })
+    .select('id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds, app_version, os_version', { count: 'exact' })
     .eq('team_id', profile?.team_id as string)
     .order('created_at', { ascending: false })
     .limit(1000)
@@ -100,6 +101,8 @@ export default async function ScreensPage({ params }: Props) {
       status: d.status as 'online' | 'offline' | 'pairing',
       last_seen_at: d.last_seen_at || null,
       total_playtime_seconds: d.total_playtime_seconds || 0,
+      app_version: d.app_version || null,
+      os_version: d.os_version || null,
     }
   })
 
