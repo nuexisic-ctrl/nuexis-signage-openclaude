@@ -190,23 +190,23 @@ export default function AssetClient({
   const [isDraggingPage, setIsDraggingPage] = useState(false)
   const dragCounter = useRef(0)
 
-  // Grid view selection dropdown state
-  const [isGridSelectDropdownOpen, setIsGridSelectDropdownOpen] = useState(false)
-  const gridSelectDropdownRef = useRef<HTMLDivElement>(null)
+  // Selection dropdown state
+  const [isSelectDropdownOpen, setIsSelectDropdownOpen] = useState(false)
+  const selectDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
-      if (gridSelectDropdownRef.current && !gridSelectDropdownRef.current.contains(e.target as Node)) {
-        setIsGridSelectDropdownOpen(false)
+      if (selectDropdownRef.current && !selectDropdownRef.current.contains(e.target as Node)) {
+        setIsSelectDropdownOpen(false)
       }
     }
-    if (isGridSelectDropdownOpen) {
+    if (isSelectDropdownOpen) {
       document.addEventListener('mousedown', handleOutsideClick)
     }
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick)
     }
-  }, [isGridSelectDropdownOpen])
+  }, [isSelectDropdownOpen])
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault()
@@ -875,6 +875,9 @@ export default function AssetClient({
   const isFiltersActive = isFilterSidebarOpen || hasActiveFilters
   const showFilterDot = hasActiveFilters
 
+  const filesCount = useMemo(() => filteredAssets.filter(a => a.mime_type !== 'application/x-folder').length, [filteredAssets])
+  const foldersCount = useMemo(() => filteredAssets.filter(a => a.mime_type === 'application/x-folder').length, [filteredAssets])
+
   return (
     <div 
       className={styles.assetArea}
@@ -1025,208 +1028,105 @@ export default function AssetClient({
         <div className={`${styles.mainContent} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
           <div className={styles.mainBlockContainer}>
             <div className={styles.controlsBar}>
-              <div className={styles.searchBox}>
-                <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-                <input 
-                  type="text" 
-                  className={styles.searchInput}
-                  placeholder={t('Search by file name...')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label={t('Search assets')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape' && searchQuery) setSearchQuery('')
-                  }}
-                />
-                {searchQuery && (
+              <div className={styles.controlsLeft}>
+                <div className={styles.globalSelectContainer} ref={selectDropdownRef}>
+                  <input 
+                    type="checkbox" 
+                    checked={filteredAssets.length > 0 && filteredAssets.every(a => selectedAssetIds.has(a.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
+                      } else {
+                        setSelectedAssetIds(new Set())
+                      }
+                    }}
+                    aria-label={t('Select all items')}
+                    className={styles.globalSelectCheckbox}
+                  />
                   <button
                     type="button"
-                    className={styles.searchClearBtn}
-                    onClick={() => setSearchQuery('')}
-                    aria-label={t('Clear search')}
-                    title={t('Clear search')}
+                    onClick={() => setIsSelectDropdownOpen(!isSelectDropdownOpen)}
+                    className={styles.globalSelectDropdownBtn}
                   >
-                    <X size={16} />
+                    <ChevronDown size={14} />
                   </button>
-                )}
-              </div>
-              <div className={styles.controlsRight}>
-                {viewMode === 'grid' && (
-                  <div 
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '4px', 
-                      position: 'relative',
-                      background: 'var(--surface-low)',
-                      border: '1.5px solid var(--outline-variant)',
-                      borderRadius: '10px',
-                      padding: '0 8px',
-                      height: '42px',
-                      boxSizing: 'border-box'
-                    }} 
-                    ref={gridSelectDropdownRef}
-                  >
-                    <input 
-                      type="checkbox" 
-                      checked={filteredAssets.length > 0 && filteredAssets.every(a => selectedAssetIds.has(a.id))}
-                      onChange={(e) => {
-                        if (e.target.checked) {
+
+                  {isSelectDropdownOpen && (
+                    <div className={styles.globalSelectDropdownMenu}>
+                      <button
+                        type="button"
+                        onClick={() => {
                           setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
-                        } else {
+                          setIsSelectDropdownOpen(false)
+                        }}
+                        className={styles.globalSelectDropdownItem}
+                      >
+                        {t('Select All')} ({filteredAssets.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedAssetIds(new Set(filteredAssets.filter(a => a.mime_type !== 'application/x-folder').map(a => a.id)))
+                          setIsSelectDropdownOpen(false)
+                        }}
+                        className={styles.globalSelectDropdownItem}
+                      >
+                        {t('Select Files Only')} ({filesCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedAssetIds(new Set(filteredAssets.filter(a => a.mime_type === 'application/x-folder').map(a => a.id)))
+                          setIsSelectDropdownOpen(false)
+                        }}
+                        className={styles.globalSelectDropdownItem}
+                      >
+                        {t('Select Folders Only')} ({foldersCount})
+                      </button>
+                      <div className={styles.globalSelectDropdownDivider} />
+                      <button
+                        type="button"
+                        onClick={() => {
                           setSelectedAssetIds(new Set())
-                        }
-                      }}
-                      aria-label={t('Select all items')}
-                      style={{ width: '16px', height: '16px', cursor: 'pointer', margin: 0 }}
-                    />
+                          setIsSelectDropdownOpen(false)
+                        }}
+                        className={`${styles.globalSelectDropdownItem} ${styles.globalSelectDropdownItemDanger}`}
+                      >
+                        {t('Deselect All')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.searchBox}>
+                  <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                  <input 
+                    type="text" 
+                    className={styles.searchInput}
+                    placeholder={t('Search by file name...')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    aria-label={t('Search assets')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape' && searchQuery) setSearchQuery('')
+                    }}
+                  />
+                  {searchQuery && (
                     <button
                       type="button"
-                      onClick={() => setIsGridSelectDropdownOpen(!isGridSelectDropdownOpen)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: 'var(--on-surface-subtle)',
-                        borderRadius: '4px',
-                        transition: 'background 0.2s',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      className={styles.searchClearBtn}
+                      onClick={() => setSearchQuery('')}
+                      aria-label={t('Clear search')}
+                      title={t('Clear search')}
                     >
-                      <ChevronDown size={14} />
+                      <X size={16} />
                     </button>
-
-                    {isGridSelectDropdownOpen && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: 'calc(100% + 6px)',
-                          left: 0,
-                          background: 'var(--surface-lowest)',
-                          border: '1px solid var(--outline-variant)',
-                          borderRadius: '10px',
-                          boxShadow: 'var(--shadow-modal)',
-                          padding: '6px',
-                          zIndex: 200,
-                          minWidth: '200px',
-                          textAlign: 'left',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '2px',
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
-                            setIsGridSelectDropdownOpen(false)
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            border: 0,
-                            borderRadius: '6px',
-                            background: 'transparent',
-                            color: 'var(--on-surface)',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontFamily: 'var(--font-label)',
-                            fontSize: '0.82rem',
-                            fontWeight: 600,
-                            transition: 'background 0.15s',
-                            width: '100%',
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-low)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                          {t('Select All')} ({filteredAssets.length})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedAssetIds(new Set(filteredAssets.filter(a => a.mime_type !== 'application/x-folder').map(a => a.id)))
-                            setIsGridSelectDropdownOpen(false)
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            border: 0,
-                            borderRadius: '6px',
-                            background: 'transparent',
-                            color: 'var(--on-surface)',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontFamily: 'var(--font-label)',
-                            fontSize: '0.82rem',
-                            fontWeight: 600,
-                            transition: 'background 0.15s',
-                            width: '100%',
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-low)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                          {t('Select Files Only')} ({filteredAssets.filter(a => a.mime_type !== 'application/x-folder').length})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedAssetIds(new Set(filteredAssets.filter(a => a.mime_type === 'application/x-folder').map(a => a.id)))
-                            setIsGridSelectDropdownOpen(false)
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            border: 0,
-                            borderRadius: '6px',
-                            background: 'transparent',
-                            color: 'var(--on-surface)',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontFamily: 'var(--font-label)',
-                            fontSize: '0.82rem',
-                            fontWeight: 600,
-                            transition: 'background 0.15s',
-                            width: '100%',
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-low)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                          {t('Select Folders Only')} ({filteredAssets.filter(a => a.mime_type === 'application/x-folder').length})
-                        </button>
-                        <div style={{ height: '1px', background: 'var(--outline-variant)', margin: '4px 6px' }} />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedAssetIds(new Set())
-                            setIsGridSelectDropdownOpen(false)
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            border: 0,
-                            borderRadius: '6px',
-                            background: 'transparent',
-                            color: 'var(--error)',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontFamily: 'var(--font-label)',
-                            fontSize: '0.82rem',
-                            fontWeight: 600,
-                            transition: 'background 0.15s',
-                            width: '100%',
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--error-container)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                        >
-                          {t('Deselect All')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
+              </div>
+              <div className={styles.controlsRight}>
                 {selectedAssetIds.size > 0 && (
                   <div className={styles.selectedActionsContainer}>
                     <div className={styles.selectedCountBadge}>

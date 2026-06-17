@@ -38,6 +38,74 @@ export default function PairedView({
   const [showOrientationModal, setShowOrientationModal] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
+  const [isVisible, setIsVisible] = useState(false)
+  const controlsOverlayRef = useRef<HTMLDivElement>(null)
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    // If sidebar or orientation modal is open, force visible
+    if (isSidebarOpen || showOrientationModal) {
+      setIsVisible(true)
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current)
+        hideTimeoutRef.current = null
+      }
+      return
+    }
+
+    const handlePointerMove = (clientX: number, clientY: number) => {
+      const el = controlsOverlayRef.current
+      if (!el) return
+
+      const rect = el.getBoundingClientRect()
+      
+      // Calculate distance to the rectangle
+      // If cursor is inside, distance is 0.
+      const dx = Math.max(rect.left - clientX, 0, clientX - rect.right)
+      const dy = Math.max(rect.top - clientY, 0, clientY - rect.bottom)
+      const distance = Math.sqrt(dx * dx + dy * dy)
+
+      if (distance < 180) {
+        setIsVisible(true)
+        if (hideTimeoutRef.current) {
+          clearTimeout(hideTimeoutRef.current)
+          hideTimeoutRef.current = null
+        }
+      } else {
+        // Start hide timeout if not already started
+        if (!hideTimeoutRef.current) {
+          hideTimeoutRef.current = setTimeout(() => {
+            setIsVisible(false)
+            hideTimeoutRef.current = null
+          }, 800)
+        }
+      }
+    }
+
+    const onMouseMove = (e: MouseEvent) => {
+      handlePointerMove(e.clientX, e.clientY)
+    }
+
+    const onTouch = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handlePointerMove(e.touches[0].clientX, e.touches[0].clientY)
+      }
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('touchstart', onTouch)
+    window.addEventListener('touchmove', onTouch)
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('touchstart', onTouch)
+      window.removeEventListener('touchmove', onTouch)
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current)
+      }
+    }
+  }, [isSidebarOpen, showOrientationModal])
+
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
       await document.documentElement.requestFullscreen().catch(console.error)
@@ -313,7 +381,11 @@ export default function PairedView({
       </div>
 
       {/* ── Upright Controls Overlay (Outside rotated viewport) ── */}
-      <div className={styles.controlsOverlay} style={controlsOverlayStyle}>
+      <div 
+        ref={controlsOverlayRef} 
+        className={`${styles.controlsOverlay} ${isVisible ? styles.visible : ''}`} 
+        style={controlsOverlayStyle}
+      >
         <button className={styles.iconButton} onClick={toggleFullscreen} title="Toggle Fullscreen">
           {isFullscreen ? (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

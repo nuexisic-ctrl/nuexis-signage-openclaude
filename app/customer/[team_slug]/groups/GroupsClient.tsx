@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useTransition, useRef } from 'react'
+import React, { useState, useEffect, useTransition, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   FolderTree, Plus, X, MoreVertical, Edit, Trash2, Users, Tv, 
-  Image as ImageIcon, ListVideo, AlertTriangle
+  Image as ImageIcon, ListVideo, AlertTriangle, ChevronDown
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { createGroup, renameGroup, deleteGroup } from './actions'
@@ -88,6 +88,69 @@ export default function GroupsClient({
 
   const [isPending, startTransition] = useTransition()
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  // Selection & Query States
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSelectDropdownOpen, setIsSelectDropdownOpen] = useState(false)
+  const selectDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (selectDropdownRef.current && !selectDropdownRef.current.contains(e.target as Node)) {
+        setIsSelectDropdownOpen(false)
+      }
+    }
+    if (isSelectDropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [isSelectDropdownOpen])
+
+  const filteredGroups = useMemo(() => {
+    const q = searchQuery.toLowerCase()
+    return groups.filter(g => !searchQuery || g.name.toLowerCase().includes(q))
+  }, [groups, searchQuery])
+
+  const handleToggleSelectGroup = (groupId: string) => {
+    setSelectedGroupIds(prev => {
+      const next = new Set(prev)
+      if (next.has(groupId)) {
+        next.delete(groupId)
+      } else {
+        next.add(groupId)
+      }
+      return next
+    })
+  }
+
+  const handleBulkDelete = () => {
+    const count = selectedGroupIds.size
+    if (window.confirm(`Are you sure you want to delete the ${count} selected screen groups?`)) {
+      startTransition(async () => {
+        const ids = Array.from(selectedGroupIds)
+        let successCount = 0
+        let errorOccurred = false
+        for (const id of ids) {
+          const res = await deleteGroup(teamSlug, id)
+          if (res.success) {
+            successCount++
+          } else {
+            errorOccurred = true
+          }
+        }
+        if (successCount > 0) {
+          setSelectedGroupIds(new Set())
+          router.refresh()
+        }
+        if (errorOccurred) {
+          alert('Some groups could not be deleted.')
+        }
+      })
+    }
+  }
 
   // ── Postgres changes realtime subscription ──────────────────────────
   useEffect(() => {
@@ -199,6 +262,94 @@ export default function GroupsClient({
       </div>
 
       <div className={styles.contentContainer}>
+        {groups.length > 0 && (
+          <div className={styles.controlsBar}>
+            <div className={styles.controlsLeft}>
+              <div className={styles.globalSelectContainer} ref={selectDropdownRef}>
+                <input 
+                  type="checkbox" 
+                  checked={filteredGroups.length > 0 && filteredGroups.every(g => selectedGroupIds.has(g.id))}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedGroupIds(new Set(filteredGroups.map(g => g.id)))
+                    } else {
+                      setSelectedGroupIds(new Set())
+                    }
+                  }}
+                  aria-label="Select all groups"
+                  className={styles.globalSelectCheckbox}
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsSelectDropdownOpen(!isSelectDropdownOpen)}
+                  className={styles.globalSelectDropdownBtn}
+                  aria-label="Open selection menu"
+                >
+                  <ChevronDown size={14} />
+                </button>
+
+                {isSelectDropdownOpen && (
+                  <div className={styles.globalSelectDropdownMenu}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedGroupIds(new Set(filteredGroups.map(g => g.id)))
+                        setIsSelectDropdownOpen(false)
+                      }}
+                      className={styles.globalSelectDropdownItem}
+                    >
+                      Select All ({filteredGroups.length})
+                    </button>
+                    <div className={styles.globalSelectDropdownDivider} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedGroupIds(new Set())
+                        setIsSelectDropdownOpen(false)
+                      }}
+                      className={`${styles.globalSelectDropdownItem} ${styles.globalSelectDropdownItemDanger}`}
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.searchBox}>
+                <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input 
+                  type="text" 
+                  className={styles.searchInput}
+                  placeholder="Search groups by name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search groups"
+                />
+              </div>
+            </div>
+            <div className={styles.controlsRight}>
+              {selectedGroupIds.size > 0 && (
+                <div className={styles.selectedActionsContainer}>
+                  <div className={styles.selectedCountBadge} title={`${selectedGroupIds.size} groups selected`}>
+                    <span className={styles.selectedCountNumber}>{selectedGroupIds.size}</span>
+                    <span className={styles.selectedCountText}>Selected</span>
+                  </div>
+                  <button
+                    className={`${styles.bulkActionIconBtn} ${styles.bulkActionIconBtnDanger}`}
+                    onClick={handleBulkDelete}
+                    title="Delete Selected Groups"
+                    disabled={isPending}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {groups.length === 0 ? (
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>
@@ -213,9 +364,19 @@ export default function GroupsClient({
               Create First Group
             </button>
           </div>
+        ) : filteredGroups.length === 0 ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>
+              <FolderTree size={28} />
+            </div>
+            <h3 className={styles.emptyTitle}>No screen groups found</h3>
+            <p className={styles.emptyText}>
+              No screen groups matched your search criteria.
+            </p>
+          </div>
         ) : (
           <div className={styles.grid}>
-            {groups.map((group) => {
+            {filteredGroups.map((group) => {
               const groupMemberships = memberships.filter(m => m.group_id === group.id)
               const memberIds = groupMemberships.map(m => m.device_id)
               const memberDevices = devices.filter(d => memberIds.includes(d.id))
@@ -237,6 +398,13 @@ export default function GroupsClient({
                   <div className={styles.colorBar} style={{ backgroundColor: group.color || '#3b82f6' }} />
                   
                   <div className={styles.cardHeader}>
+                    <input
+                      type="checkbox"
+                      checked={selectedGroupIds.has(group.id)}
+                      onChange={() => handleToggleSelectGroup(group.id)}
+                      className={styles.cardCheckbox}
+                      aria-label={`Select group ${group.name}`}
+                    />
                     <div className={styles.groupInfo}>
                       <h3 className={styles.groupName}>{group.name}</h3>
                       <div className={styles.memberCountBadge}>

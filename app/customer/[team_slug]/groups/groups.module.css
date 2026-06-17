@@ -597,3 +597,229 @@
 :global(.dark) .menuItemDanger:hover {
   background: #450a0a;
 }
+
+.controlsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-lowest);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.controlsLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.controlsRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.globalSelectContainer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  background: transparent;
+  border: 1.5px solid var(--outline-variant);
+  border-radius: 10px;
+  padding: 0 8px;
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.globalSelectCheckbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.globalSelectDropdownBtn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--on-surface-subtle);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.globalSelectDropdownBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.globalSelectDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  box-shadow: var(--shadow-modal);
+  padding: 6px;
+  z-index: 200;
+  min-width: 200px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.globalSelectDropdownItem {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--on-surface);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-label);
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: background 0.15s;
+  width: 100%;
+}
+
+.globalSelectDropdownItem:hover {
+  background: var(--surface-low);
+}
+
+.globalSelectDropdownDivider {
+  height: 1px;
+  background: var(--outline-variant);
+  margin: 4px 6px;
+}
+
+.globalSelectDropdownItemDanger {
+  color: var(--error);
+}
+
+.globalSelectDropdownItemDanger:hover {
+  background: var(--error-container);
+}
+
+.searchBox {
+  position: relative;
+  width: min(420px, 100%);
+}
+
+.searchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--on-surface-subtle);
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px 0 42px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(9, 76, 178, 0.1);
+}
+
+.selectedActionsContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.selectedCountBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--outline-variant));
+  border-radius: 10px;
+  font-family: var(--font-label);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--on-surface);
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.selectedCountNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--primary);
+  color: var(--on-primary);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.selectedCountText {
+  color: var(--on-surface-muted);
+  font-size: 0.825rem;
+  font-weight: 700;
+  font-family: var(--font-label);
+  white-space: nowrap;
+}
+
+.bulkActionIconBtn {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-low);
+  color: var(--on-surface-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bulkActionIconBtn:hover {
+  background: var(--surface-medium);
+  color: var(--on-surface);
+  border-color: color-mix(in srgb, var(--primary) 20%, var(--outline-variant));
+}
+
+.bulkActionIconBtnDanger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.cardCheckbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  margin-top: 4px;
+  flex-shrink: 0;
+}

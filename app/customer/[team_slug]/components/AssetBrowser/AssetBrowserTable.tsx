@@ -6,6 +6,7 @@ import { TableIcon, formatDate, formatSize } from '../../screens/AssetBrowserPre
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 import { Asset } from '../../assets/types'
 import styles from './AssetBrowser.module.css'
+import { ContentIconBadge, getAssetKind } from '../../screens/DeviceIcon'
 
 export function AssetBrowserTable() {
   const {
@@ -68,10 +69,11 @@ export function AssetBrowserTable() {
         <thead>
           <tr>
             {isMultiSelect && <th style={{ width: '40px', paddingLeft: '16px' }} />}
-            <th style={{ width: '50%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleHeaderSort('name')}>
+            <th style={{ width: '40%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleHeaderSort('name')}>
               File Name {renderSortIcon('name')}
             </th>
-            <th style={{ width: '20%' }}>Size</th>
+            <th style={{ width: '15%' }}>Content Type</th>
+            <th style={{ width: '15%' }}>Size</th>
             <th style={{ width: '30%', cursor: 'pointer', userSelect: 'none' }} onClick={() => handleHeaderSort('created')}>
               Date Added {renderSortIcon('created')}
             </th>
@@ -111,6 +113,12 @@ export function AssetBrowserTable() {
                       <FilenameTruncator filename={asset.file_name} />
                     </span>
                   </div>
+                </td>
+                <td>
+                  <ContentIconBadge
+                    kind={getAssetKind(asset.mime_type)}
+                    color={asset.mime_type === 'application/x-folder' ? (asset.color || '#78716c') : null}
+                  />
                 </td>
                 <td>{asset.mime_type === 'application/x-folder' ? '--' : formatSize(asset.size_bytes)}</td>
                 <td>{formatDate(asset.created_at)}</td>

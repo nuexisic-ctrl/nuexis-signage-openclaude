@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus, Check } from 'lucide-react'
+import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus, Check, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
+import { t } from '@/lib/i18n'
 import styles from './screens.module.css'
 
 import { Device, Asset, Playlist, LiveStatus } from './types'
@@ -169,6 +170,24 @@ export default function ScreensClient({
   const [sortBy, setSortBy] = useState<string>('created-desc')
   const [isSortOpen, setIsSortOpen] = useState(false)
   const sortRef = useRef<HTMLDivElement>(null)
+
+  // Selection Dropdown States
+  const [isSelectDropdownOpen, setIsSelectDropdownOpen] = useState(false)
+  const selectDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (selectDropdownRef.current && !selectDropdownRef.current.contains(e.target as Node)) {
+        setIsSelectDropdownOpen(false)
+      }
+    }
+    if (isSelectDropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [isSelectDropdownOpen])
 
   useEffect(() => {
     setCurrentPage(1)
@@ -393,6 +412,14 @@ export default function ScreensClient({
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
   }, [devices, filterStatus, filterOrientation, filterGroupIds, filterDatePreset, filterStartDate, filterEndDate, searchQuery, sortBy, memberships, onlineDeviceIds])
+
+  const onlineCount = devices.filter(d => getLiveStatus(d) === 'online').length;
+  const offlineCount = devices.length - onlineCount;
+  const totalPlaytimeSeconds = historicalPlaytimeState + devices.reduce((acc, d) => acc + (Number(d.total_playtime_seconds) || 0), 0);
+
+  const filteredOnlineCount = useMemo(() => filteredDevices.filter(d => getLiveStatus(d) === 'online').length, [filteredDevices, onlineDeviceIds])
+  const filteredOfflineCount = useMemo(() => filteredDevices.filter(d => getLiveStatus(d) === 'offline').length, [filteredDevices, onlineDeviceIds])
+
   const totalPages = Math.ceil(filteredDevices.length / pageSize) || 1
   const hasNextPage = currentPage < totalPages
   const hasPrevPage = currentPage > 1
@@ -480,18 +507,90 @@ export default function ScreensClient({
 
           <div className={styles.mainBlockContainer}>
             <div className={styles.controlsBar}>
+              <div className={styles.controlsLeft}>
+                <div className={styles.globalSelectContainer} ref={selectDropdownRef}>
+                  <input 
+                    type="checkbox" 
+                    checked={filteredDevices.length > 0 && filteredDevices.every(d => selectedDeviceIds.has(d.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedDeviceIds(new Set(filteredDevices.map(d => d.id)))
+                      } else {
+                        setSelectedDeviceIds(new Set())
+                      }
+                    }}
+                    aria-label={t('Select all screens')}
+                    className={styles.globalSelectCheckbox}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsSelectDropdownOpen(!isSelectDropdownOpen)}
+                    className={styles.globalSelectDropdownBtn}
+                    aria-label={t('Open selection menu')}
+                  >
+                    <ChevronDown size={14} />
+                  </button>
 
-              <div className={styles.searchBox}>
-                <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-                <input 
-                  type="text" 
-                  className={styles.searchInput}
-                  placeholder="Search by name or status..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+                  {isSelectDropdownOpen && (
+                    <div className={styles.globalSelectDropdownMenu}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDeviceIds(new Set(filteredDevices.map(d => d.id)))
+                          setIsSelectDropdownOpen(false)
+                        }}
+                        className={styles.globalSelectDropdownItem}
+                      >
+                        {t('Select All')} ({filteredDevices.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDeviceIds(new Set(filteredDevices.filter(d => getLiveStatus(d) === 'online').map(d => d.id)))
+                          setIsSelectDropdownOpen(false)
+                        }}
+                        className={styles.globalSelectDropdownItem}
+                      >
+                        {t('Select Online Only')} ({filteredOnlineCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDeviceIds(new Set(filteredDevices.filter(d => getLiveStatus(d) === 'offline').map(d => d.id)))
+                          setIsSelectDropdownOpen(false)
+                        }}
+                        className={styles.globalSelectDropdownItem}
+                      >
+                        {t('Select Offline Only')} ({filteredOfflineCount})
+                      </button>
+                      <div className={styles.globalSelectDropdownDivider} />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDeviceIds(new Set())
+                          setIsSelectDropdownOpen(false)
+                        }}
+                        className={`${styles.globalSelectDropdownItem} ${styles.globalSelectDropdownItemDanger}`}
+                      >
+                        {t('Deselect All')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.searchBox}>
+                  <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                  <input 
+                    type="text" 
+                    className={styles.searchInput}
+                    placeholder={t('Search by name or status...')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    aria-label={t('Search screens')}
+                  />
+                </div>
               </div>
               <div className={styles.controlsRight}>
                 {selectedDeviceIds.size > 0 && (

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { Folder, Music, FileText, File, Images, QrCode } from 'lucide-react'
 import styles from './DeviceIcon.module.css'
 import { Device, Asset, Playlist, LiveStatus } from './types'
 
@@ -14,6 +15,28 @@ export type ContentKind =
   | 'remote-url'
   | 'html-widget'
   | 'empty'
+  | 'folder'
+  | 'audio'
+  | 'pdf'
+  | 'document'
+  | 'slideshow'
+  | 'qrcode'
+
+export function getAssetKind(mimeType: string): ContentKind {
+  if (mimeType === 'application/x-folder') return 'folder'
+  if (mimeType.startsWith('image/')) return 'image'
+  if (mimeType.startsWith('video/')) return 'video'
+  if (mimeType.startsWith('audio/')) return 'audio'
+  if (mimeType === 'application/pdf') return 'pdf'
+  if (mimeType === 'application/x-widget-flow' || mimeType === 'application/x-widget-worldclock') return 'clock'
+  if (mimeType === 'application/x-widget-countdown') return 'countdown'
+  if (mimeType === 'application/x-widget-youtube' || mimeType === 'application/x-widget-youtube-playlist') return 'youtube'
+  if (mimeType === 'application/x-widget-remote-url' || mimeType === 'application/x-widget-website') return 'remote-url'
+  if (mimeType === 'application/x-widget-html') return 'html-widget'
+  if (mimeType === 'application/x-widget-slideshow') return 'slideshow'
+  if (mimeType === 'application/x-widget-qrcode') return 'qrcode'
+  return 'document'
+}
 
 export function getActivePlaylistItem(
   playlist: Playlist | undefined,
@@ -409,6 +432,13 @@ export function ContentIcon({ kind, size = 18 }: { kind: ContentKind; size?: num
       <line x1="3" y1="18" x2="3.01" y2="18" />
     </svg>
   )
+  if (kind === 'folder') return <Folder {...s} />
+  if (kind === 'audio') return <Music {...s} />
+  if (kind === 'pdf') return <FileText {...s} />
+  if (kind === 'document') return <File {...s} />
+  if (kind === 'slideshow') return <Images {...s} />
+  if (kind === 'qrcode') return <QrCode {...s} />
+  
   // empty
   return (
     <svg {...s} {...base}>
@@ -420,7 +450,7 @@ export function ContentIcon({ kind, size = 18 }: { kind: ContentKind; size?: num
 // ── Content icon badge (shared wrapper matching DeviceTableRow's contentIconWrap style) ─
 // Use this whenever you need the icon in a table cell — it renders the same
 // 26px rounded badge with the surface-container background used in the Screens table.
-export function ContentIconBadge({ kind, size = 15 }: { kind: ContentKind; size?: number }) {
+export function ContentIconBadge({ kind, size = 15, color }: { kind: ContentKind; size?: number; color?: string | null }) {
   return (
     <span style={{
       width: 26,
@@ -431,7 +461,7 @@ export function ContentIconBadge({ kind, size = 15 }: { kind: ContentKind; size?
       justifyContent: 'center',
       flexShrink: 0,
       background: 'var(--surface-container, #f1f5f9)',
-      color: 'var(--on-surface, #0f172a)',
+      color: color || 'var(--on-surface, #0f172a)',
       border: '1px solid var(--outline-variant)',
       verticalAlign: 'middle',
     }}>

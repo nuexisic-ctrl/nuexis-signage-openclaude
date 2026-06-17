@@ -10,11 +10,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="047cc275-006d-4d0d-94af-8cd6c4837cc3" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetTableView.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetTableView.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/AssetBrowser/AssetBrowserTable.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/AssetBrowser/AssetBrowserTable.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreensClient.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreensClient.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/assets/widget_bootstrap.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/assets/widget_bootstrap.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/playback/MediaEngine.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/playback/MediaEngine.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/realtime/RealtimeClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/realtime/RealtimeClient.kt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

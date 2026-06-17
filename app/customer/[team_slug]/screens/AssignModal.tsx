@@ -7,6 +7,7 @@ import { AssetBrowserModal } from '../components/AssetBrowser'
 import { PlaylistBrowserModal } from './PlaylistBrowserModal'
 import { modalStack } from '@/lib/utils/modalStack'
 import CustomSelect from '../components/CustomSelect'
+import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 
 export interface AssignModalProps {
   device: Device
@@ -177,6 +178,15 @@ export function AssignModal({
           </div>
 
           <form className={styles.form} onSubmit={handleSubmit}>
+            {device.app_version?.toLowerCase().includes('web player') && (
+              <div className={styles.warningMsg}>
+                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>
+                  Web Player is not recommended for production use. Please consider using supported platforms such as Android, Windows, or Linux.
+                </span>
+              </div>
+            )}
+
             <div className={styles.fieldGroup}>
               <label className={styles.label}>Screen Name</label>
               <input
@@ -216,8 +226,8 @@ export function AssignModal({
                   aria-haspopup="dialog"
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowAssetBrowser(true); } }}
                 >
-                  <span className={selectedAsset ? styles.selectedText : styles.placeholderText}>
-                    {selectedAsset ? selectedAsset.file_name : 'No asset selected'}
+                  <span className={selectedAsset ? styles.selectedText : styles.placeholderText} style={{ display: 'inline-flex', minWidth: 0, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', marginRight: '8px' }}>
+                    {selectedAsset ? <FilenameTruncator filename={selectedAsset.file_name} /> : 'No asset selected'}
                   </span>
                   <button 
                     type="button" 
