@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import AgentationProvider from "./components/AgentationProvider";
 import { ToastContainer } from "./components/Toast";
+import ModalDragFix from "./components/ModalDragFix";
 
 export const metadata: Metadata = {
   title: "NuExis | Multi-Tenant Digital Signage",
@@ -56,6 +57,7 @@ export default async function RootLayout({
         {children}
         <AgentationProvider />
         <ToastContainer />
+        <ModalDragFix />
       </body>
     </html>
   );

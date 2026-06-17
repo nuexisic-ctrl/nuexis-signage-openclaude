@@ -57,10 +57,6 @@ export function DeviceTableRow({
   const isMenuOpen = openMenuId === device.id
   const isOnline = liveStatus === 'online'
 
-  // Find member groups
-  const deviceMemberships = memberships.filter(m => m.device_id === device.id)
-  const deviceGroups = groups.filter(g => deviceMemberships.some(m => m.group_id === g.id))
-
   // Resolve content from group if device has no explicit content set
   const resolvedDevice = resolveDeviceContent(device, groups, memberships)
   const kind = getContentKind(resolvedDevice, assets, playlists, now)
@@ -124,35 +120,13 @@ export function DeviceTableRow({
       <td className={styles.tableCell}>
         <div className={styles.nameCellContent}>
           <div className={styles.deviceIconWrapper}>
-            <DeviceIcon name={device.name || ''} orientation={device.orientation} app_version={device.app_version} os_version={device.os_version} />
+            <DeviceIcon name={device.name || ''} orientation={device.orientation} app_version={device.app_version} os_version={device.os_version} size={14} />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <div className={styles.cellName}>
                 <FilenameTruncator filename={device.name || 'Unnamed Screen'} />
               </div>
-              {deviceGroups.map(g => (
-                <span 
-                  key={g.id} 
-                  style={{ 
-                    backgroundColor: g.color || '#3b82f6', 
-                    color: '#fff', 
-                    fontSize: '0.625rem', 
-                    padding: '1px 5px', 
-                    borderRadius: '3px', 
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontFamily: 'var(--font-label)',
-                    whiteSpace: 'nowrap'
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onGroupClick?.(g.id)
-                  }}
-                >
-                  {g.name}
-                </span>
-              ))}
             </div>
             <div className={styles.cellId}>
               ID: NX-{device.id.slice(0, 4).toUpperCase()}-{device.id.slice(4, 5).toUpperCase()}

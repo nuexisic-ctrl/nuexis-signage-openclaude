@@ -39,6 +39,9 @@ class RealtimeClient(
     private var activePlaylistId: String? = null
 
     @Volatile
+    private var lastPresenceJoinedTeamId: String? = null
+
+    @Volatile
     private var isConnected = false
 
     @Volatile
@@ -213,7 +216,35 @@ class RealtimeClient(
         webSocket?.send(gson.toJson(leaveMsg))
     }
 
+    private fun sendPresenceTrack(teamId: String, refSuffix: String = "manual") {
+        val topic = "realtime:team-status:$teamId"
+        val presenceTrackPayload = JsonObject().apply {
+            addProperty("type", "presence")
+            addProperty("event", "track")
+            add("payload", JsonObject().apply {
+                addProperty("device_id", deviceId)
+                addProperty("online_at", getISO8601String(Date()))
+            })
+        }
+        val trackMsg = JsonObject().apply {
+            addProperty("topic", topic)
+            addProperty("event", "presence")
+            add("payload", presenceTrackPayload)
+            addProperty("ref", "track_presence_$refSuffix")
+        }
+        webSocket?.send(gson.toJson(trackMsg))
+    }
+
     private fun joinPresenceChannel(teamId: String) {
+        if (lastPresenceJoinedTeamId == teamId) {
+            android.util.Log.d("RealtimeClient", "Presence channel for team $teamId is already joined. Skipping duplicate join.")
+            return
+        }
+        val oldTeamId = lastPresenceJoinedTeamId
+        if (oldTeamId != null && oldTeamId != teamId) {
+            leaveChannel("realtime:team-status:$oldTeamId")
+        }
+        lastPresenceJoinedTeamId = teamId
         val topic = "realtime:team-status:$teamId"
         val config = JsonObject().apply {
             add("presence", JsonObject().apply {
@@ -233,21 +264,20 @@ class RealtimeClient(
         webSocket?.send(gson.toJson(joinMsg))
 
         // Immediately track ourselves (Supabase Realtime Presence Protocol)
-        val presenceTrackPayload = JsonObject().apply {
-            addProperty("type", "presence")
-            addProperty("event", "track")
-            add("payload", JsonObject().apply {
-                addProperty("device_id", deviceId)
-                addProperty("online_at", getISO8601String(Date()))
-            })
-        }
-        val trackMsg = JsonObject().apply {
-            addProperty("topic", topic)
-            addProperty("event", "presence")
-            add("payload", presenceTrackPayload)
-            addProperty("ref", "track_presence")
-        }
-        webSocket?.send(gson.toJson(trackMsg))
+        sendPresenceTrack(teamId, "initial")
+
+        // Also schedule a delayed track message 5 seconds later to ensure it registers after the channel is joined
+        Thread {
+            try {
+                Thread.sleep(5000)
+                if (isConnected && !isClosed && lastPresenceJoinedTeamId == teamId) {
+                    android.util.Log.d("RealtimeClient", "Sending delayed presence track after channel join.")
+                    sendPresenceTrack(teamId, "delayed")
+                }
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }.apply { isDaemon = true; start() }
     }
 
     private fun startHeartbeat() {
@@ -265,6 +295,12 @@ class RealtimeClient(
                     }
                     webSocket?.send(gson.toJson(heartbeatMsg))
                     ref++
+
+                    // Re-track presence periodically to maintain online status (Supabase Realtime Presence Protocol)
+                    val currentTeamId = teamId
+                    if (currentTeamId != null && isConnected) {
+                        sendPresenceTrack(currentTeamId, "hb_$ref")
+                    }
                 }
             } catch (e: InterruptedException) {
                 // Exit thread
@@ -276,7 +312,12 @@ class RealtimeClient(
         val currentTeamId = teamId
         if (currentTeamId != null && isConnected) {
             android.util.Log.d("RealtimeClient", "Refreshing presence track manually.")
-            joinPresenceChannel(currentTeamId)
+            // If already joined, send a fresh track message directly
+            if (lastPresenceJoinedTeamId == currentTeamId) {
+                sendPresenceTrack(currentTeamId, "manual")
+            } else {
+                joinPresenceChannel(currentTeamId)
+            }
         }
     }
 
@@ -300,6 +341,7 @@ class RealtimeClient(
         heartbeatThread = null
         isConnected = false
         isConnecting = false
+        lastPresenceJoinedTeamId = null
         try {
             webSocket?.close(1000, "Reconnecting")
         } catch (e: Exception) {

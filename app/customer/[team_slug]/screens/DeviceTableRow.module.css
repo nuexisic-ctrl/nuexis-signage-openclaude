@@ -17,7 +17,7 @@
 }
 
 .tableCell {
-  padding: 14px 16px;
+  padding: 11px 16px;
   vertical-align: middle;
 }
 
@@ -29,8 +29,8 @@
 
 .cellName {
   max-width: 220px;
-  font-size: 0.94rem;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 700;
   color: var(--on-surface);
   display: flex;
   min-width: 0;
@@ -38,9 +38,10 @@
 }
 
 .cellId {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--on-surface-subtle);
-  margin-top: 2px;
+  margin-top: 0px;
+  line-height: 1.1;
 }
 
 .cellLastSeen,
@@ -51,14 +52,14 @@
 }
 
 .cellLastSeen {
-  font-size: 0.88rem;
+  font-size: 0.8125rem;
   color: var(--on-surface);
 }
 
 .playlistCell {
   gap: 8px;
   max-width: 260px;
-  font-size: 0.88rem;
+  font-size: 0.8125rem;
   color: var(--on-surface);
   cursor: default;
 }
@@ -137,9 +138,9 @@
 }
 
 .deviceIconWrapper {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
   background: var(--surface-low);
   border: 1px solid var(--outline-variant);
   color: var(--on-surface-muted);

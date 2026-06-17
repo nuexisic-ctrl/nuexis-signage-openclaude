@@ -610,13 +610,14 @@ interface DeviceIconProps {
   orientation?: number | null
   app_version?: string | null
   os_version?: string | null
+  size?: number
 }
 
-export function DeviceIcon({ name, orientation, app_version, os_version }: DeviceIconProps) {
+export function DeviceIcon({ name, orientation, app_version, os_version, size = 20 }: DeviceIconProps) {
   const deviceType = detectDeviceType(name, orientation, app_version, os_version)
 
   if (deviceType === 'mobile') return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <title>Mobile Phone</title>
       <rect x="6" y="2" width="12" height="20" rx="2.5" />
       <path d="M11 5h2" />
@@ -624,14 +625,14 @@ export function DeviceIcon({ name, orientation, app_version, os_version }: Devic
     </svg>
   )
   if (deviceType === 'tablet') return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <title>Tablet</title>
       <rect x="4" y="3" width="16" height="18" rx="2" />
       <circle cx="12" cy="18.5" r="0.75" fill="currentColor" />
     </svg>
   )
   if (deviceType === 'kiosk') return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <title>Kiosk</title>
       <rect x="6" y="2" width="12" height="17" rx="1.5" />
       <path d="M4 21h16" strokeWidth="2" />
@@ -639,7 +640,7 @@ export function DeviceIcon({ name, orientation, app_version, os_version }: Devic
     </svg>
   )
   if (deviceType === 'tv') return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <title>TV / Digital Signage</title>
       <rect x="2" y="3" width="20" height="13" rx="2" />
       <path d="M12 16v4" />
@@ -648,7 +649,7 @@ export function DeviceIcon({ name, orientation, app_version, os_version }: Devic
     </svg>
   )
   if (deviceType === 'laptop') return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <title>Laptop</title>
       <rect x="4" y="5" width="16" height="11" rx="1" />
       <path d="M2 19h20c0-1.5-1-3-3-3H5c-2 0-3 1.5-3 3z" />
@@ -656,7 +657,7 @@ export function DeviceIcon({ name, orientation, app_version, os_version }: Devic
   )
   // Default to Desktop
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <title>Desktop PC</title>
       <rect x="3" y="4" width="18" height="12" rx="1.5" />
       <path d="M12 16v4" />

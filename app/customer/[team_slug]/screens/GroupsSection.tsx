@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
-  Users, Monitor, Edit3, Trash2, FolderTree, ChevronLeft, ChevronRight
+  Users, Monitor, Edit3, Trash2, FolderTree, ChevronLeft, ChevronRight, ChevronDown
 } from 'lucide-react'
 import { ContentIcon, ContentKind } from './DeviceIcon'
 import styles from './GroupsSection.module.css'
 import { Device } from './types'
 import { deleteGroup } from '../groups/actions'
 import { toast } from '@/app/components/Toast'
+import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 
 interface Group {
   id: string
@@ -90,6 +91,22 @@ export function GroupsSection({
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(5)
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set())
+  const [isSelectDropdownOpen, setIsSelectDropdownOpen] = useState(false)
+  const selectDropdownRef = React.useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (selectDropdownRef.current && !selectDropdownRef.current.contains(e.target as Node)) {
+        setIsSelectDropdownOpen(false)
+      }
+    }
+    if (isSelectDropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [isSelectDropdownOpen])
 
   const handleDeleteSelectedGroups = () => {
     if (selectedGroupIds.size === 0) return
@@ -166,20 +183,72 @@ export function GroupsSection({
       <div className={styles.mainBlockContainer}>
         <div className={styles.controlsBar}>
           {isMounted && groups.length > 0 && (
-            <div className={styles.searchBox}>
-              <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-              <input 
-                type="text" 
-                className={styles.searchInput}
-                placeholder="Search groups..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setCurrentPage(1)
-                }}
-              />
+            <div className={styles.controlsLeft}>
+              <div className={styles.globalSelectContainer} ref={selectDropdownRef}>
+                <input 
+                  type="checkbox" 
+                  checked={filteredGroups.length > 0 && filteredGroups.every(g => selectedGroupIds.has(g.id))}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedGroupIds(new Set(filteredGroups.map(g => g.id)))
+                    } else {
+                      setSelectedGroupIds(new Set())
+                    }
+                  }}
+                  aria-label="Select all groups"
+                  className={styles.globalSelectCheckbox}
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsSelectDropdownOpen(!isSelectDropdownOpen)}
+                  className={styles.globalSelectDropdownBtn}
+                  aria-label="Open selection menu"
+                >
+                  <ChevronDown size={14} />
+                </button>
+
+                {isSelectDropdownOpen && (
+                  <div className={styles.globalSelectDropdownMenu}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedGroupIds(new Set(filteredGroups.map(g => g.id)))
+                        setIsSelectDropdownOpen(false)
+                      }}
+                      className={styles.globalSelectDropdownItem}
+                    >
+                      Select All ({filteredGroups.length})
+                    </button>
+                    <div className={styles.globalSelectDropdownDivider} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedGroupIds(new Set())
+                        setIsSelectDropdownOpen(false)
+                      }}
+                      className={`${styles.globalSelectDropdownItem} ${styles.globalSelectDropdownItemDanger}`}
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.searchBox}>
+                <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input 
+                  type="text" 
+                  className={styles.searchInput}
+                  placeholder="Search groups..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                />
+              </div>
             </div>
           )}
           {isMounted && groups.length > 0 && (
@@ -274,27 +343,7 @@ export function GroupsSection({
             <table className={styles.table}>
             <thead>
               <tr>
-                <th style={{ width: '40px', textAlign: 'center' }}>
-                  <input
-                    type="checkbox"
-                    checked={paginatedGroups.length > 0 && paginatedGroups.every(g => selectedGroupIds.has(g.id))}
-                    onChange={(e) => {
-                      const checked = e.target.checked
-                      setSelectedGroupIds(prev => {
-                        const next = new Set(prev)
-                        paginatedGroups.forEach(g => {
-                          if (checked) {
-                            next.add(g.id)
-                          } else {
-                            next.delete(g.id)
-                          }
-                        })
-                        return next
-                      })
-                    }}
-                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                  />
-                </th>
+                <th style={{ width: '40px', textAlign: 'center' }} />
                 <th style={{ width: '25%' }}>Group Name</th>
                 <th style={{ width: '15%' }}>Screens</th>
                 <th style={{ width: '20%' }}>Live Status</th>
@@ -391,7 +440,9 @@ export function GroupsSection({
                             <span className={`${styles.contentIconWrap} ${kindClassMap[getGroupContentKind(group, assets)] ?? ''}`}>
                               <ContentIcon kind={getGroupContentKind(group, assets)} size={15} />
                             </span>
-                            <span className={styles.contentLabelText} title={contentName}>{contentName}</span>
+                            <span className={styles.contentLabelText} title={contentName} style={{ display: 'inline-flex', minWidth: 0, flex: 1 }}>
+                              <FilenameTruncator filename={contentName} />
+                            </span>
                           </>
                         ) : (
                           <span className={styles.unassignedText}>no content</span>
@@ -512,7 +563,9 @@ export function GroupsSection({
                     </div>
                     <div className={styles.cardContentMeta}>
                       <div className={styles.cardContentLabel}>{group.content_type || 'no content'}</div>
-                      <div className={styles.cardContentName} title={contentName}>{contentName}</div>
+                      <div className={styles.cardContentName} title={contentName} style={{ display: 'flex', minWidth: 0 }}>
+                        <FilenameTruncator filename={contentName} />
+                      </div>
                     </div>
                   </div>
 

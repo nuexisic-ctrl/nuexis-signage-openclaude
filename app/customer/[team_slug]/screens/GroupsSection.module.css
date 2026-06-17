@@ -307,7 +307,9 @@
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: inline-flex;
+  min-width: 0;
+  flex: 1;
 }
 
 .unassignedText {
@@ -471,7 +473,8 @@
   color: var(--on-surface);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  min-width: 0;
   margin-top: 1px;
 }
 
@@ -837,6 +840,100 @@
 .cardSelected {
   box-shadow: 0 0 0 2px var(--primary) !important;
   background-color: var(--surface-low) !important;
+}
+
+.controlsLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.globalSelectContainer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  background: transparent;
+  border: 1.5px solid var(--outline-variant);
+  border-radius: 10px;
+  padding: 0 8px;
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.globalSelectCheckbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.globalSelectDropdownBtn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--on-surface-subtle);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.globalSelectDropdownBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.globalSelectDropdownMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  box-shadow: var(--shadow-modal);
+  padding: 6px;
+  z-index: 200;
+  min-width: 200px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.globalSelectDropdownItem {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--on-surface);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-label);
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: background 0.15s;
+  width: 100%;
+}
+
+.globalSelectDropdownItem:hover {
+  background: var(--surface-low);
+}
+
+.globalSelectDropdownDivider {
+  height: 1px;
+  background: var(--outline-variant);
+  margin: 4px 6px;
+}
+
+.globalSelectDropdownItemDanger {
+  color: var(--error);
+}
+
+.globalSelectDropdownItemDanger:hover {
+  background: var(--error-container);
 }
 
 

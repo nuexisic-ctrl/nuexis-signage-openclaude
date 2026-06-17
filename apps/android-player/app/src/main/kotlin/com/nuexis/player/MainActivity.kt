@@ -91,6 +91,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
     private var lastOrientation: Int? = null
     private var lastScaleMode: String? = null
     private var lastUpdatedAt: String? = null
+    private var isContentLoaded = false
 
     private fun checkAndRequestStoragePermission() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
@@ -179,7 +180,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
 
         btnRefresh?.setOnClickListener {
             drawerLayout.closeDrawer(GravityCompat.START)
-            syncSignageContent()
+            syncSignageContent(forceReload = true)
         }
 
         btnUnpair?.setOnClickListener {
@@ -281,6 +282,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                 diagnosticsManager = null
                 onlineCheckJob?.cancel()
                 onlineCheckJob = null
+                isContentLoaded = false
                 storageManager.setSessionToken(null)
                 lastTeamId = null
                 lastContentType = null
@@ -467,7 +469,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
         syncSignageContent()
     }
 
-    private fun syncSignageContent() {
+    private fun syncSignageContent(forceReload: Boolean = false) {
         lifecycleScope.launch(Dispatchers.IO) {
             val hardwareId = storageManager.getHardwareId()
             val secret = storageManager.getSecret() ?: return@launch
@@ -478,6 +480,32 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                     is SupabaseClient.DeviceStateResult.Success -> {
                         val state = result.state
                         if (state != null) {
+                            val changed = forceReload || !isContentLoaded ||
+                                    state.team_id != lastTeamId ||
+                                    state.orientation != lastOrientation ||
+                                    state.content_type != lastContentType ||
+                                    state.asset_id != lastAssetId ||
+                                    state.playlist_id != lastPlaylistId ||
+                                    state.scale_mode != lastScaleMode ||
+                                    state.updated_at != lastUpdatedAt
+
+                            if (!changed) {
+                                Log.d("MainActivity", "syncSignageContent: No change detected. Skipping reload.")
+                                return@withContext
+                            }
+
+                            Log.d("MainActivity", "syncSignageContent: Change detected (forceReload=$forceReload, isContentLoaded=$isContentLoaded). Reloading player configuration.")
+                            isContentLoaded = true
+
+                            // Update tracked values
+                            lastTeamId = state.team_id
+                            lastOrientation = state.orientation
+                            lastContentType = state.content_type
+                            lastAssetId = state.asset_id
+                            lastPlaylistId = state.playlist_id
+                            lastScaleMode = state.scale_mode
+                            lastUpdatedAt = state.updated_at
+
                             if (state.orientation != null) {
                                 storageManager.setOrientation(state.orientation)
                                 applyNativeOrientation(state.orientation)
@@ -491,7 +519,6 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
 
                             // Update cached content configuration
                             storageManager.setCachedContentType(state.content_type)
-                            lastUpdatedAt = state.updated_at
 
                             if (state.content_type == "Asset" && !state.asset_id.isNullOrEmpty()) {
                                 storageManager.setCachedAssetId(state.asset_id)
@@ -909,7 +936,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
                                 if (drawerLayout.getDrawerLockMode(GravityCompat.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED) {
                                     startPairedPlayer(teamId, freshState.id)
                                 } else {
-                                    syncSignageContent()
+                                    syncSignageContent(forceReload = true)
                                 }
                             }
                         }
@@ -942,7 +969,20 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener {
         }
     }
 
-    override fun onConnected() {}
+    override fun onConnected() {
+        lifecycleScope.launch(Dispatchers.Main) {
+            Log.d("MainActivity", "onConnected: Realtime client connected.")
+            if (onlineCheckJob != null) {
+                Log.d("MainActivity", "onConnected: Device is playing offline and network restored. Transitioning online immediately.")
+                onlineCheckJob?.cancel()
+                onlineCheckJob = null
+                loadDeviceState()
+            } else {
+                Log.d("MainActivity", "onConnected: Syncing signage content.")
+                syncSignageContent(forceReload = false)
+            }
+        }
+    }
     override fun onDisconnected() {}
     override fun onError(t: Throwable) {
         t.printStackTrace()

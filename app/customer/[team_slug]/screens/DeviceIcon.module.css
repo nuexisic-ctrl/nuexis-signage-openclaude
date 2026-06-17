@@ -1,13 +1,15 @@
 .statusBadge {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 5px 10px;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
   border-radius: var(--radius-full);
   font-family: var(--font-label);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 800;
   white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .statusDot {
