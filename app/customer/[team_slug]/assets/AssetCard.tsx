@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { File, Play, LayoutTemplate, Link, Code, Clock, QrCode, Folder, Hourglass, Globe, Images, FileText, Music, Image as ImageIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
-import { t } from '@/lib/i18n'
+import { useTranslation } from '@/lib/i18n'
 import styles from './AssetCard.module.css'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 
@@ -68,9 +68,8 @@ export function AssetCard({
   onDrop?: (e: React.DragEvent) => void
   isDropTarget?: boolean
 }) {
-  const date = new Date(asset.created_at).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-  })
+  const { t, formatDate } = useTranslation()
+  const date = formatDate(asset.created_at)
 
   const supabase = createClient()
 

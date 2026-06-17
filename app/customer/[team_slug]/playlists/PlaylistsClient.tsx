@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import CustomSelect from '../components/CustomSelect'
 import { modalStack } from '@/lib/utils/modalStack'
 import { toast } from '@/app/components/Toast'
+import { useTranslation } from '@/lib/i18n'
 
 interface PlaylistsClientProps {
   initialPlaylists: any[]
@@ -17,6 +18,7 @@ interface PlaylistsClientProps {
 }
 
 export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, teamId }: PlaylistsClientProps) {
+  const { t } = useTranslation()
   const [playlists, setPlaylists] = useState(initialPlaylists)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState('')
@@ -124,10 +126,10 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
             setTimeout(() => supabase.removeChannel(channel), 1000)
           }
         })
-        toast.success(`Playlist "${newPlaylistName}" updated successfully`)
+        toast.success(t('Playlist "{name}" updated successfully', { name: newPlaylistName }))
       } else {
         await createPlaylist(teamId, newPlaylistName, teamSlug, items)
-        toast.success(`Playlist "${newPlaylistName}" created successfully`)
+        toast.success(t('Playlist "{name}" created successfully', { name: newPlaylistName }))
       }
 
       // Re-fetch all playlists to reflect items changes and total play times
@@ -146,7 +148,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
       handleCloseModal()
     } catch (err: any) {
       console.error(err)
-      toast.error(err.message || (editingPlaylistId ? 'Failed to update playlist' : 'Failed to create playlist'))
+      toast.error(err.message || (editingPlaylistId ? t('Failed to update playlist') : t('Failed to create playlist')))
     } finally {
       setIsSaving(false)
     }
@@ -162,7 +164,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
       setItems(fetchedItems)
     } catch (err: any) {
       console.error(err)
-      toast.error(err.message || 'Failed to load playlist items')
+      toast.error(err.message || t('Failed to load playlist items'))
     } finally {
       setIsLoadingItems(false)
     }
@@ -178,15 +180,15 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     const targetName = playlists.find(p => p.id === id)?.name || 'Playlist'
-    if (!confirm(`Are you sure you want to delete the playlist "${targetName}"?`)) return
+    if (!confirm(t('Are you sure you want to delete the playlist "{name}"?', { name: targetName }))) return
     
     try {
       await deletePlaylist(id, teamSlug)
       setPlaylists(playlists.filter(p => p.id !== id))
-      toast.success(`Playlist "${targetName}" deleted successfully`)
+      toast.success(t('Playlist "{name}" deleted successfully', { name: targetName }))
     } catch (err: any) {
       console.error(err)
-      toast.error(err.message || 'Failed to delete playlist')
+      toast.error(err.message || t('Failed to delete playlist'))
     }
   }
 
@@ -221,9 +223,9 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     const m = Math.floor(seconds / 60)
     const s = seconds % 60
     if (m > 0) {
-      return `${m}m ${s > 0 ? `${s}s` : ''}`
+      return t('{m}m {s}s', { m, s: s > 0 ? `${s}` : '' }).trim()
     }
-    return `${s}s`
+    return t('{s}s', { s })
   }
 
   const filteredPlaylists = useMemo(() => {
@@ -253,16 +255,16 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     <>
       <div className={styles.topbar}>
         <div>
-          <h1 className={styles.pageTitle}>Playlists</h1>
-          <p className={styles.pageSubtitle}>Create and schedule dynamic playback loops</p>
+          <h1 className={styles.pageTitle}>{t('Playlists')}</h1>
+          <p className={styles.pageSubtitle}>{t('Create and schedule dynamic playback loops')}</p>
         </div>
         <div className={styles.topbarActions}>
           <button
             className={styles.refreshBtn}
             onClick={handleRefresh}
             disabled={isRefreshing}
-            aria-label="Refresh Status"
-            title="Refresh Status"
+            aria-label={t('Refresh Status')}
+            title={t('Refresh Status')}
           >
             <RefreshCw size={20} className={isRefreshing ? styles.spin : ''} />
           </button>
@@ -273,7 +275,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
             setIsModalOpen(true)
           }}>
             <Plus size={18} className={styles.addBtnIcon} />
-            New Playlist
+            {t('New Playlist')}
           </button>
         </div>
       </div>
@@ -287,7 +289,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
             <input 
               type="text" 
               className={styles.searchInput}
-              placeholder="Search playlists..."
+              placeholder={t('Search playlists...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -298,14 +300,14 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                 <button 
                   className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
                   onClick={() => handleSetViewMode('table')}
-                  title="Table View"
+                  title={t('Table View')}
                 >
                   <List />
                 </button>
                 <button 
                   className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
                   onClick={() => handleSetViewMode('grid')}
-                  title="Grid View"
+                  title={t('Grid View')}
                 >
                   <LayoutGrid />
                 </button>
@@ -323,11 +325,11 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
             <div className={styles.emptyIcon}>
               <ListVideo size={24} />
             </div>
-            <h3 className={styles.emptyTitle}>No Playlists Found</h3>
+            <h3 className={styles.emptyTitle}>{t('No Playlists Found')}</h3>
             <p className={styles.emptyText}>
               {playlists.length === 0 
-                ? 'Create your first playlist to mix images, videos, and dynamic widgets together.'
-                : 'No playlists matched your search criteria.'
+                ? t('Create your first playlist to mix images, videos, and dynamic widgets together.')
+                : t('No playlists matched your search criteria.')
               }
             </p>
           </div>
@@ -353,14 +355,14 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                       <div>
                         <h3 className={styles.playlistName}>{playlist.name}</h3>
                         <div className={styles.playlistMeta}>
-                          Created {new Date(playlist.created_at).toISOString().split('T')[0]}
+                          {t('Created')} {new Date(playlist.created_at).toISOString().split('T')[0]}
                         </div>
                       </div>
                     </div>
                     <button 
                       onClick={(e) => handleDelete(playlist.id, e)}
                       style={{ background: 'transparent', border: 0, color: 'var(--on-surface-muted)', cursor: 'pointer', padding: '6px', marginLeft: 'auto' }}
-                      title="Delete Playlist"
+                      title={t('Delete Playlist')}
                     >
                       <Trash2 size={18} />
                     </button>
@@ -369,7 +371,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                   <div className={styles.playlistStats}>
                     <span className={styles.statLabel}>
                       <ListVideo size={14} style={{ marginRight: '4px' }} />
-                      {totalItems} {totalItems === 1 ? 'Item' : 'Items'}
+                      {totalItems === 1 ? t('{count} Item', { count: totalItems }) : t('{count} Items', { count: totalItems })}
                     </span>
                     <span className={styles.statDot}>•</span>
                     <span className={styles.statLabel}>
@@ -386,11 +388,11 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
             <table className={styles.playlistsTable}>
               <thead className={styles.tableHeader}>
                 <tr>
-                  <th>Playlist Name</th>
-                  <th>Total Items</th>
-                  <th>Total Playtime</th>
-                  <th>Created Date</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th>{t('Playlist Name')}</th>
+                  <th>{t('Total Items')}</th>
+                  <th>{t('Total Playtime')}</th>
+                  <th>{t('Created Date')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -409,7 +411,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                           <span className={styles.playlistNameText}>{playlist.name}</span>
                         </div>
                       </td>
-                      <td>{totalItems} {totalItems === 1 ? 'item' : 'items'}</td>
+                      <td>{totalItems === 1 ? t('{count} item', { count: totalItems }) : t('{count} items', { count: totalItems })}</td>
                       <td>{formatPlaytime(totalDuration)}</td>
                       <td>{new Date(playlist.created_at).toISOString().split('T')[0]}</td>
                       <td onClick={(e) => e.stopPropagation()}>
@@ -417,7 +419,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                           <button 
                             onClick={(e) => handleDelete(playlist.id, e)}
                             className={styles.deleteRowBtn}
-                            title="Delete Playlist"
+                            title={t('Delete Playlist')}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -434,11 +436,11 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
         {playlists.length > 0 && filteredPlaylists.length > 0 && (
           <div className={styles.tableFooter}>
             <div className={styles.paginationInfo}>
-              Showing {startItem} to {endItem} of {filteredPlaylists.length} playlists
+              {t('Showing {start} to {end} of {total} playlists', { start: startItem, end: endItem, total: filteredPlaylists.length })}
             </div>
             <div className={styles.footerControls}>
               <div className={styles.perPageSelector}>
-                <span>Per page:</span>
+                <span>{t('Per page:')}</span>
                 <select
                   value={pageSize}
                   onChange={(e) => {
@@ -458,7 +460,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
               </div>
               <div className={styles.pagination}>
                 <span className={styles.pageIndicator}>
-                  Page {currentPage} of {totalPages}
+                  {t('Page {current} of {total}', { current: currentPage, total: totalPages })}
                 </span>
                 <button 
                   className={styles.pageBtn} 
@@ -486,7 +488,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>{editingPlaylistId ? 'Edit Playlist' : 'Create Playlist'}</h2>
+              <h2 className={styles.modalTitle}>{editingPlaylistId ? t('Edit Playlist') : t('Create Playlist')}</h2>
               <button className={styles.closeBtn} onClick={handleCloseModal}>
                 <X size={20} />
               </button>
@@ -494,11 +496,11 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
             
             <div className={styles.modalBody}>
               <div className={styles.formGroup}>
-                <label className={styles.label}>Playlist Name</label>
+                <label className={styles.label}>{t('Playlist Name')}</label>
                 <input 
                   type="text" 
                   className={styles.input} 
-                  placeholder="e.g. Lobby Morning Loop" 
+                  placeholder={t('e.g. Lobby Morning Loop')} 
                   value={newPlaylistName}
                   onChange={(e) => setNewPlaylistName(e.target.value)}
                   autoFocus
@@ -506,15 +508,15 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
               </div>
 
               <div className={styles.formGroup} style={{ marginTop: '12px' }}>
-                <label className={styles.label}>Playlist Items</label>
+                <label className={styles.label}>{t('Playlist Items')}</label>
                 
                 {isLoadingItems ? (
                   <div style={{ textAlign: 'center', padding: '24px' }}>
-                    <p style={{ color: 'var(--on-surface-muted)', fontSize: '0.9rem' }}>Loading items...</p>
+                    <p style={{ color: 'var(--on-surface-muted)', fontSize: '0.9rem' }}>{t('Loading items...')}</p>
                   </div>
                 ) : items.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px', border: '1px dashed var(--outline-variant)', borderRadius: '10px' }}>
-                    <p style={{ color: 'var(--on-surface-muted)', fontSize: '0.9rem', margin: '0 0 12px 0' }}>No items in this playlist yet.</p>
+                    <p style={{ color: 'var(--on-surface-muted)', fontSize: '0.9rem', margin: '0 0 12px 0' }}>{t('No items in this playlist yet.')}</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -529,7 +531,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                             value={item.asset_id || ''}
                             onChange={(val) => handleUpdateItem(idx, 'asset_id', val)}
                             options={[
-                              { value: '', label: 'Select Asset...' },
+                              { value: '', label: t('Select Asset...') },
                               ...assets
                                 .filter(a => a.mime_type !== 'application/x-folder')
                                 .map(a => ({ value: a.id, label: a.file_name }))
@@ -558,15 +560,15 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                 )}
                 
                 <button className={styles.addItemBtn} onClick={handleAddItem} style={{ marginTop: '8px' }}>
-                  <Plus size={16} /> Add Media Item
+                  <Plus size={16} /> {t('Add Media Item')}
                 </button>
               </div>
             </div>
 
             <div className={styles.modalFooter}>
-              <button className={styles.cancelBtn} onClick={handleCloseModal}>Cancel</button>
+              <button className={styles.cancelBtn} onClick={handleCloseModal}>{t('Cancel')}</button>
               <button className={styles.saveBtn} onClick={handleSave} disabled={!newPlaylistName.trim() || isSaving || isLoadingItems}>
-                {isSaving ? 'Saving...' : (editingPlaylistId ? 'Save Changes' : 'Create Playlist')}
+                {isSaving ? t('Saving...') : (editingPlaylistId ? t('Save Changes') : t('Create Playlist'))}
               </button>
             </div>
           </div>
@@ -574,4 +576,5 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
       )}
     </>
   )
+}
 }

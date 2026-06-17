@@ -5,6 +5,7 @@ import { X, Check, AlertTriangle } from 'lucide-react'
 import { createGroup, updateGroupMembers } from '../groups/actions'
 import styles from './NewGroupModal.module.css'
 import { Device } from '../screens/types'
+import { useTranslation } from '@/lib/i18n'
 
 interface NewGroupModalProps {
   isOpen: boolean
@@ -51,6 +52,7 @@ export default function NewGroupModal({
   initialSelectedDeviceIds = [],
   onSuccess,
 }: NewGroupModalProps) {
+  const { t } = useTranslation()
   const [groupName, setGroupName] = useState('')
   const [groupColor, setGroupColor] = useState(PRESET_COLORS[0])
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>(initialSelectedDeviceIds)
@@ -123,7 +125,7 @@ export default function NewGroupModal({
         if (selectedDeviceIds.length > 0) {
           const syncRes = await updateGroupMembers(teamSlug, result.groupId, selectedDeviceIds)
           if (!syncRes.success) {
-            setErrorMsg(syncRes.error || 'Group created, but failed to assign selected screens.')
+            setErrorMsg(syncRes.error || t('Group created, but failed to assign selected screens.'))
             return
           }
         }
@@ -132,7 +134,7 @@ export default function NewGroupModal({
         setSelectedDeviceIds([])
         onSuccess(result.groupId)
       } else {
-        setErrorMsg(result.error || 'Failed to create group.')
+        setErrorMsg(result.error || t('Failed to create group.'))
       }
     })
   }
@@ -150,21 +152,21 @@ export default function NewGroupModal({
     >
       <div className={styles.modal} role="dialog">
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>New Screen Group</h2>
-          <button className={styles.modalClose} onClick={onClose} aria-label="Close modal">
+          <h2 className={styles.modalTitle}>{t('New Screen Group')}</h2>
+          <button className={styles.modalClose} onClick={onClose} aria-label={t('Close modal')}>
             <X size={18} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.fieldGroup}>
-            <label className={styles.label}>Group Name (Optional)</label>
+            <label className={styles.label}>{t('Group Name (Optional)')}</label>
             <div className={styles.inputWithColorContainer}>
               <input
                 type="text"
                 maxLength={60}
                 className={styles.inputWithColor}
-                placeholder="E.g., Airport Terminal, Retail Front"
+                placeholder={t('E.g., Airport Terminal, Retail Front')}
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 disabled={isPending}
@@ -174,13 +176,13 @@ export default function NewGroupModal({
                 className={styles.colorIndicatorDot}
                 style={{ backgroundColor: groupColor }}
                 onClick={() => setShowColorPicker(!showColorPicker)}
-                title="Select Group Color"
-                aria-label="Select Group Color"
+                title={t('Select Group Color')}
+                aria-label={t('Select Group Color')}
               />
               {showColorPicker && (
                 <div className={styles.colorPickerPopover} ref={colorPickerRef}>
                   <div className={styles.popoverHeader}>
-                    <span className={styles.popoverTitle}>Select Color</span>
+                    <span className={styles.popoverTitle}>{t('Select Color')}</span>
                     <button 
                       type="button" 
                       className={styles.popoverCloseBtn} 
@@ -211,7 +213,7 @@ export default function NewGroupModal({
                   </div>
                   
                   <div className={styles.customColorSection}>
-                    <label className={styles.customColorLabel}>Custom Color</label>
+                    <label className={styles.customColorLabel}>{t('Custom Color')}</label>
                     <div className={styles.customColorRow}>
                       <input
                         type="color"
@@ -234,18 +236,18 @@ export default function NewGroupModal({
 
           {/* Screen selection checklist */}
           <div className={styles.fieldGroup}>
-            <label className={styles.label}>Select Screens</label>
+            <label className={styles.label}>{t('Select Screens')}</label>
             <input 
               type="text" 
               className={styles.input} 
               style={{ minHeight: '38px', marginBottom: '6px' }}
-              placeholder="Search screens..." 
+              placeholder={t('Search screens...')} 
               value={screenSearch} 
               onChange={(e) => setScreenSearch(e.target.value)} 
             />
             {devices.length === 0 ? (
               <p style={{ fontSize: '0.8125rem', color: 'var(--on-surface-subtle)', fontStyle: 'italic', margin: '4px 0' }}>
-                No screens available to assign.
+                {t('No screens available to assign.')}
               </p>
             ) : (
               <div className={styles.deviceList}>
@@ -264,7 +266,7 @@ export default function NewGroupModal({
                       <span 
                         className={`${styles.deviceItemStatus} ${device.status === 'online' ? styles.deviceItemStatusOnline : ''}`}
                       >
-                        ● {device.status}
+                        ● {t(device.status)}
                       </span>
                     </label>
                   )
@@ -287,14 +289,14 @@ export default function NewGroupModal({
               onClick={onClose}
               disabled={isPending}
             >
-              Cancel
+              {t('Cancel')}
             </button>
             <button
               type="submit"
               className={`${styles.btn} ${styles.btnPrimary}`}
               disabled={isPending}
             >
-              {isPending ? 'Creating…' : 'Create Group'}
+              {isPending ? t('Creating…') : t('Create Group')}
             </button>
           </div>
         </form>

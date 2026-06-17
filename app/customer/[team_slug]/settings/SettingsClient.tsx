@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import { User, Shield, Layout, Sun, Moon, Monitor } from 'lucide-react'
+import { User, Shield, Layout, Sun, Moon, Monitor, Globe } from 'lucide-react'
 import { toast } from '@/app/components/Toast'
 import styles from './settings.module.css'
 import { useTheme } from '@/app/components/ThemeProvider'
+import { useTranslation, SUPPORTED_LOCALES } from '@/lib/i18n'
 
 interface SettingsClientProps {
   teamSlug: string
@@ -22,16 +23,17 @@ export default function SettingsClient({
   fullName,
 }: SettingsClientProps) {
   const { theme: activeTheme, setTheme: setActiveTheme } = useTheme()
+  const { t, locale: activeLocale, setLocale } = useTranslation()
   const [profileName, setProfileName] = useState(fullName)
 
   const handleSetTheme = (theme: 'light' | 'dark' | 'system') => {
     setActiveTheme(theme)
-    toast.success(`Theme preference updated to ${theme}`)
+    toast.success(t('Theme preference updated to {theme}', { theme: t(theme.charAt(0).toUpperCase() + theme.slice(1)) }))
   }
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault()
-    toast.success('Settings saved successfully (Demonstration)')
+    toast.success(t('Settings saved successfully (Demonstration)'))
   }
 
   return (
@@ -39,9 +41,9 @@ export default function SettingsClient({
       {/* Title */}
       <div className={styles.topbar}>
         <div>
-          <h1 className={styles.pageTitle}>Settings</h1>
+          <h1 className={styles.pageTitle}>{t('Settings')}</h1>
           <p className={styles.pageSubtitle}>
-            Configure your user profile and workspace preferences
+            {t('Configure your user profile and workspace preferences')}
           </p>
         </div>
       </div>
@@ -52,33 +54,33 @@ export default function SettingsClient({
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <User size={18} className={styles.cardHeaderIcon} />
-              <h2 className={styles.cardTitle}>Profile Information</h2>
+              <h2 className={styles.cardTitle}>{t('Profile Information')}</h2>
             </div>
             
             <div className={styles.cardBody}>
               <div className={styles.formGroup}>
-                <label htmlFor="settings-fullname">Full Name</label>
+                <label htmlFor="settings-fullname">{t('Full Name')}</label>
                 <input
                   id="settings-fullname"
                   type="text"
                   className={styles.formInput}
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder={t('Your full name')}
                 />
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="settings-email">Email Address</label>
+                <label htmlFor="settings-email">{t('Email Address')}</label>
                 <input
                   id="settings-email"
                   type="email"
                   className={styles.formInput}
                   value={userEmail}
                   disabled
-                  title="Email cannot be changed directly"
+                  title={t('Email cannot be changed directly')}
                 />
-                <span className={styles.fieldHint}>Email address is managed by your provider authentication.</span>
+                <span className={styles.fieldHint}>{t('Email address is managed by your provider authentication.')}</span>
               </div>
             </div>
           </div>
@@ -87,13 +89,13 @@ export default function SettingsClient({
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <Shield size={18} className={styles.cardHeaderIcon} />
-              <h2 className={styles.cardTitle}>Workspace Details</h2>
+              <h2 className={styles.cardTitle}>{t('Workspace Details')}</h2>
             </div>
             
             <div className={styles.cardBody}>
               <div className={styles.rowGrid}>
                 <div className={styles.formGroup}>
-                  <label htmlFor="settings-workspace-name">Workspace Name</label>
+                  <label htmlFor="settings-workspace-name">{t('Workspace Name')}</label>
                   <input
                     id="settings-workspace-name"
                     type="text"
@@ -103,7 +105,7 @@ export default function SettingsClient({
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label htmlFor="settings-workspace-slug">Slug Link</label>
+                  <label htmlFor="settings-workspace-slug">{t('Slug Link')}</label>
                   <input
                     id="settings-workspace-slug"
                     type="text"
@@ -115,9 +117,9 @@ export default function SettingsClient({
               </div>
 
               <div className={styles.roleBadgeContainer}>
-                <span className={styles.roleLabel}>Your Role:</span>
+                <span className={styles.roleLabel}>{t('Your Role:')}</span>
                 <span className={styles.roleBadge}>
-                  {userRole}
+                  {t(userRole)}
                 </span>
               </div>
             </div>
@@ -127,12 +129,12 @@ export default function SettingsClient({
           <div className={styles.card}>
             <div className={styles.cardHeader}>
               <Layout size={18} className={styles.cardHeaderIcon} />
-              <h2 className={styles.cardTitle}>Theme Settings</h2>
+              <h2 className={styles.cardTitle}>{t('Theme Settings')}</h2>
             </div>
             
             <div className={styles.cardBody}>
               <p className={styles.sectionDesc}>
-                Select how the digital signage console layout appears on this device.
+                {t('Select how the digital signage console layout appears on this device.')}
               </p>
               
               <div className={styles.themeGrid}>
@@ -142,7 +144,7 @@ export default function SettingsClient({
                   onClick={() => handleSetTheme('light')}
                 >
                   <Sun size={20} />
-                  <span>Light</span>
+                  <span>{t('Light')}</span>
                 </button>
                 
                 <button
@@ -151,7 +153,7 @@ export default function SettingsClient({
                   onClick={() => handleSetTheme('dark')}
                 >
                   <Moon size={20} />
-                  <span>Dark</span>
+                  <span>{t('Dark')}</span>
                 </button>
                 
                 <button
@@ -160,8 +162,38 @@ export default function SettingsClient({
                   onClick={() => handleSetTheme('system')}
                 >
                   <Monitor size={20} />
-                  <span>System</span>
+                  <span>{t('System')}</span>
                 </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Language Settings */}
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <Globe size={18} className={styles.cardHeaderIcon} />
+              <h2 className={styles.cardTitle}>{t('Language Settings')}</h2>
+            </div>
+            
+            <div className={styles.cardBody}>
+              <p className={styles.sectionDesc}>
+                {t('Select your preferred language for the workspace console.')}
+              </p>
+              
+              <div className={styles.themeGrid} style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
+                {SUPPORTED_LOCALES.map((lang) => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    className={`${styles.themeOption} ${activeLocale === lang.code ? styles.themeActive : ''}`}
+                    onClick={() => {
+                      setLocale(lang.code)
+                      toast.success(t('Settings saved successfully (Demonstration)'))
+                    }}
+                  >
+                    <span>{lang.nativeLabel}</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -169,7 +201,7 @@ export default function SettingsClient({
           {/* Save Button */}
           <div className={styles.submitContainer}>
             <button type="submit" className={styles.saveBtn}>
-              Save Changes
+              {t('Save Changes')}
             </button>
           </div>
         </form>

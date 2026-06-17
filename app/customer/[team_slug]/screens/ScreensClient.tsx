@@ -5,7 +5,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus, Check, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
-import { t } from '@/lib/i18n'
+import { useTranslation } from '@/lib/i18n'
 import styles from './screens.module.css'
 
 import { Device, Asset, Playlist, LiveStatus } from './types'
@@ -74,6 +74,7 @@ export default function ScreensClient({
   historicalPlaytime = 0,
   initialViewMode = 'table',
 }: Props) {
+  const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -449,21 +450,18 @@ export default function ScreensClient({
       <div className={`${styles.topbar} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.headerTitleRow}>
           <div className={styles.titleContainer}>
-            <h1 className={styles.pageTitle}>Screens</h1>
+            <h1 className={styles.pageTitle}>{t('Screens')}</h1>
             <button
               className={styles.headerRefreshBtn}
               onClick={handleRefresh}
               disabled={isRefreshing}
-              aria-label="Refresh Status"
-              title="Refresh Status"
+              aria-label={t('Refresh Status')}
+              title={t('Refresh Status')}
               type="button"
             >
               <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
             </button>
           </div>
-          <p className={styles.pageSubtitle}>
-            Manage and monitor your workspace screens
-          </p>
         </div>
         <div className={styles.topbarActions}>
           <button
@@ -472,7 +470,7 @@ export default function ScreensClient({
             onClick={() => setShowCreateGroupFromSelection(true)}
           >
             <FolderPlus size={16} />
-            New Group
+            {t('New Group')}
           </button>
           <button
             id="add-screen-btn"
@@ -481,7 +479,7 @@ export default function ScreensClient({
             onClick={() => setShowPairModal(true)}
           >
             <Plus size={16} />
-            Add Screen
+            {t('Add Screen')}
           </button>
         </div>
       </div>
@@ -609,7 +607,7 @@ export default function ScreensClient({
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                   </svg>
-                  Filters
+                  {t('Filters')}
                   {hasActiveFilters && (
                     <span className={styles.filterDot} />
                   )}
@@ -618,8 +616,8 @@ export default function ScreensClient({
                   <button 
                     className={`${styles.sortBtn} ${isSortOpen ? styles.sortBtnActive : ''}`}
                     onClick={() => setIsSortOpen(!isSortOpen)}
-                    title="Sort"
-                    aria-label="Sort"
+                    title={t('Sort')}
+                    aria-label={t('Sort')}
                     type="button"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -632,12 +630,12 @@ export default function ScreensClient({
                   {isSortOpen && (
                     <div className={styles.sortDropdownMenu} role="menu">
                       {[
-                        { value: 'updated-desc', label: 'Updated Date (Newest)' },
-                        { value: 'updated-asc', label: 'Updated Date (Oldest)' },
-                        { value: 'created-desc', label: 'Created Date (Newest)' },
-                        { value: 'created-asc', label: 'Created Date (Oldest)' },
-                        { value: 'name-asc', label: 'Name (A-Z)' },
-                        { value: 'name-desc', label: 'Name (Z-A)' },
+                        { value: 'updated-desc', label: t('Updated Date (Newest)') },
+                        { value: 'updated-asc', label: t('Updated Date (Oldest)') },
+                        { value: 'created-desc', label: t('Created Date (Newest)') },
+                        { value: 'created-asc', label: t('Created Date (Oldest)') },
+                        { value: 'name-asc', label: t('Name (A-Z)') },
+                        { value: 'name-desc', label: t('Name (Z-A)') },
                       ].map((option) => (
                         <button
                           key={option.value}
@@ -662,7 +660,7 @@ export default function ScreensClient({
                     <button 
                       className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
                       onClick={() => handleSetViewMode('table')}
-                      title="Table View"
+                      title={t('Table View')}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -676,7 +674,7 @@ export default function ScreensClient({
                     <button 
                       className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
                       onClick={() => handleSetViewMode('grid')}
-                      title="Grid View"
+                      title={t('Grid View')}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>

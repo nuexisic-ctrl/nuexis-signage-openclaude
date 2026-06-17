@@ -22,7 +22,7 @@ import { WidgetEditContainer } from './WidgetEditContainer'
 import { CreateFolderModal } from './CreateFolderModal'
 import { BulkMoveModal } from './BulkMoveModal'
 import { PushToScreenModal } from './PushToScreenModal'
-import { t } from '@/lib/i18n'
+import { useTranslation } from '@/lib/i18n'
 import styles from './asset.module.css'
 
 interface Props {
@@ -50,6 +50,7 @@ export default function AssetClient({
   pageSize: initialPageSize = 10,
   folder,
 }: Props) {
+  const { t } = useTranslation()
   const [folders, setFolders] = useState<Asset[]>(initialFolders)
   const [filesCache, setFilesCache] = useState<Record<string, Asset[]>>(() => {
     const cache: Record<string, Asset[]> = {}

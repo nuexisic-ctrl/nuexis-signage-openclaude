@@ -4,6 +4,7 @@ import React from 'react'
 import { FolderPlus, Trash2 } from 'lucide-react'
 import { Device } from './types'
 import styles from './screens.module.css'
+import { useTranslation } from '@/lib/i18n'
 
 interface SelectedActionsProps {
   selectedDeviceIds: Set<string>
@@ -18,19 +19,21 @@ export function SelectedActions({
   setShowCreateGroupFromSelection,
   setDeleteModalDevice,
 }: SelectedActionsProps) {
+  const { t } = useTranslation()
+
   if (selectedDeviceIds.size === 0) return null
 
   return (
     <div className={styles.selectedActionsContainer}>
-      <div className={styles.selectedCountBadge} title={`${selectedDeviceIds.size} screens selected`}>
+      <div className={styles.selectedCountBadge} title={t('{count} screens selected', { count: selectedDeviceIds.size })}>
         <span className={styles.selectedCountNumber}>{selectedDeviceIds.size}</span>
-        <span className={styles.selectedCountText}>Selected</span>
+        <span className={styles.selectedCountText}>{t('Selected')}</span>
       </div>
       
       <button
         className={styles.bulkActionIconBtn}
         onClick={() => setShowCreateGroupFromSelection(true)}
-        title="Create Group from Selection"
+        title={t('Create Group from Selection')}
       >
         <FolderPlus size={16} className={styles.bulkActionBtnIcon} />
       </button>
@@ -40,13 +43,13 @@ export function SelectedActions({
         onClick={() => {
           const virtualDevice: Device = {
             id: Array.from(selectedDeviceIds).join(','),
-            name: `${selectedDeviceIds.size} screens`,
+            name: t('{count} screens', { count: selectedDeviceIds.size }),
             status: 'online',
             created_at: new Date().toISOString()
           }
           setDeleteModalDevice(virtualDevice)
         }}
-        title="Delete Selected Screens"
+        title={t('Delete Selected Screens')}
       >
         <Trash2 size={16} />
       </button>

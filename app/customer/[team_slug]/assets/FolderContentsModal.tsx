@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { Folder, X, Play, Image as ImageIcon, File, QrCode, Link, Code, Clock, ArrowUpLeft, Eye, Trash2, Edit2, AlertTriangle, Hourglass, Globe } from 'lucide-react'
 import { Asset, formatBytes, isImage, isVideo, isWidget } from './types'
 import { moveAssetsToFolder } from './actions'
-import { t } from '@/lib/i18n'
+import { useTranslation } from '@/lib/i18n'
 import styles from './Modal.module.css'
 
 const YoutubeIcon = ({ size = 18, style }: { size?: number; style?: React.CSSProperties }) => (
@@ -45,6 +45,7 @@ export function FolderContentsModal({
   getPreviewUrl: (filePath: string) => string | null
   onRefresh: () => void
 }) {
+  const { t } = useTranslation()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 

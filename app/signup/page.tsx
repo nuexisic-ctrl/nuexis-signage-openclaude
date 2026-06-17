@@ -7,8 +7,11 @@ import { useRouter } from 'next/navigation'
 import { signupWithRateLimit } from './actions'
 import styles from './signup.module.css'
 import { toast } from '@/app/components/Toast'
+import { useTranslation } from '@/lib/i18n'
+import LanguageSelector from '@/app/components/LanguageSelector'
 
 export default function SignupPage() {
+  const { t } = useTranslation()
   const router = useRouter()
 
   const [form, setForm] = useState({
@@ -39,17 +42,17 @@ export default function SignupPage() {
     e.preventDefault()
 
     if (form.password !== form.confirmPassword) {
-      toast.error('Passwords do not match.')
+      toast.error(t('Passwords do not match.'))
       return
     }
 
     if (form.password.length < 8) {
-      toast.error('Password must be at least 8 characters.')
+      toast.error(t('Password must be at least 8 characters.'))
       return
     }
 
     if (!form.teamSlug) {
-      toast.error('Team slug is required.')
+      toast.error(t('Team slug is required.'))
       return
     }
 
@@ -64,18 +67,23 @@ export default function SignupPage() {
     })
 
     if (!result.success) {
-      toast.error(result.error || 'Failed to sign up.')
+      toast.error(result.error || t('Failed to sign up.'))
       setStatus('idle')
       return
     }
 
     setStatus('success')
-    toast.success('Workspace created! Redirecting to your login page…')
+    toast.success(t('Workspace created! Redirecting to your login page…'))
     router.push(`/customer/${form.teamSlug}/login?signup=success`)
   }
 
   return (
     <div className="auth-shell">
+      {/* Floating Language Selector */}
+      <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10 }}>
+        <LanguageSelector align="right" />
+      </div>
+
       <div className={styles.wrapper}>
         {/* Logo */}
         <Link href="/" className="navbar-logo" style={{ display: 'block', textAlign: 'center', marginBottom: '16px' }}>
@@ -84,10 +92,10 @@ export default function SignupPage() {
 
         {/* Header */}
         <div className={styles.header}>
-          <h1 className={styles.title}>Create your workspace</h1>
+          <h1 className={styles.title}>{t('Create your workspace')}</h1>
           <p className={styles.subtitle}>
-            Already have a team?{' '}
-            <Link href="/login">Sign in here →</Link>
+            {t('Already have a team?')}{' '}
+            <Link href="/login">{t('Sign in here →')}</Link>
           </p>
         </div>
 
@@ -98,7 +106,7 @@ export default function SignupPage() {
             {/* Row 1: Full Name + Team Name */}
             <div className={styles.row}>
               <div className="form-group">
-                <label htmlFor="fullName">Full Name</label>
+                <label htmlFor="fullName">{t('Full Name')}</label>
                 <input
                   id="fullName"
                   name="fullName"
@@ -113,7 +121,7 @@ export default function SignupPage() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="teamName">Team / Company Name</label>
+                <label htmlFor="teamName">{t('Team / Company Name')}</label>
                 <input
                   id="teamName"
                   name="teamName"
@@ -130,7 +138,7 @@ export default function SignupPage() {
 
             {/* Work Email */}
             <div className="form-group" style={{ marginBottom: '18px' }}>
-              <label htmlFor="email">Work Email</label>
+              <label htmlFor="email">{t('Work Email')}</label>
               <input
                 id="email"
                 name="email"
@@ -147,7 +155,7 @@ export default function SignupPage() {
 
             {/* Team Slug */}
             <div className="form-group" style={{ marginBottom: '18px' }}>
-              <label htmlFor="teamSlug">Workspace URL</label>
+              <label htmlFor="teamSlug">{t('Workspace URL')}</label>
               <div className={styles.slugRow}>
                 <span className={styles.slugPrefix}>nuexis.com/</span>
                 <input
@@ -167,7 +175,7 @@ export default function SignupPage() {
             {/* Row 2: Passwords */}
             <div className={styles.row} style={{ marginBottom: '28px' }}>
               <div className="form-group">
-                <label htmlFor="password">Password</label>
+                <label htmlFor="password">{t('Password')}</label>
                 <input
                   id="password"
                   name="password"
@@ -183,7 +191,7 @@ export default function SignupPage() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="confirmPassword">Confirm Password</label>
+                <label htmlFor="confirmPassword">{t('Confirm Password')}</label>
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -209,18 +217,18 @@ export default function SignupPage() {
               {status === 'loading' ? (
                 <>
                   <span className="spinner" />
-                  Creating workspace…
+                  {t('Creating workspace…')}
                 </>
               ) : (
-                'Create Workspace'
+                t('Create Workspace')
               )}
             </button>
           </form>
 
           <p className={styles.terms}>
-            By creating an account you agree to our{' '}
-            <Link href="#">Terms of Service</Link> and{' '}
-            <Link href="#">Privacy Policy</Link>.
+            {t('By creating an account you agree to our')}{' '}
+            <Link href="#">{t('Terms of Service')}</Link> {'and'}{' '}
+            <Link href="#">{t('Privacy Policy')}</Link>.
           </p>
         </div>
       </div>

@@ -2,6 +2,7 @@ import React from 'react'
 import { X, Info } from 'lucide-react'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
 import CustomSelect from '../components/CustomSelect'
+import { useTranslation } from '@/lib/i18n'
 import styles from './FilterSidebar.module.css'
 
 export interface FilterSidebarProps {
@@ -43,6 +44,8 @@ export function FilterSidebar({
   filteredCount,
   totalCount,
 }: FilterSidebarProps) {
+  const { t } = useTranslation()
+
   React.useEffect(() => {
     if (!isFilterSidebarOpen) return
 
@@ -120,16 +123,16 @@ export function FilterSidebar({
       <aside data-filter-sidebar className={`${styles.filterSidebar} ${isFilterSidebarOpen ? styles.isOpen : ''}`}>
         <div className={styles.sidebarHeader}>
           <div className={styles.headerTitleContainer}>
-            <h3 className={styles.sidebarTitle}>Advanced Filters</h3>
+            <h3 className={styles.sidebarTitle}>{t('Advanced Filters')}</h3>
             <p className={styles.headerMatchCount}>
               {isFilterActive ? (
-                <>Showing <strong>{filteredCount}</strong> of <strong>{totalCount}</strong> screens</>
+                <>{t('Showing {filtered} of {total} screens', { filtered: String(filteredCount), total: String(totalCount) })}</>
               ) : (
-                <>Showing all <strong>{totalCount}</strong> screens</>
+                <>{t('Showing all {total} screens', { total: String(totalCount) })}</>
               )}
             </p>
           </div>
-          <button className={styles.closeSidebarBtn} onClick={() => setIsFilterSidebarOpen(false)}>
+          <button className={styles.closeSidebarBtn} onClick={() => setIsFilterSidebarOpen(false)} aria-label={t('Close filters')}>
             <X size={20} />
           </button>
         </div>
@@ -139,7 +142,7 @@ export function FilterSidebar({
               <div className={styles.infoDisclaimer}>
                 <Info size={16} className={styles.infoIcon} />
                 <p className={styles.infoText}>
-                  Filters apply to screens only and do not affect groups.
+                  {t('Filters apply to screens only and do not affect groups.')}
                 </p>
               </div>
             </div>
@@ -147,7 +150,7 @@ export function FilterSidebar({
 
           {groups && groups.length > 0 && (
             <div key="group-filter-container" className={styles.filterGroup}>
-              <label className={styles.filterLabel}>Filter by Group</label>
+              <label className={styles.filterLabel}>{t('Filter by Group')}</label>
               <GroupFilterDropdown
                 groups={groups}
                 selectedGroupIds={filterGroupIds}
@@ -160,48 +163,48 @@ export function FilterSidebar({
           )}
 
           <div key="status-filter-container" className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Screen Status</label>
+            <label className={styles.filterLabel}>{t('Screen Status')}</label>
             <CustomSelect
               id="filter-status"
               value={filterStatus}
               onChange={(val) => setFilterStatus(val)}
               options={[
-                { value: 'all', label: 'All Statuses' },
-                { value: 'online', label: 'Online' },
-                { value: 'offline', label: 'Offline' },
-                { value: 'pairing', label: 'Pairing Mode' }
+                { value: 'all', label: t('All Statuses') },
+                { value: 'online', label: t('Online') },
+                { value: 'offline', label: t('Offline') },
+                { value: 'pairing', label: t('Pairing Mode') }
               ]}
             />
           </div>
           
           <div key="orientation-filter-container" className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Orientation</label>
+            <label className={styles.filterLabel}>{t('Orientation')}</label>
             <CustomSelect
               id="filter-orientation"
               value={filterOrientation}
               onChange={(val) => setFilterOrientation(val)}
               options={[
-                { value: 'all', label: 'All Orientations' },
-                { value: '0', label: '0° (Landscape)' },
-                { value: '90', label: '90° (Portrait)' },
-                { value: '180', label: '180° (Landscape Flipped)' },
-                { value: '270', label: '270° (Portrait Flipped)' }
+                { value: 'all', label: t('All Orientations') },
+                { value: '0', label: t('0° (Landscape)') },
+                { value: '90', label: t('Rotate 90°') },
+                { value: '180', label: t('Rotate 180°') },
+                { value: '270', label: t('Rotate 270°') }
               ]}
             />
           </div>
 
           <div key="date-preset-filter-container" className={styles.filterGroup}>
-            <label className={styles.filterLabel}>Date Added</label>
+            <label className={styles.filterLabel}>{t('Date Added')}</label>
             <CustomSelect
               id="filter-date-preset"
               value={filterDatePreset}
               onChange={(val) => setFilterDatePreset(val)}
               options={[
-                { value: 'all', label: 'Any time' },
-                { value: 'today', label: 'Today' },
-                { value: '7days', label: 'Last 7 Days' },
-                { value: '30days', label: 'Last 30 Days' },
-                { value: 'custom', label: 'Custom Date Range' }
+                { value: 'all', label: t('Any time') },
+                { value: 'today', label: t('Today') },
+                { value: '7days', label: t('Last 7 Days') },
+                { value: '30days', label: t('Last 30 Days') },
+                { value: 'custom', label: t('Custom Date Range') }
               ]}
             />
           </div>
@@ -209,12 +212,12 @@ export function FilterSidebar({
           {filterDatePreset === 'custom' && (
             <React.Fragment key="custom-date-inputs">
               <div key="custom-date-start-container" className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Added After</label>
+                <label className={styles.filterLabel}>{t('Added After')}</label>
                 <input type="date" className={styles.filterInput} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
               </div>
               
               <div key="custom-date-end-container" className={styles.filterGroup}>
-                <label className={styles.filterLabel}>Added Before</label>
+                <label className={styles.filterLabel}>{t('Added Before')}</label>
                 <input type="date" className={styles.filterInput} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
               </div>
             </React.Fragment>
@@ -233,7 +236,7 @@ export function FilterSidebar({
               localStorage.setItem('filterGroupIds', JSON.stringify([]));
             }}
           >
-            Reset All Filters
+            {t('Reset All Filters')}
           </button>
         </div>
       </aside>

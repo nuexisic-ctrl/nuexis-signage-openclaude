@@ -4,7 +4,7 @@ import React, { useTransition, useRef, useEffect } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { deleteAssetsBulk } from './actions'
 import styles from './Modal.module.css'
-import { t } from '@/lib/i18n'
+import { useTranslation } from '@/lib/i18n'
 
 import { toast } from '@/app/components/Toast'
 
@@ -21,6 +21,7 @@ export function BulkDeleteModal({
   onClose,
   onSuccess,
 }: BulkDeleteModalProps) {
+  const { t } = useTranslation()
   const [isPending, startTransition] = useTransition()
   const overlayRef = useRef<HTMLDivElement>(null)
 

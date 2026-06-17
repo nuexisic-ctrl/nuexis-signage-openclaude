@@ -6,8 +6,11 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import styles from './generic-login.module.css'
 import { toast } from '@/app/components/Toast'
+import { useTranslation } from '@/lib/i18n'
+import LanguageSelector from '@/app/components/LanguageSelector'
 
 export default function GenericLoginForm() {
+  const { t } = useTranslation()
   const router = useRouter()
   const [slug, setSlug] = useState('')
   const [shouldShake, setShouldShake] = useState(false)
@@ -28,13 +31,13 @@ export default function GenericLoginForm() {
     const trimmed = slug.trim().toLowerCase()
 
     if (!trimmed) {
-      toast.error('Please enter your workspace name.')
+      toast.error(t('Please enter your workspace name.'))
       triggerShake()
       return
     }
 
     if (!/^[a-z0-9-]+$/.test(trimmed)) {
-      toast.error('Workspace names can only contain lowercase letters, numbers, and dashes.')
+      toast.error(t('Workspace names can only contain lowercase letters, numbers, and dashes.'))
       triggerShake()
       return
     }
@@ -53,6 +56,11 @@ export default function GenericLoginForm() {
 
   return (
     <div className={`${styles.lightThemeWrapper} ${styles.authShellContainer} auth-shell`}>
+      {/* Floating Language Selector */}
+      <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10 }}>
+        <LanguageSelector align="right" />
+      </div>
+
       <div className={`${styles.loginWrapper} ${shouldShake ? styles.shake : ''}`}>
         
         {/* Header */}
@@ -68,9 +76,9 @@ export default function GenericLoginForm() {
               sizes="(max-width: 768px) 100vw, 140px" 
             />
           </Link>
-          <h1 className={styles.loginTitle} style={{ marginTop: '8px' }}>Find your workspace</h1>
+          <h1 className={styles.loginTitle} style={{ marginTop: '8px' }}>{t('Find your workspace')}</h1>
           <p className={styles.loginSubtitle}>
-            NuExis workspaces have their own unique, secure URLs.
+            {t('NuExis workspaces have their own unique, secure URLs.')}
           </p>
         </div>
 
@@ -79,7 +87,7 @@ export default function GenericLoginForm() {
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label htmlFor="workspace-slug">Workspace Name</label>
+              <label htmlFor="workspace-slug">{t('Workspace Name')}</label>
               
               <div className={styles.inputContainer}>
                 <span className={styles.inputIcon} aria-hidden="true">
@@ -102,7 +110,7 @@ export default function GenericLoginForm() {
 
               {/* Dynamic URL Preview Indicator */}
               <div className={styles.urlPreviewBlock}>
-                <span className={styles.previewLabel}>Your login URL will be:</span>
+                <span className={styles.previewLabel}>{t('Your login URL will be:')}</span>
                 <div className={styles.previewUrlField}>
                   {currentProtocol}//{currentHost}/customer/<strong style={{ color: 'var(--primary)', fontWeight: 700 }}>{slug.trim().toLowerCase() || 'workspace-name'}</strong>/login
                 </div>
@@ -114,7 +122,7 @@ export default function GenericLoginForm() {
               className="btn btn-primary"
               style={{ width: '100%', padding: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
             >
-              Continue to Workspace
+              {t('Continue to Workspace')}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '4px' }}>
                 <line x1="5" y1="12" x2="19" y2="12" />
                 <polyline points="12 5 19 12 12 19" />
@@ -123,7 +131,7 @@ export default function GenericLoginForm() {
           </form>
 
           {/* Form Divider */}
-          <div className="divider" style={{ margin: '18px 0' }}>New to NuExis?</div>
+          <div className="divider" style={{ margin: '18px 0' }}>{t('New to NuExis?')}</div>
 
           {/* Secondary Button */}
           <Link
@@ -137,20 +145,19 @@ export default function GenericLoginForm() {
               <line x1="19" y1="8" x2="19" y2="14" />
               <line x1="16" y1="11" x2="22" y2="11" />
             </svg>
-            Create a new workspace
+            {t('Create a new workspace')}
           </Link>
-
 
         </div>
 
         {/* Footer */}
         <footer className={styles.minimalFooter}>
           <div className={styles.footerLinks}>
-            <Link href="#">Privacy Policy</Link>
-            <Link href="#">Terms of Service</Link>
-            <Link href="#">Contact Us</Link>
+            <Link href="#">{t('Privacy Policy')}</Link>
+            <Link href="#">{t('Terms of Service')}</Link>
+            <Link href="#">{t('Contact Us')}</Link>
           </div>
-          <span className={styles.footerCopyright}>© 2024 NuExis. All rights reserved.</span>
+          <span className={styles.footerCopyright}>© {new Date().getFullYear()} NuExis. All rights reserved.</span>
         </footer>
       </div>
     </div>

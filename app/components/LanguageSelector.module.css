@@ -1,0 +1,128 @@
+.container {
+  position: relative;
+  display: inline-block;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: var(--radius-full, 9999px);
+  border: 1px solid var(--outline-variant, rgba(226, 232, 240, 0.8));
+  background: var(--surface-lowest, #ffffff);
+  color: var(--on-surface, #0f172a);
+  font-family: var(--font-label, inherit);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base, 0.2s ease);
+  outline: none;
+}
+
+.trigger:hover {
+  background: var(--surface-low, #f8fafc);
+  border-color: var(--primary, #094cb2);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.triggerActive {
+  border-color: var(--primary, #094cb2);
+  background: var(--surface-low, #f8fafc);
+  box-shadow: 0 0 0 2px var(--primary-container, rgba(9, 76, 178, 0.1));
+}
+
+.globeIcon {
+  color: var(--on-surface-muted, #64748b);
+  transition: color 0.2s;
+}
+
+.trigger:hover .globeIcon,
+.triggerActive .globeIcon {
+  color: var(--primary, #094cb2);
+}
+
+.label {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrow {
+  color: var(--on-surface-subtle, #94a3b8);
+  transition: transform 0.2s ease;
+}
+
+.arrowOpen {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu Styles (Portal-positioned) */
+.dropdown {
+  background: var(--surface-lowest, #ffffff);
+  border: 1px solid var(--outline-variant, rgba(226, 232, 240, 0.8));
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-modal, 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1));
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.95);
+  animation: slideDown 0.15s ease-out;
+}
+
+[data-theme="dark"] .dropdown {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(51, 65, 85, 0.8);
+}
+
+.optionsList {
+  padding: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.optionBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--on-surface, #0f172a);
+  font-family: var(--font-label, inherit);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.optionBtn:hover {
+  background: var(--surface-low, rgba(241, 245, 249, 0.8));
+  color: var(--primary, #094cb2);
+}
+
+.optionActive {
+  background: var(--primary-container, rgba(9, 76, 178, 0.08));
+  color: var(--primary, #094cb2);
+  font-weight: 600;
+}
+
+.checkIcon {
+  color: var(--primary, #094cb2);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

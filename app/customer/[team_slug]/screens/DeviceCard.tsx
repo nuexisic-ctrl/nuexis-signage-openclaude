@@ -3,6 +3,7 @@ import styles from './DeviceCard.module.css'
 import { Device, Asset, Playlist, LiveStatus } from './types'
 import { DeviceIcon, StatusBadge, formatLastSeen, getContentLabel, resolveDeviceContent } from './DeviceIcon'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
+import { useTranslation } from '@/lib/i18n'
 
 export interface DeviceCardProps {
   device: Device
@@ -37,11 +38,14 @@ export function DeviceCard({
   onToggleSelect,
   onGroupClick
 }: DeviceCardProps) {
-  const createdAt = new Date(device.created_at).toLocaleDateString('en-US', {
+  const { t, formatDate } = useTranslation()
+  
+  const createdAt = formatDate(device.created_at, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   })
+  
   const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online')
 
   // Find member groups
@@ -51,6 +55,7 @@ export function DeviceCard({
   // Resolve content from group if device has no explicit content set
   const resolvedDevice = resolveDeviceContent(device, groups, memberships)
   const isInherited = !device.content_type && resolvedDevice.content_type
+  
   const handleCardClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (
@@ -110,7 +115,7 @@ export function DeviceCard({
           </div>
           <div>
             <h3 className={styles.deviceName}>
-              <FilenameTruncator filename={device.name || 'Unnamed Screen'} />
+              <FilenameTruncator filename={device.name || t('Unnamed Screen')} />
             </h3>
             {deviceGroups.length > 0 && (
               <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
@@ -146,6 +151,7 @@ export function DeviceCard({
             <button 
               className={`${styles.moreBtn} ${menuOpen ? styles.active : ''}`}
               onClick={onToggleMenu}
+              aria-label={t('Open selection menu')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                 <circle cx="12" cy="12" r="1.5" />
@@ -156,13 +162,13 @@ export function DeviceCard({
             {menuOpen && (
               <div className={styles.moreDropdown}>
                 <button className={styles.dropdownItem} onClick={onEdit}>
-                  Edit Content
+                  {t('Edit Content')}
                 </button>
                 <button className={styles.dropdownItem} onClick={onRename}>
-                  Rename
+                  {t('Rename')}
                 </button>
                 <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={onDelete}>
-                  Delete
+                  {t('Delete')}
                 </button>
               </div>
             )}
@@ -171,25 +177,25 @@ export function DeviceCard({
       </div>
       <div className={styles.deviceMeta}>
         <div className={styles.deviceMetaRow}>
-          <span className={styles.deviceMetaLabel}>ADDED</span>
+          <span className={styles.deviceMetaLabel}>{t('ADDED')}</span>
           <span className={styles.deviceMetaValue}>{createdAt}</span>
         </div>
         <div className={styles.deviceMetaRow}>
-          <span className={styles.deviceMetaLabel}>CURRENT CONTENT</span>
+          <span className={styles.deviceMetaLabel}>{t('CURRENT CONTENT')}</span>
           <span 
             className={styles.deviceMetaValue} 
             style={(!resolvedDevice.asset_id && !resolvedDevice.playlist_id) ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}
           >
             <FilenameTruncator filename={getContentLabel(resolvedDevice, assets, playlists)} /> {isInherited && (
               <span style={{ fontSize: '0.72rem', color: 'var(--primary)', opacity: 0.85, fontWeight: 500, fontStyle: 'italic', marginLeft: '4px' }}>
-                (Group)
+                ({t('Group')})
               </span>
             )}
           </span>
         </div>
         <div className={styles.deviceMetaRow}>
-          <span className={styles.deviceMetaLabel}>LAST SEEN</span>
-          <span className={styles.deviceMetaValue}>{lastSeen}</span>
+          <span className={styles.deviceMetaLabel}>{t('LAST SEEN')}</span>
+          <span className={styles.deviceMetaValue}>{t(lastSeen)}</span>
         </div>
       </div>
     </div>

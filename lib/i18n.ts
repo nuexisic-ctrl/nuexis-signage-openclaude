@@ -1,93 +1,159 @@
-const translations = new Map<string, string>([
-  ['Something went wrong', 'Something went wrong'],
-  ['An unexpected error occurred. Please try refreshing the page.', 'An unexpected error occurred. Please try refreshing the page.'],
-  ['Reload Page', 'Reload Page'],
-  ['Loading…', 'Loading…'],
-  ['Rename Asset', 'Rename Asset'],
-  ['Asset Name', 'Asset Name'],
-  ['Cancel', 'Cancel'],
-  ['Delete Asset', 'Delete Asset'],
-  ['Are you sure you want to delete ', 'Are you sure you want to delete '],
-  ['This action will permanently remove the asset from your library. Any screens currently displaying this asset will stop showing it.', 'This action will permanently remove the asset from your library. Any screens currently displaying this asset will stop showing it.'],
-  ['Preview', 'Preview'],
-  ['Download', 'Download'],
-  ['Rename', 'Rename'],
-  ['Delete', 'Delete'],
-  ['Asset Library', 'Asset Library'],
-  ['No assets found', 'No assets found'],
-  ['Error rendering custom HTML widget', 'Error rendering custom HTML widget'],
-  ['Error rendering Clock widget', 'Error rendering Clock widget'],
-  ['Preview not available for this type.', 'Preview not available for this type.'],
-  ['File Name', 'File Name'],
-  ['Type', 'Type'],
-  ['Size', 'Size'],
-  ['Date Added', 'Date Added'],
-  ['Actions', 'Actions'],
-  ['Advanced Filters', 'Advanced Filters'],
-  ['File Type', 'File Type'],
-  ['All Types', 'All Types'],
-  ['Images', 'Images'],
-  ['Videos', 'Videos'],
-  ['Widgets', 'Widgets'],
-  ['Any time', 'Any time'],
-  ['Today', 'Today'],
-  ['Last 7 Days', 'Last 7 Days'],
-  ['Last 30 Days', 'Last 30 Days'],
-  ['Custom Date Range', 'Custom Date Range'],
-  ['Added After', 'Added After'],
-  ['Added Before', 'Added Before'],
-  ['Storage Size', 'Storage Size'],
-  ['Any size', 'Any size'],
-  ['Under 1 MB', 'Under 1 MB'],
-  ['Custom Size Range', 'Custom Size Range'],
-  ['Min Size (MB)', 'Min Size (MB)'],
-  ['Max Size (MB)', 'Max Size (MB)'],
-  ['Reset All Filters', 'Reset All Filters'],
-  ['Create Clock Widget', 'Create Clock Widget'],
-  ['Deploy elegant, sandboxed, high-performance clocks on your displays.', 'Deploy elegant, sandboxed, high-performance clocks on your displays.'],
-  ['Widget Name', 'Widget Name'],
-  ['Clock Style', 'Clock Style'],
-  ['Date Format', 'Date Format'],
-  ['Show Seconds', 'Show Seconds'],
-  ['Show Date', 'Show Date'],
-  ['Fullscreen (', 'Fullscreen ('],
-  ['Uploading…', 'Uploading…'],
-  ['or click to browse', 'or click to browse'],
-  ['Supports JPEG, PNG, MP4, WEBM, PDF · Max 50 MB per file', 'Supports JPEG, PNG, MP4, WEBM, PDF · Max 50 MB per file'],
-  ['Select Widget', 'Select Widget'],
-  ['Configure YouTube Widget', 'Configure YouTube Widget'],
-  ['YouTube URL', 'YouTube URL'],
-  ['Configure Remote URL', 'Configure Remote URL'],
-  ['Media URL (HTTP/HTTPS)', 'Media URL (HTTP/HTTPS)'],
-  ['Text/HTML Widget', 'Text/HTML Widget'],
-  ['Create Text / HTML Widget', 'Create Text / HTML Widget'],
-  ['Design customized rich-text, layouts, and cards using custom HTML + CSS styling.', 'Design customized rich-text, layouts, and cards using custom HTML + CSS styling.'],
-  ['HTML Code (Body Contents)', 'HTML Code (Body Contents)'],
-  ['CSS Code (Styles ', 'CSS Code (Styles '],
-  ['Real-time Code Diagnostics ', 'Real-time Code Diagnostics '],
-  ['Ctrl', 'Ctrl'],
-  ['Theme', 'Theme'],
-  ['Light', 'Light'],
-  ['Dark', 'Dark'],
-  ['Settings', 'Settings'],
-  ['All statuses', 'All statuses'],
-  ['Online', 'Online'],
-  ['Offline', 'Offline'],
-  ['Pairing', 'Pairing'],
-  ['All content', 'All content'],
-  ['Playlist', 'Playlist'],
-  ['Asset', 'Asset'],
-  ['Unassigned', 'Unassigned'],
-  ['All playlists', 'All playlists'],
-  ['All assets', 'All assets'],
-  ['Reset', 'Reset'],
-  ['All widgets are visible', 'All widgets are visible'],
-  ['No widgets selected', 'No widgets selected'],
-  ['Use “Add Widget” to bring widgets back.', 'Use “Add Widget” to bring widgets back.'],
-  ['Dashboard', 'Dashboard'],
-  ['Welcome back', 'Welcome back']
-])
+'use client'
 
-export function t(key: string): string {
-  return translations.get(key) ?? key
+import { useState, useEffect } from 'react'
+import { translations, type LocaleType } from './i18n/locales'
+
+// Supported locales list
+export const SUPPORTED_LOCALES: { code: LocaleType; label: string; nativeLabel: string }[] = [
+  { code: 'en', label: 'English', nativeLabel: 'English' },
+  { code: 'hi', label: 'Hindi', nativeLabel: 'हिन्दी' },
+  { code: 'de', label: 'German', nativeLabel: 'Deutsch' },
+  { code: 'es', label: 'Spanish', nativeLabel: 'Español' },
+  { code: 'fr', label: 'French', nativeLabel: 'Français' },
+  { code: 'it', label: 'Italian', nativeLabel: 'Italiano' },
+  { code: 'nl', label: 'Dutch', nativeLabel: 'Nederlands' },
+  { code: 'pt', label: 'Portuguese', nativeLabel: 'Português' },
+  { code: 'sv', label: 'Swedish', nativeLabel: 'Svenska' },
+  { code: 'ja', label: 'Japanese', nativeLabel: '日本語' }
+]
+
+// Determine initial locale safely on server vs client
+let currentLocale: LocaleType = 'en'
+
+if (typeof window !== 'undefined') {
+  try {
+    const saved = localStorage.getItem('nuexis_locale')
+    if (saved && saved in translations) {
+      currentLocale = saved as LocaleType
+    } else {
+      // Check cookies as fallback
+      const cookies = document.cookie.split(';')
+      const localeCookie = cookies.find(c => c.trim().startsWith('nuexis_locale='))
+      if (localeCookie) {
+        const val = localeCookie.split('=')[1]?.trim()
+        if (val && val in translations) {
+          currentLocale = val as LocaleType
+        }
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+}
+
+const listeners = new Set<() => void>()
+
+export function getLocale(): LocaleType {
+  return currentLocale
+}
+
+export function setLocale(locale: LocaleType) {
+  if (locale !== currentLocale && locale in translations) {
+    currentLocale = locale
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('nuexis_locale', locale)
+        document.cookie = `nuexis_locale=${locale}; path=/; max-age=31536000; SameSite=Lax`
+      } catch (_) {
+        // ignore
+      }
+    }
+    listeners.forEach(listener => {
+      try {
+        listener()
+      } catch (_) {
+        // ignore
+      }
+    })
+  }
+}
+
+// Reactive hook to subscribe components to language updates
+export function useTranslation() {
+  const [, setTick] = useState(0)
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setTick(t => t + 1)
+    }
+    listeners.add(handleUpdate)
+    return () => {
+      listeners.delete(handleUpdate)
+    }
+  }, [])
+
+  return {
+    t,
+    locale: currentLocale,
+    setLocale,
+    formatDate,
+    formatTime,
+    formatNumber,
+    formatCurrency
+  }
+}
+
+// Global translate function (supports replacements e.g. t('Hello {name}', { name: 'John' }))
+export function t(key: string, replacements?: Record<string, string | number>): string {
+  const localeTranslations = translations[currentLocale] || translations['en']
+  let text = localeTranslations?.[key] ?? translations['en']?.[key] ?? key
+
+  if (replacements) {
+    Object.entries(replacements).forEach(([k, v]) => {
+      text = text.replace(new RegExp(`{${k}}`, 'g'), String(v))
+    })
+  }
+
+  return text
+}
+
+// Native formatting helpers using the active locale
+export function formatDate(
+  date: Date | string | number,
+  options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
+): string {
+  try {
+    const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date
+    if (isNaN(d.getTime())) return String(date)
+    return new Intl.DateTimeFormat(currentLocale, options).format(d)
+  } catch (_) {
+    return String(date)
+  }
+}
+
+export function formatTime(
+  date: Date | string | number,
+  options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+): string {
+  try {
+    const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date
+    if (isNaN(d.getTime())) return String(date)
+    return new Intl.DateTimeFormat(currentLocale, options).format(d)
+  } catch (_) {
+    return String(date)
+  }
+}
+
+export function formatNumber(num: number, options?: Intl.NumberFormatOptions): string {
+  try {
+    return new Intl.NumberFormat(currentLocale, options).format(num)
+  } catch (_) {
+    return String(num)
+  }
+}
+
+export function formatCurrency(
+  num: number,
+  currency = 'USD',
+  options: Intl.NumberFormatOptions = {}
+): string {
+  try {
+    return new Intl.NumberFormat(currentLocale, {
+      style: 'currency',
+      currency,
+      ...options
+    }).format(num)
+  } catch (_) {
+    return `${currency} ${num}`
+  }
 }

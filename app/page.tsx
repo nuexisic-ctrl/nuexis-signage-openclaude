@@ -1,8 +1,14 @@
-import Image from 'next/image';
-import Link from 'next/link';
-import { ArrowRight, MonitorSmartphone, Layers, Zap } from 'lucide-react';
+'use client'
+
+import Image from 'next/image'
+import Link from 'next/link'
+import { ArrowRight, MonitorSmartphone, Layers, Zap } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n'
+import LanguageSelector from '@/app/components/LanguageSelector'
 
 export default function Home() {
+  const { t } = useTranslation()
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
       {/* Navigation */}
@@ -12,14 +18,15 @@ export default function Home() {
             <Image src="/Nuexis-logo.png" alt="NuExis Logo" width={140} height={40} priority style={{ width: 'auto', height: 'auto' }} sizes="(max-width: 768px) 100vw, 140px" />
           </div>
           <div className="flex items-center gap-4">
+            <LanguageSelector align="right" />
             <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
-              Log In
+              {t('Log In')}
             </Link>
             <Link 
               href="/signup" 
               className="text-sm font-medium bg-brand hover:bg-brand-light text-white px-5 py-2 rounded-full shadow-md hover:shadow-lg transition-all"
             >
-              Sign Up
+              {t('Sign Up')}
             </Link>
           </div>
         </div>
@@ -34,20 +41,20 @@ export default function Home() {
           
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div className="inline-flex items-center rounded-full px-3 py-1 text-sm font-medium text-brand bg-blue-50 ring-1 ring-inset ring-blue-100 mb-8">
-              Multi-Tenant Digital Signage Platform
+              {t('Multi-Tenant Digital Signage Platform')}
             </div>
             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-slate-900 mb-8 max-w-4xl mx-auto leading-tight">
-              Control every screen, <br className="hidden md:block" /> from one elegant dashboard.
+              {t('Control every screen,')} <br className="hidden md:block" /> {t('from one elegant dashboard.')}
             </h1>
             <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Deploy beautiful, dynamic content to any display across the globe. NuExis is the premier digital signage solution built for teams that demand excellence.
+              {t('Deploy beautiful, dynamic content to any display across the globe. NuExis is the premier digital signage solution built for teams that demand excellence.')}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link 
                 href="/signup" 
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-light text-white px-8 py-4 rounded-full text-lg font-semibold shadow-xl shadow-blue-900/20 hover:shadow-blue-900/30 transition-all hover:-translate-y-0.5"
               >
-                Create Workspace <ArrowRight className="w-5 h-5" />
+                {t('Create Workspace')} <ArrowRight className="w-5 h-5" />
               </Link>
             </div>
           </div>
@@ -57,8 +64,8 @@ export default function Home() {
         <section className="py-24 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold text-slate-900 mb-4">Enterprise-grade capabilities</h2>
-              <p className="text-slate-600 max-w-2xl mx-auto">Everything you need to manage your digital real estate at scale.</p>
+              <h2 className="text-3xl font-bold text-slate-900 mb-4">{t('Enterprise-grade capabilities')}</h2>
+              <p className="text-slate-600 max-w-2xl mx-auto">{t('Everything you need to manage your digital real estate at scale.')}</p>
             </div>
             
             <div className="grid md:grid-cols-3 gap-12">
@@ -66,22 +73,22 @@ export default function Home() {
                 <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-6">
                   <Layers className="text-brand w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">Multi-Tenant Architecture</h3>
-                <p className="text-slate-600 leading-relaxed">Isolated team workspaces with role-based access control. Manage multiple brands or clients from a single login.</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">{t('Multi-Tenant Architecture')}</h3>
+                <p className="text-slate-600 leading-relaxed">{t('Isolated team workspaces with role-based access control. Manage multiple brands or clients from a single login.')}</p>
               </div>
               <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
                 <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-6">
                   <Zap className="text-brand w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">Real-Time Delivery</h3>
-                <p className="text-slate-600 leading-relaxed">Push updates to your screens instantly. Enjoy pure WebSocket speed without polling or unexpected delays.</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">{t('Real-Time Delivery')}</h3>
+                <p className="text-slate-600 leading-relaxed">{t('Push updates to your screens instantly. Enjoy pure WebSocket speed without polling or unexpected delays.')}</p>
               </div>
               <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100">
                 <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-6">
                   <MonitorSmartphone className="text-brand w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-3">Device Fleet Management</h3>
-                <p className="text-slate-600 leading-relaxed">Monitor, reboot, and configure thousands of devices securely. See real-time screenshots and health metrics.</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">{t('Device Fleet Management')}</h3>
+                <p className="text-slate-600 leading-relaxed">{t('Monitor, reboot, and configure thousands of devices securely. See real-time screenshots and health metrics.')}</p>
               </div>
             </div>
           </div>
@@ -97,5 +104,5 @@ export default function Home() {
         </div>
       </footer>
     </div>
-  );
+  )
 }

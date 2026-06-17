@@ -11,6 +11,7 @@ import { Device } from './types'
 import { deleteGroup } from '../groups/actions'
 import { toast } from '@/app/components/Toast'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
+import { useTranslation } from '@/lib/i18n'
 
 interface Group {
   id: string
@@ -72,6 +73,7 @@ export function GroupsSection({
   isRefreshing = false,
   showSuccessPulse = false
 }: GroupsSectionProps) {
+  const { t } = useTranslation()
   const kindClassMap: Record<string, string> = {
     clock:        styles.contentIcon_clock,
     countdown:    styles.contentIcon_countdown,
@@ -110,7 +112,7 @@ export function GroupsSection({
 
   const handleDeleteSelectedGroups = () => {
     if (selectedGroupIds.size === 0) return
-    if (!window.confirm(`Are you sure you want to delete the ${selectedGroupIds.size} selected group(s)?`)) return
+    if (!window.confirm(t('Are you sure you want to delete the {count} selected group(s)?', { count: selectedGroupIds.size }))) return
 
     startTransition(async () => {
       let successCount = 0
@@ -122,11 +124,11 @@ export function GroupsSection({
         if (res.success) {
           successCount++
         } else {
-          lastError = res.error || `Failed to delete group "${name}".`
+          lastError = res.error || t('Failed to delete group "{name}".', { name })
         }
       }
       if (successCount > 0) {
-        toast.success(`Deleted ${successCount} group(s) successfully`)
+        toast.success(t('Deleted {count} group(s) successfully', { count: successCount }))
         setSelectedGroupIds(new Set())
         router.refresh()
       }
@@ -195,14 +197,14 @@ export function GroupsSection({
                       setSelectedGroupIds(new Set())
                     }
                   }}
-                  aria-label="Select all groups"
+                  aria-label={t('Select all groups')}
                   className={styles.globalSelectCheckbox}
                 />
                 <button
                   type="button"
                   onClick={() => setIsSelectDropdownOpen(!isSelectDropdownOpen)}
                   className={styles.globalSelectDropdownBtn}
-                  aria-label="Open selection menu"
+                  aria-label={t('Open selection menu')}
                 >
                   <ChevronDown size={14} />
                 </button>
@@ -217,7 +219,7 @@ export function GroupsSection({
                       }}
                       className={styles.globalSelectDropdownItem}
                     >
-                      Select All ({filteredGroups.length})
+                      {t('Select All')} ({filteredGroups.length})
                     </button>
                     <div className={styles.globalSelectDropdownDivider} />
                     <button
@@ -228,7 +230,7 @@ export function GroupsSection({
                       }}
                       className={`${styles.globalSelectDropdownItem} ${styles.globalSelectDropdownItemDanger}`}
                     >
-                      Deselect All
+                      {t('Deselect All')}
                     </button>
                   </div>
                 )}
@@ -241,7 +243,7 @@ export function GroupsSection({
                 <input 
                   type="text" 
                   className={styles.searchInput}
-                  placeholder="Search groups..."
+                  placeholder={t('Search groups...')}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value)
@@ -255,14 +257,14 @@ export function GroupsSection({
             <div className={styles.controlsRight}>
               {selectedGroupIds.size > 0 && (
                 <div className={styles.selectedActionsContainer}>
-                  <div className={styles.selectedCountBadge} title={`${selectedGroupIds.size} groups selected`}>
+                  <div className={styles.selectedCountBadge} title={t('{count} groups selected', { count: selectedGroupIds.size })}>
                     <span className={styles.selectedCountNumber}>{selectedGroupIds.size}</span>
-                    <span className={styles.selectedCountText}>Selected</span>
+                    <span className={styles.selectedCountText}>{t('Selected')}</span>
                   </div>
                   <button
                     className={`${styles.bulkActionIconBtn} ${styles.bulkActionIconBtnDanger}`}
                     onClick={handleDeleteSelectedGroups}
-                    title="Delete Selected Groups"
+                    title={t('Delete Selected Groups')}
                     type="button"
                     disabled={isPending}
                   >
@@ -271,7 +273,7 @@ export function GroupsSection({
                   <button
                     className={styles.bulkActionIconBtn}
                     onClick={() => setSelectedGroupIds(new Set())}
-                    title="Clear selection"
+                    title={t('Clear selection')}
                     type="button"
                     disabled={isPending}
                   >
@@ -286,7 +288,7 @@ export function GroupsSection({
                 <button 
                   className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.active : ''}`}
                   onClick={() => handleSetViewMode('table')}
-                  title="Table View"
+                  title={t('Table View')}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -300,7 +302,7 @@ export function GroupsSection({
                 <button 
                   className={`${styles.viewToggleBtn} ${viewMode === 'grid' ? styles.active : ''}`}
                   onClick={() => handleSetViewMode('grid')}
-                  title="Grid View"
+                  title={t('Grid View')}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="3" width="7" height="7" rx="1" ry="1"></rect>
@@ -323,9 +325,9 @@ export function GroupsSection({
             <div className={styles.emptyIcon}>
               <FolderTree size={20} />
             </div>
-            <h3 className={styles.emptyTitle}>No groups created yet</h3>
+            <h3 className={styles.emptyTitle}>{t('No groups created yet')}</h3>
             <p className={styles.emptyText}>
-              Use the "+ New Group" button to organize your screens.
+              {t('Use the "+ New Group" button to organize your screens.')}
             </p>
           </div>
         ) : filteredGroups.length === 0 ? (
@@ -333,9 +335,9 @@ export function GroupsSection({
             <div className={styles.emptyIcon}>
               <FolderTree size={20} />
             </div>
-            <h3 className={styles.emptyTitle}>No groups found</h3>
+            <h3 className={styles.emptyTitle}>{t('No groups found')}</h3>
             <p className={styles.emptyText}>
-              No groups matched your search criteria.
+              {t('No groups matched your search criteria.')}
             </p>
           </div>
         ) : viewMode === 'table' ? (
@@ -344,11 +346,11 @@ export function GroupsSection({
             <thead>
               <tr>
                 <th style={{ width: '40px', textAlign: 'center' }} />
-                <th style={{ width: '25%' }}>Group Name</th>
-                <th style={{ width: '15%' }}>Screens</th>
-                <th style={{ width: '20%' }}>Live Status</th>
-                <th style={{ width: '30%' }}>Content Assigned</th>
-                <th style={{ width: '10%', textAlign: 'right' }}>Actions</th>
+                <th style={{ width: '25%' }}>{t('Group Name')}</th>
+                <th style={{ width: '15%' }}>{t('Screens')}</th>
+                <th style={{ width: '20%' }}>{t('Live Status')}</th>
+                <th style={{ width: '30%' }}>{t('Content Assigned')}</th>
+                <th style={{ width: '10%', textAlign: 'right' }}>{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -359,13 +361,13 @@ export function GroupsSection({
                 const onlineCount = memberDevices.filter(d => onlineDeviceIds ? onlineDeviceIds.has(d.id) : d.status === 'online').length
                 const offlineCount = memberDevices.length - onlineCount
 
-                let contentName = 'no content'
+                let contentName = t('no content')
                 if (group.content_type === 'Asset') {
                   const ast = assets.find(a => a.id === group.asset_id)
-                  contentName = ast ? ast.file_name : 'no content'
+                  contentName = ast ? ast.file_name : t('no content')
                 } else if (group.content_type === 'Playlist') {
                   const pl = playlists.find(p => p.id === group.playlist_id)
-                  contentName = pl ? pl.name : 'no content'
+                  contentName = pl ? pl.name : t('no content')
                 }
 
                 const isSelected = selectedGroupIds.has(group.id)
@@ -410,7 +412,7 @@ export function GroupsSection({
                     <td>
                       <div className={styles.memberCount}>
                         <Monitor size={14} className={styles.subIcon} />
-                        {memberDevices.length} {memberDevices.length === 1 ? 'screen' : 'screens'}
+                        {memberDevices.length} {memberDevices.length === 1 ? t('screen') : t('screens')}
                       </div>
                     </td>
                     <td>
@@ -419,17 +421,17 @@ export function GroupsSection({
                           <>
                             {onlineCount > 0 && (
                               <span className={styles.onlineBadge}>
-                                <span className={styles.statusDotOnline} /> {onlineCount} online
+                                <span className={styles.statusDotOnline} /> {onlineCount} {t('online')}
                               </span>
                             )}
                             {offlineCount > 0 && (
                               <span className={styles.offlineBadge}>
-                                <span className={styles.statusDotOffline} /> {offlineCount} offline
+                                <span className={styles.statusDotOffline} /> {offlineCount} {t('offline')}
                               </span>
                             )}
                           </>
                         ) : (
-                          <span className={styles.noScreensText}>No screens</span>
+                          <span className={styles.noScreensText}>{t('No screens')}</span>
                         )}
                       </div>
                     </td>
@@ -445,7 +447,7 @@ export function GroupsSection({
                             </span>
                           </>
                         ) : (
-                          <span className={styles.unassignedText}>no content</span>
+                          <span className={styles.unassignedText}>{t('no content')}</span>
                         )}
                       </div>
                     </td>
@@ -455,21 +457,21 @@ export function GroupsSection({
                         <button 
                           className={styles.actionBtn} 
                           onClick={() => onSelectGroup(group)}
-                          title="Edit Group"
+                          title={t('Edit Group')}
                         >
                           <Edit3 size={15} />
                         </button>
                         <button 
                           className={`${styles.actionBtn} ${styles.deleteBtn}`} 
                           onClick={() => onDeleteGroup(group)}
-                          title="Delete Group"
+                          title={t('Delete Group')}
                         >
                           <Trash2 size={15} />
                         </button>
                         <button
                           className={styles.actionBtn}
                           onClick={(e) => e.stopPropagation()}
-                          title="More options"
+                          title={t('More options')}
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
                             <circle cx="5" cy="12" r="1.5" />
@@ -494,13 +496,13 @@ export function GroupsSection({
             const onlineCount = memberDevices.filter(d => onlineDeviceIds ? onlineDeviceIds.has(d.id) : d.status === 'online').length
             const offlineCount = memberDevices.length - onlineCount
 
-            let contentName = 'no content'
+            let contentName = t('no content')
             if (group.content_type === 'Asset') {
               const ast = assets.find(a => a.id === group.asset_id)
-              contentName = ast ? ast.file_name : 'no content'
+              contentName = ast ? ast.file_name : t('no content')
             } else if (group.content_type === 'Playlist') {
               const pl = playlists.find(p => p.id === group.playlist_id)
-              contentName = pl ? pl.name : 'no content'
+              contentName = pl ? pl.name : t('no content')
             }
 
             const isSelected = selectedGroupIds.has(group.id)
@@ -562,7 +564,7 @@ export function GroupsSection({
                       />
                     </div>
                     <div className={styles.cardContentMeta}>
-                      <div className={styles.cardContentLabel}>{group.content_type || 'no content'}</div>
+                      <div className={styles.cardContentLabel}>{t(group.content_type || 'no content')}</div>
                       <div className={styles.cardContentName} title={contentName} style={{ display: 'flex', minWidth: 0 }}>
                         <FilenameTruncator filename={contentName} />
                       </div>
@@ -571,10 +573,10 @@ export function GroupsSection({
 
                   <div className={styles.cardStatusRow}>
                     <span className={styles.cardStatus}>
-                      <span className={styles.statusDotOnline} /> {onlineCount} online
+                      <span className={styles.statusDotOnline} /> {onlineCount} {t('online')}
                     </span>
                     <span className={styles.cardStatus}>
-                      <span className={styles.statusDotOffline} /> {offlineCount} offline
+                      <span className={styles.statusDotOffline} /> {offlineCount} {t('offline')}
                     </span>
                   </div>
                 </div>
@@ -584,13 +586,13 @@ export function GroupsSection({
                     className={styles.cardBtn} 
                     onClick={() => onSelectGroup(group)}
                   >
-                    Edit Group
+                    {t('Edit Group')}
                   </button>
                   <button 
                     className={`${styles.cardBtn} ${styles.cardBtnDanger}`} 
                     onClick={() => onDeleteGroup(group)}
                   >
-                    Delete
+                    {t('Delete')}
                   </button>
                 </div>
               </div>
@@ -602,11 +604,11 @@ export function GroupsSection({
       {groups.length > 0 && filteredGroups.length > 0 && (
         <div className={styles.tableFooter}>
           <div className={styles.paginationInfo}>
-            Showing {startItem} to {endItem} of {filteredGroups.length} groups
+            {t('Showing {start} to {end} of {total} groups', { start: startItem, end: endItem, total: filteredGroups.length })}
           </div>
           <div className={styles.footerControls}>
             <div className={styles.perPageSelector}>
-              <span>Per page:</span>
+              <span>{t('Per page:')}</span>
               <select
                 value={pageSize}
                 onChange={(e) => {
@@ -626,7 +628,7 @@ export function GroupsSection({
             </div>
             <div className={styles.pagination}>
               <span className={styles.pageIndicator}>
-                Page {currentPage} of {totalPages}
+                {t('Page {current} of {total}', { current: currentPage, total: totalPages })}
               </span>
               <button 
                 className={styles.pageBtn} 

@@ -8,6 +8,7 @@ import {
   resolveDeviceContent
 } from './DeviceIcon'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
+import { useTranslation } from '@/lib/i18n'
 
 export interface DeviceTableRowProps {
   device: Device
@@ -46,6 +47,7 @@ export function DeviceTableRow({
   onToggleSelect,
   onGroupClick
 }: DeviceTableRowProps) {
+  const { t } = useTranslation()
   const [now, setNow] = React.useState(Date.now())
 
   React.useEffect(() => {
@@ -125,7 +127,7 @@ export function DeviceTableRow({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <div className={styles.cellName}>
-                <FilenameTruncator filename={device.name || 'Unnamed Screen'} />
+                <FilenameTruncator filename={device.name || t('Unnamed Screen')} />
               </div>
             </div>
             <div className={styles.cellId}>
@@ -145,7 +147,7 @@ export function DeviceTableRow({
             className={`${styles.statusDot} ${isOnline ? styles.statusDotOnline : styles.statusDotOffline}`}
             style={{ marginRight: '8px' }}
           />
-          {lastSeen}
+          {t(lastSeen)}
         </div>
       </td>
 
@@ -156,9 +158,9 @@ export function DeviceTableRow({
             <ContentIcon kind={kind} size={16} />
           </span>
           <span className={isEmpty ? styles.playlistCellEmptyText : styles.playlistCellText}>
-            {isEmpty ? label : <FilenameTruncator filename={label} />} {isInherited && (
+            {isEmpty ? t(label) : <FilenameTruncator filename={label} />} {isInherited && (
               <span style={{ fontSize: '0.72rem', color: 'var(--primary)', opacity: 0.85, fontWeight: 500, fontStyle: 'italic', marginLeft: '4px' }}>
-                (Group)
+                ({t('Group')})
               </span>
             )}
           </span>
@@ -167,7 +169,7 @@ export function DeviceTableRow({
 
       <td className={styles.tableCell} style={{ textAlign: 'right' }}>
         <div className={styles.actionsGroup}>
-          <button className={styles.actionBtnBox} onClick={onEdit} aria-label="Edit">
+          <button className={styles.actionBtnBox} onClick={onEdit} aria-label={t('Edit')}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
             </svg>
@@ -175,7 +177,7 @@ export function DeviceTableRow({
           <button
             className={`${styles.actionBtnBox} ${styles.actionBtnDanger}`}
             onClick={(e) => { e.stopPropagation(); onDelete() }}
-            aria-label="Delete"
+            aria-label={t('Delete')}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="3 6 5 6 21 6" />
@@ -201,7 +203,7 @@ export function DeviceTableRow({
                   setOpenMenuId(device.id)
                 }
               }}
-              aria-label="More Actions"
+              aria-label={t('More Actions')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
                 <circle cx="12" cy="12" r="1.5" />
@@ -220,14 +222,14 @@ export function DeviceTableRow({
                   setMenuPosition(null)
                   onEdit()
                 }}>
-                  Edit Content
+                  {t('Edit Content')}
                 </button>
                 <button className={styles.dropdownItem} onClick={() => {
                   setOpenMenuId(null)
                   setMenuPosition(null)
                   onRename()
                 }}>
-                  Rename
+                  {t('Rename')}
                 </button>
               </div>,
               document.body
@@ -238,4 +240,3 @@ export function DeviceTableRow({
     </tr>
   )
 }
-

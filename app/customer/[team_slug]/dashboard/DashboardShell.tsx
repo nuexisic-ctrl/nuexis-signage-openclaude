@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Plus, RotateCcw } from 'lucide-react'
-import { t } from '@/lib/i18n'
+import { useTranslation } from '@/lib/i18n'
 
 import { ActiveScreensWidget } from './widgets/activeScreensWidget'
 import { OfflineTrendWidget } from './widgets/offlineTrendWidget'
@@ -113,6 +113,7 @@ export default function DashboardShell({
   playlistOptions,
   assetOptions,
 }: Props) {
+  const { t } = useTranslation()
   const [hiddenWidgetIds, setHiddenWidgetIds] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set()
     try {

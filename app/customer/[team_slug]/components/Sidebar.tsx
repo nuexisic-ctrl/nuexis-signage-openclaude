@@ -15,6 +15,7 @@ import {
   ListVideo 
 } from 'lucide-react'
 import styles from './sidebar.module.css'
+import { useTranslation } from '@/lib/i18n'
 
 interface SidebarProps {
   teamSlug: string;
@@ -25,6 +26,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', initialCollapsed = false }: SidebarProps) {
+  const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed)
   const pathname = usePathname()
   
@@ -108,7 +110,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
           <button 
             className={styles.toggleBtn} 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={isCollapsed ? t("Expand sidebar") : t("Collapse sidebar")}
           >
             {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
@@ -123,10 +125,10 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
                 href={item.href}
                 prefetch={false}
                 className={`${styles.navItem} ${isActive ? styles.active : ''}`}
-                title={isCollapsed ? item.label : undefined}
+                title={isCollapsed ? t(item.label) : undefined}
               >
                 <item.icon size={20} className={styles.navIcon} />
-                {!isCollapsed && <span className={styles.navLabel}>{item.label}</span>}
+                {!isCollapsed && <span className={styles.navLabel}>{t(item.label)}</span>}
               </Link>
             )
           })}
@@ -137,7 +139,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
             href={`/customer/${teamSlug}/settings`}
             prefetch={false}
             className={`${styles.navItem} ${pathname.includes('/settings') ? styles.active : ''}`}
-            title={isCollapsed ? "Settings" : undefined}
+            title={isCollapsed ? t("Settings") : undefined}
             style={{ 
               width: isCollapsed ? '44px' : 'auto', 
               margin: isCollapsed ? '0 auto' : '0',
@@ -146,7 +148,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
             }}
           >
             <Settings size={20} className={styles.navIcon} />
-            {!isCollapsed && <span className={styles.navLabel}>Settings</span>}
+            {!isCollapsed && <span className={styles.navLabel}>{t("Settings")}</span>}
           </Link>
         </div>
       </aside>
@@ -158,7 +160,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
             type="button"
             className={styles.scrollIndicatorLeft} 
             onClick={() => bottomNavRef.current?.scrollBy({ left: -80, behavior: 'smooth' })}
-            aria-label="Scroll left"
+            aria-label={t("Scroll left")}
           >
             <ChevronLeft size={16} />
           </button>
@@ -176,7 +178,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
                     className={`${styles.bottomNavItem} ${isActive ? styles.active : ''}`}
                   >
                     <item.icon size={20} />
-                    <span className={styles.bottomNavLabel}>{item.label}</span>
+                    <span className={styles.bottomNavLabel}>{t(item.label)}</span>
                   </Link>
                 </li>
               )
@@ -189,7 +191,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
             type="button"
             className={styles.scrollIndicatorRight} 
             onClick={() => bottomNavRef.current?.scrollBy({ left: 80, behavior: 'smooth' })}
-            aria-label="Scroll right"
+            aria-label={t("Scroll right")}
           >
             <ChevronRight size={16} />
           </button>

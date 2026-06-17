@@ -7,12 +7,15 @@ import { useRouter } from 'next/navigation'
 import { loginWithRateLimit } from './actions'
 import styles from './login.module.css'
 import { toast } from '@/app/components/Toast'
+import { useTranslation } from '@/lib/i18n'
+import LanguageSelector from '@/app/components/LanguageSelector'
 
 interface LoginFormProps {
   teamSlug: string
 }
 
 export default function LoginForm({ teamSlug }: LoginFormProps) {
+  const { t } = useTranslation()
   const router = useRouter()
 
   // State Management
@@ -103,7 +106,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
 
     // Field check
     if (!email || !password) {
-      toast.error('Please enter your email and password.')
+      toast.error(t('Please enter your email and password.'))
       triggerShake()
       return
     }
@@ -132,7 +135,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
       }
 
       setStatus('success')
-      toast.success('Successfully logged in! Redirecting to dashboard...')
+      toast.success(t('Successfully logged in! Redirecting to dashboard...'))
 
       // Short delay for a premium transition experience before redirecting
       setTimeout(() => {
@@ -141,8 +144,8 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
       }, 600)
 
     } catch (err: any) {
-      toast.error('An unexpected error occurred. Please try again.')
-      setError('An unexpected error occurred. Please try again.')
+      toast.error(t('An unexpected error occurred. Please try again.'))
+      setError(t('An unexpected error occurred. Please try again.'))
       setStatus('idle')
       triggerShake()
     }
@@ -159,6 +162,11 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
 
   return (
     <div className={`${styles.lightThemeWrapper} ${styles.authShellContainer} auth-shell`}>
+      {/* Floating Language Selector */}
+      <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 10 }}>
+        <LanguageSelector align="right" />
+      </div>
+
       <div className={`${styles.loginWrapper} ${shouldShake ? styles.shake : ''}`}>
         
         {/* Workspace Badge & Logo Header */}
@@ -169,14 +177,14 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
               type="button"
               className={styles.teamBadgeInteractive}
               onClick={() => setIsHelpOpen(!isHelpOpen)}
-              aria-label="Workspace information. Click to see how to switch workspaces"
+              aria-label={t('Workspace information. Click to see how to switch workspaces')}
               aria-expanded={isHelpOpen}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                 <line x1="9" y1="3" x2="9" y2="21" />
               </svg>
-              <span className={styles.teamBadgeLabel}>Workspace:</span>
+              <span className={styles.teamBadgeLabel}>{t('Workspace')}:</span>
               <span className={styles.teamBadgeSlug}>{teamSlug}</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={styles.badgeInfoIcon}>
                 <circle cx="12" cy="12" r="10" />
@@ -198,7 +206,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
               type="button" 
               className={styles.popoverCloseBtn}
               onClick={() => setIsHelpOpen(false)}
-              aria-label="Close information guide"
+              aria-label={t('Close information guide')}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -230,12 +238,12 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
 
               {/* Right Column: Help Explanatory Text */}
               <div className={styles.helpTextContent}>
-                <h2 id="help-title" className={styles.helpTitle}>How to switch workspace?</h2>
+                <h2 id="help-title" className={styles.helpTitle}>{t('How to switch workspace?')}</h2>
                 <p className={styles.helpParagraph}>
-                  Workspaces are not switchable from here. To access another workspace, use its unique login URL.
+                  {t('Workspaces are not switchable from here. To access another workspace, use its unique login URL.')}
                 </p>
                 <div className={styles.exampleUrlBlock}>
-                  <span className={styles.exampleLabel}>Example:</span>
+                  <span className={styles.exampleLabel}>{t('Example')}:</span>
                   <div className={styles.exampleUrlField}>
                     {currentProtocol}//{currentHost}/customer/<strong style={{ color: 'var(--primary)', fontWeight: 700 }}>acme</strong>/login
                   </div>
@@ -244,9 +252,9 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
             </div>
           </div>
 
-          <h1 className={styles.loginTitle} style={{ marginTop: '8px' }}>Welcome back!</h1>
+          <h1 className={styles.loginTitle} style={{ marginTop: '8px' }}>{t('Welcome back!')}</h1>
           <p className={styles.loginSubtitle}>
-            Sign in to access your workspace dashboard.
+            {t('Sign in to access your workspace dashboard.')}
           </p>
         </div>
 
@@ -256,7 +264,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
           <form onSubmit={handleSubmit} noValidate>
             {/* Email Field */}
             <div className="form-group" style={{ marginBottom: '14px' }}>
-              <label htmlFor="login-email">Work Email</label>
+              <label htmlFor="login-email">{t('Work Email')}</label>
               <div className={styles.inputContainer}>
                 <span className={styles.inputIcon} aria-hidden="true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -297,13 +305,13 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
             {/* Password Field */}
             <div className="form-group" style={{ marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label htmlFor="login-password">Password</label>
+                <label htmlFor="login-password">{t('Password')}</label>
                 <Link
                   href="#"
                   className={styles.forgotPasswordLink}
                   tabIndex={0}
                 >
-                  Forgot password?
+                  {t('Forgot password?')}
                 </Link>
               </div>
               <div className={styles.inputContainer}>
@@ -335,7 +343,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
                   className={styles.passwordActionBtn}
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={status === 'loading' || status === 'success'}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('Hide password') : t('Show password')}
                   tabIndex={0}
                 >
                   {showPassword ? (
@@ -358,7 +366,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px' }}>
                     <path d="M18 15h-6v4H6v-4H0V9h6V5h6v4h6v6z" />
                   </svg>
-                  <span>Caps Lock is active</span>
+                  <span>{t('Caps Lock is active')}</span>
                 </div>
               )}
             </div>
@@ -374,7 +382,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
                 disabled={status === 'loading' || status === 'success'}
               />
               <label className={styles.checkboxLabel} htmlFor="remember-me">
-                <span className={styles.checkboxText}>Remember me</span>
+                <span className={styles.checkboxText}>{t('Remember me')}</span>
               </label>
             </div>
 
@@ -389,7 +397,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
               {status === 'loading' && (
                 <>
                   <span className="spinner" />
-                  Signing in…
+                  {t('Signing in…')}
                 </>
               )}
               {status === 'success' && (
@@ -397,12 +405,12 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'scaleUp 0.2s ease-out' }}>
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  Success!
+                  {t('Success!')}
                 </>
               )}
               {status === 'idle' && (
                 <>
-                  Continue to Dashboard
+                  {t('Continue to Dashboard')}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '4px' }}>
                     <line x1="5" y1="12" x2="19" y2="12" />
                     <polyline points="12 5 19 12 12 19" />
@@ -413,7 +421,7 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
           </form>
 
           {/* Form Divider */}
-          <div className="divider" style={{ margin: '18px 0' }}>New to NuExis?</div>
+          <div className="divider" style={{ margin: '18px 0' }}>{t('New to NuExis?')}</div>
 
           {/* Secondary Button */}
           <Link
@@ -427,20 +435,19 @@ export default function LoginForm({ teamSlug }: LoginFormProps) {
               <line x1="19" y1="8" x2="19" y2="14" />
               <line x1="16" y1="11" x2="22" y2="11" />
             </svg>
-            Create your workspace
+            {t('Create your workspace')}
           </Link>
-
 
         </div>
 
         {/* Footer Links & Copyright */}
         <footer className={styles.minimalFooter}>
           <div className={styles.footerLinks}>
-            <Link href="#">Privacy Policy</Link>
-            <Link href="#">Terms of Service</Link>
-            <Link href="#">Contact Us</Link>
+            <Link href="#">{t('Privacy Policy')}</Link>
+            <Link href="#">{t('Terms of Service')}</Link>
+            <Link href="#">{t('Contact Us')}</Link>
           </div>
-          <span className={styles.footerCopyright}>© 2024 NuExis. All rights reserved.</span>
+          <span className={styles.footerCopyright}>© {new Date().getFullYear()} NuExis. All rights reserved.</span>
         </footer>
       </div>
     </div>

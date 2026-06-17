@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import { File, Play, Image as ImageIcon, Link, Code, Clock, QrCode, Folder, Hourglass, Tv, Globe, Images, ChevronDown, FileText, Music } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './types'
-import { t } from '@/lib/i18n'
+import { useTranslation } from '@/lib/i18n'
 import styles from './AssetTableView.module.css'
 import { ContentIconBadge, getAssetKind } from '../screens/DeviceIcon'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
@@ -72,6 +72,7 @@ export function AssetTableView({
   sortBy,
   setSortBy,
 }: AssetTableViewProps) {
+  const { t, formatDate } = useTranslation()
   const supabase = createClient()
 
 
@@ -164,11 +165,7 @@ export function AssetTableView({
         <tbody>
           {filteredAssets.map((asset) => {
             const isMenuOpen = openMenuId === asset.id
-            const date = new Date(asset.created_at).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })
+            const date = formatDate(asset.created_at)
             const isFolder = asset.mime_type === 'application/x-folder'
 
             return (

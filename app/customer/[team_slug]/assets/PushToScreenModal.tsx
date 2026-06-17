@@ -6,6 +6,7 @@ import { modalStack } from '@/lib/utils/modalStack'
 import { pushAssetToScreen } from './actions'
 import { Asset, ScreenDevice } from './types'
 import styles from './PushToScreenModal.module.css'
+import { useTranslation } from '@/lib/i18n'
 
 interface PushToScreenModalProps {
   asset: Asset
@@ -15,12 +16,6 @@ interface PushToScreenModalProps {
   onSuccess: () => void
 }
 
-function getScreenStatusLabel(status: ScreenDevice['status']) {
-  if (status === 'online') return 'Online'
-  if (status === 'pairing') return 'Pairing'
-  return 'Offline'
-}
-
 export function PushToScreenModal({
   asset,
   screens,
@@ -28,6 +23,7 @@ export function PushToScreenModal({
   onClose,
   onSuccess,
 }: PushToScreenModalProps) {
+  const { t } = useTranslation()
   const [selectedScreenId, setSelectedScreenId] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -37,6 +33,12 @@ export function PushToScreenModal({
     () => screens.find(screen => screen.id === selectedScreenId),
     [screens, selectedScreenId]
   )
+
+  function getScreenStatusLabel(status: ScreenDevice['status']) {
+    if (status === 'online') return t('Online')
+    if (status === 'pairing') return t('Pairing')
+    return t('Offline')
+  }
 
   useEffect(() => {
     modalStack.push('push-to-screen-modal')
@@ -67,11 +69,11 @@ export function PushToScreenModal({
     startTransition(async () => {
       const result = await pushAssetToScreen(teamSlug, selectedScreenId, asset.id)
       if (!result.success) {
-        setError(result.error || 'Failed to push asset to screen.')
+        setError(result.error || t('Failed to push asset to screen.'))
         return
       }
 
-      setSuccess(`Pushed to ${selectedScreen?.name || 'selected screen'}.`)
+      setSuccess(t('Pushed to {name}.', { name: selectedScreen?.name || t('selected screen') }))
       window.setTimeout(onSuccess, 700)
     })
   }
@@ -91,11 +93,11 @@ export function PushToScreenModal({
               <Monitor size={20} />
             </div>
             <div>
-              <h2 id="push-to-screen-title" className={styles.title}>Push to screen</h2>
+              <h2 id="push-to-screen-title" className={styles.title}>{t('Push to screen')}</h2>
               <p className={styles.subtitle} title={asset.file_name}>{asset.file_name}</p>
             </div>
           </div>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
+          <button className={styles.closeBtn} onClick={onClose} aria-label={t('Close')}>
             <X size={18} />
           </button>
         </header>
@@ -119,22 +121,22 @@ export function PushToScreenModal({
             <thead className={styles.tableHeader}>
               <tr>
                 <th style={{ width: '52px' }}></th>
-                <th>Screen</th>
-                <th>Status</th>
-                <th>Current content</th>
+                <th>{t('Screen')}</th>
+                <th>{t('Status')}</th>
+                <th>{t('Current content')}</th>
               </tr>
             </thead>
             <tbody>
               {screens.length === 0 ? (
                 <tr>
-                  <td className={styles.emptyCell} colSpan={4}>No screens available.</td>
+                  <td className={styles.emptyCell} colSpan={4}>{t('No screens available.')}</td>
                 </tr>
               ) : (
                 screens.map(screen => {
                   const isSelected = selectedScreenId === screen.id
                   const contentLabel = screen.content_type
                     ? screen.content_type
-                    : 'No content'
+                    : t('no content')
 
                   return (
                     <tr
@@ -150,7 +152,7 @@ export function PushToScreenModal({
                       <td className={styles.tableCell}>
                         <div className={styles.nameCell}>
                           <Monitor size={18} />
-                          <span>{screen.name || 'Unnamed Screen'}</span>
+                          <span>{screen.name || t('Unnamed Screen')}</span>
                         </div>
                       </td>
                       <td className={styles.tableCell}>
@@ -171,7 +173,7 @@ export function PushToScreenModal({
 
         <footer className={styles.footer}>
           <button className={styles.secondaryBtn} onClick={onClose} type="button">
-            Cancel
+            {t('Cancel')}
           </button>
           <button
             className={styles.primaryBtn}
@@ -179,7 +181,7 @@ export function PushToScreenModal({
             type="button"
             disabled={!selectedScreenId || isPending || Boolean(success)}
           >
-            {isPending ? 'Pushing...' : 'Push asset'}
+            {isPending ? t('Pushing...') : t('Push asset')}
           </button>
         </footer>
       </section>

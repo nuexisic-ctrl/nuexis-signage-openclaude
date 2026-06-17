@@ -3,6 +3,7 @@ import { AlertTriangle, X } from 'lucide-react'
 import styles from './Modal.module.css'
 import { updateDeviceName } from './actions'
 import { toast } from '@/app/components/Toast'
+import { useTranslation } from '@/lib/i18n'
 
 export interface RenameModalProps {
   currentName: string
@@ -19,6 +20,7 @@ export function RenameModal({
   onClose,
   onSuccess,
 }: RenameModalProps) {
+  const { t } = useTranslation()
   const [name, setName] = useState(currentName)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -32,7 +34,7 @@ export function RenameModal({
     e.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) {
-      setError('Name cannot be empty.')
+      setError(t('Name cannot be empty.'))
       return
     }
     if (trimmed === currentName) {
@@ -43,7 +45,7 @@ export function RenameModal({
     startTransition(async () => {
       const result = await updateDeviceName(teamSlug, deviceId, trimmed)
       if (result.success) {
-        toast.success('Screen renamed successfully')
+        toast.success(t('Screen renamed successfully'))
         onSuccess(trimmed)
       } else {
         setError(result.error)
@@ -56,10 +58,10 @@ export function RenameModal({
       <div className={styles.modal} role="dialog" style={{ maxWidth: '400px' }}>
         <div className={styles.modalHeader} style={{ marginBottom: '16px' }}>
           <div>
-            <h2 className={styles.modalTitle}>Rename Screen</h2>
-            <p className={styles.modalSubtitle}>Enter a new name for this screen.</p>
+            <h2 className={styles.modalTitle}>{t('Rename Screen')}</h2>
+            <p className={styles.modalSubtitle}>{t('Enter a new name for this screen.')}</p>
           </div>
-          <button className={styles.modalClose} onClick={onClose} aria-label="Close modal"><X size={18} /></button>
+          <button className={styles.modalClose} onClick={onClose} aria-label={t('Close modal')}><X size={18} /></button>
         </div>
 
         <form className={styles.form} onSubmit={handleSubmit}>
@@ -76,11 +78,11 @@ export function RenameModal({
             lineHeight: '1.4'
           }}>
             <span style={{ fontSize: '1.1rem', lineHeight: '1', marginTop: '-1px' }}>ℹ️</span>
-            <span>Renaming this screen will update its name in your dashboard and on the active display in real-time.</span>
+            <span>{t('Renaming this screen will update its name in your dashboard and on the active display in real-time.')}</span>
           </div>
 
           <div className={styles.fieldGroup}>
-            <label htmlFor="rename-input" className={styles.label}>Screen Name</label>
+            <label htmlFor="rename-input" className={styles.label}>{t('Screen Name')}</label>
             <input
               id="rename-input"
               className={styles.input}
@@ -108,14 +110,14 @@ export function RenameModal({
               onClick={onClose}
               disabled={isPending}
             >
-              Cancel
+              {t('Cancel')}
             </button>
             <button
               type="submit"
               className={styles.submitBtn}
               disabled={isPending || !name.trim() || name.trim() === currentName}
             >
-              {isPending ? 'Saving…' : 'Save'}
+              {isPending ? t('Saving…') : t('Save')}
             </button>
           </div>
         </form>

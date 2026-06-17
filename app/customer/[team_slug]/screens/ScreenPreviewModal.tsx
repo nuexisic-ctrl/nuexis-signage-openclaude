@@ -10,6 +10,7 @@ import FlowClockRenderer from '@/app/components/FlowClockRenderer'
 import FlowCountdownRenderer from '@/app/components/FlowCountdownRenderer'
 import FlowCountUpRenderer from '@/app/components/FlowCountUpRenderer'
 import FlowWorldClockRenderer from '@/app/components/FlowWorldClockRenderer'
+import { useTranslation } from '@/lib/i18n'
 
 interface Props {
   device: Device
@@ -54,6 +55,7 @@ export function ScreenPreviewModal({
   teamId
 }: Props) {
   const supabase = createClient()
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<'simulator' | 'live'>('simulator')
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null)
   const [screenshotError, setScreenshotError] = useState<boolean>(false)
@@ -447,7 +449,7 @@ export function ScreenPreviewModal({
         )
       } catch (err) {
         console.error('Failed to render custom html widget in simulator:', err)
-        return <div style={{ color: 'red', padding: '10px' }}>Error rendering custom HTML widget</div>
+        return <div style={{ color: 'red', padding: '10px' }}>{t('Error rendering custom HTML widget')}</div>
       }
     }
 
@@ -466,7 +468,7 @@ export function ScreenPreviewModal({
         )
       } catch (err) {
         console.error('Failed to render Clock widget in simulator:', err)
-        return <div style={{ color: 'red', padding: '10px' }}>Error rendering Clock widget</div>
+        return <div style={{ color: 'red', padding: '10px' }}>{t('Error rendering Clock widget')}</div>
       }
     }
 
@@ -488,7 +490,7 @@ export function ScreenPreviewModal({
         )
       } catch (err) {
         console.error('Failed to render World Clock widget in simulator:', err)
-        return <div style={{ color: 'red', padding: '10px' }}>Error rendering World Clock widget</div>
+        return <div style={{ color: 'red', padding: '10px' }}>{t('Error rendering World Clock widget')}</div>
       }
     }
 
@@ -509,7 +511,7 @@ export function ScreenPreviewModal({
         )
       } catch (err) {
         console.error('Failed to render Countdown widget in simulator:', err)
-        return <div style={{ color: 'red', padding: '10px' }}>Error rendering Countdown widget</div>
+        return <div style={{ color: 'red', padding: '10px' }}>{t('Error rendering Countdown widget')}</div>
       }
     }
 
@@ -531,7 +533,7 @@ export function ScreenPreviewModal({
         )
       } catch (err) {
         console.error('Failed to render CountUp widget in simulator:', err)
-        return <div style={{ color: 'red', padding: '10px' }}>Error rendering CountUp widget</div>
+        return <div style={{ color: 'red', padding: '10px' }}>{t('Error rendering CountUp widget')}</div>
       }
     }
 
@@ -566,13 +568,13 @@ export function ScreenPreviewModal({
       contentNode = (
         <div className={styles.emptyState}>
           <div className={styles.spinner} />
-          <p className={styles.emptyText}>Loading Simulator Media...</p>
+          <p className={styles.emptyText}>{t('Loading Simulator Media...')}</p>
         </div>
       )
     } else if (playlistItems.length === 0) {
       contentNode = (
         <div className={styles.emptyState}>
-          <p className={styles.emptyText}>Playlist is empty</p>
+          <p className={styles.emptyText}>{t('Playlist is empty')}</p>
         </div>
       )
     } else {
@@ -599,8 +601,8 @@ export function ScreenPreviewModal({
     contentNode = (
       <div className={styles.emptyState}>
         <Tv size={36} style={{ opacity: 0.6 }} />
-        <p className={styles.emptyText}>Screen Simulator Online</p>
-        <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Waiting for Asset or Playlist assignment...</span>
+        <p className={styles.emptyText}>{t('Screen Simulator Online')}</p>
+        <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>{t('Waiting for Asset or Playlist assignment...')}</span>
       </div>
     )
   }
@@ -626,26 +628,26 @@ export function ScreenPreviewModal({
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <h2 className={styles.title}>{device.name || 'Unnamed Screen'}</h2>
+            <h2 className={styles.title}>{device.name || t('Unnamed Screen')}</h2>
             <div className={styles.tabsContainer}>
               <button
                 onClick={() => setActiveTab('simulator')}
                 className={`${styles.tabBtn} ${activeTab === 'simulator' ? styles.tabBtnActive : ''}`}
               >
-                Simulator
+                {t('Simulator')}
               </button>
               <button
                 onClick={() => setActiveTab('live')}
                 className={`${styles.tabBtn} ${activeTab === 'live' ? styles.tabBtnActive : ''}`}
               >
-                Live View
+                {t('Live View')}
               </button>
             </div>
           </div>
           <div className={styles.metaInfo}>
-            <span className={styles.badge}>{fit.toUpperCase()}</span>
-            <span className={styles.badge}>{orientation}° orientation</span>
-            <span className={`${styles.badge} ${styles.badgeActive}`}>{contentType.toUpperCase()} MODE</span>
+            <span className={styles.badge}>{t(scaleMode).toUpperCase()}</span>
+            <span className={styles.badge}>{t('{orientation}° orientation', { orientation: String(orientation) })}</span>
+            <span className={`${styles.badge} ${styles.badgeActive}`}>{t('{mode} MODE', { mode: t(contentType).toUpperCase() })}</span>
           </div>
         </div>
 
@@ -656,19 +658,19 @@ export function ScreenPreviewModal({
               onClick={() => setPreviewMode('landscape')}
               className={`${styles.modeBtn} ${previewMode === 'landscape' ? styles.modeBtnActive : ''}`}
             >
-              Landscape (16:9)
+              {t('Landscape (16:9)')}
             </button>
             <button
               onClick={() => setPreviewMode('portrait')}
               className={`${styles.modeBtn} ${previewMode === 'portrait' ? styles.modeBtnActive : ''}`}
             >
-              Portrait (9:16)
+              {t('Portrait (9:16)')}
             </button>
             <button
               onClick={() => setPreviewMode('custom')}
               className={`${styles.modeBtn} ${previewMode === 'custom' ? styles.modeBtnActive : ''}`}
             >
-              Custom Sizing
+              {t('Custom Sizing')}
             </button>
 
             {previewMode === 'custom' && (
@@ -700,7 +702,7 @@ export function ScreenPreviewModal({
                   onChange={(e) => handleRatioChange(e.target.value)}
                   className={styles.aspectSelect}
                 >
-                  <option value="custom">Custom Ratio</option>
+                  <option value="custom">{t('Custom Ratio')}</option>
                   <option value="16:9">16:9</option>
                   <option value="9:16">9:16</option>
                   <option value="16:10">16:10</option>
@@ -721,12 +723,12 @@ export function ScreenPreviewModal({
               {capturing ? (
                 <>
                   <RefreshCw size={16} className={styles.spinnerIcon} />
-                  Capturing Live Screen...
+                  {t('Capturing Live Screen...')}
                 </>
               ) : (
                 <>
                   <Camera size={16} />
-                  Capture Screen
+                  {t('Capture Screen')}
                 </>
               )}
             </button>
@@ -738,14 +740,14 @@ export function ScreenPreviewModal({
           <button
             onClick={toggleFullscreen}
             className={styles.iconBtn}
-            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            title={isFullscreen ? t('Exit Fullscreen') : t('Enter Fullscreen')}
           >
             {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
           </button>
           <button
             onClick={onClose}
             className={`${styles.iconBtn} ${styles.closeBtn}`}
-            title="Exit Simulator"
+            title={t('Exit Simulator')}
           >
             <X size={18} />
           </button>
@@ -770,7 +772,7 @@ export function ScreenPreviewModal({
               <div
                 className={styles.resizeHandle}
                 onMouseDown={handleMouseDown}
-                title="Drag to resize simulated display"
+                title={t('Drag to resize simulated display')}
               >
                 <Move className={styles.resizeIcon} />
               </div>
@@ -781,7 +783,7 @@ export function ScreenPreviewModal({
             {capturing && (
               <div className={styles.capturingOverlay}>
                 <div className={styles.spinner} />
-                <p className={styles.capturingText}>Requesting capture from device...</p>
+                <p className={styles.capturingText}>{t('Requesting capture from device...')}</p>
               </div>
             )}
             
@@ -789,7 +791,7 @@ export function ScreenPreviewModal({
               <div className={styles.screenshotFrame}>
                 <img
                   src={screenshotUrl}
-                  alt={`${device.name || 'Device'} Live Screen`}
+                  alt={t('{name} Live Screen', { name: device.name || t('Device') })}
                   className={styles.liveScreenshot}
                   onError={() => setScreenshotError(true)}
                 />
@@ -797,9 +799,9 @@ export function ScreenPreviewModal({
             ) : (
               <div className={styles.livePlaceholder}>
                 <Tv size={48} className={styles.placeholderIcon} />
-                <p className={styles.placeholderText}>No screenshot captured yet</p>
+                <p className={styles.placeholderText}>{t('No screenshot captured yet')}</p>
                 <span className={styles.placeholderSubtext}>
-                  Click "Capture Screen" to request a live screenshot from this device.
+                  {t('Click "Capture Screen" to request a live screenshot from this device.')}
                 </span>
               </div>
             )}

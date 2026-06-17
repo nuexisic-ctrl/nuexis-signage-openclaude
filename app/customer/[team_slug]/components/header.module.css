@@ -244,7 +244,8 @@
   align-items: center;
 }
 
-.themeItem {
+.themeItem,
+.languageItem {
   position: relative;
 }
 
@@ -280,6 +281,8 @@
   visibility: hidden;
   transform: translateX(8px);
   transition: all 0.2s ease;
+  max-height: 280px;
+  overflow-y: auto;
 }
 
 .submenu::after {
@@ -292,7 +295,8 @@
   background: transparent;
 }
 
-.themeItem:hover .submenu {
+.themeItem:hover .submenu,
+.languageItem:hover .submenu {
   opacity: 1;
   visibility: visible;
   transform: translateX(0);

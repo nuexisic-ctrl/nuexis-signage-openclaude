@@ -9,6 +9,7 @@ import { AssetBrowserModal } from '../components/AssetBrowser'
 import { PlaylistBrowserModal } from './PlaylistBrowserModal'
 import { modalStack } from '@/lib/utils/modalStack'
 import CustomSelect from '../components/CustomSelect'
+import { useTranslation } from '@/lib/i18n'
 
 interface Group {
   id: string
@@ -71,6 +72,7 @@ export function GroupEditModal({
   onClose,
   onSuccess,
 }: GroupEditModalProps) {
+  const { t } = useTranslation()
   const [name, setName] = useState(group.name)
   const [color, setColor] = useState(group.color || PRESET_COLORS[0])
   const [showColorPicker, setShowColorPicker] = useState(false)
@@ -246,7 +248,7 @@ export function GroupEditModal({
     setError(null)
 
     if (!name.trim()) {
-      setError('Group name is required.')
+      setError(t('Group name is required.'))
       return
     }
 
@@ -274,7 +276,7 @@ export function GroupEditModal({
       if (result.success) {
         onSuccess()
       } else {
-        setError(result.error || 'Failed to save group changes.')
+        setError(result.error || t('Failed to save group changes.'))
       }
     })
   }
@@ -297,16 +299,16 @@ export function GroupEditModal({
         <div className={styles.modal} role="dialog">
           <div className={styles.modalHeader}>
             <div>
-              <h2 className={styles.modalTitle}>Edit Group</h2>
-              <p className={styles.modalSubtitle}>Configure screen membership and default content settings</p>
+              <h2 className={styles.modalTitle}>{t('Edit Group')}</h2>
+              <p className={styles.modalSubtitle}>{t('Configure screen membership and default content settings')}</p>
             </div>
-            <button className={styles.modalClose} onClick={onClose} aria-label="Close modal"><X size={18} /></button>
+            <button className={styles.modalClose} onClick={onClose} aria-label={t('Close modal')}><X size={18} /></button>
           </div>
 
           <form className={styles.form} onSubmit={handleSubmit}>
             {/* Group Name & Color Tag */}
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>Group Name</label>
+              <label className={styles.label}>{t('Group Name')}</label>
               <div className={styles.inputWithColorContainer}>
                 <input
                   type="text"
@@ -321,13 +323,13 @@ export function GroupEditModal({
                   className={styles.colorIndicatorDot}
                   style={{ backgroundColor: color }}
                   onClick={() => setShowColorPicker(!showColorPicker)}
-                  title="Select Group Color"
-                  aria-label="Select Group Color"
+                  title={t('Select Group Color')}
+                  aria-label={t('Select Group Color')}
                 />
                 {showColorPicker && (
                   <div className={styles.colorPickerPopover} ref={colorPickerRef}>
                     <div className={styles.popoverHeader}>
-                      <span className={styles.popoverTitle}>Select Color</span>
+                      <span className={styles.popoverTitle}>{t('Select Color')}</span>
                       <button 
                         type="button" 
                         className={styles.popoverCloseBtn} 
@@ -358,7 +360,7 @@ export function GroupEditModal({
                     </div>
                     
                     <div className={styles.customColorSection}>
-                      <label className={styles.customColorLabel}>Custom Color</label>
+                      <label className={styles.customColorLabel}>{t('Custom Color')}</label>
                       <div className={styles.customColorRow}>
                         <input
                           type="color"
@@ -381,13 +383,13 @@ export function GroupEditModal({
 
             {/* Screen Selection Multi-Select Field */}
             <div className={styles.fieldGroup} ref={dropdownRef}>
-              <label className={styles.label}>Assigned Screens</label>
+              <label className={styles.label}>{t('Assigned Screens')}</label>
               <div 
                 className={styles.screensInputTrigger} 
                 onClick={() => setShowScreensDropdown(!showScreensDropdown)}
               >
                 {selectedDevices.length === 0 ? (
-                  <span className={styles.placeholder}>Select screens to assign...</span>
+                  <span className={styles.placeholder}>{t('Select screens to assign...')}</span>
                 ) : (
                   <div className={styles.pillsContainer}>
                     {selectedDevices.map(d => (
@@ -413,7 +415,7 @@ export function GroupEditModal({
                     <input 
                       type="text" 
                       className={styles.dropdownSearch} 
-                      placeholder="Filter screens..." 
+                      placeholder={t('Filter screens...')} 
                       value={screenSearchQuery} 
                       onChange={(e) => setScreenSearchQuery(e.target.value)}
                       onClick={(e) => e.stopPropagation()} 
@@ -421,7 +423,7 @@ export function GroupEditModal({
                   </div>
                   <div className={styles.dropdownList}>
                     {filteredDevices.length === 0 ? (
-                      <div className={styles.noResults}>No screens found</div>
+                      <div className={styles.noResults}>{t('No screens found')}</div>
                     ) : (
                       filteredDevices.map(d => {
                         const isSelected = selectedDeviceIds.includes(d.id)
@@ -440,7 +442,7 @@ export function GroupEditModal({
                             <div className={styles.deviceMeta}>
                               <span className={styles.deviceName}>{d.name || 'Unnamed Screen'}</span>
                               <span className={`${styles.statusText} ${d.status === 'online' ? styles.statusOnline : ''}`}>
-                                ● {d.status}
+                                ● {t(d.status)}
                               </span>
                             </div>
                           </div>
@@ -454,16 +456,16 @@ export function GroupEditModal({
 
             {/* Content Type */}
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>Content Type</label>
+              <label className={styles.label}>{t('Content Type')}</label>
               <CustomSelect
                 id="group-edit-content-type"
                 value={contentType || ''}
                 onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | 'Schedule' | '')}
                 options={[
-                  ...(!contentType ? [{ value: '', label: 'no content', disabled: true }] : []),
-                  { value: 'Asset', label: 'Asset' },
-                  { value: 'Playlist', label: 'Playlist' },
-                  { value: 'Schedule', label: 'Schedule (Coming Soon)', disabled: true }
+                  ...(!contentType ? [{ value: '', label: t('no content'), disabled: true }] : []),
+                  { value: 'Asset', label: t('Asset') },
+                  { value: 'Playlist', label: t('Playlist') },
+                  { value: 'Schedule', label: t('Schedule (Coming Soon)'), disabled: true }
                 ]}
               />
             </div>
@@ -471,7 +473,7 @@ export function GroupEditModal({
             {/* Content Selection Details */}
             {contentType === 'Asset' && (
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>Selected Asset</label>
+                <label className={styles.label}>{t('Selected Asset')}</label>
                 <div 
                   className={styles.customSelectTrigger} 
                   onClick={() => setShowAssetBrowser(true)}
@@ -480,14 +482,14 @@ export function GroupEditModal({
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowAssetBrowser(true); } }}
                 >
                   <span className={selectedAsset ? styles.selectedText : styles.placeholderText}>
-                    {selectedAsset ? selectedAsset.file_name : 'No asset selected'}
+                    {selectedAsset ? selectedAsset.file_name : t('No asset selected')}
                   </span>
                   <button 
                     type="button" 
                     className={styles.browseButton}
                     onClick={(e) => { e.stopPropagation(); setShowAssetBrowser(true); }}
                   >
-                    Browse
+                    {t('Browse')}
                   </button>
                 </div>
               </div>
@@ -495,7 +497,7 @@ export function GroupEditModal({
 
             {contentType === 'Playlist' && (
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>Selected Playlist</label>
+                <label className={styles.label}>{t('Selected Playlist')}</label>
                 <div 
                   className={styles.customSelectTrigger} 
                   onClick={() => setShowPlaylistBrowser(true)}
@@ -504,14 +506,14 @@ export function GroupEditModal({
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPlaylistBrowser(true); } }}
                 >
                   <span className={selectedPlaylist ? styles.selectedText : styles.placeholderText}>
-                    {selectedPlaylist ? selectedPlaylist.name : 'No playlist selected'}
+                    {selectedPlaylist ? selectedPlaylist.name : t('No playlist selected')}
                   </span>
                   <button 
                     type="button" 
                     className={styles.browseButton}
                     onClick={(e) => { e.stopPropagation(); setShowPlaylistBrowser(true); }}
                   >
-                    Browse
+                    {t('Browse')}
                   </button>
                 </div>
               </div>
@@ -520,16 +522,16 @@ export function GroupEditModal({
             {/* Scale Mode */}
             {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget') && selectedAsset?.mime_type !== 'application/x-widget-qrcode')) && (
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>Scale Mode</label>
+                <label className={styles.label}>{t('Scale Mode')}</label>
                 <CustomSelect
                   id="group-edit-scale-mode"
                   value={scaleMode}
                   onChange={(val) => setScaleMode(val)}
                   options={[
-                    { value: 'None', label: 'None' },
-                    { value: 'Fit', label: 'Fit' },
-                    { value: 'Stretch', label: 'Stretch' },
-                    { value: 'Zoom', label: 'Zoom' }
+                    { value: 'None', label: t('None') },
+                    { value: 'Fit', label: t('Fit') },
+                    { value: 'Stretch', label: t('Stretch') },
+                    { value: 'Zoom', label: t('Zoom') }
                   ]}
                 />
               </div>
@@ -537,16 +539,16 @@ export function GroupEditModal({
 
             {/* Orientation */}
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>Orientation Override</label>
+              <label className={styles.label}>{t('Orientation Override')}</label>
               <CustomSelect
                 id="group-edit-orientation"
                 value={orientation}
                 onChange={(val) => setOrientation(Number(val) as 0 | 90 | 180 | 270)}
                 options={[
-                  { value: 0, label: 'Landscape (0°)' },
-                  { value: 90, label: 'Rotate 90°' },
-                  { value: 180, label: 'Rotate 180°' },
-                  { value: 270, label: 'Rotate 270°' }
+                  { value: 0, label: t('Landscape (0°)') },
+                  { value: 90, label: t('Rotate 90°') },
+                  { value: 180, label: t('Rotate 180°') },
+                  { value: 270, label: t('Rotate 270°') }
                 ]}
               />
             </div>
@@ -560,14 +562,14 @@ export function GroupEditModal({
                 onClick={onClose}
                 disabled={isPending}
               >
-                Cancel
+                {t('Cancel')}
               </button>
               <button 
                 className={styles.submitBtn} 
                 type="submit" 
                 disabled={isPending || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}
               >
-                {isPending ? 'Saving…' : 'Save Changes'}
+                {isPending ? t('Saving…') : t('Save Changes')}
               </button>
             </div>
           </form>

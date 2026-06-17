@@ -4,6 +4,7 @@ import React from 'react'
 import { Device, Asset, Playlist } from './types'
 import { DeviceTableRow } from './DeviceTableRow'
 import styles from './screens.module.css'
+import { useTranslation } from '@/lib/i18n'
 
 interface DeviceTableProps {
   filteredDevices: Device[]
@@ -46,17 +47,18 @@ export function DeviceTable({
   getLiveStatus,
   showSuccessPulse
 }: DeviceTableProps) {
+  const { t } = useTranslation()
   return (
     <div className={`${styles.tableContainer} ${showSuccessPulse ? styles.successPulse : ''}`}>
       <table className={styles.screensTable}>
         <thead className={styles.tableHeader}>
           <tr>
             <th style={{ width: '40px', textAlign: 'center' }} />
-            <th style={{ width: '25%' }}>Screen Name</th>
-            <th style={{ width: '15%' }}>Status</th>
-            <th style={{ width: '20%' }}>Last Seen</th>
-            <th style={{ width: '30%' }}>Playing Now</th>
-            <th style={{ width: '10%', textAlign: 'right' }}>Actions</th>
+            <th style={{ width: '25%' }}>{t('Screen Name')}</th>
+            <th style={{ width: '15%' }}>{t('Status')}</th>
+            <th style={{ width: '20%' }}>{t('Last Seen')}</th>
+            <th style={{ width: '30%' }}>{t('Playing Now')}</th>
+            <th style={{ width: '10%', textAlign: 'right' }}>{t('Actions')}</th>
           </tr>
         </thead>
         <tbody>

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Sun, Moon, Bell, LogOut, ChevronDown, ChevronLeft, Monitor } from 'lucide-react'
+import { Search, Sun, Moon, Bell, LogOut, ChevronDown, ChevronLeft, Monitor, Globe } from 'lucide-react'
 import styles from './header.module.css'
 import { useTheme } from '@/app/components/ThemeProvider'
+import { useTranslation, SUPPORTED_LOCALES } from '@/lib/i18n'
 
 interface HeaderProps {
   fullName?: string
@@ -12,6 +13,7 @@ interface HeaderProps {
 
 export default function Header({ fullName, email }: HeaderProps) {
   const { theme: activeTheme, setTheme: handleSetThemeAndClose } = useTheme()
+  const { t, locale, setLocale } = useTranslation()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -48,6 +50,11 @@ export default function Header({ fullName, email }: HeaderProps) {
     setIsDropdownOpen(false)
   }
 
+  const handleSetLocale = (code: typeof SUPPORTED_LOCALES[number]['code']) => {
+    setLocale(code)
+    setIsDropdownOpen(false)
+  }
+
   return (
     <header className={styles.header}>
       <div className={styles.left}>
@@ -56,7 +63,7 @@ export default function Header({ fullName, email }: HeaderProps) {
           <input 
             ref={searchInputRef}
             type="text" 
-            placeholder="Search..." 
+            placeholder={t('Search...')} 
             className={styles.searchInput}
           />
           <div className={styles.kbd}>
@@ -67,7 +74,7 @@ export default function Header({ fullName, email }: HeaderProps) {
       </div>
 
       <div className={styles.right}>
-        <button className={styles.notificationBtn} title="Notifications">
+        <button className={styles.notificationBtn} title={t('Notifications')}>
           <Bell size={20} />
         </button>
 
@@ -75,7 +82,7 @@ export default function Header({ fullName, email }: HeaderProps) {
           <button 
             className={`${styles.profileBtn} ${isDropdownOpen ? styles.activeProfile : ''}`}
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            title="Profile menu"
+            title={t('Profile menu')}
           >
             <div className={styles.avatar}>{initial}</div>
             <span className={styles.profileName}>{fullName || email || 'User'}</span>
@@ -97,7 +104,7 @@ export default function Header({ fullName, email }: HeaderProps) {
                       ) : (
                         <Sun size={16} />
                       )}
-                      <span style={{ marginLeft: '8px' }}>Theme</span>
+                      <span style={{ marginLeft: '8px' }}>{t('Theme')}</span>
                     </div>
                   </div>
                   
@@ -107,22 +114,44 @@ export default function Header({ fullName, email }: HeaderProps) {
                       onClick={() => handleSetTheme('light')}
                     >
                       <Sun size={14} />
-                      <span>Light</span>
+                      <span>{t('Light')}</span>
                     </button>
                     <button 
                       className={`${styles.submenuItem} ${activeTheme === 'dark' ? styles.activeSubmenu : ''}`}
                       onClick={() => handleSetTheme('dark')}
                     >
                       <Moon size={14} />
-                      <span>Dark</span>
+                      <span>{t('Dark')}</span>
                     </button>
                     <button 
                       className={`${styles.submenuItem} ${activeTheme === 'system' ? styles.activeSubmenu : ''}`}
                       onClick={() => handleSetTheme('system')}
                     >
                       <Monitor size={14} />
-                      <span>System</span>
+                      <span>{t('System')}</span>
                     </button>
+                  </div>
+                </div>
+
+                <div className={`${styles.dropdownItem} ${styles.languageItem}`}>
+                  <div className={styles.themeItemLabel}>
+                    <ChevronLeft size={14} className={styles.submenuArrow} style={{ marginRight: '8px' }} />
+                    <div className={styles.dropdownItemContent}>
+                      <Globe size={16} />
+                      <span style={{ marginLeft: '8px' }}>{t('Language')}</span>
+                    </div>
+                  </div>
+                  
+                  <div className={styles.submenu}>
+                    {SUPPORTED_LOCALES.map(loc => (
+                      <button 
+                        key={loc.code}
+                        className={`${styles.submenuItem} ${locale === loc.code ? styles.activeSubmenu : ''}`}
+                        onClick={() => handleSetLocale(loc.code)}
+                      >
+                        <span>{loc.nativeLabel}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -133,7 +162,7 @@ export default function Header({ fullName, email }: HeaderProps) {
                 <button type="submit" className={`${styles.dropdownItem} ${styles.logoutBtn}`}>
                   <div style={{ width: '22px' }} />
                   <LogOut size={16} style={{ marginRight: '8px' }} />
-                  Logout
+                  {t('Logout')}
                 </button>
               </form>
             </div>

@@ -8,6 +8,14 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({ team_slug: 'test-team' })
 }))
 
+// Mock useTheme
+vi.mock('@/app/components/ThemeProvider', () => ({
+  useTheme: () => ({
+    theme: 'light',
+    setTheme: vi.fn()
+  })
+}))
+
 // Mock supabase client
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({

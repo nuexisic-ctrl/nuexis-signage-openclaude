@@ -6,3 +6,4 @@ Use existing architecture and design patterns, keep files under 600 lines, reuse
 You have direct access to the backend via mcp server to supabase fetch info directly from the backend and apply migrations/sql directly to the backend.
 If there is any feature that has not been mentioned clearly then act as how the big tech would have perform and made that feature or the thing that i have not specified.
 Don't Open antigravity brower for testing unless speicficily specified for you to open or test something
+Every frontend change must be fully compatible with Light/Dark Mode and Multi-Language Support. Any new user-facing text must use i18n translation keys and be translated across all supported languages.

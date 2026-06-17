@@ -3,7 +3,7 @@
 import { useTransition, useRef, useState, useMemo, useCallback } from 'react'
 import { Folder, FolderPlus, X, Search, ChevronRight, Home } from 'lucide-react'
 import { Asset } from './types'
-import { t } from '@/lib/i18n'
+import { useTranslation } from '@/lib/i18n'
 import styles from './Modal.module.css'
 import listStyles from './BulkMoveModal.module.css'
 import { useA11yModal } from '@/lib/utils/useA11yModal'
@@ -24,6 +24,7 @@ export function BulkMoveModal({
   onMoveAssets: (assetIds: string[], targetFolderId: string | null, targetFolderName: string) => void
   onFolderCreated?: (folder: Asset) => void
 }) {
+  const { t } = useTranslation()
   const [isPending] = useTransition()
   
   // Navigation states

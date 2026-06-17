@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { X, Check, AlertTriangle } from 'lucide-react'
 import { createFolder } from './actions'
-import { t } from '@/lib/i18n'
+import { useTranslation } from '@/lib/i18n'
 import styles from './Modal.module.css'
 import { modalStack } from '@/lib/utils/modalStack'
 import { useA11yModal } from '@/lib/utils/useA11yModal'
@@ -39,6 +39,7 @@ export function CreateFolderModal({
   parentFolderId?: string | null
   overlayStyle?: React.CSSProperties
 }) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [color, setColor] = useState('#000000')
   const [showColorPicker, setShowColorPicker] = useState(false)

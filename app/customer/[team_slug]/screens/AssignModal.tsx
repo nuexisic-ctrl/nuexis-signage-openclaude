@@ -8,6 +8,7 @@ import { PlaylistBrowserModal } from './PlaylistBrowserModal'
 import { modalStack } from '@/lib/utils/modalStack'
 import CustomSelect from '../components/CustomSelect'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
+import { useTranslation } from '@/lib/i18n'
 
 export interface AssignModalProps {
   device: Device
@@ -37,6 +38,7 @@ export function AssignModal({
   onSuccess,
   onPreview,
 }: AssignModalProps) {
+  const { t } = useTranslation()
   const [screenName, setScreenName] = useState(device.name || '')
   const [contentType, setContentType] = useState<'Asset' | 'Playlist' | 'Schedule' | null>(
     (device.content_type as 'Asset' | 'Playlist' | 'Schedule' | null) || null
@@ -87,8 +89,6 @@ export function AssignModal({
   }, [onClose])
 
   // Opens the appropriate browser when the user explicitly changes content type.
-  // This is intentionally NOT a useEffect — effects fire on mount too (and twice
-  // in React Strict Mode), which caused the browser to pop open immediately.
   function handleContentTypeChange(newType: 'Asset' | 'Playlist' | 'Schedule' | '') {
     if (newType === '') {
       setContentType(null)
@@ -164,17 +164,17 @@ export function AssignModal({
     <>
       <div 
         className={styles.overlay} 
-        ref={overlayRef} 
         onMouseDown={handleOverlayMouseDown} 
         onClick={handleOverlayClick}
+        ref={overlayRef} 
       >
         <div className={styles.modal} role="dialog">
           <div className={styles.modalHeader}>
             <div>
-              <h2 className={styles.modalTitle}>Assign Content</h2>
-              <p className={styles.modalSubtitle}>Configure what plays on {device.name || 'Unnamed Screen'}</p>
+              <h2 className={styles.modalTitle}>{t('Assign Content')}</h2>
+              <p className={styles.modalSubtitle}>{t('Configure what plays on {name}', { name: device.name || 'Unnamed Screen' })}</p>
             </div>
-            <button className={styles.modalClose} onClick={onClose} aria-label="Close modal"><X size={18} /></button>
+            <button className={styles.modalClose} onClick={onClose} aria-label={t('Close modal')}><X size={18} /></button>
           </div>
 
           <form className={styles.form} onSubmit={handleSubmit}>
@@ -182,13 +182,13 @@ export function AssignModal({
               <div className={styles.warningMsg}>
                 <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
                 <span>
-                  Web Player is not recommended for production use. Please consider using supported platforms such as Android, Windows, or Linux.
+                  {t('Web Player is not recommended for production use. Please consider using supported platforms such as Android, Windows, or Linux.')}
                 </span>
               </div>
             )}
 
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>Screen Name</label>
+              <label className={styles.label}>{t('Screen Name')}</label>
               <input
                 type="text"
                 maxLength={60}
@@ -201,23 +201,23 @@ export function AssignModal({
             </div>
 
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>Content Type</label>
+              <label className={styles.label}>{t('Content Type')}</label>
               <CustomSelect
                 id="assign-content-type"
                 value={contentType || ''}
                 onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | 'Schedule' | '')}
                 options={[
-                  ...(!contentType ? [{ value: '', label: 'no content', disabled: true }] : []),
-                  { value: 'Asset', label: 'Asset' },
-                  { value: 'Playlist', label: 'Playlist' },
-                  { value: 'Schedule', label: 'Schedule (Coming Soon)', disabled: true }
+                  ...(!contentType ? [{ value: '', label: t('no content'), disabled: true }] : []),
+                  { value: 'Asset', label: t('Asset') },
+                  { value: 'Playlist', label: t('Playlist') },
+                  { value: 'Schedule', label: t('Schedule (Coming Soon)'), disabled: true }
                 ]}
               />
             </div>
 
             {contentType === 'Asset' && (
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>Selected Asset</label>
+                <label className={styles.label}>{t('Selected Asset')}</label>
                 <div 
                   className={styles.customSelectTrigger} 
                   onClick={() => setShowAssetBrowser(true)}
@@ -227,14 +227,14 @@ export function AssignModal({
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowAssetBrowser(true); } }}
                 >
                   <span className={selectedAsset ? styles.selectedText : styles.placeholderText} style={{ display: 'inline-flex', minWidth: 0, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', marginRight: '8px' }}>
-                    {selectedAsset ? <FilenameTruncator filename={selectedAsset.file_name} /> : 'No asset selected'}
+                    {selectedAsset ? <FilenameTruncator filename={selectedAsset.file_name} /> : t('No asset selected')}
                   </span>
                   <button 
                     type="button" 
                     className={styles.browseButton}
                     onClick={(e) => { e.stopPropagation(); setShowAssetBrowser(true); }}
                   >
-                    Browse
+                    {t('Browse')}
                   </button>
                 </div>
               </div>
@@ -242,7 +242,7 @@ export function AssignModal({
 
             {contentType === 'Playlist' && (
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>Selected Playlist</label>
+                <label className={styles.label}>{t('Selected Playlist')}</label>
                 <div 
                   className={styles.customSelectTrigger} 
                   onClick={() => setShowPlaylistBrowser(true)}
@@ -252,14 +252,14 @@ export function AssignModal({
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPlaylistBrowser(true); } }}
                 >
                   <span className={selectedPlaylist ? styles.selectedText : styles.placeholderText}>
-                    {selectedPlaylist ? selectedPlaylist.name : 'No Playlist selected'}
+                    {selectedPlaylist ? selectedPlaylist.name : t('No Playlist selected')}
                   </span>
                   <button 
                     type="button" 
                     className={styles.browseButton}
                     onClick={(e) => { e.stopPropagation(); setShowPlaylistBrowser(true); }}
                   >
-                    Browse
+                    {t('Browse')}
                   </button>
                 </div>
               </div>
@@ -267,32 +267,32 @@ export function AssignModal({
 
             {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget') && selectedAsset?.mime_type !== 'application/x-widget-qrcode')) && (
               <div className={styles.fieldGroup}>
-                <label className={styles.label}>Scale Mode</label>
+                <label className={styles.label}>{t('Scale Mode')}</label>
                 <CustomSelect
                   id="assign-scale-mode"
                   value={scaleMode}
                   onChange={(val) => setScaleMode(val)}
                   options={[
-                    { value: 'None', label: 'None' },
-                    { value: 'Fit', label: 'Fit' },
-                    { value: 'Stretch', label: 'Stretch' },
-                    { value: 'Zoom', label: 'Zoom' }
+                    { value: 'None', label: t('None') },
+                    { value: 'Fit', label: t('Fit') },
+                    { value: 'Stretch', label: t('Stretch') },
+                    { value: 'Zoom', label: t('Zoom') }
                   ]}
                 />
               </div>
             )}
 
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>Orientation</label>
+              <label className={styles.label}>{t('Orientation')}</label>
               <CustomSelect
                 id="assign-orientation"
                 value={orientation}
                 onChange={(val) => setOrientation(Number(val) as 0 | 90 | 180 | 270)}
                 options={[
-                  { value: 0, label: 'Landscape (0°)' },
-                  { value: 90, label: 'Rotate 90°' },
-                  { value: 180, label: 'Rotate 180°' },
-                  { value: 270, label: 'Rotate 270°' }
+                  { value: 0, label: t('Landscape (0°)') },
+                  { value: 90, label: t('Rotate 90°') },
+                  { value: 180, label: t('Rotate 180°') },
+                  { value: 270, label: t('Rotate 270°') }
                 ]}
               />
             </div>
@@ -326,7 +326,7 @@ export function AssignModal({
                   disabled={!contentType}
                 >
                   <Tv size={16} />
-                  Preview Screen
+                  {t('Preview Screen')}
                 </button>
               )}
 
@@ -336,7 +336,7 @@ export function AssignModal({
                 disabled={isPending || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}
                 style={{ flex: 1.2 }}
               >
-                {isPending ? 'Saving…' : 'Save Changes'}
+                {isPending ? t('Saving…') : t('Save Changes')}
               </button>
             </div>
           </form>
