@@ -46,7 +46,9 @@ class PlaylistEngine(
         Log.d(tag, "Updating playlist with ${newItems.size} items")
         stopPlayback()
         
-        this.items = newItems.sortedBy { it.sort_order }
+        val previousPlayingId = currentItemId ?: items.getOrNull(currentIndex)?.id
+        val sortedNewItems = newItems.sortedBy { it.sort_order }
+        this.items = sortedNewItems
 
         // Cache the updated manifest items
         if (newItems.isNotEmpty()) {
@@ -75,8 +77,17 @@ class PlaylistEngine(
         }
 
         // Try to maintain index or reset to 0
-        if (currentIndex >= items.size) {
-            currentIndex = 0
+        if (previousPlayingId != null) {
+            val indexInNew = sortedNewItems.indexOfFirst { it.id == previousPlayingId }
+            currentIndex = if (indexInNew != -1) {
+                indexInNew
+            } else {
+                0
+            }
+        } else {
+            if (currentIndex >= items.size) {
+                currentIndex = 0
+            }
         }
 
         playCurrentIndex(hardwareId, secret)

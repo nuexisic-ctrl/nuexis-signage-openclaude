@@ -10,14 +10,27 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="047cc275-006d-4d0d-94af-8cd6c4837cc3" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/asset.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/asset.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/components/ModalDragFix.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/components/ModalDragFix.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/FilterSidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/FilterSidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/header.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/header.module.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/PlaylistsClient.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/PlaylistsClient.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.module.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/GroupsSection.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/GroupsSection.module.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/GroupsSection.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/GroupsSection.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/player/PairedView.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/player/PairedView.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/player/PlaylistEngine.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/player/PlaylistEngine.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/player/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/player/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/app/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/assets/widget_bootstrap.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/assets/widget_bootstrap.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/realtime/RealtimeClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/realtime/RealtimeClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/data/SupabaseClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/data/SupabaseClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/playback/MediaEngine.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/playback/MediaEngine.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/playback/PlaylistEngine.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/playback/PlaylistEngine.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

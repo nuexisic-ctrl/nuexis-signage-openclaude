@@ -541,7 +541,7 @@ function YouTubePlaylistPlayer({
       return
     }
 
-    const previousCallback = (window as any).onYouTubeIframeAPIReady
+    const previousCallback = (window as any).onYouTubeIframeAPIReady;
     (window as any).onYouTubeIframeAPIReady = () => {
       if (previousCallback) previousCallback()
       setApiReady(true)

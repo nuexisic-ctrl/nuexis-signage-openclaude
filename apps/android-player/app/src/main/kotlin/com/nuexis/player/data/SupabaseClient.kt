@@ -20,6 +20,27 @@ class SupabaseClient(
     private val client = OkHttpClient()
     private val gson = Gson()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
+    private val rateLimiter = RateLimiter(maxTokens = 30, refillRatePerSecond = 1.0)
+
+    class RateLimiter(private val maxTokens: Int = 30, private val refillRatePerSecond: Double = 1.0) {
+        private var tokens = maxTokens.toDouble()
+        private var lastRefillTimestamp = System.currentTimeMillis()
+
+        @Synchronized
+        fun tryAcquire(): Boolean {
+            val now = System.currentTimeMillis()
+            val elapsedSeconds = (now - lastRefillTimestamp) / 1000.0
+            lastRefillTimestamp = now
+            tokens = Math.min(maxTokens.toDouble(), tokens + elapsedSeconds * refillRatePerSecond)
+
+            return if (tokens >= 1.0) {
+                tokens -= 1.0
+                true
+            } else {
+                false
+            }
+        }
+    }
 
     private fun getISO8601String(date: Date): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
@@ -28,6 +49,10 @@ class SupabaseClient(
     }
 
     private fun post(rpcName: String, bodyJson: String): String {
+        if (!rateLimiter.tryAcquire()) {
+            throw IOException("Client-side rate limit exceeded for Supabase RPC: $rpcName")
+        }
+
         val url = "$baseUrl/rest/v1/rpc/$rpcName"
         val requestBody = bodyJson.toRequestBody(jsonMediaType)
         
@@ -134,11 +159,22 @@ class SupabaseClient(
         data class Error(val exception: Exception) : DeviceStateResult()
     }
 
-    fun getDeviceState(hardwareId: String, secret: String?): DeviceStateResult {
+    fun getDeviceState(
+        hardwareId: String,
+        secret: String?,
+        appVersion: String? = null,
+        osVersion: String? = null
+    ): DeviceStateResult {
         val params = JsonObject().apply {
             addProperty("p_hardware_id", hardwareId)
             if (secret != null) {
                 addProperty("p_secret", secret)
+            }
+            if (appVersion != null) {
+                addProperty("p_app_version", appVersion)
+            }
+            if (osVersion != null) {
+                addProperty("p_os_version", osVersion)
             }
         }
         return try {

@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
@@ -15,12 +16,47 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import com.nuexis.player.data.StorageManager
+import com.nuexis.player.data.SupabaseClient
 import java.io.File
 
 @OptIn(UnstableApi::class)
-class MediaEngine(private val context: Context, private val container: FrameLayout) {
+class MediaEngine(
+    private val context: Context,
+    private val container: FrameLayout,
+    private val storageManager: StorageManager,
+    private val supabaseClient: SupabaseClient
+) {
 
-    class Viewport(context: Context, val parentLayout: FrameLayout) {
+    class WebAppInterface(
+        private val storageManager: StorageManager,
+        private val supabaseClient: SupabaseClient
+    ) {
+        @JavascriptInterface
+        fun getSignedUrl(filePath: String): String {
+            val hardwareId = storageManager.getHardwareId()
+            val secret = storageManager.getSecret()
+            if (secret == null) return filePath
+            return try {
+                supabaseClient.getSignedMediaUrl(filePath, hardwareId, secret)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                filePath
+            }
+        }
+
+        @JavascriptInterface
+        fun isMuted(): Boolean {
+            return storageManager.isMuted()
+        }
+    }
+
+    class Viewport(
+        context: Context,
+        val parentLayout: FrameLayout,
+        private val storageManager: StorageManager,
+        private val supabaseClient: SupabaseClient
+    ) {
         val layout = FrameLayout(context).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -61,6 +97,10 @@ class MediaEngine(private val context: Context, private val container: FrameLayo
                 useWideViewPort = true
                 loadWithOverviewMode = true
             }
+            addJavascriptInterface(
+                WebAppInterface(storageManager, supabaseClient),
+                "AndroidPlayer"
+            )
         }
 
         var exoPlayer: ExoPlayer? = null
@@ -138,6 +178,14 @@ class MediaEngine(private val context: Context, private val container: FrameLayo
             webView.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
+                    val javaScriptBridgeInit = """
+                        if (typeof window.renderWidget !== 'function') {
+                            window.renderWidget = function(mime, cfg) {
+                                console.log('renderWidget not loaded yet');
+                            };
+                        }
+                    """.trimIndent()
+                    webView.evaluateJavascript(javaScriptBridgeInit, null)
                     val escapedConfig = configJson.replace("'", "\\'").replace("\n", "\\n").replace("\r", "\\r")
                     webView.evaluateJavascript("javascript:renderWidget('$mimeType', '$escapedConfig')", null)
                 }
@@ -184,8 +232,8 @@ class MediaEngine(private val context: Context, private val container: FrameLayo
         }
     }
 
-    private var viewportA = Viewport(context, container)
-    private var viewportB = Viewport(context, container)
+    private var viewportA = Viewport(context, container, storageManager, supabaseClient)
+    private var viewportB = Viewport(context, container, storageManager, supabaseClient)
 
     private var activeViewport: Viewport = viewportA
     private var preloadViewport: Viewport = viewportB
@@ -234,7 +282,6 @@ class MediaEngine(private val context: Context, private val container: FrameLayo
 
     fun preloadVideo(file: File, scaleMode: String, isMuted: Boolean) {
         preloadViewport.playVideo(file, scaleMode, isMuted)
-        // Make sure it doesn't start playing loudly or visibly in background until transition
         preloadViewport.exoPlayer?.playWhenReady = false
         preloadViewport.layout.alpha = 0f
         preloadViewport.layout.visibility = View.VISIBLE
@@ -250,11 +297,9 @@ class MediaEngine(private val context: Context, private val container: FrameLayo
         val oldActive = activeViewport
         val oldPreload = preloadViewport
 
-        // Start playing the video in preload viewport if there is one
         oldPreload.exoPlayer?.playWhenReady = true
         oldPreload.exoPlayer?.play()
 
-        // Animate cross-fade
         oldPreload.layout.animate()
             .alpha(1f)
             .setDuration(transitionMs)
@@ -267,7 +312,6 @@ class MediaEngine(private val context: Context, private val container: FrameLayo
                 oldActive.layout.visibility = View.GONE
                 oldActive.stopVideo()
                 
-                // Swap active and preload viewports
                 activeViewport = oldPreload
                 preloadViewport = oldActive
                 

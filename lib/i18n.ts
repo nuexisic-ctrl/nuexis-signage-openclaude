@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { translations, type LocaleType } from './i18n/locales'
+export type { LocaleType }
 
 // Supported locales list
 export const SUPPORTED_LOCALES: { code: LocaleType; label: string; nativeLabel: string }[] = [
@@ -70,9 +71,11 @@ export function setLocale(locale: LocaleType) {
 
 // Reactive hook to subscribe components to language updates
 export function useTranslation() {
+  const [mounted, setMounted] = useState(false)
   const [, setTick] = useState(0)
 
   useEffect(() => {
+    setMounted(true)
     const handleUpdate = () => {
       setTick(t => t + 1)
     }
@@ -82,14 +85,96 @@ export function useTranslation() {
     }
   }, [])
 
+  // Mount-aware translate helper
+  const tLocal = (key: string, replacements?: Record<string, string | number>): string => {
+    if (!mounted) {
+      // Return English during server-rendering and client hydration to avoid mismatch
+      const localeTranslations = translations['en']
+      let text = localeTranslations?.[key] ?? key
+      if (replacements) {
+        Object.entries(replacements).forEach(([k, v]) => {
+          text = text.replace(new RegExp(`{${k}}`, 'g'), String(v))
+        })
+      }
+      return text
+    }
+    return t(key, replacements)
+  }
+
+  // Mount-aware date helper
+  const formatDateLocal = (
+    date: Date | string | number,
+    options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
+  ): string => {
+    if (!mounted) {
+      try {
+        const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date
+        if (isNaN(d.getTime())) return String(date)
+        return new Intl.DateTimeFormat('en', options).format(d)
+      } catch (_) {
+        return String(date)
+      }
+    }
+    return formatDate(date, options)
+  }
+
+  // Mount-aware time helper
+  const formatTimeLocal = (
+    date: Date | string | number,
+    options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+  ): string => {
+    if (!mounted) {
+      try {
+        const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date
+        if (isNaN(d.getTime())) return String(date)
+        return new Intl.DateTimeFormat('en', options).format(d)
+      } catch (_) {
+        return String(date)
+      }
+    }
+    return formatTime(date, options)
+  }
+
+  // Mount-aware number helper
+  const formatNumberLocal = (num: number, options?: Intl.NumberFormatOptions): string => {
+    if (!mounted) {
+      try {
+        return new Intl.NumberFormat('en', options).format(num)
+      } catch (_) {
+        return String(num)
+      }
+    }
+    return formatNumber(num, options)
+  }
+
+  // Mount-aware currency helper
+  const formatCurrencyLocal = (
+    num: number,
+    currency = 'USD',
+    options: Intl.NumberFormatOptions = {}
+  ): string => {
+    if (!mounted) {
+      try {
+        return new Intl.NumberFormat('en', {
+          style: 'currency',
+          currency,
+          ...options
+        }).format(num)
+      } catch (_) {
+        return `${currency} ${num}`
+      }
+    }
+    return formatCurrency(num, currency, options)
+  }
+
   return {
-    t,
-    locale: currentLocale,
+    t: tLocal,
+    locale: mounted ? currentLocale : 'en',
     setLocale,
-    formatDate,
-    formatTime,
-    formatNumber,
-    formatCurrency
+    formatDate: formatDateLocal,
+    formatTime: formatTimeLocal,
+    formatNumber: formatNumberLocal,
+    formatCurrency: formatCurrencyLocal
   }
 }
 

@@ -3,7 +3,7 @@
 import React from 'react'
 import { X } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
-import { t } from '@/lib/i18n'
+import { useTranslation } from '@/lib/i18n'
 import styles from './FilterSidebar.module.css'
 
 interface FilterSidebarProps {
@@ -47,6 +47,7 @@ export function FilterSidebar({
   isModal = false,
   triggerId = 'assets-filter-button',
 }: FilterSidebarProps) {
+  const { t } = useTranslation()
   React.useEffect(() => {
     if (!isOpen || isModal) return
 

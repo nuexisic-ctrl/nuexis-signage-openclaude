@@ -442,7 +442,7 @@ export function GroupsSection({
                             <span className={`${styles.contentIconWrap} ${kindClassMap[getGroupContentKind(group, assets)] ?? ''}`}>
                               <ContentIcon kind={getGroupContentKind(group, assets)} size={15} />
                             </span>
-                            <span className={styles.contentLabelText} title={contentName} style={{ display: 'inline-flex', minWidth: 0, flex: 1 }}>
+                            <span className={styles.contentLabelText} title={contentName}>
                               <FilenameTruncator filename={contentName} />
                             </span>
                           </>

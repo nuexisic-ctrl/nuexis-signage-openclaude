@@ -577,4 +577,3 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     </>
   )
 }
-}

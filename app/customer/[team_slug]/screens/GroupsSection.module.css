@@ -305,11 +305,9 @@
 
 .contentLabelText {
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  display: inline-flex;
+  display: flex;
   min-width: 0;
-  flex: 1;
+  width: 100%;
 }
 
 .unassignedText {

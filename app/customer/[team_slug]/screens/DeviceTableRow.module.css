@@ -17,8 +17,10 @@
 }
 
 .tableCell {
-  padding: 11px 16px;
+  padding: 14px 16px;
   vertical-align: middle;
+  font-size: 0.875rem;
+  color: var(--on-surface);
 }
 
 .nameCellContent {
@@ -52,14 +54,12 @@
 }
 
 .cellLastSeen {
-  font-size: 0.8125rem;
   color: var(--on-surface);
 }
 
 .playlistCell {
   gap: 8px;
   max-width: 260px;
-  font-size: 0.8125rem;
   color: var(--on-surface);
   cursor: default;
 }

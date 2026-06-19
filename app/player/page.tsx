@@ -436,19 +436,19 @@ export default function PlayerPage() {
                 ctx.font = 'bold 40px sans-serif'
                 ctx.textAlign = 'center'
                 ctx.textBaseline = 'middle'
-                ctx.fillText('NuExis Web Player', canvas.width / 2, canvas.height / 2 - 100)
+                ctx.fillText('NuExis Web Player', canvas.width * 0.5, canvas.height * 0.5 - 100)
                 
                 ctx.fillStyle = '#3b82f6'
                 ctx.font = '24px sans-serif'
-                ctx.fillText(`Active Content Type: ${contentType || 'None'}`, canvas.width / 2, canvas.height / 2 - 20)
+                ctx.fillText(`Active Content Type: ${contentType || 'None'}`, canvas.width * 0.5, canvas.height * 0.5 - 20)
                 
                 ctx.fillStyle = '#94a3b8'
                 ctx.font = '18px monospace'
-                ctx.fillText(`Hardware ID: ${hardwareIdRef.current || 'unknown'}`, canvas.width / 2, canvas.height / 2 + 40)
+                ctx.fillText(`Hardware ID: ${hardwareIdRef.current || 'unknown'}`, canvas.width * 0.5, canvas.height * 0.5 + 40)
                 
                 ctx.fillStyle = '#64748b'
                 ctx.font = '16px sans-serif'
-                ctx.fillText(`Time: ${new Date().toLocaleString()}`, canvas.width / 2, canvas.height / 2 + 100)
+                ctx.fillText(`Time: ${new Date().toLocaleString()}`, canvas.width * 0.5, canvas.height * 0.5 + 100)
               }
               
               const base64Data = canvas.toDataURL('image/png')
@@ -531,7 +531,10 @@ export default function PlayerPage() {
                   .catch(console.error)
               }
             } else {
-              if (navigator.onLine) window.location.assign(window.location.pathname)
+              // Only reload if we were previously paired, to go back to the pairing screen
+              if (isPairedRef.current && navigator.onLine) {
+                window.location.assign(window.location.pathname)
+              }
             }
           }
         )

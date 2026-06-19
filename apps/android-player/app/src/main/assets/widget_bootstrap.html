@@ -283,6 +283,25 @@
       } catch(e){}
     }
 
+    function applyTheme(container, config) {
+      const theme = config.theme || 'dark';
+      const isDark = theme === 'dark';
+      const settings = config.themeSettings || {};
+
+      const defaultText = isDark ? '#ffffff' : '#0f172a';
+      const defaultPrimary = isDark ? '#6366f1' : '#4f46e5';
+      const defaultSecondary = isDark ? '#94a3b8' : '#64748b';
+
+      const bg = settings.backgroundColor || (isDark ? 'rgba(13, 29, 51, 0.6)' : 'rgba(255, 255, 255, 0.85)');
+      const text = settings.textColor || defaultText;
+      const primary = settings.primaryColor || defaultPrimary;
+      const secondary = settings.secondaryColor || defaultSecondary;
+
+      document.body.style.color = text;
+      
+      return { bg, text, primary, secondary, isDark };
+    }
+
     // ─── CLOCK RUNNER ───
     function setupClockWidget(container, type, config) {
       const style = config.style || 'classic-digital';
@@ -291,14 +310,16 @@
       const use24Hour = !!config.use24Hour;
       const timezone = config.timezone || null; // for world clock
 
+      const themeColors = applyTheme(container, config);
+
       if (style.endsWith('-analog')) {
         // Render Analog Clock
         container.innerHTML = `
-          <div class="analog-clock ${style === 'classic-analog' ? '' : 'clock-round'}">
-            <div class="hand hour-hand" id="hour-hand"></div>
-            <div class="hand minute-hand" id="min-hand"></div>
-            <div class="hand second-hand" id="sec-hand" style="${showSeconds ? '' : 'display:none;'}"></div>
-            <div class="center-dot"></div>
+          <div class="analog-clock ${style === 'classic-analog' ? '' : 'clock-round'}" style="background: ${themeColors.bg}; border-color: ${themeColors.text};">
+            <div class="hand hour-hand" id="hour-hand" style="background: ${themeColors.text};"></div>
+            <div class="hand minute-hand" id="min-hand" style="background: ${themeColors.primary};"></div>
+            <div class="hand second-hand" id="sec-hand" style="${showSeconds ? '' : 'display:none;'} background: ${themeColors.secondary};"></div>
+            <div class="center-dot" style="background: ${themeColors.primary};"></div>
           </div>
         `;
 
@@ -327,9 +348,9 @@
         // Render Digital Clock
         const minimalClass = style === 'minimalist' ? 'clock-minimalist' : '';
         container.innerHTML = `
-          <div class="clock-container ${minimalClass}">
-            <div class="clock-time" id="clock-time">00:00:00</div>
-            <div class="clock-date" id="clock-date" style="${showDate ? '' : 'display:none;'}">DATE</div>
+          <div class="clock-container ${minimalClass}" style="background: ${themeColors.bg}; border-color: rgba(255,255,255,${themeColors.isDark ? 0.1 : 0.2}); color: ${themeColors.text};">
+            <div class="clock-time" id="clock-time" style="background: none; -webkit-text-fill-color: ${themeColors.primary}; color: ${themeColors.primary};">00:00:00</div>
+            <div class="clock-date" id="clock-date" style="${showDate ? '' : 'display:none;'} color: ${themeColors.secondary};">DATE</div>
           </div>
         `;
 
@@ -383,118 +404,204 @@
       const endMsg = config.endMessage || "COUNTDOWN COMPLETED";
       const label = config.text || "COUNTDOWN";
       const daysOnly = !!config.daysOnly;
+      const timerStyle = config.timerStyle || 'cards';
 
-      container.innerHTML = `
-        <div class="timer-container">
-          <div class="timer-label">${label}</div>
-          <div class="timer-grid" id="timer-grid">
-            <div class="timer-card">
-              <div class="timer-card-val" id="days-val">00</div>
-              <div class="timer-card-label">Days</div>
-            </div>
-            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
-              <div class="timer-card-val" id="hours-val">00</div>
-              <div class="timer-card-label">Hours</div>
-            </div>
-            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
-              <div class="timer-card-val" id="mins-val">00</div>
-              <div class="timer-card-label">Mins</div>
-            </div>
-            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
-              <div class="timer-card-val" id="secs-val">00</div>
-              <div class="timer-card-label">Secs</div>
-            </div>
+      const themeColors = applyTheme(container, config);
+
+      if (timerStyle === 'digital') {
+        container.innerHTML = `
+          <div class="timer-container" style="background: ${themeColors.bg}; border-color: rgba(255,255,255,${themeColors.isDark ? 0.1 : 0.2});">
+            <div class="timer-label" style="color: ${themeColors.text};">${label}</div>
+            <div style="font-size: 4rem; font-weight: 800; font-family: 'Share Tech Mono', monospace; color: ${themeColors.primary};" id="digital-val">00:00:00:00</div>
+            <div class="timer-msg" id="timer-msg" style="display:none; color: ${themeColors.secondary};">${endMsg}</div>
           </div>
-          <div class="timer-msg" id="timer-msg" style="display:none;">${endMsg}</div>
-        </div>
-      `;
+        `;
 
-      const grid = document.getElementById('timer-grid');
-      const msg = document.getElementById('timer-msg');
-      const dVal = document.getElementById('days-val');
-      const hVal = document.getElementById('hours-val');
-      const mVal = document.getElementById('mins-val');
-      const sVal = document.getElementById('secs-val');
+        const digitalVal = document.getElementById('digital-val');
+        const msg = document.getElementById('timer-msg');
 
-      function updateCountdown() {
-        const diff = endTime - Date.now();
-        if (diff <= 0) {
-          grid.style.display = 'none';
-          msg.style.display = 'block';
-          clearInterval(timerInterval);
-          return;
+        function updateCountdownDigital() {
+          const diff = endTime - Date.now();
+          if (diff <= 0) {
+            digitalVal.style.display = 'none';
+            msg.style.display = 'block';
+            clearInterval(timerInterval);
+            return;
+          }
+
+          const days = String(Math.floor(diff / 86400000)).padStart(2, '0');
+          const hours = String(Math.floor((diff % 86400000) / 3600000)).padStart(2, '0');
+          const mins = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+          const secs = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+
+          digitalVal.innerText = daysOnly ? `${days}d` : `${days}:${hours}:${mins}:${secs}`;
         }
 
-        const days = Math.floor(diff / 86400000);
-        const hours = Math.floor((diff % 86400000) / 3600000);
-        const mins = Math.floor((diff % 3600000) / 60000);
-        const secs = Math.floor((diff % 60000) / 1000);
+        updateCountdownDigital();
+        timerInterval = setInterval(updateCountdownDigital, 1000);
+      } else {
+        container.innerHTML = `
+          <div class="timer-container" style="background: ${themeColors.bg}; border-color: rgba(255,255,255,${themeColors.isDark ? 0.1 : 0.2});">
+            <div class="timer-label" style="color: ${themeColors.text};">${label}</div>
+            <div class="timer-grid" id="timer-grid">
+              <div class="timer-card" style="background: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.05); border-color: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.1);">
+                <div class="timer-card-val" id="days-val" style="color: ${themeColors.primary};">00</div>
+                <div class="timer-card-label" style="color: ${themeColors.secondary};">Days</div>
+              </div>
+              <div class="timer-card" style="${daysOnly ? 'display:none;' : ''} background: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.05); border-color: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.1);">
+                <div class="timer-card-val" id="hours-val" style="color: ${themeColors.primary};">00</div>
+                <div class="timer-card-label" style="color: ${themeColors.secondary};">Hours</div>
+              </div>
+              <div class="timer-card" style="${daysOnly ? 'display:none;' : ''} background: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.05); border-color: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.1);">
+                <div class="timer-card-val" id="mins-val" style="color: ${themeColors.primary};">00</div>
+                <div class="timer-card-label" style="color: ${themeColors.secondary};">Mins</div>
+              </div>
+              <div class="timer-card" style="${daysOnly ? 'display:none;' : ''} background: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.05); border-color: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.1);">
+                <div class="timer-card-val" id="secs-val" style="color: ${themeColors.primary};">00</div>
+                <div class="timer-card-label" style="color: ${themeColors.secondary};">Secs</div>
+              </div>
+            </div>
+            <div class="timer-msg" id="timer-msg" style="display:none; color: ${themeColors.secondary};">${endMsg}</div>
+          </div>
+        `;
 
-        dVal.innerText = String(days).padStart(2, '0');
-        if (!daysOnly) {
-          hVal.innerText = String(hours).padStart(2, '0');
-          mVal.innerText = String(mins).padStart(2, '0');
-          sVal.innerText = String(secs).padStart(2, '0');
+        const grid = document.getElementById('timer-grid');
+        const msg = document.getElementById('timer-msg');
+        const dVal = document.getElementById('days-val');
+        const hVal = document.getElementById('hours-val');
+        const mVal = document.getElementById('mins-val');
+        const sVal = document.getElementById('secs-val');
+
+        function updateCountdown() {
+          const diff = endTime - Date.now();
+          if (diff <= 0) {
+            grid.style.display = 'none';
+            msg.style.display = 'block';
+            clearInterval(timerInterval);
+            return;
+          }
+
+          const days = Math.floor(diff / 86400000);
+          const hours = Math.floor((diff % 86400000) / 3600000);
+          const mins = Math.floor((diff % 3600000) / 60000);
+          const secs = Math.floor((diff % 60000) / 1000);
+
+          dVal.innerText = String(days).padStart(2, '0');
+          if (!daysOnly) {
+            hVal.innerText = String(hours).padStart(2, '0');
+            mVal.innerText = String(mins).padStart(2, '0');
+            sVal.innerText = String(secs).padStart(2, '0');
+          }
         }
+
+        updateCountdown();
+        timerInterval = setInterval(updateCountdown, 1000);
       }
-
-      updateCountdown();
-      timerInterval = setInterval(updateCountdown, 1000);
     }
 
     // ─── COUNTUP RUNNER ───
     function setupCountUpWidget(container, config) {
       const startTime = new Date(config.startTime || Date.now() - 86400000).getTime();
+      const endTime = config.endTime ? new Date(config.endTime).getTime() : null;
+      const endMsg = config.endMessage || "COMPLETED";
       const label = config.text || "COUNT UP";
       const daysOnly = !!config.daysOnly;
+      const timerStyle = config.timerStyle || 'cards';
 
-      container.innerHTML = `
-        <div class="timer-container">
-          <div class="timer-label">${label}</div>
-          <div class="timer-grid">
-            <div class="timer-card">
-              <div class="timer-card-val" id="days-val">00</div>
-              <div class="timer-card-label">Days</div>
-            </div>
-            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
-              <div class="timer-card-val" id="hours-val">00</div>
-              <div class="timer-card-label">Hours</div>
-            </div>
-            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
-              <div class="timer-card-val" id="mins-val">00</div>
-              <div class="timer-card-label">Mins</div>
-            </div>
-            <div class="timer-card" style="${daysOnly ? 'display:none;' : ''}">
-              <div class="timer-card-val" id="secs-val">00</div>
-              <div class="timer-card-label">Secs</div>
-            </div>
+      const themeColors = applyTheme(container, config);
+
+      if (timerStyle === 'digital') {
+        container.innerHTML = `
+          <div class="timer-container" style="background: ${themeColors.bg}; border-color: rgba(255,255,255,${themeColors.isDark ? 0.1 : 0.2});">
+            <div class="timer-label" style="color: ${themeColors.text};">${label}</div>
+            <div style="font-size: 4rem; font-weight: 800; font-family: 'Share Tech Mono', monospace; color: ${themeColors.primary};" id="digital-val">00:00:00:00</div>
+            <div class="timer-msg" id="timer-msg" style="display:none; color: ${themeColors.secondary};">${endMsg}</div>
           </div>
-        </div>
-      `;
+        `;
 
-      const dVal = document.getElementById('days-val');
-      const hVal = document.getElementById('hours-val');
-      const mVal = document.getElementById('mins-val');
-      const sVal = document.getElementById('secs-val');
+        const digitalVal = document.getElementById('digital-val');
+        const msg = document.getElementById('timer-msg');
 
-      function updateCountUp() {
-        const diff = Date.now() - startTime;
+        function updateCountUpDigital() {
+          const now = Date.now();
+          if (endTime && now >= endTime) {
+            digitalVal.style.display = 'none';
+            msg.style.display = 'block';
+            clearInterval(timerInterval);
+            return;
+          }
 
-        const days = Math.floor(diff / 86400000);
-        const hours = Math.floor((diff % 86400000) / 3600000);
-        const mins = Math.floor((diff % 3600000) / 60000);
-        const secs = Math.floor((diff % 60000) / 1000);
+          const diff = now - startTime;
+          const days = String(Math.floor(diff / 86400000)).padStart(2, '0');
+          const hours = String(Math.floor((diff % 86400000) / 3600000)).padStart(2, '0');
+          const mins = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+          const secs = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
 
-        dVal.innerText = String(days).padStart(2, '0');
-        if (!daysOnly) {
-          hVal.innerText = String(hours).padStart(2, '0');
-          mVal.innerText = String(mins).padStart(2, '0');
-          sVal.innerText = String(secs).padStart(2, '0');
+          digitalVal.innerText = daysOnly ? `${days}d` : `${days}:${hours}:${mins}:${secs}`;
         }
-      }
 
-      updateCountUp();
-      timerInterval = setInterval(updateCountUp, 1000);
+        updateCountUpDigital();
+        timerInterval = setInterval(updateCountUpDigital, 1000);
+      } else {
+        container.innerHTML = `
+          <div class="timer-container" style="background: ${themeColors.bg}; border-color: rgba(255,255,255,${themeColors.isDark ? 0.1 : 0.2});">
+            <div class="timer-label" style="color: ${themeColors.text};">${label}</div>
+            <div class="timer-grid" id="timer-grid">
+              <div class="timer-card" style="background: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.05); border-color: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.1);">
+                <div class="timer-card-val" id="days-val" style="color: ${themeColors.primary};">00</div>
+                <div class="timer-card-label" style="color: ${themeColors.secondary};">Days</div>
+              </div>
+              <div class="timer-card" style="${daysOnly ? 'display:none;' : ''} background: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.05); border-color: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.1);">
+                <div class="timer-card-val" id="hours-val" style="color: ${themeColors.primary};">00</div>
+                <div class="timer-card-label" style="color: ${themeColors.secondary};">Hours</div>
+              </div>
+              <div class="timer-card" style="${daysOnly ? 'display:none;' : ''} background: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.05); border-color: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.1);">
+                <div class="timer-card-val" id="mins-val" style="color: ${themeColors.primary};">00</div>
+                <div class="timer-card-label" style="color: ${themeColors.secondary};">Mins</div>
+              </div>
+              <div class="timer-card" style="${daysOnly ? 'display:none;' : ''} background: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.05); border-color: rgba(${themeColors.isDark ? '255,255,255' : '0,0,0'}, 0.1);">
+                <div class="timer-card-val" id="secs-val" style="color: ${themeColors.primary};">00</div>
+                <div class="timer-card-label" style="color: ${themeColors.secondary};">Secs</div>
+              </div>
+            </div>
+            <div class="timer-msg" id="timer-msg" style="display:none; color: ${themeColors.secondary};">${endMsg}</div>
+          </div>
+        `;
+
+        const grid = document.getElementById('timer-grid');
+        const msg = document.getElementById('timer-msg');
+        const dVal = document.getElementById('days-val');
+        const hVal = document.getElementById('hours-val');
+        const mVal = document.getElementById('mins-val');
+        const sVal = document.getElementById('secs-val');
+
+        function updateCountUp() {
+          const now = Date.now();
+          if (endTime && now >= endTime) {
+            grid.style.display = 'none';
+            msg.style.display = 'block';
+            clearInterval(timerInterval);
+            return;
+          }
+
+          const diff = now - startTime;
+
+          const days = Math.floor(diff / 86400000);
+          const hours = Math.floor((diff % 86400000) / 3600000);
+          const mins = Math.floor((diff % 3600000) / 60000);
+          const secs = Math.floor((diff % 60000) / 1000);
+
+          dVal.innerText = String(days).padStart(2, '0');
+          if (!daysOnly) {
+            hVal.innerText = String(hours).padStart(2, '0');
+            mVal.innerText = String(mins).padStart(2, '0');
+            sVal.innerText = String(secs).padStart(2, '0');
+          }
+        }
+
+        updateCountUp();
+        timerInterval = setInterval(updateCountUp, 1000);
+      }
     }
 
     // ─── SLIDESHOW RUNNER ───
@@ -508,7 +615,11 @@
 
       images.forEach((imgUrl, i) => {
         const img = document.createElement('img');
-        img.src = imgUrl;
+        let finalUrl = imgUrl;
+        if (window.AndroidPlayer && typeof window.AndroidPlayer.getSignedUrl === 'function') {
+          finalUrl = window.AndroidPlayer.getSignedUrl(imgUrl);
+        }
+        img.src = finalUrl;
         img.className = `slideshow-img ${i === 0 ? 'active' : ''}`;
         container.appendChild(img);
       });
@@ -530,12 +641,17 @@
       let youtubeUrl = typeof config === 'string' ? config : (config.url || '');
       const ccEnabled = !!config.ccEnabled;
       const videoId = youtubeUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/)?.[1] || '';
+      
+      let isMuted = 1;
+      if (window.AndroidPlayer && typeof window.AndroidPlayer.isMuted === 'function') {
+        isMuted = window.AndroidPlayer.isMuted() ? 1 : 0;
+      }
       const ccParam = ccEnabled ? '&cc_load_policy=1' : '';
 
       container.innerHTML = `
         <iframe
           class="full-iframe"
-          src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0${ccParam}"
+          src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted}&loop=1&playlist=${videoId}&controls=0${ccParam}"
           allow="autoplay; encrypted-media"
           allowfullscreen
         ></iframe>
@@ -555,10 +671,20 @@
         }
       }
 
+      let isMuted = 1;
+      if (window.AndroidPlayer && typeof window.AndroidPlayer.isMuted === 'function') {
+        isMuted = window.AndroidPlayer.isMuted() ? 1 : 0;
+      }
+
+      const ccEnabled = !!config.ccEnabled;
+      const ccParam = ccEnabled ? '&cc_load_policy=1' : '';
+      const shuffleEnabled = !!config.shuffleEnabled;
+      const shuffleParam = shuffleEnabled ? '&shuffle=1' : '';
+
       container.innerHTML = `
         <iframe
           class="full-iframe"
-          src="https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&mute=1&controls=0&loop=1"
+          src="https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=1&mute=${isMuted}&controls=0&loop=1${ccParam}${shuffleParam}"
           allow="autoplay; encrypted-media"
           allowfullscreen
         ></iframe>
