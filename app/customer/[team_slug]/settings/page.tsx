@@ -33,12 +33,12 @@ export default async function SettingsPage({ params }: Props) {
 
   const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).slug : undefined
 
-  if (userTeamSlug && userTeamSlug !== team_slug) {
+  if (!profile || !profile.team_id || !userTeamSlug || userTeamSlug !== team_slug) {
     notFound()
   }
 
-  const teamName = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).name : 'Workspace'
-  const userRole = profile?.role || 'Owner'
+  const teamName = (profile.teams as any).name || 'Workspace'
+  const userRole = profile.role || 'Owner'
 
   return (
     <SettingsClient

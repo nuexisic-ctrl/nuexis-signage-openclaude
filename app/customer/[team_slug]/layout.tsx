@@ -48,12 +48,12 @@ async function HeaderWrapper({ teamSlug }: { teamSlug: string }) {
   const supabase = await createClient()
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, teams(slug)')
+    .select('role, team_id, teams(slug)')
     .eq('id', user.id)
     .single()
 
   const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? profile.teams.slug : undefined
-  if (userTeamSlug && userTeamSlug !== teamSlug) {
+  if (!profile || !profile.team_id || !userTeamSlug || userTeamSlug !== teamSlug) {
     notFound()
   }
 

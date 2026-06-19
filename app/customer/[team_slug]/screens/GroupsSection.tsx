@@ -12,6 +12,7 @@ import { deleteGroup } from '../groups/actions'
 import { toast } from '@/app/components/Toast'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 import { useTranslation } from '@/lib/i18n'
+import EmptyState from '../components/EmptyState'
 
 interface Group {
   id: string
@@ -38,8 +39,10 @@ interface GroupsSectionProps {
   onlineDeviceIds?: Set<string>
   onSelectGroup: (group: Group) => void
   onDeleteGroup: (group: Group) => void
+  onCreateGroup?: () => void
   isRefreshing?: boolean
   showSuccessPulse?: boolean
+  highlightedGroupId?: string | null
 }
 
 function getGroupContentKind(group: Group, assets: any[]): ContentKind {
@@ -70,8 +73,10 @@ export function GroupsSection({
   onlineDeviceIds,
   onSelectGroup,
   onDeleteGroup,
+  onCreateGroup,
   isRefreshing = false,
-  showSuccessPulse = false
+  showSuccessPulse = false,
+  highlightedGroupId = null
 }: GroupsSectionProps) {
   const { t } = useTranslation()
   const kindClassMap: Record<string, string> = {
@@ -95,6 +100,21 @@ export function GroupsSection({
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set())
   const [isSelectDropdownOpen, setIsSelectDropdownOpen] = useState(false)
   const selectDropdownRef = React.useRef<HTMLDivElement>(null)
+
+  const [openMenuGroupId, setOpenMenuGroupId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setOpenMenuGroupId(null)
+    }
+    if (openMenuGroupId) {
+      document.addEventListener('click', handleOutsideClick)
+    }
+    return () => {
+      document.removeEventListener('click', handleOutsideClick)
+    }
+  }, [openMenuGroupId])
+
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -171,6 +191,28 @@ export function GroupsSection({
       setCurrentPage(totalPages)
     }
   }, [filteredGroups, currentPage, totalPages])
+
+  useEffect(() => {
+    if (highlightedGroupId) {
+      // Find page containing the group and switch to it if needed
+      const groupIndex = filteredGroups.findIndex(g => g.id === highlightedGroupId)
+      if (groupIndex !== -1) {
+        const targetPage = Math.floor(groupIndex / pageSize) + 1
+        if (targetPage !== currentPage) {
+          setCurrentPage(targetPage)
+        }
+      }
+      
+      // Delay slightly to allow rendering page switch before scrolling
+      const timer = setTimeout(() => {
+        const element = document.querySelector(`[data-group-row-id="${highlightedGroupId}"], [data-group-card-id="${highlightedGroupId}"]`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [highlightedGroupId, filteredGroups, pageSize])
 
   const paginatedGroups = React.useMemo(() => {
     const from = (currentPage - 1) * pageSize
@@ -321,25 +363,34 @@ export function GroupsSection({
         </div>
 
         {groups.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>
-              <FolderTree size={20} />
-            </div>
-            <h3 className={styles.emptyTitle}>{t('No groups created yet')}</h3>
-            <p className={styles.emptyText}>
-              {t('Use the "+ New Group" button to organize your screens.')}
-            </p>
-          </div>
+          <EmptyState
+            title={t('No groups created yet')}
+            description={t('Use the "+ New Group" button to organize your screens.')}
+            icon={<FolderTree aria-hidden="true" size={20} />}
+            action={onCreateGroup ? (
+              <button
+                type="button"
+                onClick={onCreateGroup}
+                style={{
+                  padding: '10px 20px',
+                  background: 'var(--primary)',
+                  color: 'var(--on-primary)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {t('Create Group')}
+              </button>
+            ) : undefined}
+          />
         ) : filteredGroups.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>
-              <FolderTree size={20} />
-            </div>
-            <h3 className={styles.emptyTitle}>{t('No groups found')}</h3>
-            <p className={styles.emptyText}>
-              {t('No groups matched your search criteria.')}
-            </p>
-          </div>
+          <EmptyState
+            title={t('No groups found')}
+            description={t('No groups matched your search criteria.')}
+            icon={<FolderTree aria-hidden="true" size={20} />}
+          />
         ) : viewMode === 'table' ? (
           <div className={`${styles.tableContainer} ${showSuccessPulse ? styles.successPulse : ''}`}>
             <table className={styles.table}>
@@ -375,7 +426,8 @@ export function GroupsSection({
                 return (
                   <tr 
                     key={group.id} 
-                    className={`${styles.tableRow} ${isSelected ? styles.rowSelected : ''}`} 
+                    data-group-row-id={group.id}
+                    className={`${styles.tableRow} ${isSelected ? styles.rowSelected : ''} ${group.id === highlightedGroupId ? styles.highlightedGroup : ''}`} 
                     onClick={() => onSelectGroup(group)}
                   >
                     <td 
@@ -468,17 +520,53 @@ export function GroupsSection({
                         >
                           <Trash2 size={15} />
                         </button>
-                        <button
-                          className={styles.actionBtn}
-                          onClick={(e) => e.stopPropagation()}
-                          title={t('More options')}
-                        >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
-                            <circle cx="5" cy="12" r="1.5" />
-                            <circle cx="12" cy="12" r="1.5" />
-                            <circle cx="19" cy="12" r="1.5" />
-                          </svg>
-                        </button>
+                        <div className={styles.moreMenuWrapper}>
+                          <button
+                            className={`${styles.actionBtn} ${openMenuGroupId === group.id ? styles.active : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuGroupId(openMenuGroupId === group.id ? null : group.id);
+                            }}
+                            title={t('More options')}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                              <circle cx="5" cy="12" r="1.5" />
+                              <circle cx="12" cy="12" r="1.5" />
+                              <circle cx="19" cy="12" r="1.5" />
+                            </svg>
+                          </button>
+                          {openMenuGroupId === group.id && (
+                            <div className={styles.moreDropdown}>
+                              <button
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                  setOpenMenuGroupId(null);
+                                  onSelectGroup(group);
+                                }}
+                              >
+                                {t('Edit Group')}
+                              </button>
+                              <button
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                  setOpenMenuGroupId(null);
+                                  onSelectGroup(group);
+                                }}
+                              >
+                                {t('Assign Playlist/Asset')}
+                              </button>
+                              <button
+                                className={`${styles.dropdownItem} ${styles.dropdownItemDanger}`}
+                                onClick={() => {
+                                  setOpenMenuGroupId(null);
+                                  onDeleteGroup(group);
+                                }}
+                              >
+                                {t('Delete Group')}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -510,7 +598,8 @@ export function GroupsSection({
             return (
               <div 
                 key={group.id} 
-                className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`} 
+                data-group-card-id={group.id}
+                className={`${styles.card} ${isSelected ? styles.cardSelected : ''} ${group.id === highlightedGroupId ? styles.highlightedGroupCard : ''}`} 
                 style={{ '--group-border-color': group.color || '#3b82f6' } as React.CSSProperties}
                 onClick={() => onSelectGroup(group)}
               >

@@ -519,6 +519,11 @@ export default function PlayerPage() {
               if (payload.new.content_type) {
                 // Device has explicit content, apply it directly (instant, reliable, bypasses rate limits)
                 applyDeviceState(payload.new)
+                channel.send({
+                  type: 'broadcast',
+                  event: 'push_acknowledged',
+                  payload: { assetId: payload.new.asset_id || payload.new.playlist_id }
+                }).catch(console.error)
               } else {
                 // Device inherits from group, resolve it dynamically by fetching resolved state
                 getDeviceState(hardwareIdRef.current!, secretRef.current || undefined, 'Web Player 1.0', window.navigator.userAgent)
@@ -526,6 +531,11 @@ export default function PlayerPage() {
                     if (fresh && !cancelled) {
                       applyDeviceState(fresh)
                       lastConfigRef.current.updatedAt = fresh.updated_at || null
+                      channel.send({
+                        type: 'broadcast',
+                        event: 'push_acknowledged',
+                        payload: { assetId: fresh.asset_id || fresh.playlist_id }
+                      }).catch(console.error)
                     }
                   })
                   .catch(console.error)

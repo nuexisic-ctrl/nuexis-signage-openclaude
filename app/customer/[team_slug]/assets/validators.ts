@@ -141,3 +141,17 @@ export function validateCss(css: string): string[] {
 
   return errors
 }
+
+export const ALLOWED_EXTENSIONS = /\.(png|jpg|jpeg|mp4|webm|pdf)$/i
+
+export function validateFile(file: File, maxSizeBytes: number): { valid: true } | { valid: false; error: string } {
+  if (file.size > maxSizeBytes) {
+    const sizeMb = Math.round(maxSizeBytes / (1024 * 1024))
+    return { valid: false, error: `"${file.name}" exceeds the ${sizeMb}MB limit.` }
+  }
+  if (!file.name.match(ALLOWED_EXTENSIONS)) {
+    return { valid: false, error: `"${file.name}" has an invalid file type. Only PNG, JPG, JPEG, MP4, WEBM, and PDF are allowed.` }
+  }
+  return { valid: true }
+}
+

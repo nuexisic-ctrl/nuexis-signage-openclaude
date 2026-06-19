@@ -20,6 +20,7 @@ export interface DeviceCardProps {
   selected?: boolean
   onToggleSelect?: () => void
   onGroupClick?: (groupId: string) => void
+  now?: number
 }
 
 export function DeviceCard({
@@ -36,7 +37,8 @@ export function DeviceCard({
   memberships = [],
   selected = false,
   onToggleSelect,
-  onGroupClick
+  onGroupClick,
+  now
 }: DeviceCardProps) {
   const { t, formatDate } = useTranslation()
   
@@ -46,7 +48,7 @@ export function DeviceCard({
     year: 'numeric',
   })
   
-  const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online')
+  const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online', t, now)
 
   // Find member groups
   const deviceMemberships = memberships.filter(m => m.device_id === device.id)
@@ -76,10 +78,21 @@ export function DeviceCard({
     onEdit();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onEdit();
+    }
+  };
+
   return (
     <div 
       className={`${styles.deviceCard} ${selected ? styles.deviceCardSelected : ''}`}
       onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="button"
+      aria-label={device.name || t('Unnamed Screen')}
     >
       <div className={styles.deviceCardHeaderTop}>
         <div className={styles.deviceCardHeaderLeft}>
@@ -186,7 +199,7 @@ export function DeviceCard({
             className={styles.deviceMetaValue} 
             style={(!resolvedDevice.asset_id && !resolvedDevice.playlist_id) ? { fontStyle: 'italic', color: 'var(--on-surface-subtle)' } : {}}
           >
-            <FilenameTruncator filename={getContentLabel(resolvedDevice, assets, playlists)} /> {isInherited && (
+            <FilenameTruncator filename={getContentLabel(resolvedDevice, assets, playlists, now)} /> {isInherited && (
               <span style={{ fontSize: '0.72rem', color: 'var(--primary)', opacity: 0.85, fontWeight: 500, fontStyle: 'italic', marginLeft: '4px' }}>
                 ({t('Group')})
               </span>

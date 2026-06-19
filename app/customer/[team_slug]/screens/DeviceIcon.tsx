@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Folder, Music, FileText, File, Images, QrCode } from 'lucide-react'
 import styles from './DeviceIcon.module.css'
 import { Device, Asset, Playlist, LiveStatus } from './types'
+import { useTranslation } from '@/lib/i18n'
 
 // ── Content type classification ───────────────────────────────────────────────
 export type ContentKind =
@@ -372,9 +373,9 @@ export function buildTooltipInfo(
 }
 
 // ── Smart content icon ────────────────────────────────────────────────────────
-export function ContentIcon({ kind, size = 18 }: { kind: ContentKind; size?: number }) {
-  const s = { width: size, height: size }
-  const base = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+export function ContentIcon({ kind, size = 18, style, className }: { kind: ContentKind; size?: number; style?: React.CSSProperties; className?: string }) {
+  const s = { width: size, height: size, style, className }
+  const base = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, style, className }
 
   if (kind === 'clock') return (
     <svg {...s} {...base}>
@@ -668,6 +669,7 @@ export function DeviceIcon({ name, orientation, app_version, os_version, size = 
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 export function StatusBadge({ status }: { status: LiveStatus }) {
+  const { t } = useTranslation()
   const cls: Record<LiveStatus, string> = {
     online:  styles.statusOnline,
     offline: styles.statusOffline,
@@ -678,18 +680,28 @@ export function StatusBadge({ status }: { status: LiveStatus }) {
     offline: styles.statusDotOffline,
     pairing: styles.statusDotPairing,
   }
+  const labelMap: Record<LiveStatus, string> = {
+    online:  t('Online'),
+    offline: t('Offline'),
+    pairing: t('Pairing'),
+  }
   return (
     <span className={`${styles.statusBadge} ${cls[status]}`}>
       <span className={`${styles.statusDot} ${dotCls[status]}`} />
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {labelMap[status]}
     </span>
   )
 }
 
 // ── Last-seen formatter ───────────────────────────────────────────────────────
-export function formatLastSeen(dateStr: string | null | undefined, isOnline: boolean, nowMs = Date.now()): string {
-  if (isOnline) return 'Active now'
-  if (!dateStr) return 'Never'
+export function formatLastSeen(
+  dateStr: string | null | undefined,
+  isOnline: boolean,
+  t: (key: string, options?: any) => string,
+  nowMs = Date.now()
+): string {
+  if (isOnline) return t('Active now')
+  if (!dateStr) return t('Never')
   
   // Format string for cross-browser parsing support (specifically Safari/Firefox compatibility with Postgres timestamps)
   const cleanDateStr = dateStr.includes(' ') && !dateStr.includes('T')
@@ -697,17 +709,16 @@ export function formatLastSeen(dateStr: string | null | undefined, isOnline: boo
     : dateStr
     
   const timeMs = new Date(cleanDateStr).getTime()
-  if (isNaN(timeMs)) return 'Never'
+  if (isNaN(timeMs)) return t('Never')
   
   const diff = Math.max(0, nowMs - timeMs)
-  const prefix = 'Seen'
-  if (diff < 60000) return `${prefix} just now`
+  if (diff < 60000) return t('Seen just now')
   const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${prefix} ${mins}m ago`
+  if (mins < 60) return t('Seen {time} ago', { time: `${mins}m` })
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${prefix} ${hours}h ago`
+  if (hours < 24) return t('Seen {time} ago', { time: `${hours}h` })
   const days = Math.floor(hours / 24)
-  return `${prefix} ${days}d ago`
+  return t('Seen {time} ago', { time: `${days}d` })
 }
 
 export function formatPlaytime(seconds: number): string {

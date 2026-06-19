@@ -1,5 +1,5 @@
 import React, { useState, useTransition, useRef, useEffect } from 'react'
-import { AlertTriangle, X, Tv } from 'lucide-react'
+import { AlertTriangle, Tv } from 'lucide-react'
 import styles from './Modal.module.css'
 import { Device, Asset, Playlist } from './types'
 import { updateDeviceAssignment, updateDeviceName, AssignmentData } from './actions'
@@ -9,6 +9,7 @@ import { modalStack } from '@/lib/utils/modalStack'
 import CustomSelect from '../components/CustomSelect'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 import { useTranslation } from '@/lib/i18n'
+import Modal from '../components/Modal'
 
 export interface AssignModalProps {
   device: Device
@@ -59,7 +60,6 @@ export function AssignModal({
   const [showPlaylistBrowser, setShowPlaylistBrowser] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const overlayRef = useRef<HTMLDivElement>(null)
   const selectedAsset = assets.find(a => a.id === assetId)
   const selectedPlaylist = playlists.find(p => p.id === playlistId)
 
@@ -72,21 +72,6 @@ export function AssignModal({
       document.body.style.overflow = ''
     }
   }, [])
-
-  // Close modal on Escape if it is the topmost modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (modalStack.isTop('assign-modal')) {
-          onClose()
-        }
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onClose])
 
   // Opens the appropriate browser when the user explicitly changes content type.
   function handleContentTypeChange(newType: 'Asset' | 'Playlist' | 'Schedule' | '') {
@@ -106,24 +91,6 @@ export function AssignModal({
         setShowAssetBrowser(false)
         setShowPlaylistBrowser(false)
       }
-    }
-  }
-
-  const childWasActiveRef = useRef(false)
-
-  function handleOverlayMouseDown(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) {
-      childWasActiveRef.current = modalStack.hasActiveChildOf('assign-modal')
-    }
-  }
-
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) {
-      if (childWasActiveRef.current) {
-        childWasActiveRef.current = false
-        return
-      }
-      onClose()
     }
   }
 
@@ -162,186 +129,184 @@ export function AssignModal({
 
   return (
     <>
-      <div 
-        className={styles.overlay} 
-        onMouseDown={handleOverlayMouseDown} 
-        onClick={handleOverlayClick}
-        ref={overlayRef} 
+      <Modal
+        isOpen={true}
+        onClose={onClose}
+        title={t('Assign Content')}
+        subtitle={t('Configure what plays on {name}', { name: device.name || 'Unnamed Screen' })}
       >
-        <div className={styles.modal} role="dialog">
-          <div className={styles.modalHeader}>
-            <div>
-              <h2 className={styles.modalTitle}>{t('Assign Content')}</h2>
-              <p className={styles.modalSubtitle}>{t('Configure what plays on {name}', { name: device.name || 'Unnamed Screen' })}</p>
+        <form className={styles.form} onSubmit={handleSubmit}>
+          {device.app_version?.toLowerCase().includes('web player') && (
+            <div className={styles.warningMsg}>
+              <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <span>
+                {t('Web Player is not recommended for production use. Please consider using supported platforms such as Android, Windows, or Linux.')}
+              </span>
             </div>
-            <button className={styles.modalClose} onClick={onClose} aria-label={t('Close modal')}><X size={18} /></button>
+          )}
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.label}>{t('Screen Name')}</label>
+            <input
+              type="text"
+              maxLength={60}
+              className={styles.input}
+              value={screenName}
+              onChange={(e) => setScreenName(e.target.value)}
+              disabled={isPending}
+              placeholder="E.g., Reception Monitor"
+            />
           </div>
 
-          <form className={styles.form} onSubmit={handleSubmit}>
-            {device.app_version?.toLowerCase().includes('web player') && (
-              <div className={styles.warningMsg}>
-                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>
-                  {t('Web Player is not recommended for production use. Please consider using supported platforms such as Android, Windows, or Linux.')}
-                </span>
-              </div>
-            )}
+          <div className={styles.fieldGroup}>
+            <label className={styles.label}>{t('Content Type')}</label>
+            <CustomSelect
+              id="assign-content-type"
+              value={contentType || ''}
+              onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | 'Schedule' | '')}
+              options={[
+                ...(!contentType ? [{ value: '', label: t('no content'), disabled: true }] : []),
+                { value: 'Asset', label: t('Asset') },
+                { value: 'Playlist', label: t('Playlist') },
+                { value: 'Schedule', label: t('Schedule (Coming Soon)'), disabled: true }
+              ]}
+            />
+          </div>
 
+          {contentType === 'Asset' && (
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>{t('Screen Name')}</label>
-              <input
-                type="text"
-                maxLength={60}
-                className={styles.input}
-                value={screenName}
-                onChange={(e) => setScreenName(e.target.value)}
-                disabled={isPending}
-                placeholder="E.g., Reception Monitor"
-              />
-            </div>
-
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>{t('Content Type')}</label>
-              <CustomSelect
-                id="assign-content-type"
-                value={contentType || ''}
-                onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | 'Schedule' | '')}
-                options={[
-                  ...(!contentType ? [{ value: '', label: t('no content'), disabled: true }] : []),
-                  { value: 'Asset', label: t('Asset') },
-                  { value: 'Playlist', label: t('Playlist') },
-                  { value: 'Schedule', label: t('Schedule (Coming Soon)'), disabled: true }
-                ]}
-              />
-            </div>
-
-            {contentType === 'Asset' && (
-              <div className={styles.fieldGroup}>
-                <label className={styles.label}>{t('Selected Asset')}</label>
-                <div 
-                  className={styles.customSelectTrigger} 
-                  onClick={() => setShowAssetBrowser(true)}
-                  tabIndex={0}
-                  role="button"
-                  aria-haspopup="dialog"
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowAssetBrowser(true); } }}
-                >
-                  <span className={selectedAsset ? styles.selectedText : styles.placeholderText} style={{ display: 'inline-flex', minWidth: 0, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', marginRight: '8px' }}>
-                    {selectedAsset ? <FilenameTruncator filename={selectedAsset.file_name} /> : t('No asset selected')}
-                  </span>
-                  <button 
-                    type="button" 
-                    className={styles.browseButton}
-                    onClick={(e) => { e.stopPropagation(); setShowAssetBrowser(true); }}
-                  >
-                    {t('Browse')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {contentType === 'Playlist' && (
-              <div className={styles.fieldGroup}>
-                <label className={styles.label}>{t('Selected Playlist')}</label>
-                <div 
-                  className={styles.customSelectTrigger} 
-                  onClick={() => setShowPlaylistBrowser(true)}
-                  tabIndex={0}
-                  role="button"
-                  aria-haspopup="dialog"
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPlaylistBrowser(true); } }}
-                >
-                  <span className={selectedPlaylist ? styles.selectedText : styles.placeholderText}>
-                    {selectedPlaylist ? selectedPlaylist.name : t('No Playlist selected')}
-                  </span>
-                  <button 
-                    type="button" 
-                    className={styles.browseButton}
-                    onClick={(e) => { e.stopPropagation(); setShowPlaylistBrowser(true); }}
-                  >
-                    {t('Browse')}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget') && selectedAsset?.mime_type !== 'application/x-widget-qrcode')) && (
-              <div className={styles.fieldGroup}>
-                <label className={styles.label}>{t('Scale Mode')}</label>
-                <CustomSelect
-                  id="assign-scale-mode"
-                  value={scaleMode}
-                  onChange={(val) => setScaleMode(val)}
-                  options={[
-                    { value: 'None', label: t('None') },
-                    { value: 'Fit', label: t('Fit') },
-                    { value: 'Stretch', label: t('Stretch') },
-                    { value: 'Zoom', label: t('Zoom') }
-                  ]}
-                />
-              </div>
-            )}
-
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>{t('Orientation')}</label>
-              <CustomSelect
-                id="assign-orientation"
-                value={orientation}
-                onChange={(val) => setOrientation(Number(val) as 0 | 90 | 180 | 270)}
-                options={[
-                  { value: 0, label: t('Landscape (0°)') },
-                  { value: 90, label: t('Rotate 90°') },
-                  { value: 180, label: t('Rotate 180°') },
-                  { value: 270, label: t('Rotate 270°') }
-                ]}
-              />
-            </div>
-
-            {error && <div className={styles.errorMsg}><AlertTriangle size={16} />{error}</div>}
-
-            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-              {onPreview && (
-                <button
-                  type="button"
-                  style={{
-                    flex: 1,
-                    minHeight: '44px',
-                    padding: '0 16px',
-                    background: 'var(--surface-low)',
-                    color: 'var(--primary)',
-                    border: '1px solid var(--outline-variant)',
-                    borderRadius: '10px',
-                    fontFamily: 'var(--font-label)',
-                    fontSize: '0.92rem',
-                    fontWeight: 800,
-                    cursor: contentType ? 'pointer' : 'not-allowed',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'all 0.2s ease',
-                    opacity: contentType ? 1 : 0.5
-                  }}
-                  onClick={() => contentType && onPreview(device, contentType, assetId || null, playlistId || null, scaleMode, orientation)}
-                  disabled={!contentType}
-                >
-                  <Tv size={16} />
-                  {t('Preview Screen')}
-                </button>
-              )}
-
-              <button 
-                className={styles.submitBtn} 
-                type="submit" 
-                disabled={isPending || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}
-                style={{ flex: 1.2 }}
+              <label className={styles.label}>{t('Selected Asset')}</label>
+              <div 
+                className={styles.customSelectTrigger} 
+                onClick={() => setShowAssetBrowser(true)}
+                tabIndex={0}
+                role="button"
+                aria-haspopup="dialog"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowAssetBrowser(true); } }}
               >
-                {isPending ? t('Saving…') : t('Save Changes')}
-              </button>
+                <span className={selectedAsset ? styles.selectedText : styles.placeholderText} style={{ display: 'inline-flex', minWidth: 0, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', marginRight: '8px' }}>
+                  {selectedAsset ? <FilenameTruncator filename={selectedAsset.file_name} /> : t('No asset selected')}
+                </span>
+                <button 
+                  type="button" 
+                  className={styles.browseButton}
+                  onClick={(e) => { e.stopPropagation(); setShowAssetBrowser(true); }}
+                >
+                  {t('Browse')}
+                </button>
+              </div>
             </div>
-          </form>
-        </div>
-      </div>
+          )}
+
+          {contentType === 'Playlist' && (
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>{t('Selected Playlist')}</label>
+              <div 
+                className={styles.customSelectTrigger} 
+                onClick={() => setShowPlaylistBrowser(true)}
+                tabIndex={0}
+                role="button"
+                aria-haspopup="dialog"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPlaylistBrowser(true); } }}
+              >
+                <span className={selectedPlaylist ? styles.selectedText : styles.placeholderText}>
+                  {selectedPlaylist ? selectedPlaylist.name : t('No Playlist selected')}
+                </span>
+                <button 
+                  type="button" 
+                  className={styles.browseButton}
+                  onClick={(e) => { e.stopPropagation(); setShowPlaylistBrowser(true); }}
+                >
+                  {t('Browse')}
+                </button>
+              </div>
+              {playlistId && (selectedPlaylist?.playlist_items?.length || 0) === 0 && (
+                <div className={styles.warningMsg} style={{ marginTop: '8px' }}>
+                  <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span>
+                    {t('This playlist is empty. Assigning it will show a black screen on the player.')}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget') && selectedAsset?.mime_type !== 'application/x-widget-qrcode')) && (
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>{t('Scale Mode')}</label>
+              <CustomSelect
+                id="assign-scale-mode"
+                value={scaleMode}
+                onChange={(val) => setScaleMode(val)}
+                options={[
+                  { value: 'None', label: t('None') },
+                  { value: 'Fit', label: t('Fit') },
+                  { value: 'Stretch', label: t('Stretch') },
+                  { value: 'Zoom', label: t('Zoom') }
+                ]}
+              />
+            </div>
+          )}
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.label}>{t('Orientation')}</label>
+            <CustomSelect
+              id="assign-orientation"
+              value={orientation}
+              onChange={(val) => setOrientation(Number(val) as 0 | 90 | 180 | 270)}
+              options={[
+                { value: 0, label: t('Landscape (0°)') },
+                { value: 90, label: t('Rotate 90°') },
+                { value: 180, label: t('Rotate 180°') },
+                { value: 270, label: t('Rotate 270°') }
+              ]}
+            />
+          </div>
+
+          {error && <div className={styles.errorMsg}><AlertTriangle size={16} />{error}</div>}
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+            {onPreview && (
+              <button
+                type="button"
+                style={{
+                  flex: 1,
+                  minHeight: '44px',
+                  padding: '0 16px',
+                  background: 'var(--surface-low)',
+                  color: 'var(--primary)',
+                  border: '1px solid var(--outline-variant)',
+                  borderRadius: '10px',
+                  fontFamily: 'var(--font-label)',
+                  fontSize: '0.92rem',
+                  fontWeight: 800,
+                  cursor: contentType ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease',
+                  opacity: contentType ? 1 : 0.5
+                }}
+                onClick={() => contentType && onPreview(device, contentType, assetId || null, playlistId || null, scaleMode, orientation)}
+                disabled={!contentType}
+              >
+                <Tv size={16} />
+                {t('Preview Screen')}
+              </button>
+            )}
+
+            <button 
+              className={styles.submitBtn} 
+              type="submit" 
+              disabled={isPending || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}
+              style={{ flex: 1.2 }}
+            >
+              {isPending ? t('Saving…') : t('Save Changes')}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {showAssetBrowser && (
         <AssetBrowserModal

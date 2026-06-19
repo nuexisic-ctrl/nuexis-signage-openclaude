@@ -999,6 +999,11 @@
   margin: 0;
 }
 
+.globalSelectCheckbox:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .globalSelectDropdownBtn {
   background: transparent;
   border: none;
@@ -1065,4 +1070,45 @@
 .globalSelectDropdownItemDanger:hover {
   background: var(--error-container);
 }
+
+.statsContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.statBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--on-surface-subtle);
+  font-family: var(--font-label);
+}
+
+.statDotOnline {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.statDotOffline {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--outline);
+}
+
+.statIcon {
+  color: var(--on-surface-muted);
+}
+
 

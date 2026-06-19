@@ -26,6 +26,39 @@ export function GroupFilterDropdown({
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setIsOpen(false)
+      triggerRef.current?.focus()
+      return
+    }
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (!dropdownRef.current) return
+      
+      const focusables = Array.from(
+        dropdownRef.current.querySelectorAll(
+          'input:not([disabled]), button:not([disabled]), [role="option"]:not([disabled])'
+        )
+      ) as HTMLElement[]
+
+      if (focusables.length === 0) return
+
+      const activeEl = document.activeElement as HTMLElement
+      let index = focusables.indexOf(activeEl)
+
+      if (e.key === 'ArrowDown') {
+        index = (index + 1) % focusables.length
+      } else {
+        index = (index - 1 + focusables.length) % focusables.length
+      }
+
+      focusables[index].focus()
+    }
+  }
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -72,9 +105,10 @@ export function GroupFilterDropdown({
   }
 
   return (
-    <div className={`${styles.wrapper} ${className}`} ref={dropdownRef}>
+    <div className={`${styles.wrapper} ${className}`} ref={dropdownRef} onKeyDown={handleKeyDown}>
       <button
         type="button"
+        ref={triggerRef}
         className={`${styles.trigger} ${selectedGroupIds.length > 0 ? styles.triggerActive : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         aria-haspopup="listbox"
@@ -140,6 +174,13 @@ export function GroupFilterDropdown({
                     onClick={() => handleToggleGroup(g.id)}
                     role="option"
                     aria-selected={isSelected}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleToggleGroup(g.id)
+                      }
+                    }}
                   >
                     <input
                       type="checkbox"
@@ -147,6 +188,7 @@ export function GroupFilterDropdown({
                       onChange={() => {}} // handled by parent click
                       className={styles.checkbox}
                       onClick={(e) => e.stopPropagation()}
+                      tabIndex={-1} // prevent double focus with outer item div
                     />
                     <span className={styles.itemContent}>
                       <span

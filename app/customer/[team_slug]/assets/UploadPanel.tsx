@@ -12,6 +12,18 @@ export interface UploadItem {
   error?: string
   startTime?: number
   size?: number
+  speed?: number
+}
+
+const formatSpeed = (bytesPerSec?: number) => {
+  if (!bytesPerSec) return ''
+  if (bytesPerSec >= 1024 * 1024) {
+    return `(${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s)`
+  }
+  if (bytesPerSec >= 1024) {
+    return `(${(bytesPerSec / 1024).toFixed(0)} KB/s)`
+  }
+  return `(${bytesPerSec.toFixed(0)} B/s)`
 }
 
 interface UploadPanelProps {
@@ -70,8 +82,8 @@ export function UploadPanel({
     const size = uploadingItem.size || 0
 
     // Determine speed in bytes/sec
-    let speed = 0
-    if (elapsedSeconds >= 1 && progress > 5) {
+    let speed = uploadingItem.speed || 0
+    if (!speed && elapsedSeconds >= 1 && progress > 5) {
       const bytesUploaded = size * (progress / 100)
       speed = bytesUploaded / elapsedSeconds
     }
@@ -170,7 +182,7 @@ export function UploadPanel({
                       <span className={`${styles.uploadItemMeta} ${getStatusClass(item.status)}`}>
                         {item.status === 'completed' && <CheckCircle2 size={12} />}
                         {item.status === 'failed' && <AlertTriangle size={12} />}
-                        {item.status === 'uploading' && `${item.progress}%`}
+                        {item.status === 'uploading' && `${item.progress}% ${formatSpeed(item.speed)}`}
                         {item.status === 'waiting' && 'Waiting'}
                       </span>
                     </div>

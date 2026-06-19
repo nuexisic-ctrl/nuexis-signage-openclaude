@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus, Check, ChevronDown } from 'lucide-react'
+import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus, Check, ChevronDown, Clock, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
 import { useTranslation } from '@/lib/i18n'
+import { formatPlaytime } from './DeviceIcon'
 import styles from './screens.module.css'
 
 import { Device, Asset, Playlist, LiveStatus } from './types'
@@ -24,6 +25,9 @@ import { deleteGroup } from '../groups/actions'
 import { SelectedActions } from './SelectedActions'
 import { GroupsSection } from './GroupsSection'
 import { toast } from '@/app/components/Toast'
+import ErrorBoundary from '@/app/components/ErrorBoundary'
+import EmptyState from '../components/EmptyState'
+import Pagination from '../components/Pagination'
 
 
 // Tick relative timestamps every 60s — "5 mins ago" accuracy doesn't need faster updates
@@ -61,6 +65,7 @@ interface Props {
   pageSize?: number
   historicalPlaytime?: number
   initialViewMode?: 'grid' | 'table'
+  initialFilterGroupIds?: string[]
 }
 
 export default function ScreensClient({
@@ -73,6 +78,7 @@ export default function ScreensClient({
   teamId,
   historicalPlaytime = 0,
   initialViewMode = 'table',
+  initialFilterGroupIds = [],
 }: Props) {
   const { t } = useTranslation()
   const router = useRouter()
@@ -110,14 +116,34 @@ export default function ScreensClient({
   const [viewMode, setViewMode] = useState<'grid' | 'table'>(initialViewMode)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
-  const [filterGroupIds, setFilterGroupIds] = useState<string[]>([])
+  const [filterGroupIds, setFilterGroupIds] = useState<string[]>(initialFilterGroupIds)
+
+  const handleSetFilterGroupIds = (ids: string[]) => {
+    setFilterGroupIds(ids)
+    const params = new URLSearchParams(window.location.search)
+    if (ids.length > 0) {
+      params.set('groups', ids.join(','))
+    } else {
+      params.delete('groups')
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
   const [showCreateGroupFromSelection, setShowCreateGroupFromSelection] = useState(false)
 
   const [groups, setGroups] = useState<any[]>(initialGroups)
   const [memberships, setMemberships] = useState<any[]>(initialMemberships)
   const [editGroup, setEditGroup] = useState<any | null>(null)
+  const [highlightedGroupId, setHighlightedGroupId] = useState<string | null>(null)
   const [historicalPlaytimeState, setHistoricalPlaytimeState] = useState(historicalPlaytime)
+  const [now, setNow] = useState(Date.now())
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now())
+    }, RELATIVE_TIME_TICK_MS)
+    return () => clearInterval(timer)
+  }, [])
 
   // Use Custom Hook for device presence & fallback polling
   const {
@@ -126,6 +152,7 @@ export default function ScreensClient({
     onlineDeviceIds,
     setPresenceRefreshKey,
     hasSyncedPresence,
+    channelStatus,
     mapDevice
   } = useDevicePresence(
     initialDevices,
@@ -140,14 +167,6 @@ export default function ScreensClient({
     if (saved && (saved === 'grid' || saved === 'table')) {
       setViewMode(saved)
     }
-    // Restore saved group filter — must be done client-side only to avoid hydration mismatch
-    try {
-      const savedGroups = localStorage.getItem('filterGroupIds')
-      if (savedGroups) {
-        const parsed = JSON.parse(savedGroups)
-        if (Array.isArray(parsed) && parsed.length > 0) setFilterGroupIds(parsed)
-      }
-    } catch {}
     setIsMounted(true)
   }, [])
 
@@ -332,6 +351,16 @@ export default function ScreensClient({
     setRenameModalDevice(null)
   }
 
+  const handleCreateGroupSuccess = (groupId: string) => {
+    setShowCreateGroupFromSelection(false)
+    setSelectedDeviceIds(new Set())
+    setHighlightedGroupId(groupId)
+    router.refresh()
+    setTimeout(() => {
+      setHighlightedGroupId(null)
+    }, 4000)
+  }
+
   const handleDeleteGroup = (group: any) => {
     if (window.confirm(`Are you sure you want to delete the group "${group.name}"?`)) {
       startTransition(async () => {
@@ -360,9 +389,7 @@ export default function ScreensClient({
   }
 
   const handleGroupBadgeClick = (groupId: string) => {
-    const nextIds = [groupId]
-    setFilterGroupIds(nextIds)
-    localStorage.setItem('filterGroupIds', JSON.stringify(nextIds))
+    handleSetFilterGroupIds([groupId])
   }
 
   function getLiveStatus(device: Device): LiveStatus {
@@ -462,6 +489,22 @@ export default function ScreensClient({
               <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
             </button>
           </div>
+          {isMounted && (
+            <div className={styles.statsContainer}>
+              <div className={styles.statBadge}>
+                <span className={styles.statDotOnline} />
+                <span>{onlineCount} {t('Online')}</span>
+              </div>
+              <div className={styles.statBadge}>
+                <span className={styles.statDotOffline} />
+                <span>{offlineCount} {t('Offline')}</span>
+              </div>
+              <div className={styles.statBadge}>
+                <Clock size={12} className={styles.statIcon} />
+                <span>{formatPlaytime(totalPlaytimeSeconds)} {t('Total Playtime')}</span>
+              </div>
+            </div>
+          )}
         </div>
         <div className={styles.topbarActions}>
           <button
@@ -487,7 +530,7 @@ export default function ScreensClient({
       <div className={styles.pageLayout}>
         <div className={`${styles.mainContent} ${isFilterSidebarOpen ? styles.sidebarOpen : ''}`}>
 
-          {groups && groups.length > 0 && (
+          {groups && (
             <GroupsSection
               groups={groups}
               devices={devices}
@@ -498,8 +541,10 @@ export default function ScreensClient({
               onlineDeviceIds={onlineDeviceIds}
               onSelectGroup={(g) => setEditGroup(g)}
               onDeleteGroup={handleDeleteGroup}
+              onCreateGroup={() => setShowCreateGroupFromSelection(true)}
               isRefreshing={isRefreshing}
               showSuccessPulse={showSuccessPulse}
+              highlightedGroupId={highlightedGroupId}
             />
           )}
 
@@ -630,8 +675,6 @@ export default function ScreensClient({
                   {isSortOpen && (
                     <div className={styles.sortDropdownMenu} role="menu">
                       {[
-                        { value: 'updated-desc', label: t('Updated Date (Newest)') },
-                        { value: 'updated-asc', label: t('Updated Date (Oldest)') },
                         { value: 'created-desc', label: t('Created Date (Newest)') },
                         { value: 'created-asc', label: t('Created Date (Oldest)') },
                         { value: 'name-asc', label: t('Name (A-Z)') },
@@ -691,143 +734,197 @@ export default function ScreensClient({
               <div className={styles.progressBarLine} />
             </div>
 
+            {(channelStatus === 'CHANNEL_ERROR' || channelStatus === 'TIMED_OUT' || channelStatus === 'CLOSED') && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '12px 16px',
+                background: 'var(--error-container)',
+                border: '1.5px solid var(--error)',
+                borderRadius: '12px',
+                color: 'var(--error)',
+                fontSize: '0.88rem',
+                fontWeight: 600,
+                margin: '16px'
+              }}>
+                <AlertTriangle size={18} />
+                <span>{t('Real-time connection lost. Attempting to reconnect...')}</span>
+              </div>
+            )}
+
             {!isMounted ? (
-              <div style={{ padding: '0 16px' }}>
-                {[1, 2, 3, 4, 5].map((row) => (
-                  <div key={row} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '18px 0',
-                    borderBottom: '1px solid var(--outline-variant)',
-                    gap: '16px'
-                  }}>
-                    <div className="skeleton" style={{ width: '24px', height: '24px', borderRadius: '4px' }} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2 }}>
-                      <div className="skeleton" style={{ width: '160px', height: '16px' }} />
-                      <div className="skeleton" style={{ width: '80px', height: '10px' }} />
+              viewMode === 'grid' ? (
+                <div className={styles.grid}>
+                  {[1, 2, 3, 4, 5, 6].map((idx) => (
+                    <div key={idx} style={{
+                      background: 'var(--surface-lowest)',
+                      border: '1px solid var(--outline-variant)',
+                      borderRadius: '14px',
+                      padding: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '16px',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="skeleton" style={{ width: '42px', height: '42px', borderRadius: '12px' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                          <div className="skeleton" style={{ width: '120px', height: '16px' }} />
+                          <div className="skeleton" style={{ width: '60px', height: '10px' }} />
+                        </div>
+                      </div>
+                      <div className="skeleton" style={{ width: '100%', height: '36px', borderRadius: '8px' }} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', minHeight: '20px' }}>
+                        <div className="skeleton" style={{ width: '80px', height: '14px' }} />
+                        <div className="skeleton" style={{ width: '50px', height: '14px' }} />
+                      </div>
                     </div>
-                    <div className="skeleton" style={{ width: '80px', height: '16px', flex: 1 }} />
-                    <div className="skeleton" style={{ width: '100px', height: '16px', flex: 1 }} />
-                    <div className="skeleton" style={{ width: '32px', height: '32px', borderRadius: '8px', marginLeft: 'auto' }} />
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '0 16px' }}>
+                  {[1, 2, 3, 4, 5].map((row) => (
+                    <div key={row} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '18px 0',
+                      borderBottom: '1px solid var(--outline-variant)',
+                      gap: '16px'
+                    }}>
+                      <div className="skeleton" style={{ width: '24px', height: '24px', borderRadius: '4px' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2 }}>
+                        <div className="skeleton" style={{ width: '160px', height: '16px' }} />
+                        <div className="skeleton" style={{ width: '80px', height: '10px' }} />
+                      </div>
+                      <div className="skeleton" style={{ width: '80px', height: '16px', flex: 1 }} />
+                      <div className="skeleton" style={{ width: '100px', height: '16px', flex: 1 }} />
+                      <div className="skeleton" style={{ width: '32px', height: '32px', borderRadius: '8px', marginLeft: 'auto' }} />
+                    </div>
+                  ))}
+                </div>
+              )
             ) : filteredDevices.length === 0 ? (
-              <div key="screens-empty-state-view" className={styles.emptyState}>
-                <div className={styles.emptyIcon}>NX</div>
-                <h3 className={styles.emptyTitle}>No screens found</h3>
-                <p className={styles.emptyText}>
-                  {devices.length === 0 
-                    ? <>Open the NuExis player app on a screen, then click <strong>Add Screen</strong> to pair it to your workspace.</>
-                    : "No screens matched your search criteria."
-                  }
-                </p>
-              </div>
+              <EmptyState
+                key="screens-empty-state-view"
+                title={t('No screens found')}
+                description={
+                  devices.length === 0 
+                    ? t('Open the NuExis player app on a screen, then click Add Screen to pair it to your workspace.')
+                    : t('No screens matched your search criteria.')
+                }
+                icon={<div className={styles.emptyIcon}>NX</div>}
+                action={devices.length === 0 ? (
+                  <button
+                    type="button"
+                    className={`${styles.topbarActionBtn} ${styles.topbarPrimaryBtn}`}
+                    onClick={() => setShowPairModal(true)}
+                  >
+                    <Plus size={16} aria-hidden="true" />
+                    {t('Add Screen')}
+                  </button>
+                ) : undefined}
+              />
             ) : viewMode === 'grid' ? (
               <div key="screens-grid-layout-view" className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
                 {paginatedDevices.map((device) => (
-                  <DeviceCard
+                  <ErrorBoundary
                     key={device.id}
-                    device={device}
-                    liveStatus={getLiveStatus(device)}
-                    onEdit={() => setAssignModalDevice(device)}
-                    onDelete={() => {
-                      setOpenMenuId(null);
-                      setDeleteModalDevice(device);
-                    }}
-                    onRename={() => {
-                      setOpenMenuId(null);
-                      setRenameModalDevice(device);
-                    }}
-                    menuOpen={openMenuId === device.id}
-                    onToggleMenu={(e) => {
-                      e.stopPropagation();
-                      setOpenMenuId(openMenuId === device.id ? null : device.id);
-                    }}
-                    assets={assets}
-                    playlists={playlists}
-                    groups={groups}
-                    memberships={memberships}
-                    selected={selectedDeviceIds.has(device.id)}
-                    onToggleSelect={() => handleToggleSelect(device.id)}
-                    onGroupClick={handleGroupBadgeClick}
-                  />
+                    boundaryId={`device-card-${device.id}`}
+                    fallback={
+                      <div style={{
+                        padding: '16px',
+                        border: '1px solid #e57373',
+                        borderRadius: '8px',
+                        background: 'rgba(229,115,115,0.05)',
+                        color: '#e57373',
+                        fontSize: '0.875rem',
+                        textAlign: 'center'
+                      }}>
+                        {t('Failed to load screen card')}
+                      </div>
+                    }
+                  >
+                    <DeviceCard
+                      device={device}
+                      liveStatus={getLiveStatus(device)}
+                      onEdit={() => setAssignModalDevice(device)}
+                      onDelete={() => {
+                        setOpenMenuId(null);
+                        setDeleteModalDevice(device);
+                      }}
+                      onRename={() => {
+                        setOpenMenuId(null);
+                        setRenameModalDevice(device);
+                      }}
+                      menuOpen={openMenuId === device.id}
+                      onToggleMenu={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(openMenuId === device.id ? null : device.id);
+                      }}
+                      assets={assets}
+                      playlists={playlists}
+                      groups={groups}
+                      memberships={memberships}
+                      selected={selectedDeviceIds.has(device.id)}
+                      onToggleSelect={() => handleToggleSelect(device.id)}
+                      onGroupClick={handleGroupBadgeClick}
+                      now={now}
+                    />
+                  </ErrorBoundary>
                 ))}
               </div>
             ) : (
-              <DeviceTable
-                key="screens-table-layout-view"
-                filteredDevices={paginatedDevices}
-                selectedDeviceIds={selectedDeviceIds}
-                setSelectedDeviceIds={setSelectedDeviceIds}
-                assets={assets}
-                playlists={playlists}
-                openMenuId={openMenuId}
-                menuPosition={menuPosition}
-                setOpenMenuId={setOpenMenuId}
-                setMenuPosition={setMenuPosition}
-                setAssignModalDevice={setAssignModalDevice}
-                setRenameModalDevice={setRenameModalDevice}
-                setDeleteModalDevice={setDeleteModalDevice}
-                groups={groups}
-                memberships={memberships}
-                handleToggleSelect={handleToggleSelect}
-                handleGroupBadgeClick={handleGroupBadgeClick}
-                getLiveStatus={getLiveStatus}
-                showSuccessPulse={showSuccessPulse}
-              />
+              <ErrorBoundary
+                boundaryId="device-table"
+                fallback={
+                  <div style={{
+                    padding: '32px',
+                    border: '1px solid #e57373',
+                    borderRadius: '8px',
+                    background: 'rgba(229,115,115,0.05)',
+                    color: '#e57373',
+                    fontSize: '0.9rem',
+                    textAlign: 'center',
+                    margin: '16px 0'
+                  }}>
+                    {t('Failed to load screens table')}
+                  </div>
+                }
+              >
+                <DeviceTable
+                  key="screens-table-layout-view"
+                  filteredDevices={paginatedDevices}
+                  selectedDeviceIds={selectedDeviceIds}
+                  setSelectedDeviceIds={setSelectedDeviceIds}
+                  assets={assets}
+                  playlists={playlists}
+                  openMenuId={openMenuId}
+                  menuPosition={menuPosition}
+                  setOpenMenuId={setOpenMenuId}
+                  setMenuPosition={setMenuPosition}
+                  setAssignModalDevice={setAssignModalDevice}
+                  setRenameModalDevice={setRenameModalDevice}
+                  setDeleteModalDevice={setDeleteModalDevice}
+                  groups={groups}
+                  memberships={memberships}
+                  handleToggleSelect={handleToggleSelect}
+                  handleGroupBadgeClick={handleGroupBadgeClick}
+                  getLiveStatus={getLiveStatus}
+                  showSuccessPulse={showSuccessPulse}
+                  now={now}
+                />
+              </ErrorBoundary>
             )}
             
             {devices.length > 0 && (
-              <div className={styles.tableFooter}>
-                <div className={styles.paginationInfo}>
-                  {searchQuery 
-                    ? `Showing ${filteredDevices.length} filtered screens` 
-                    : `Showing ${startItem} to ${endItem} of ${devices.length} screens`
-                  }
-                </div>
-                <div className={styles.footerControls}>
-                  <div className={styles.perPageSelector}>
-                    <span>Per page:</span>
-                    <select
-                      value={String(pageSize)}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        navigatePage(1, Number(val))
-                      }}
-                    >
-                      <option value="5">5</option>
-                      <option value="10">10</option>
-                      <option value="25">25</option>
-                      <option value="50">50</option>
-                      <option value="100">100</option>
-                    </select>
-                  </div>
-                  {!searchQuery && (
-                    <div className={styles.pagination}>
-                      <span className={styles.pageIndicator}>
-                        Page {currentPage} of {totalPages}
-                      </span>
-                      <button 
-                        className={styles.pageBtn} 
-                        onClick={() => navigatePage(currentPage - 1, pageSize)}
-                        disabled={!hasPrevPage}
-                        style={{ cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button 
-                        className={styles.pageBtn} 
-                        onClick={() => navigatePage(currentPage + 1, pageSize)}
-                        disabled={!hasNextPage}
-                        style={{ cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={filteredDevices.length}
+                onPageChange={navigatePage}
+                itemLabel="screens"
+              />
             )}
           </div>
         </div>
@@ -841,7 +938,7 @@ export default function ScreensClient({
           filterEndDate={filterEndDate} setFilterEndDate={setFilterEndDate}
           groups={groups}
           filterGroupIds={filterGroupIds}
-          setFilterGroupIds={setFilterGroupIds}
+          setFilterGroupIds={handleSetFilterGroupIds}
           filteredCount={filteredDevices.length}
           totalCount={devices.length}
         />
@@ -877,6 +974,7 @@ export default function ScreensClient({
         selectedDeviceIds={selectedDeviceIds}
         setSelectedDeviceIds={setSelectedDeviceIds}
         router={router}
+        handleCreateGroupSuccess={handleCreateGroupSuccess}
       />
     </>
 

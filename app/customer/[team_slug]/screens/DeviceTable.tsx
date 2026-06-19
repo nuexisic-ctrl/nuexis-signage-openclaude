@@ -25,6 +25,7 @@ interface DeviceTableProps {
   handleGroupBadgeClick: (groupId: string) => void
   getLiveStatus: (device: Device) => any
   showSuccessPulse: boolean
+  now: number
 }
 
 export function DeviceTable({
@@ -45,7 +46,8 @@ export function DeviceTable({
   handleToggleSelect,
   handleGroupBadgeClick,
   getLiveStatus,
-  showSuccessPulse
+  showSuccessPulse,
+  now
 }: DeviceTableProps) {
   const { t } = useTranslation()
   return (
@@ -87,6 +89,7 @@ export function DeviceTable({
               selected={selectedDeviceIds.has(device.id)}
               onToggleSelect={() => handleToggleSelect(device.id)}
               onGroupClick={handleGroupBadgeClick}
+              now={now}
             />
           ))}
         </tbody>

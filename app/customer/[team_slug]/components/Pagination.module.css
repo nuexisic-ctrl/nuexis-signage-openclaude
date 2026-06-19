@@ -1,0 +1,112 @@
+.tableFooter {
+  padding: 16px 20px;
+  background: var(--surface-lowest);
+  border-top: 1px solid var(--outline-variant);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
+}
+
+.paginationInfo {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--on-surface-muted);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.extraInfo {
+  font-size: 0.8rem;
+  color: var(--primary);
+  opacity: 0.85;
+}
+
+.footerControls {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.perPageSelector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--on-surface-muted);
+}
+
+.perPageSelector select {
+  height: 32px;
+  padding: 0 8px;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.perPageSelector select:focus {
+  border-color: var(--primary);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pageIndicator {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--on-surface-muted);
+}
+
+.pageBtn {
+  background: var(--surface-low);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.pageBtn:hover:not([disabled]) {
+  background: var(--surface-container);
+}
+
+.pageBtn[disabled] {
+  opacity: 0.4;
+  color: var(--on-surface-muted);
+}
+
+@media (max-width: 640px) {
+  .tableFooter {
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .paginationInfo {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .footerControls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 12px;
+  }
+}

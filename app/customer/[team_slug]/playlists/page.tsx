@@ -36,25 +36,25 @@ export default async function PlaylistsPage({ params, searchParams }: Props) {
 
   const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).slug : undefined
 
-  if (userTeamSlug && userTeamSlug !== team_slug) {
+  if (!profile || !profile.team_id || !userTeamSlug || userTeamSlug !== team_slug) {
     notFound()
   }
 
   const fullName = user.user_metadata?.full_name as string | undefined
-  const userRole = profile?.role || 'Owner'
+  const userRole = profile.role || 'Owner'
 
   // Fetch playlists and available assets concurrently to eliminate waterfall delays
   const [playlistsRes, assetsRes] = await Promise.all([
     supabase
       .from('playlists')
       .select('id, name, created_at, updated_at, playlist_items(duration_seconds)')
-      .eq('team_id', profile?.team_id as string)
+      .eq('team_id', profile.team_id)
       .order('created_at', { ascending: false })
       .limit(100),
     supabase
       .from('assets')
       .select('id, file_name, file_path, mime_type, size_bytes')
-      .eq('team_id', profile?.team_id as string)
+      .eq('team_id', profile.team_id)
       .neq('mime_type', 'application/x-folder')
       .order('created_at', { ascending: false })
       .limit(100)

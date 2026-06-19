@@ -7,18 +7,8 @@ import { UploadItem } from './UploadPanel'
 
 import { toast } from '@/app/components/Toast'
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024
-const ALLOWED_EXTENSIONS = /\.(png|jpg|jpeg|mp4|webm|pdf)$/i
-
-function validateFile(file: File): { valid: true } | { valid: false; error: string } {
-  if (file.size > MAX_FILE_SIZE) {
-    return { valid: false, error: `"${file.name}" exceeds the 50MB limit.` }
-  }
-  if (!file.name.match(ALLOWED_EXTENSIONS)) {
-    return { valid: false, error: `"${file.name}" has an invalid file type. Only PNG, JPG, JPEG, MP4, WEBM, and PDF are allowed.` }
-  }
-  return { valid: true }
-}
+import { MAX_FILE_SIZE_BYTES } from '@/lib/utils/constants'
+import { validateFile } from './validators'
 
 interface UseAssetUploadProps {
   teamId: string
@@ -76,44 +66,60 @@ export function useAssetUpload({
       // Set status to uploading and initial progress
       setUploadQueue(prev => prev.map(item => item.id === queueItem.id ? { ...item, status: 'uploading', progress: 5, startTime: Date.now() } : item))
 
-      // Simulate smooth progress
-      let simulatedProgress = 5
-      const progressInterval = setInterval(() => {
-        setUploadQueue(prev => prev.map(item => {
-          if (item.id === queueItem.id && item.status === 'uploading' && item.progress < 90) {
-            simulatedProgress = Math.min(90, simulatedProgress + Math.floor(Math.random() * 8) + 2)
-            return { ...item, progress: simulatedProgress }
-          }
-          return item
-        }))
-      }, 150)
-
+      let filePath: string | null = null
       try {
         // Validate file size and type
-        const check = validateFile(file)
+        const check = validateFile(file, MAX_FILE_SIZE_BYTES)
         if (!check.valid) {
-          clearInterval(progressInterval)
           setUploadQueue(prev => prev.map(item => item.id === queueItem.id ? { ...item, status: 'failed', progress: 0, error: check.error } : item))
           continue
         }
 
         const uploadUrlResult = await getUploadUrl(teamSlug, file.name, file.size)
         if (!uploadUrlResult.success) {
-          clearInterval(progressInterval)
           setUploadQueue(prev => prev.map(item => item.id === queueItem.id ? { ...item, status: 'failed', progress: 0, error: uploadUrlResult.error } : item))
           continue
         }
 
-        const { path: filePath, token } = uploadUrlResult
-        const { error: storageError } = await supabase.storage
-          .from('workspace-media')
-          .uploadToSignedUrl(filePath, token, file, { cacheControl: '3600', upsert: false })
+        const { path: uploadedPath, token, signedUrl } = uploadUrlResult
+        filePath = uploadedPath
 
-        if (storageError) {
-          clearInterval(progressInterval)
-          setUploadQueue(prev => prev.map(item => item.id === queueItem.id ? { ...item, status: 'failed', progress: 0, error: storageError.message } : item))
-          continue
-        }
+        // Perform manual upload with XMLHttpRequest to trace actual progress events
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest()
+          xhr.open('PUT', signedUrl, true)
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+          xhr.setRequestHeader('Cache-Control', 'no-cache')
+          
+          const uploadStartTime = Date.now()
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percentComplete = Math.min(99, Math.round((event.loaded / event.total) * 100))
+              const elapsedMs = Date.now() - uploadStartTime
+              const speedBytesPerSec = elapsedMs > 0 ? (event.loaded / (elapsedMs / 1000)) : 0
+              setUploadQueue(prev => prev.map(item => item.id === queueItem.id ? { ...item, progress: percentComplete, speed: speedBytesPerSec } : item))
+            }
+          }
+          
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve()
+            } else {
+              reject(new Error(xhr.responseText || `Upload failed with status ${xhr.status}`))
+            }
+          }
+          
+          xhr.onerror = () => {
+            reject(new Error('Network connection error occurred during upload.'))
+          }
+          
+          xhr.ontimeout = () => {
+            reject(new Error('Upload request timed out.'))
+          }
+          
+          xhr.timeout = 10 * 60 * 1000 // 10 minutes timeout
+          xhr.send(file)
+        })
 
         const result = await insertAsset(teamSlug, {
           file_name: file.name,
@@ -123,9 +129,8 @@ export function useAssetUpload({
           folder_id: folderId || null,
         })
 
-        clearInterval(progressInterval)
-
         if (!result.success) {
+          await supabase.storage.from('workspace-media').remove([filePath])
           setUploadQueue(prev => prev.map(item => item.id === queueItem.id ? { ...item, status: 'failed', progress: 0, error: result.error } : item))
         } else {
           // Success!
@@ -145,7 +150,13 @@ export function useAssetUpload({
           setAssets(prev => [newAsset, ...prev])
         }
       } catch (err: any) {
-        clearInterval(progressInterval)
+        if (filePath) {
+          try {
+            await supabase.storage.from('workspace-media').remove([filePath])
+          } catch (storageErr) {
+            console.error('[useAssetUpload] failed to remove orphan storage file:', storageErr)
+          }
+        }
         setUploadQueue(prev => prev.map(item => item.id === queueItem.id ? { ...item, status: 'failed', progress: 0, error: err?.message || 'Unexpected error' } : item))
       }
     }

@@ -49,12 +49,13 @@ export default async function DashboardPage({ params }: Props) {
     .eq('id', user.id)
     .single()
 
-  const userRole = profile?.role || 'Owner'
   const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as { slug: string }).slug : undefined
 
-  if (userTeamSlug && userTeamSlug !== team_slug) {
+  if (!profile || !profile.team_id || !userTeamSlug || userTeamSlug !== team_slug) {
     notFound()
   }
+
+  const userRole = profile.role || 'Owner'
 
   const [
     stats,

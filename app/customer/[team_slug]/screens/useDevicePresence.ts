@@ -32,6 +32,7 @@ export function useDevicePresence(
   const [onlineDeviceIds, setOnlineDeviceIds] = useState<Set<string>>(new Set())
   const [hasSyncedPresence, setHasSyncedPresence] = useState(false)
   const [presenceRefreshKey, setPresenceRefreshKey] = useState(0)
+  const [channelStatus, setChannelStatus] = useState<string>('SUBSCRIBING')
 
   const teamChannelRef = useRef<any>(null)
   const hasSyncedPresenceRef = useRef(false)
@@ -70,6 +71,7 @@ export function useDevicePresence(
         }
       })
       .subscribe((status) => {
+        setChannelStatus(status)
         if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
           if (isUnmounting) return
           console.warn(`[Dashboard] Presence channel ${status}. Auto-reconnecting...`)
@@ -188,6 +190,7 @@ export function useDevicePresence(
     onlineDeviceIds,
     setPresenceRefreshKey,
     hasSyncedPresence,
+    channelStatus,
     mapDevice
   }
 }

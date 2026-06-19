@@ -934,4 +934,70 @@
   background: var(--error-container);
 }
 
+.moreMenuWrapper {
+  position: relative;
+}
+
+.moreDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 170px;
+  z-index: 20;
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  box-shadow: var(--shadow-modal);
+  padding: 6px;
+  text-align: left;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--on-surface);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-label);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.dropdownItem:hover {
+  background: var(--surface-low);
+}
+
+.dropdownItemDanger {
+  color: var(--error);
+}
+
+.dropdownItemDanger:hover {
+  background: var(--error-container);
+}
+
+@keyframes groupPulseHighlight {
+  0% {
+    background-color: color-mix(in srgb, var(--primary) 25%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.highlightedGroup {
+  animation: groupPulseHighlight 3.5s ease-out forwards;
+}
+
+.highlightedGroupCard {
+  animation: groupPulseHighlight 3.5s ease-out forwards;
+  border-width: 2px !important;
+}
+
+
+
 

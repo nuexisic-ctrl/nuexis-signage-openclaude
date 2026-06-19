@@ -51,11 +51,11 @@ export default async function AssetPage({ params, searchParams }: Props) {
     }
 
     const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? profile.teams.slug : undefined
-    if (userTeamSlug && userTeamSlug !== team_slug) {
+    if (!profile || !profile.team_id || !userTeamSlug || userTeamSlug !== team_slug) {
       notFound()
     }
 
-    teamId = profile?.team_id ?? ''
+    teamId = profile.team_id
 
     // 1. Fetch all folders for the team to build breadcrumbs and folder structures
     const { data: foldersData, error: foldersError } = teamId

@@ -27,6 +27,7 @@ export interface DeviceTableRowProps {
   selected?: boolean
   onToggleSelect?: () => void
   onGroupClick?: (groupId: string) => void
+  now: number
 }
 
 export function DeviceTableRow({
@@ -45,17 +46,11 @@ export function DeviceTableRow({
   memberships = [],
   selected = false,
   onToggleSelect,
-  onGroupClick
+  onGroupClick,
+  now
 }: DeviceTableRowProps) {
   const { t } = useTranslation()
-  const [now, setNow] = React.useState(Date.now())
-
-  React.useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online')
+  const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online', t, now)
   const isMenuOpen = openMenuId === device.id
   const isOnline = liveStatus === 'online'
 
@@ -97,10 +92,21 @@ export function DeviceTableRow({
     onEdit();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onEdit();
+    }
+  };
+
   return (
     <tr 
       className={`${styles.tableRow} ${selected ? styles.rowSelected : ''}`}
       onClick={handleRowClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="button"
+      aria-label={device.name || t('Unnamed Screen')}
     >
       {onToggleSelect && (
         <td 
@@ -131,7 +137,7 @@ export function DeviceTableRow({
               </div>
             </div>
             <div className={styles.cellId}>
-              ID: NX-{device.id.slice(0, 4).toUpperCase()}-{device.id.slice(4, 5).toUpperCase()}
+              ID: {device.id.slice(0, 8).toUpperCase()}
             </div>
           </div>
         </div>
@@ -170,7 +176,7 @@ export function DeviceTableRow({
       <td className={styles.tableCell} style={{ textAlign: 'right' }}>
         <div className={styles.actionsGroup}>
           <button className={styles.actionBtnBox} onClick={onEdit} aria-label={t('Edit')}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
             </svg>
           </button>
@@ -179,7 +185,7 @@ export function DeviceTableRow({
             onClick={(e) => { e.stopPropagation(); onDelete() }}
             aria-label={t('Delete')}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="3 6 5 6 21 6" />
               <path d="M19 6l-1 14H6L5 6" />
               <path d="M10 11v6M14 11v6" />
@@ -205,7 +211,7 @@ export function DeviceTableRow({
               }}
               aria-label={t('More Actions')}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
                 <circle cx="12" cy="12" r="1.5" />
                 <circle cx="12" cy="5" r="1.5" />
                 <circle cx="12" cy="19" r="1.5" />

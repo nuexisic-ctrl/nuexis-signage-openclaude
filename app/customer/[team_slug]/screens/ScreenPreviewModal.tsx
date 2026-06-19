@@ -60,6 +60,23 @@ export function ScreenPreviewModal({
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null)
   const [screenshotError, setScreenshotError] = useState<boolean>(false)
   const [capturing, setCapturing] = useState<boolean>(false)
+  const [isClosed, setIsClosed] = useState(false)
+
+  const handleClose = useCallback(() => {
+    setIsClosed(true)
+    onClose()
+  }, [onClose])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleClose])
+
 
   const [previewMode, setPreviewMode] = useState<'landscape' | 'portrait' | 'custom'>('landscape')
   const [customWidth, setCustomWidth] = useState(960)
@@ -351,7 +368,7 @@ export function ScreenPreviewModal({
   }
 
   const renderActiveContent = (itemMime: string | null, itemPath: string | null, isVideoAsset: boolean) => {
-    if (!itemPath) return null
+    if (isClosed || !itemPath) return null
 
     if (itemMime === 'application/x-widget-youtube') {
       let youtubeUrl = itemPath
@@ -745,7 +762,7 @@ export function ScreenPreviewModal({
             {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
           </button>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className={`${styles.iconBtn} ${styles.closeBtn}`}
             title={t('Exit Simulator')}
           >

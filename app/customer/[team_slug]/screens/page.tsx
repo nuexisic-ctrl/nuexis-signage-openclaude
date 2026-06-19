@@ -18,8 +18,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function ScreensPage({ params }: Props) {
+export default async function ScreensPage({ params, searchParams }: Props) {
   const { team_slug } = await params
+  const sParams = await searchParams
+  const initialGroupParam = sParams.groups as string | undefined
+  const initialFilterGroupIds = initialGroupParam ? initialGroupParam.split(',').filter(Boolean) : []
 
   if (!/^[a-z0-9-]+$/.test(team_slug)) notFound()
 
@@ -31,26 +34,32 @@ export default async function ScreensPage({ params }: Props) {
   if (!user) redirect(`/customer/${team_slug}/login`)
 
   // Get the user's team_id, role, and team slug securely from their profile
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('team_id, role, teams(slug, historical_playtime_seconds)')
     .eq('id', user.id)
     .single()
 
-  const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).slug : null
+  console.log('[ScreensPage] user:', { id: user.id, email: user.email })
+  console.log('[ScreensPage] profile:', profile)
+  console.log('[ScreensPage] profileError:', profileError)
 
-  if (userTeamSlug && userTeamSlug !== team_slug) {
+  const userTeamSlug = profile?.teams && !Array.isArray(profile.teams) ? (profile.teams as any).slug : null
+  console.log('[ScreensPage] userTeamSlug:', userTeamSlug, 'expected team_slug:', team_slug)
+
+  if (!profile || !profile.team_id || !userTeamSlug || userTeamSlug !== team_slug) {
+    console.log('[ScreensPage] profile validation failed. Redirecting to notFound().')
     notFound()
   }
 
   const fullName = user.user_metadata?.full_name as string | undefined
 
-  const userRole = profile?.role || 'Owner'
+  const userRole = profile.role || 'Owner'
 
   const query = supabase
     .from('devices')
     .select('id, name, status, created_at, content_type, asset_id, playlist_id, orientation, last_seen_at, total_playtime_seconds, app_version, os_version, scale_mode', { count: 'exact' })
-    .eq('team_id', profile?.team_id as string)
+    .eq('team_id', profile.team_id)
     .order('created_at', { ascending: false })
     .limit(1000)
 
@@ -85,6 +94,14 @@ export default async function ScreensPage({ params }: Props) {
           .eq('team_id', profile.team_id)
       : Promise.resolve({ data: [], error: null })
   ])
+
+  console.log('[ScreensPage] query errors:', {
+    devicesError: (response as any).error,
+    assetsError: assetsRes.error,
+    playlistsError: playlistsRes.error,
+    groupsError: groupsRes.error,
+    membershipsError: membershipsRes.error,
+  })
 
   const devicesData = response.data ?? []
   const totalScreens = response.count ?? 0
@@ -128,6 +145,7 @@ export default async function ScreensPage({ params }: Props) {
       totalScreens={totalScreens}
       historicalPlaytime={Number(historicalPlaytime) || 0}
       initialViewMode={initialViewMode}
+      initialFilterGroupIds={initialFilterGroupIds}
     />
   )
 }

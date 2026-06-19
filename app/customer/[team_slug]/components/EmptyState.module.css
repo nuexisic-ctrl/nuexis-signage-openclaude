@@ -1,0 +1,50 @@
+.emptyStateContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  background: var(--surface-low);
+  border: 1px dashed var(--outline-variant);
+  border-radius: 16px;
+  max-width: 520px;
+  margin: 32px auto;
+}
+
+.emptyIconWrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--surface-medium);
+  color: var(--on-surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  font-weight: 800;
+  font-size: 1.2rem;
+  border: 1px solid var(--outline-variant);
+}
+
+.emptyTitle {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin: 0 0 8px 0;
+}
+
+.emptyDescription {
+  font-size: 0.88rem;
+  color: var(--on-surface-subtle);
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.emptyActionArea {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}

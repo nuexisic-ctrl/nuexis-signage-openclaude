@@ -11,6 +11,12 @@
   transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
 }
 
+.deviceCard:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-color: var(--primary);
+}
+
 .deviceCard:hover {
   border-color: color-mix(in srgb, var(--primary) 22%, var(--outline-variant));
   box-shadow: var(--shadow-card);

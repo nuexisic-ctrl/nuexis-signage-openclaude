@@ -24,6 +24,9 @@ import { BulkMoveModal } from './BulkMoveModal'
 import { PushToScreenModal } from './PushToScreenModal'
 import { useTranslation } from '@/lib/i18n'
 import styles from './asset.module.css'
+import ErrorBoundary from '@/app/components/ErrorBoundary'
+import EmptyState from '../components/EmptyState'
+import Pagination from '../components/Pagination'
 
 interface Props {
   initialFolders: Asset[]
@@ -612,7 +615,7 @@ export default function AssetClient({
     }))
     setSelectedAssetIds(new Set())
 
-    toast.success(
+    const toastId = toast.success(
       `${t('Moved')} ${assetIds.length} ${assetIds.length === 1 ? t('item') : t('items')} ${t('to')} ${targetFolderName}`
     )
 
@@ -625,12 +628,14 @@ export default function AssetClient({
       } else {
         setAssets(previousAssets)
         setSelectedAssetIds(previousSelected)
+        toast.dismiss(toastId)
         toast.error(result.error || t('Failed to move assets.'))
         return false
       }
     } catch (err) {
       setAssets(previousAssets)
       setSelectedAssetIds(previousSelected)
+      toast.dismiss(toastId)
       toast.error(t('Failed to move assets due to a network error.'))
       return false
     }
@@ -773,6 +778,17 @@ export default function AssetClient({
         if (filterType === 'image' && !isImage(a.mime_type)) return false
         if (filterType === 'video' && !isVideo(a.mime_type)) return false
         if (filterType === 'widget' && !isWidget(a.mime_type)) return false
+        if (filterType === 'audio' && !a.mime_type.startsWith('audio/')) return false
+        if (filterType === 'pdf' && a.mime_type !== 'application/pdf') return false
+        if (filterType === 'folder' && a.mime_type !== 'application/x-folder') return false
+        if (filterType === 'document' && (
+          isImage(a.mime_type) || 
+          isVideo(a.mime_type) || 
+          isWidget(a.mime_type) || 
+          a.mime_type.startsWith('audio/') || 
+          a.mime_type === 'application/pdf' || 
+          a.mime_type === 'application/x-folder'
+        )) return false
       }
 
       if (filterDatePreset !== 'all') {
@@ -1130,11 +1146,9 @@ export default function AssetClient({
               <div className={styles.controlsRight}>
                 {selectedAssetIds.size > 0 && (
                   <div className={styles.selectedActionsContainer}>
-                    <div className={styles.selectedCountBadge}>
+                    <div className={styles.selectedCountBadge} title={t('{count} assets selected', { count: selectedAssetIds.size })}>
                       <span className={styles.selectedCountNumber}>{selectedAssetIds.size}</span>
-                      <span className={styles.selectedCountText}>
-                        {selectedAssetIds.size === 1 ? t('asset selected') : t('assets selected')}
-                      </span>
+                      <span className={styles.selectedCountText}>{t('Selected')}</span>
                     </div>
                     <button
                       className={styles.bulkActionIconBtn}
@@ -1195,8 +1209,6 @@ export default function AssetClient({
                   {isSortOpen && (
                     <div className={styles.sortDropdownMenu} role="menu">
                       {[
-                        { value: 'updated-desc', label: t('Updated Date (Newest)') },
-                        { value: 'updated-asc', label: t('Updated Date (Oldest)') },
                         { value: 'created-desc', label: t('Created Date (Newest)') },
                         { value: 'created-asc', label: t('Created Date (Oldest)') },
                         { value: 'name-asc', label: t('Name (A-Z)') },
@@ -1262,177 +1274,239 @@ export default function AssetClient({
               <div className={styles.progressBarLine} />
             </div>
 
-            {filteredAssets.length === 0 ? (
-              <div className={styles.emptyState}>
-                <div className={styles.emptyIcon}><File size={28} /></div>
-                <h3 className={styles.emptyTitle}>{t('No assets found')}</h3>
-                <p className={styles.emptyText}>
-                  {assets.length === 0 
+            {!isMounted ? (
+              viewMode === 'grid' ? (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                  gap: '14px',
+                }}>
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={`media-skele-${i}`} style={{
+                      background: 'var(--surface-lowest)',
+                      border: '1px solid var(--outline-variant)',
+                      borderRadius: '14px',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}>
+                      <div style={{ width: '100%', aspectRatio: '16 / 10', background: 'var(--surface-low)', position: 'relative' }}>
+                        <div className="skeleton" style={{ width: '100%', height: '100%', borderRadius: '0' }} />
+                      </div>
+                      <div style={{ padding: '13px 14px 14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                          <div className="skeleton" style={{ width: '80%', height: '16px' }} />
+                          <div className="skeleton" style={{ width: '28px', height: '28px', borderRadius: '8px' }} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                          <div className="skeleton" style={{ width: '45px', height: '12px' }} />
+                          <div className="skeleton" style={{ width: '55px', height: '12px' }} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {[1, 2, 3, 4, 5].map((row) => (
+                    <div key={row} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '16px 0',
+                      borderBottom: '1px solid var(--outline-variant)',
+                      gap: '16px'
+                    }}>
+                      <div className="skeleton" style={{ width: '36px', height: '36px', borderRadius: '8px' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2 }}>
+                        <div className="skeleton" style={{ width: '200px', height: '16px' }} />
+                        <div className="skeleton" style={{ width: '80px', height: '10px' }} />
+                      </div>
+                      <div className="skeleton" style={{ width: '80px', height: '16px', flex: 1 }} />
+                      <div className="skeleton" style={{ width: '100px', height: '16px', flex: 1 }} />
+                      <div className="skeleton" style={{ width: '32px', height: '32px', borderRadius: '8px', marginLeft: 'auto' }} />
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : filteredAssets.length === 0 ? (
+              <EmptyState
+                title={t('No assets found')}
+                description={
+                  assets.length === 0 
                     ? t("Upload images or videos above to start building your asset library.")
                     : t("No assets matched your search criteria.")
-                  }
-                </p>
-              </div>
+                }
+                icon={<File aria-hidden="true" size={28} />}
+                action={assets.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`${styles.topbarActionBtn} ${styles.topbarPrimaryBtn}`}
+                  >
+                    <Upload aria-hidden="true" size={16} />
+                    {t('Upload Media')}
+                  </button>
+                ) : undefined}
+              />
             ) : viewMode === 'grid' ? (
               <div className={`${styles.grid} ${showSuccessPulse ? styles.successPulse : ''}`}>
                 {paginatedAssets.map((asset) => (
-                  <AssetCard
+                  <ErrorBoundary
                     key={asset.id}
-                    asset={asset}
-                    screens={screens}
-                    previewUrl={(isImage(asset.mime_type) || isVideo(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode') ? getPreviewUrl(asset.file_path) : null}
-                    onDelete={() => {
-                      setOpenMenuId(null)
-                      setDeleteModalAsset(asset)
-                    }}
-                    onPreview={handlePreviewAsset}
-                    onRename={() => {
-                      setOpenMenuId(null)
-                      setRenameModalAsset(asset)
-                    }}
-                    onPushToScreen={() => {
-                      setOpenMenuId(null)
-                      setPushModalAsset(asset)
-                    }}
-                    isDeleting={deletingIds.has(asset.id)}
-                    menuOpen={openMenuId === asset.id}
-                    menuPosition={menuPosition}
-                    onToggleMenu={(e) => {
-                      e.stopPropagation()
-                      if (openMenuId === asset.id) {
+                    boundaryId={`asset-card-${asset.id}`}
+                    fallback={
+                      <div style={{
+                        padding: '16px',
+                        border: '1px solid #e57373',
+                        borderRadius: '8px',
+                        background: 'rgba(229,115,115,0.05)',
+                        color: '#e57373',
+                        fontSize: '0.875rem',
+                        textAlign: 'center'
+                      }}>
+                        {t('Failed to load asset card')}
+                      </div>
+                    }
+                  >
+                    <AssetCard
+                      asset={asset}
+                      screens={screens}
+                      previewUrl={(isImage(asset.mime_type) || isVideo(asset.mime_type) || asset.mime_type === 'application/x-widget-qrcode') ? getPreviewUrl(asset.file_path) : null}
+                      onDelete={() => {
                         setOpenMenuId(null)
-                        setMenuPosition(null)
-                      } else {
-                        const rect = e.currentTarget.getBoundingClientRect()
-                        const right = Math.max(8, window.innerWidth - rect.right)
-                        setMenuPosition({ top: rect.bottom + window.scrollY + 6, right })
-                        setOpenMenuId(asset.id)
-                      }
-                    }}
-                    selected={selectedAssetIds.has(asset.id)}
-                      onToggleSelect={() => handleToggleSelect(asset.id)}
-                      isSelectionActive={selectedAssetIds.size > 0}
-                    draggable={!deletingIds.has(asset.id)}
-                    isDropTarget={dragOverFolderId === asset.id && asset.mime_type === 'application/x-folder'}
-                    onDragStart={(e) => {
-                      if (deletingIds.has(asset.id)) return
-                      const ids = (selectedAssetIds.size > 0 && selectedAssetIds.has(asset.id))
-                        ? Array.from(selectedAssetIds)
-                        : [asset.id]
-                      e.dataTransfer.setData('application/x-nuexis-asset-ids', JSON.stringify(ids))
-                      e.dataTransfer.setData('text/plain', ids.join(','))
-                      e.dataTransfer.effectAllowed = 'move'
-                    }}
-                    onDragEnd={() => {
-                      setDragOverFolderId(null)
-                    }}
-                    onDragOver={(e) => {
-                      if (asset.mime_type !== 'application/x-folder') return
-                      e.preventDefault()
-                      e.dataTransfer.dropEffect = 'move'
-                      setDragOverFolderId(asset.id)
-                    }}
-                    onDrop={(e) => {
-                      if (asset.mime_type !== 'application/x-folder') return
-                      e.preventDefault()
-                      setDragOverFolderId(null)
-                      let ids: string[] = []
-                      try {
-                        const raw = e.dataTransfer.getData('application/x-nuexis-asset-ids') || '[]'
-                        ids = JSON.parse(raw)
-                      } catch {
-                        ids = (e.dataTransfer.getData('text/plain') || '')
-                          .split(',')
-                          .map(x => x.trim())
-                          .filter(Boolean)
-                      }
-                      const sanitized = ids.filter(id => id && id !== asset.id)
-                      if (sanitized.length === 0) return
+                        setDeleteModalAsset(asset)
+                      }}
+                      onPreview={handlePreviewAsset}
+                      onRename={() => {
+                        setOpenMenuId(null)
+                        setRenameModalAsset(asset)
+                      }}
+                      onPushToScreen={() => {
+                        setOpenMenuId(null)
+                        setPushModalAsset(asset)
+                      }}
+                      isDeleting={deletingIds.has(asset.id)}
+                      menuOpen={openMenuId === asset.id}
+                      menuPosition={menuPosition}
+                      onToggleMenu={(e) => {
+                        e.stopPropagation()
+                        if (openMenuId === asset.id) {
+                          setOpenMenuId(null)
+                          setMenuPosition(null)
+                        } else {
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          const right = Math.max(8, window.innerWidth - rect.right)
+                          setMenuPosition({ top: rect.bottom + window.scrollY + 6, right })
+                          setOpenMenuId(asset.id)
+                        }
+                      }}
+                      selected={selectedAssetIds.has(asset.id)}
+                        onToggleSelect={() => handleToggleSelect(asset.id)}
+                        isSelectionActive={selectedAssetIds.size > 0}
+                      draggable={!deletingIds.has(asset.id)}
+                      isDropTarget={dragOverFolderId === asset.id && asset.mime_type === 'application/x-folder'}
+                      onDragStart={(e) => {
+                        if (deletingIds.has(asset.id)) return
+                        const ids = (selectedAssetIds.size > 0 && selectedAssetIds.has(asset.id))
+                          ? Array.from(selectedAssetIds)
+                          : [asset.id]
+                        e.dataTransfer.setData('application/x-nuexis-asset-ids', JSON.stringify(ids))
+                        e.dataTransfer.setData('text/plain', ids.join(','))
+                        e.dataTransfer.effectAllowed = 'move'
+                      }}
+                      onDragEnd={() => {
+                        setDragOverFolderId(null)
+                      }}
+                      onDragOver={(e) => {
+                        if (asset.mime_type !== 'application/x-folder') return
+                        e.preventDefault()
+                        e.dataTransfer.dropEffect = 'move'
+                        setDragOverFolderId(asset.id)
+                      }}
+                      onDrop={(e) => {
+                        if (asset.mime_type !== 'application/x-folder') return
+                        e.preventDefault()
+                        setDragOverFolderId(null)
+                        let ids: string[] = []
+                        try {
+                          const raw = e.dataTransfer.getData('application/x-nuexis-asset-ids') || '[]'
+                          ids = JSON.parse(raw)
+                        } catch {
+                          ids = (e.dataTransfer.getData('text/plain') || '')
+                            .split(',')
+                            .map(x => x.trim())
+                            .filter(Boolean)
+                        }
+                        const sanitized = ids.filter(id => id && id !== asset.id)
+                        if (sanitized.length === 0) return
 
-                      moveAssetsOptimistically(sanitized, asset.id, asset.file_name)
-                    }}
-                    />
+                        moveAssetsOptimistically(sanitized, asset.id, asset.file_name)
+                      }}
+                      />
+                  </ErrorBoundary>
                 ))}
               </div>
             ) : (
               <div className={showSuccessPulse ? styles.successPulse : ''}>
-                <AssetTableView
-                  filteredAssets={paginatedAssets}
-                  screens={screens}
-                  openMenuId={openMenuId}
-                  menuPosition={menuPosition}
-                  setOpenMenuId={setOpenMenuId}
-                  setMenuPosition={setMenuPosition}
-                  setPreviewAsset={handlePreviewAsset}
-                  setRenameModalAsset={setRenameModalAsset}
-                  setDeleteModalAsset={setDeleteModalAsset}
-                  setPushModalAsset={setPushModalAsset}
-                  deletingIds={deletingIds}
-                  getPreviewUrl={getPreviewUrl}
-                  selectedAssetIds={selectedAssetIds}
-                  setSelectedAssetIds={setSelectedAssetIds}
-                  handleToggleSelect={handleToggleSelect}
-                  dragOverFolderId={dragOverFolderId}
-                  setDragOverFolderId={setDragOverFolderId}
-                  onDropOnFolder={(targetFolder, draggedIds) => {
-                    moveAssetsOptimistically(draggedIds, targetFolder.id, targetFolder.file_name)
-                  }}
-                />
+                <ErrorBoundary
+                  boundaryId="asset-table"
+                  fallback={
+                    <div style={{
+                      padding: '32px',
+                      border: '1px solid #e57373',
+                      borderRadius: '8px',
+                      background: 'rgba(229,115,115,0.05)',
+                      color: '#e57373',
+                      fontSize: '0.9rem',
+                      textAlign: 'center',
+                      margin: '16px 0'
+                    }}>
+                      {t('Failed to load assets table')}
+                    </div>
+                  }
+                >
+                  <AssetTableView
+                    filteredAssets={paginatedAssets}
+                    screens={screens}
+                    openMenuId={openMenuId}
+                    menuPosition={menuPosition}
+                    setOpenMenuId={setOpenMenuId}
+                    setMenuPosition={setMenuPosition}
+                    setPreviewAsset={handlePreviewAsset}
+                    setRenameModalAsset={setRenameModalAsset}
+                    setDeleteModalAsset={setDeleteModalAsset}
+                    setPushModalAsset={setPushModalAsset}
+                    deletingIds={deletingIds}
+                    getPreviewUrl={getPreviewUrl}
+                    selectedAssetIds={selectedAssetIds}
+                    setSelectedAssetIds={setSelectedAssetIds}
+                    handleToggleSelect={handleToggleSelect}
+                    dragOverFolderId={dragOverFolderId}
+                    setDragOverFolderId={setDragOverFolderId}
+                    onDropOnFolder={(targetFolder, draggedIds) => {
+                      moveAssetsOptimistically(draggedIds, targetFolder.id, targetFolder.file_name)
+                    }}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
+                  />
+                </ErrorBoundary>
               </div>
             )}
             
             {filteredAssets.length > 0 && (
-              <div className={styles.tableFooter}>
-                <div className={styles.paginationInfo}>
-                  {`${t('Showing')} ${startItem} ${t('to')} ${endItem} ${t('of')} ${filteredAssets.length} ${t('items')}`}
-                  {viewMode === 'grid' && filteredAssets.some(a => a.mime_type === 'application/x-folder') && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={filteredAssets.length}
+                onPageChange={navigatePage}
+                itemLabel="items"
+                extraInfo={
+                  viewMode === 'grid' && filteredAssets.some(a => a.mime_type === 'application/x-folder') ? (
                     <span className={styles.dragHint}>{t('Tip: drag items onto a folder to move them')}</span>
-                  )}
-                </div>
-                <div className={styles.footerControls}>
-                  <div className={styles.perPageSelector}>
-                    <span>{t('Per page:')}</span>
-                    <select
-                      value={String(pageSize)}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        navigatePage(1, Number(val))
-                      }}
-                    >
-                      <option value="5">5</option>
-                      <option value="10">10</option>
-                      <option value="25">25</option>
-                      <option value="50">50</option>
-                      <option value="100">100</option>
-                    </select>
-                  </div>
-                  <div className={styles.pagination}>
-                    <span className={styles.pageIndicator}>
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button 
-                      className={styles.pageBtn} 
-                      onClick={() => navigatePage(currentPage - 1, pageSize)}
-                      disabled={!hasPrevPage}
-                      type="button"
-                      aria-label={t('Previous page')}
-                      style={{ cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <button 
-                      className={styles.pageBtn} 
-                      onClick={() => navigatePage(currentPage + 1, pageSize)}
-                      disabled={!hasNextPage}
-                      type="button"
-                      aria-label={t('Next page')}
-                      style={{ cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+                  ) : undefined
+                }
+              />
             )}
           </div>
         </div>
@@ -1508,6 +1582,8 @@ export default function AssetClient({
           assetName={deleteModalAsset.file_name}
           filePath={deleteModalAsset.file_path}
           teamSlug={teamSlug}
+          isFolder={deleteModalAsset.mime_type === 'application/x-folder'}
+          nestedCount={assets.filter(a => a.folder_id === deleteModalAsset.id).length}
           onClose={() => setDeleteModalAsset(null)}
           onSuccess={handleDeleteSuccess}
         />

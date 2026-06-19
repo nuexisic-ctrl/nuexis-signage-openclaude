@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useTransition, useRef, useEffect } from 'react'
-import { X, Check, AlertTriangle, Monitor, Search, Tv } from 'lucide-react'
+import { Check, AlertTriangle, Monitor, Search, Tv } from 'lucide-react'
 import styles from './GroupEditModal.module.css'
 import { Asset, Playlist, Device } from './types'
 import { saveGroupChanges } from '../groups/actions'
@@ -10,6 +10,7 @@ import { PlaylistBrowserModal } from './PlaylistBrowserModal'
 import { modalStack } from '@/lib/utils/modalStack'
 import CustomSelect from '../components/CustomSelect'
 import { useTranslation } from '@/lib/i18n'
+import Modal from '../components/Modal'
 
 interface Group {
   id: string
@@ -33,33 +34,7 @@ interface GroupEditModalProps {
   onSuccess: () => void
 }
 
-const PRESET_COLORS = [
-  '#000000', // black
-  '#ffffff', // white
-  '#ef4444', // red
-  '#f97316', // orange
-  '#f59e0b', // amber
-  '#eab308', // yellow
-  '#84cc16', // lime
-  '#22c55e', // green
-  '#10b981', // emerald
-  '#14b8a6', // teal
-  '#06b6d4', // cyan
-  '#0ea5e9', // sky
-  '#3b82f6', // blue
-  '#6366f1', // indigo
-  '#8b5cf6', // violet
-  '#a855f7', // purple
-  '#d946ef', // fuchsia
-  '#ec4899', // pink
-  '#f43f5e', // rose
-  '#78716c', // stone
-  '#737373', // neutral
-  '#525252', // neutral-dark
-  '#64748b', // slate
-  '#475569', // slate-dark
-  '#334155', // slate-deep
-]
+import { PRESET_COLORS } from '@/lib/utils/constants'
 
 export function GroupEditModal({
   group,
@@ -110,7 +85,6 @@ export function GroupEditModal({
 
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const overlayRef = useRef<HTMLDivElement>(null)
 
   const selectedAsset = assets.find(a => a.id === assetId)
   const selectedPlaylist = playlists.find(p => p.id === playlistId)
@@ -210,38 +184,7 @@ export function GroupEditModal({
     setSelectedDeviceIds(prev => prev.filter(id => id !== deviceId))
   }
 
-  const childWasActiveRef = useRef(false)
-  const startedOnOverlayRef = useRef(false)
 
-  function handleOverlayMouseDown(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) {
-      startedOnOverlayRef.current = true
-      childWasActiveRef.current = showScreensDropdown || showColorPicker || modalStack.hasActiveChildOf('group-edit-modal')
-    } else {
-      startedOnOverlayRef.current = false
-    }
-  }
-
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) {
-      if (!startedOnOverlayRef.current) {
-        return
-      }
-      if (showScreensDropdown) {
-        setShowScreensDropdown(false)
-        return
-      }
-      if (showColorPicker) {
-        setShowColorPicker(false)
-        return
-      }
-      if (childWasActiveRef.current) {
-        childWasActiveRef.current = false
-        return
-      }
-      onClose()
-    }
-  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -290,291 +233,281 @@ export function GroupEditModal({
 
   return (
     <>
-      <div 
-        className={styles.overlay} 
-        ref={overlayRef} 
-        onMouseDown={handleOverlayMouseDown} 
-        onClick={handleOverlayClick}
+      <Modal
+        isOpen={true}
+        onClose={onClose}
+        title={t('Edit Group')}
+        subtitle={t('Configure screen membership and default content settings')}
       >
-        <div className={styles.modal} role="dialog">
-          <div className={styles.modalHeader}>
-            <div>
-              <h2 className={styles.modalTitle}>{t('Edit Group')}</h2>
-              <p className={styles.modalSubtitle}>{t('Configure screen membership and default content settings')}</p>
-            </div>
-            <button className={styles.modalClose} onClick={onClose} aria-label={t('Close modal')}><X size={18} /></button>
-          </div>
-
-          <form className={styles.form} onSubmit={handleSubmit}>
-            {/* Group Name & Color Tag */}
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>{t('Group Name')}</label>
-              <div className={styles.inputWithColorContainer}>
-                <input
-                  type="text"
-                  maxLength={60}
-                  className={styles.inputWithColor}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={isPending}
-                />
-                <button
-                  type="button"
-                  className={styles.colorIndicatorDot}
-                  style={{ backgroundColor: color }}
-                  onClick={() => setShowColorPicker(!showColorPicker)}
-                  title={t('Select Group Color')}
-                  aria-label={t('Select Group Color')}
-                />
-                {showColorPicker && (
-                  <div className={styles.colorPickerPopover} ref={colorPickerRef}>
-                    <div className={styles.popoverHeader}>
-                      <span className={styles.popoverTitle}>{t('Select Color')}</span>
-                      <button 
-                        type="button" 
-                        className={styles.popoverCloseBtn} 
-                        onClick={() => setShowColorPicker(false)}
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                    
-                    <div className={styles.predefinedColorsGrid}>
-                      {availableColors.map((c) => {
-                        const isSelected = color === c
-                        return (
-                          <button
-                            type="button"
-                            key={c}
-                            className={`${styles.colorOptionBubble} ${isSelected ? styles.colorOptionBubbleSelected : ''}`}
-                            style={{ backgroundColor: c }}
-                            onClick={() => {
-                              setColor(c)
-                              setShowColorPicker(false)
-                            }}
-                          >
-                            {isSelected && <Check size={10} style={{ color: c === '#ffffff' ? '#000' : '#fff' }} />}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    
-                    <div className={styles.customColorSection}>
-                      <label className={styles.customColorLabel}>{t('Custom Color')}</label>
-                      <div className={styles.customColorRow}>
-                        <input
-                          type="color"
-                          className={styles.customColorInput}
-                          value={color}
-                          onChange={(e) => setColor(e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          className={styles.customColorHexInput}
-                          value={color}
-                          onChange={(e) => setColor(e.target.value)}
-                        />
-                      </div>
-                    </div>
+        <form className={styles.form} onSubmit={handleSubmit}>
+          {/* Group Name & Color Tag */}
+          <div className={styles.fieldGroup}>
+            <label className={styles.label}>{t('Group Name')}</label>
+            <div className={styles.inputWithColorContainer}>
+              <input
+                type="text"
+                maxLength={60}
+                className={styles.inputWithColor}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isPending}
+              />
+              <button
+                type="button"
+                className={styles.colorIndicatorDot}
+                style={{ backgroundColor: color }}
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                title={t('Select Group Color')}
+                aria-label={t('Select Group Color')}
+              />
+              {showColorPicker && (
+                <div className={styles.colorPickerPopover} ref={colorPickerRef}>
+                  <div className={styles.popoverHeader}>
+                    <span className={styles.popoverTitle}>{t('Select Color')}</span>
+                    <button 
+                      type="button" 
+                      className={styles.popoverCloseBtn} 
+                      onClick={() => setShowColorPicker(false)}
+                    >
+                      X
+                    </button>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Screen Selection Multi-Select Field */}
-            <div className={styles.fieldGroup} ref={dropdownRef}>
-              <label className={styles.label}>{t('Assigned Screens')}</label>
-              <div 
-                className={styles.screensInputTrigger} 
-                onClick={() => setShowScreensDropdown(!showScreensDropdown)}
-              >
-                {selectedDevices.length === 0 ? (
-                  <span className={styles.placeholder}>{t('Select screens to assign...')}</span>
-                ) : (
-                  <div className={styles.pillsContainer}>
-                    {selectedDevices.map(d => (
-                      <span key={d.id} className={styles.pill} onClick={(e) => e.stopPropagation()}>
-                        <span className={styles.pillText}>{d.name || 'Unnamed Screen'}</span>
-                        <button 
-                          type="button" 
-                          className={styles.removePillBtn} 
-                          onClick={() => handleRemoveDevice(d.id)}
+                  
+                  <div className={styles.predefinedColorsGrid}>
+                    {availableColors.map((c) => {
+                      const isSelected = color === c
+                      return (
+                        <button
+                          type="button"
+                          key={c}
+                          className={`${styles.colorOptionBubble} ${isSelected ? styles.colorOptionBubbleSelected : ''}`}
+                          style={{ backgroundColor: c }}
+                          onClick={() => {
+                            setColor(c)
+                            setShowColorPicker(false)
+                          }}
                         >
-                          <X size={10} />
+                          {isSelected && <Check size={10} style={{ color: c === '#ffffff' ? '#000' : '#fff' }} />}
                         </button>
-                      </span>
-                    ))}
+                      )
+                    })}
                   </div>
-                )}
-              </div>
-
-              {showScreensDropdown && (
-                <div className={styles.screensDropdown}>
-                  <div className={styles.searchWrapper}>
-                    <Search size={14} className={styles.searchIcon} />
-                    <input 
-                      type="text" 
-                      className={styles.dropdownSearch} 
-                      placeholder={t('Filter screens...')} 
-                      value={screenSearchQuery} 
-                      onChange={(e) => setScreenSearchQuery(e.target.value)}
-                      onClick={(e) => e.stopPropagation()} 
-                    />
-                  </div>
-                  <div className={styles.dropdownList}>
-                    {filteredDevices.length === 0 ? (
-                      <div className={styles.noResults}>{t('No screens found')}</div>
-                    ) : (
-                      filteredDevices.map(d => {
-                        const isSelected = selectedDeviceIds.includes(d.id)
-                        return (
-                          <div 
-                            key={d.id} 
-                            className={`${styles.dropdownItem} ${isSelected ? styles.dropdownItemActive : ''}`}
-                            onClick={() => handleToggleDevice(d.id)}
-                          >
-                            <input 
-                              type="checkbox" 
-                              checked={isSelected} 
-                              onChange={() => {}} // handled by click
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <div className={styles.deviceMeta}>
-                              <span className={styles.deviceName}>{d.name || 'Unnamed Screen'}</span>
-                              <span className={`${styles.statusText} ${d.status === 'online' ? styles.statusOnline : ''}`}>
-                                ● {t(d.status)}
-                              </span>
-                            </div>
-                          </div>
-                        )
-                      })
-                    )}
+                  
+                  <div className={styles.customColorSection}>
+                    <label className={styles.customColorLabel}>{t('Custom Color')}</label>
+                    <div className={styles.customColorRow}>
+                      <input
+                        type="color"
+                        className={styles.customColorInput}
+                        value={color}
+                        onChange={(e) => setColor(e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        className={styles.customColorHexInput}
+                        value={color}
+                        onChange={(e) => setColor(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Content Type */}
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>{t('Content Type')}</label>
-              <CustomSelect
-                id="group-edit-content-type"
-                value={contentType || ''}
-                onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | 'Schedule' | '')}
-                options={[
-                  ...(!contentType ? [{ value: '', label: t('no content'), disabled: true }] : []),
-                  { value: 'Asset', label: t('Asset') },
-                  { value: 'Playlist', label: t('Playlist') },
-                  { value: 'Schedule', label: t('Schedule (Coming Soon)'), disabled: true }
-                ]}
-              />
+          {/* Screen Selection Multi-Select Field */}
+          <div className={styles.fieldGroup} ref={dropdownRef}>
+            <label className={styles.label}>{t('Assigned Screens')}</label>
+            <div 
+              className={styles.screensInputTrigger} 
+              onClick={() => setShowScreensDropdown(!showScreensDropdown)}
+            >
+              {selectedDevices.length === 0 ? (
+                <span className={styles.placeholder}>{t('Select screens to assign...')}</span>
+              ) : (
+                <div className={styles.pillsContainer}>
+                  {selectedDevices.map(d => (
+                    <span key={d.id} className={styles.pill} onClick={(e) => e.stopPropagation()}>
+                      <span className={styles.pillText}>{d.name || 'Unnamed Screen'}</span>
+                      <button 
+                        type="button" 
+                        className={styles.removePillBtn} 
+                        onClick={() => handleRemoveDevice(d.id)}
+                      >
+                        X
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Content Selection Details */}
-            {contentType === 'Asset' && (
-              <div className={styles.fieldGroup}>
-                <label className={styles.label}>{t('Selected Asset')}</label>
-                <div 
-                  className={styles.customSelectTrigger} 
-                  onClick={() => setShowAssetBrowser(true)}
-                  tabIndex={0}
-                  role="button"
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowAssetBrowser(true); } }}
-                >
-                  <span className={selectedAsset ? styles.selectedText : styles.placeholderText}>
-                    {selectedAsset ? selectedAsset.file_name : t('No asset selected')}
-                  </span>
-                  <button 
-                    type="button" 
-                    className={styles.browseButton}
-                    onClick={(e) => { e.stopPropagation(); setShowAssetBrowser(true); }}
-                  >
-                    {t('Browse')}
-                  </button>
+            {showScreensDropdown && (
+              <div className={styles.screensDropdown}>
+                <div className={styles.searchWrapper}>
+                  <Search size={14} className={styles.searchIcon} />
+                  <input 
+                    type="text" 
+                    className={styles.dropdownSearch} 
+                    placeholder={t('Filter screens...')} 
+                    value={screenSearchQuery} 
+                    onChange={(e) => setScreenSearchQuery(e.target.value)}
+                    onClick={(e) => e.stopPropagation()} 
+                  />
+                </div>
+                <div className={styles.dropdownList}>
+                  {filteredDevices.length === 0 ? (
+                    <div className={styles.noResults}>{t('No screens found')}</div>
+                  ) : (
+                    filteredDevices.map(d => {
+                      const isSelected = selectedDeviceIds.includes(d.id)
+                      return (
+                        <div 
+                          key={d.id} 
+                          className={`${styles.dropdownItem} ${isSelected ? styles.dropdownItemActive : ''}`}
+                          onClick={() => handleToggleDevice(d.id)}
+                        >
+                          <input 
+                            type="checkbox" 
+                            checked={isSelected} 
+                            onChange={() => {}} // handled by click
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className={styles.deviceMeta}>
+                            <span className={styles.deviceName}>{d.name || 'Unnamed Screen'}</span>
+                            <span className={`${styles.statusText} ${d.status === 'online' ? styles.statusOnline : ''}`}>
+                              ● {t(d.status)}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
                 </div>
               </div>
             )}
+          </div>
 
-            {contentType === 'Playlist' && (
-              <div className={styles.fieldGroup}>
-                <label className={styles.label}>{t('Selected Playlist')}</label>
-                <div 
-                  className={styles.customSelectTrigger} 
-                  onClick={() => setShowPlaylistBrowser(true)}
-                  tabIndex={0}
-                  role="button"
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPlaylistBrowser(true); } }}
-                >
-                  <span className={selectedPlaylist ? styles.selectedText : styles.placeholderText}>
-                    {selectedPlaylist ? selectedPlaylist.name : t('No playlist selected')}
-                  </span>
-                  <button 
-                    type="button" 
-                    className={styles.browseButton}
-                    onClick={(e) => { e.stopPropagation(); setShowPlaylistBrowser(true); }}
-                  >
-                    {t('Browse')}
-                  </button>
-                </div>
-              </div>
-            )}
+          {/* Content Type */}
+          <div className={styles.fieldGroup}>
+            <label className={styles.label}>{t('Content Type')}</label>
+            <CustomSelect
+              id="group-edit-content-type"
+              value={contentType || ''}
+              onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | 'Schedule' | '')}
+              options={[
+                ...(!contentType ? [{ value: '', label: t('no content'), disabled: true }] : []),
+                { value: 'Asset', label: t('Asset') },
+                { value: 'Playlist', label: t('Playlist') },
+                { value: 'Schedule', label: t('Schedule (Coming Soon)'), disabled: true }
+              ]}
+            />
+          </div>
 
-            {/* Scale Mode */}
-            {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget') && selectedAsset?.mime_type !== 'application/x-widget-qrcode')) && (
-              <div className={styles.fieldGroup}>
-                <label className={styles.label}>{t('Scale Mode')}</label>
-                <CustomSelect
-                  id="group-edit-scale-mode"
-                  value={scaleMode}
-                  onChange={(val) => setScaleMode(val)}
-                  options={[
-                    { value: 'None', label: t('None') },
-                    { value: 'Fit', label: t('Fit') },
-                    { value: 'Stretch', label: t('Stretch') },
-                    { value: 'Zoom', label: t('Zoom') }
-                  ]}
-                />
-              </div>
-            )}
-
-            {/* Orientation */}
+          {/* Content Selection Details */}
+          {contentType === 'Asset' && (
             <div className={styles.fieldGroup}>
-              <label className={styles.label}>{t('Orientation Override')}</label>
+              <label className={styles.label}>{t('Selected Asset')}</label>
+              <div 
+                className={styles.customSelectTrigger} 
+                onClick={() => setShowAssetBrowser(true)}
+                tabIndex={0}
+                role="button"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowAssetBrowser(true); } }}
+              >
+                <span className={selectedAsset ? styles.selectedText : styles.placeholderText}>
+                  {selectedAsset ? selectedAsset.file_name : t('No asset selected')}
+                </span>
+                <button 
+                  type="button" 
+                  className={styles.browseButton}
+                  onClick={(e) => { e.stopPropagation(); setShowAssetBrowser(true); }}
+                >
+                  {t('Browse')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {contentType === 'Playlist' && (
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>{t('Selected Playlist')}</label>
+              <div 
+                className={styles.customSelectTrigger} 
+                onClick={() => setShowPlaylistBrowser(true)}
+                tabIndex={0}
+                role="button"
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowPlaylistBrowser(true); } }}
+              >
+                <span className={selectedPlaylist ? styles.selectedText : styles.placeholderText}>
+                  {selectedPlaylist ? selectedPlaylist.name : t('No playlist selected')}
+                </span>
+                <button 
+                  type="button" 
+                  className={styles.browseButton}
+                  onClick={(e) => { e.stopPropagation(); setShowPlaylistBrowser(true); }}
+                >
+                  {t('Browse')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Scale Mode */}
+          {!(contentType === 'Playlist' || (contentType === 'Asset' && selectedAsset?.mime_type?.startsWith('application/x-widget') && selectedAsset?.mime_type !== 'application/x-widget-qrcode')) && (
+            <div className={styles.fieldGroup}>
+              <label className={styles.label}>{t('Scale Mode')}</label>
               <CustomSelect
-                id="group-edit-orientation"
-                value={orientation}
-                onChange={(val) => setOrientation(Number(val) as 0 | 90 | 180 | 270)}
+                id="group-edit-scale-mode"
+                value={scaleMode}
+                onChange={(val) => setScaleMode(val)}
                 options={[
-                  { value: 0, label: t('Landscape (0°)') },
-                  { value: 90, label: t('Rotate 90°') },
-                  { value: 180, label: t('Rotate 180°') },
-                  { value: 270, label: t('Rotate 270°') }
+                  { value: 'None', label: t('None') },
+                  { value: 'Fit', label: t('Fit') },
+                  { value: 'Stretch', label: t('Stretch') },
+                  { value: 'Zoom', label: t('Zoom') }
                 ]}
               />
             </div>
+          )}
 
-            {error && <div className={styles.errorMsg}><AlertTriangle size={16} />{error}</div>}
+          {/* Orientation */}
+          <div className={styles.fieldGroup}>
+            <label className={styles.label}>{t('Orientation Override')}</label>
+            <CustomSelect
+              id="group-edit-orientation"
+              value={orientation}
+              onChange={(val) => setOrientation(Number(val) as 0 | 90 | 180 | 270)}
+              options={[
+                { value: 0, label: t('Landscape (0°)') },
+                { value: 90, label: t('Rotate 90°') },
+                { value: 180, label: t('Rotate 180°') },
+                { value: 270, label: t('Rotate 270°') }
+              ]}
+            />
+          </div>
 
-            <div className={styles.modalFooter}>
-              <button 
-                type="button" 
-                className={styles.btnSecondary} 
-                onClick={onClose}
-                disabled={isPending}
-              >
-                {t('Cancel')}
-              </button>
-              <button 
-                className={styles.submitBtn} 
-                type="submit" 
-                disabled={isPending || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}
-              >
-                {isPending ? t('Saving…') : t('Save Changes')}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+          {error && <div className={styles.errorMsg}><AlertTriangle size={16} />{error}</div>}
+
+          <div className={styles.modalFooter}>
+            <button 
+              type="button" 
+              className={styles.btnSecondary} 
+              onClick={onClose}
+              disabled={isPending}
+            >
+              {t('Cancel')}
+            </button>
+            <button 
+              className={styles.submitBtn} 
+              type="submit" 
+              disabled={isPending || (contentType === 'Asset' && !assetId) || (contentType === 'Playlist' && !playlistId)}
+            >
+              {isPending ? t('Saving…') : t('Save Changes')}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {showAssetBrowser && (
         <AssetBrowserModal

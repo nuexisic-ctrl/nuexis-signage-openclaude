@@ -40,6 +40,7 @@ interface ScreensModalsProps {
   selectedDeviceIds: Set<string>
   setSelectedDeviceIds: (ids: Set<string>) => void
   router: any
+  handleCreateGroupSuccess: (groupId: string) => void
 }
 
 export function ScreensModals({
@@ -70,7 +71,8 @@ export function ScreensModals({
   memberships,
   selectedDeviceIds,
   setSelectedDeviceIds,
-  router
+  router,
+  handleCreateGroupSuccess
 }: ScreensModalsProps) {
   return (
     <>
@@ -102,6 +104,7 @@ export function ScreensModals({
           deviceId={deleteModalDevice.id} 
           deviceName={deleteModalDevice.name || 'Unnamed Screen'} 
           teamSlug={teamSlug} 
+          status={deleteModalDevice.status}
           onClose={() => setDeleteModalDevice(null)} 
           onSuccess={handleDeleteSuccess} 
         />
@@ -140,10 +143,8 @@ export function ScreensModals({
           teamSlug={teamSlug}
           devices={devices}
           initialSelectedDeviceIds={Array.from(selectedDeviceIds)}
-          onSuccess={() => {
-            setShowCreateGroupFromSelection(false)
-            setSelectedDeviceIds(new Set())
-            router.refresh()
+          onSuccess={(groupId) => {
+            handleCreateGroupSuccess(groupId)
           }}
         />
       )}
