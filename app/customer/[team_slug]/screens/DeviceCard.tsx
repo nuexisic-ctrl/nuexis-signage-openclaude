@@ -21,6 +21,8 @@ export interface DeviceCardProps {
   onToggleSelect?: () => void
   onGroupClick?: (groupId: string) => void
   now?: number
+  onItemClick?: (e: React.MouseEvent) => void
+  onItemDoubleClick?: () => void
 }
 
 export function DeviceCard({
@@ -38,7 +40,9 @@ export function DeviceCard({
   selected = false,
   onToggleSelect,
   onGroupClick,
-  now
+  now,
+  onItemClick,
+  onItemDoubleClick,
 }: DeviceCardProps) {
   const { t, formatDate } = useTranslation()
   
@@ -75,13 +79,29 @@ export function DeviceCard({
     if (selection && selection.toString()) {
       return;
     }
-    onEdit();
+    onItemClick?.(e);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('select') ||
+      target.closest(`.${styles.moreDropdown}`)
+    ) {
+      return;
+    }
+    onItemDoubleClick?.();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (e.key === ' ') {
       e.preventDefault();
-      onEdit();
+      onToggleSelect?.();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      onItemDoubleClick?.();
     }
   };
 
@@ -89,6 +109,7 @@ export function DeviceCard({
     <div 
       className={`${styles.deviceCard} ${selected ? styles.deviceCardSelected : ''}`}
       onClick={handleCardClick}
+      onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}
       role="button"

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Sun, Moon, Bell, LogOut, ChevronDown, ChevronLeft, Monitor, Globe } from 'lucide-react'
+import { Search, Sun, Moon, Bell, LogOut, ChevronDown, ChevronLeft, Monitor, Globe, ZoomIn } from 'lucide-react'
 import styles from './header.module.css'
 import { useTheme } from '@/app/components/ThemeProvider'
 import { useTranslation, SUPPORTED_LOCALES } from '@/lib/i18n'
@@ -15,10 +15,16 @@ export default function Header({ fullName, email }: HeaderProps) {
   const { theme: activeTheme, setTheme: handleSetThemeAndClose } = useTheme()
   const { t, locale, setLocale } = useTranslation()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [activeZoom, setActiveZoom] = useState<string>('default')
   const searchInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const initial = fullName ? fullName.charAt(0).toUpperCase() : email?.charAt(0).toUpperCase() || 'U'
+
+  useEffect(() => {
+    const savedZoom = localStorage.getItem('nuexis_interface_zoom') || 'default'
+    setActiveZoom(savedZoom)
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -52,6 +58,14 @@ export default function Header({ fullName, email }: HeaderProps) {
 
   const handleSetLocale = (code: typeof SUPPORTED_LOCALES[number]['code']) => {
     setLocale(code)
+    setIsDropdownOpen(false)
+  }
+
+  const handleSetZoom = (zoom: string) => {
+    setActiveZoom(zoom)
+    localStorage.setItem('nuexis_interface_zoom', zoom)
+    document.documentElement.setAttribute('data-zoom', zoom)
+    document.cookie = `nuexis_interface_zoom=${zoom}; path=/; max-age=31536000; SameSite=Lax`
     setIsDropdownOpen(false)
   }
 
@@ -152,6 +166,37 @@ export default function Header({ fullName, email }: HeaderProps) {
                         <span>{loc.nativeLabel}</span>
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div className={`${styles.dropdownItem} ${styles.zoomItem}`}>
+                  <div className={styles.themeItemLabel}>
+                    <ChevronLeft size={14} className={styles.submenuArrow} style={{ marginRight: '8px' }} />
+                    <div className={styles.dropdownItemContent}>
+                      <ZoomIn size={16} />
+                      <span style={{ marginLeft: '8px' }}>{t('Interface Zoom')}</span>
+                    </div>
+                  </div>
+                  
+                  <div className={styles.submenu}>
+                    <button 
+                      className={`${styles.submenuItem} ${activeZoom === 'smaller' ? styles.activeSubmenu : ''}`}
+                      onClick={() => handleSetZoom('smaller')}
+                    >
+                      <span>{t('Smaller')}</span>
+                    </button>
+                    <button 
+                      className={`${styles.submenuItem} ${activeZoom === 'default' ? styles.activeSubmenu : ''}`}
+                      onClick={() => handleSetZoom('default')}
+                    >
+                      <span>{t('Default')}</span>
+                    </button>
+                    <button 
+                      className={`${styles.submenuItem} ${activeZoom === 'larger' ? styles.activeSubmenu : ''}`}
+                      onClick={() => handleSetZoom('larger')}
+                    >
+                      <span>{t('Larger')}</span>
+                    </button>
                   </div>
                 </div>
               </div>

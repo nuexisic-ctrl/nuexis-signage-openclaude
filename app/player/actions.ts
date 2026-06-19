@@ -92,8 +92,8 @@ export async function getDeviceState(
   const { data, error } = await supabase.rpc('get_player_device_state', {
     p_hardware_id: hardwareId,
     p_secret: secret ?? undefined,
-    p_app_version: appVersion ?? null,
-    p_os_version: osVersion ?? null,
+    p_app_version: appVersion ?? undefined,
+    p_os_version: osVersion ?? undefined,
   })
 
   if (error) {
@@ -256,8 +256,7 @@ export async function getSignedMediaUrl(
   // Rate limiting
   if (!(await rateLimitAction(hardwareId, 'getSignedMediaUrl', 120, 60))) {
     console.warn('[getSignedMediaUrl] Rate limit exceeded for hardwareId:', hardwareId)
-    // Fallback to standard public storage URL
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-media/${filePath}`
+    throw new Error('Rate limit exceeded for media URL signing')
   }
 
   try {
@@ -265,13 +264,13 @@ export async function getSignedMediaUrl(
     const device = await getDeviceState(hardwareId, secret)
     if (!device || !device.team_id) {
       console.warn('[getSignedMediaUrl] Unauthorized device or missing team_id')
-      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-media/${filePath}`
+      throw new Error('Unauthorized device or missing team configuration')
     }
 
     // 2. Validate file path belongs to the device's team
     if (!filePath.startsWith(device.team_id + '/')) {
       console.warn('[getSignedMediaUrl] Unauthorized file path access attempt')
-      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-media/${filePath}`
+      throw new Error('Unauthorized file path access')
     }
 
     // 3. Generate a signed URL using createAdminClient (which has service-role storage sign permissions)
@@ -282,13 +281,13 @@ export async function getSignedMediaUrl(
 
     if (error || !data?.signedUrl) {
       console.error('[getSignedMediaUrl] Failed to generate signed URL from storage client:', error || 'No URL returned')
-      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-media/${filePath}`
+      throw new Error('Failed to generate signed URL from storage provider')
     }
 
     return data.signedUrl
-  } catch (err) {
+  } catch (err: any) {
     console.error('[getSignedMediaUrl] Exception during signed URL generation:', err)
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/workspace-media/${filePath}`
+    throw new Error(err?.message || 'Internal error during URL signing')
   }
 }
 

@@ -8,6 +8,10 @@ export const en: Record<string, string> = {
   'Log In': 'Log In',
   'Sign Up': 'Sign Up',
   'Logout': 'Logout',
+  'Interface Zoom': 'Interface Zoom',
+  'Smaller': 'Smaller',
+  'Default': 'Default',
+  'Larger': 'Larger',
   'Workspace': 'Workspace',
   'Profile Information': 'Profile Information',
   'Workspace Details': 'Workspace Details',
@@ -254,5 +258,71 @@ export const en: Record<string, string> = {
   'Push asset': 'Push asset',
   'Pushed to {name}.': 'Pushed to {name}.',
   'selected screen': 'selected screen',
-  'Failed to push asset to screen.': 'Failed to push asset to screen.'
+  'Failed to push asset to screen.': 'Failed to push asset to screen.',
+
+  // ── Playlist Workspace ──────────────────────────────────────────────
+  'Back to Playlists': 'Back to Playlists',
+  'Playlist not found': 'Playlist not found',
+  'Undo': 'Undo',
+  'Redo': 'Redo',
+  'Push to Screen': 'Push to Screen',
+  'Duplicate Playlist': 'Duplicate Playlist',
+  'Delete Playlist': 'Delete Playlist',
+  'All changes saved': 'All changes saved',
+  'Unsaved changes': 'Unsaved changes',
+  'More actions': 'More actions',
+  'Playlist saved successfully': 'Playlist saved successfully',
+  'Playlist renamed': 'Playlist renamed',
+  'Failed to rename playlist': 'Failed to rename playlist',
+  'Playlist deleted': 'Playlist deleted',
+  'Failed to delete playlist': 'Failed to delete playlist',
+  'Playlist duplicated successfully': 'Playlist duplicated successfully',
+  'Failed to duplicate playlist': 'Failed to duplicate playlist',
+  'Are you sure you want to delete this playlist?': 'Are you sure you want to delete this playlist?',
+  'Playlist created': 'Playlist created',
+  'Creating...': 'Creating...',
+  'Just now': 'Just now',
+
+  // ── Content Table ──
+  'Thumbnail': 'Thumbnail',
+  'Name': 'Name',
+  'Duration': 'Duration',
+  'Resolution': 'Resolution',
+  'Add Media': 'Add Media',
+  'Drag to reorder': 'Drag to reorder',
+  'Remove item': 'Remove item',
+  'Duration in seconds': 'Duration in seconds',
+  'No items yet': 'No items yet',
+  'Add media to build your playlist.': 'Add media to build your playlist.',
+  'Unknown': 'Unknown',
+
+  // ── Info Panel ──
+  'Details': 'Details',
+  'Total Items': 'Total Items',
+  'Total Size': 'Total Size',
+  'Total Duration': 'Total Duration',
+  'Last Updated': 'Last Updated',
+  'Assigned to {count} screen': 'Assigned to {count} screen',
+  'Assigned to {count} screens': 'Assigned to {count} screens',
+  'more': 'more',
+
+  // ── Preview ──
+  'No previewable items': 'No previewable items',
+  'Close Preview': 'Close Preview',
+
+  // ── Push Modal ──
+  'Search screens...': 'Search screens...',
+  'No screens available': 'No screens available',
+  'Playlist pushed to {count} screen(s) successfully': 'Playlist pushed to {count} screen(s) successfully',
+  'Failed to push playlist to screens.': 'Failed to push playlist to screens.',
+  'selected': 'selected',
+  'Push': 'Push',
+
+  // ── Asset Picker ──
+  'Select Assets': 'Select Assets',
+  'Add Selected': 'Add Selected',
+  'Search assets...': 'Search assets...',
+  '{count} asset selected': '{count} asset selected',
+  '{count} assets selected': '{count} assets selected',
+  'Load More': 'Load More'
 };

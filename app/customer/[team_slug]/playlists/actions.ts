@@ -124,6 +124,7 @@ export async function deletePlaylist(playlistId: string, teamSlug: string) {
   if (error) throw new Error(error.message)
 
   revalidatePath(`/customer/${teamSlug}/playlists`)
+  revalidatePath(`/customer/${teamSlug}/playlists/${playlistId}`)
 }
 
 export async function getPlaylistItems(playlistId: string) {

@@ -1,31 +1,26 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, ListVideo, Trash2, X, Clock, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Plus, ListVideo, Trash2, Clock, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
 import styles from './playlists.module.css'
-import { createPlaylist, deletePlaylist, updatePlaylist, getPlaylistItems } from './actions'
+import { createPlaylist, deletePlaylist } from './actions'
 import { createClient } from '@/lib/supabase/client'
-import CustomSelect from '../components/CustomSelect'
-import { modalStack } from '@/lib/utils/modalStack'
 import { toast } from '@/app/components/Toast'
 import { useTranslation } from '@/lib/i18n'
 
 interface PlaylistsClientProps {
   initialPlaylists: any[]
-  assets: any[]
   teamSlug: string
   teamId: string
 }
 
-export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, teamId }: PlaylistsClientProps) {
+export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: PlaylistsClientProps) {
   const { t } = useTranslation()
+  const router = useRouter()
   const [playlists, setPlaylists] = useState(initialPlaylists)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [newPlaylistName, setNewPlaylistName] = useState('')
-  const [items, setItems] = useState<any[]>([])
-  const [isSaving, setIsSaving] = useState(false)
-  const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null)
-  const [isLoadingItems, setIsLoadingItems] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(10)
 
@@ -36,37 +31,12 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     }
   }, [])
 
-  // Premium Dashboard States
+  // View mode state
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [isMounted, setIsMounted] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showSuccessPulse, setShowSuccessPulse] = useState(false)
-
-  useEffect(() => {
-    if (isModalOpen) {
-      modalStack.push('playlist-editor-modal')
-    } else {
-      modalStack.pop('playlist-editor-modal')
-    }
-    return () => {
-      modalStack.pop('playlist-editor-modal')
-    }
-  }, [isModalOpen])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (isModalOpen && modalStack.isTop('playlist-editor-modal')) {
-          handleCloseModal()
-        }
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isModalOpen])
 
   useEffect(() => {
     const saved = localStorage.getItem('playlistsViewMode')
@@ -106,79 +76,25 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     }
   }
 
-  const handleSave = async () => {
-    if (!newPlaylistName.trim()) return
-    setIsSaving(true)
+  const handleNewPlaylist = async () => {
+    if (isCreating) return
+    setIsCreating(true)
     try {
-      if (editingPlaylistId) {
-        await updatePlaylist(editingPlaylistId, newPlaylistName, teamSlug, items)
-        
-        // Broadcast refresh command to players using this playlist
-        const supabase = createClient()
-        const channel = supabase.channel(`playlist-broadcast-${editingPlaylistId}`)
-        channel.subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            channel.send({
-              type: 'broadcast',
-              event: 'refresh',
-              payload: { timestamp: Date.now() }
-            })
-            setTimeout(() => supabase.removeChannel(channel), 1000)
-          }
-        })
-        toast.success(t('Playlist "{name}" updated successfully', { name: newPlaylistName }))
-      } else {
-        await createPlaylist(teamId, newPlaylistName, teamSlug, items)
-        toast.success(t('Playlist "{name}" created successfully', { name: newPlaylistName }))
+      const result = await createPlaylist(teamId, 'Untitled Playlist', teamSlug, [])
+      if (result?.id) {
+        toast.success(t('Playlist created'))
+        router.push(`/customer/${teamSlug}/playlists/${result.id}`)
       }
-
-      // Re-fetch all playlists to reflect items changes and total play times
-      const supabaseClient = createClient()
-      const { data, error } = await supabaseClient
-        .from('playlists')
-        .select('id, name, created_at, updated_at, playlist_items(duration_seconds)')
-        .eq('team_id', teamId)
-        .order('created_at', { ascending: false })
-        .limit(100)
-      
-      if (!error && data) {
-        setPlaylists(data)
-      }
-
-      handleCloseModal()
     } catch (err: any) {
       console.error(err)
-      toast.error(err.message || (editingPlaylistId ? t('Failed to update playlist') : t('Failed to create playlist')))
-    } finally {
-      setIsSaving(false)
+      toast.error(err.message || t('Failed to create playlist'))
+      setIsCreating(false)
     }
-  }
-
-  const handleEdit = async (playlist: any) => {
-    setNewPlaylistName(playlist.name)
-    setEditingPlaylistId(playlist.id)
-    setIsModalOpen(true)
-    setIsLoadingItems(true)
-    try {
-      const fetchedItems = await getPlaylistItems(playlist.id)
-      setItems(fetchedItems)
-    } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || t('Failed to load playlist items'))
-    } finally {
-      setIsLoadingItems(false)
-    }
-  }
-
-  function handleCloseModal() {
-    setIsModalOpen(false)
-    setNewPlaylistName('')
-    setEditingPlaylistId(null)
-    setItems([])
   }
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    e.preventDefault()
     const targetName = playlists.find(p => p.id === id)?.name || 'Playlist'
     if (!confirm(t('Are you sure you want to delete the playlist "{name}"?', { name: targetName }))) return
     
@@ -192,31 +108,6 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
     }
   }
 
-  const handleAddItem = () => {
-    setItems([...items, { type: 'image', asset_id: '', duration_seconds: 10, widget_type: '' }])
-  }
-
-  const handleUpdateItem = (index: number, field: string, value: any) => {
-    const newItems = [...items]
-    newItems[index] = { ...newItems[index], [field]: value }
-    
-    // Auto-detect type if asset is selected
-    if (field === 'asset_id' && value) {
-      const asset = assets.find(a => a.id === value)
-      if (asset) {
-        newItems[index].type = asset.mime_type?.startsWith('video') ? 'video' : 'image'
-      }
-    }
-    
-    setItems(newItems)
-  }
-
-  const handleRemoveItem = (index: number) => {
-    const newItems = [...items]
-    newItems.splice(index, 1)
-    setItems(newItems)
-  }
-
   // Playtime display formatting utility
   const formatPlaytime = (seconds: number) => {
     if (!seconds) return '0s'
@@ -226,6 +117,21 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
       return t('{m}m {s}s', { m, s: s > 0 ? `${s}` : '' }).trim()
     }
     return t('{s}s', { s })
+  }
+
+  const formatRelativeTime = (dateStr: string) => {
+    if (!dateStr) return '—'
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMin = Math.floor(diffMs / 60000)
+    if (diffMin < 1) return t('Just now')
+    if (diffMin < 60) return `${diffMin}m ago`
+    const diffH = Math.floor(diffMin / 60)
+    if (diffH < 24) return `${diffH}h ago`
+    const diffD = Math.floor(diffH / 24)
+    if (diffD < 7) return `${diffD}d ago`
+    return date.toLocaleDateString()
   }
 
   const filteredPlaylists = useMemo(() => {
@@ -268,14 +174,13 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
           >
             <RefreshCw size={20} className={isRefreshing ? styles.spin : ''} />
           </button>
-          <button className={styles.addBtn} onClick={() => {
-            setEditingPlaylistId(null)
-            setNewPlaylistName('')
-            setItems([])
-            setIsModalOpen(true)
-          }}>
+          <button
+            className={styles.addBtn}
+            onClick={handleNewPlaylist}
+            disabled={isCreating}
+          >
             <Plus size={18} className={styles.addBtnIcon} />
-            {t('New Playlist')}
+            {isCreating ? t('Creating...') : t('New Playlist')}
           </button>
         </div>
       </div>
@@ -292,6 +197,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
               placeholder={t('Search playlists...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              maxLength={200}
             />
           </div>
           <div className={styles.controlsRight}>
@@ -341,7 +247,12 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
               const totalDuration = playlistItems.reduce((acc: number, item: any) => acc + (item.duration_seconds || 0), 0)
 
               return (
-                <div key={playlist.id} className={styles.playlistCard} onClick={() => handleEdit(playlist)}>
+                <Link
+                  key={playlist.id}
+                  href={`/customer/${teamSlug}/playlists/${playlist.id}`}
+                  className={styles.playlistCard}
+                  style={{ textDecoration: 'none' }}
+                >
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{ 
@@ -355,7 +266,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                       <div>
                         <h3 className={styles.playlistName}>{playlist.name}</h3>
                         <div className={styles.playlistMeta}>
-                          {t('Created')} {new Date(playlist.created_at).toISOString().split('T')[0]}
+                          {formatRelativeTime(playlist.updated_at)}
                         </div>
                       </div>
                     </div>
@@ -379,7 +290,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                       {formatPlaytime(totalDuration)}
                     </span>
                   </div>
-                </div>
+                </Link>
               )
             })}
           </div>
@@ -391,6 +302,7 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                   <th>{t('Playlist Name')}</th>
                   <th>{t('Total Items')}</th>
                   <th>{t('Total Playtime')}</th>
+                  <th>{t('Last Updated')}</th>
                   <th>{t('Created Date')}</th>
                   <th style={{ textAlign: 'right' }}>{t('Actions')}</th>
                 </tr>
@@ -402,17 +314,22 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
                   const totalDuration = playlistItems.reduce((acc: number, item: any) => acc + (item.duration_seconds || 0), 0)
 
                   return (
-                    <tr key={playlist.id} className={styles.tableRow} onClick={() => handleEdit(playlist)}>
+                    <tr key={playlist.id} className={styles.tableRow}>
                       <td>
-                        <div className={styles.playlistNameCell}>
+                        <Link
+                          href={`/customer/${teamSlug}/playlists/${playlist.id}`}
+                          className={styles.playlistNameCell}
+                          style={{ textDecoration: 'none', color: 'inherit' }}
+                        >
                           <div className={styles.playlistIconWrapper}>
                             <ListVideo size={18} />
                           </div>
                           <span className={styles.playlistNameText}>{playlist.name}</span>
-                        </div>
+                        </Link>
                       </td>
                       <td>{totalItems === 1 ? t('{count} item', { count: totalItems }) : t('{count} items', { count: totalItems })}</td>
                       <td>{formatPlaytime(totalDuration)}</td>
+                      <td>{formatRelativeTime(playlist.updated_at)}</td>
                       <td>{new Date(playlist.created_at).toISOString().split('T')[0]}</td>
                       <td onClick={(e) => e.stopPropagation()}>
                         <div className={styles.actionsGroup}>
@@ -483,97 +400,6 @@ export default function PlaylistsClient({ initialPlaylists, assets, teamSlug, te
           </div>
         )}
       </div>
-
-      {isModalOpen && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>{editingPlaylistId ? t('Edit Playlist') : t('Create Playlist')}</h2>
-              <button className={styles.closeBtn} onClick={handleCloseModal}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className={styles.modalBody}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>{t('Playlist Name')}</label>
-                <input 
-                  type="text" 
-                  className={styles.input} 
-                  placeholder={t('e.g. Lobby Morning Loop')} 
-                  value={newPlaylistName}
-                  onChange={(e) => setNewPlaylistName(e.target.value)}
-                  autoFocus
-                />
-              </div>
-
-              <div className={styles.formGroup} style={{ marginTop: '12px' }}>
-                <label className={styles.label}>{t('Playlist Items')}</label>
-                
-                {isLoadingItems ? (
-                  <div style={{ textAlign: 'center', padding: '24px' }}>
-                    <p style={{ color: 'var(--on-surface-muted)', fontSize: '0.9rem' }}>{t('Loading items...')}</p>
-                  </div>
-                ) : items.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '24px', border: '1px dashed var(--outline-variant)', borderRadius: '10px' }}>
-                    <p style={{ color: 'var(--on-surface-muted)', fontSize: '0.9rem', margin: '0 0 12px 0' }}>{t('No items in this playlist yet.')}</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {items.map((item, idx) => (
-                      <div key={idx} className={styles.itemEditorRow}>
-                        <div style={{ width: '24px', color: 'var(--on-surface-muted)', fontWeight: 800, fontSize: '0.9rem' }}>
-                          {idx + 1}.
-                        </div>
-                        <div className={styles.itemEditorControls}>
-                          <CustomSelect
-                            id={`playlist-item-${idx}`}
-                            value={item.asset_id || ''}
-                            onChange={(val) => handleUpdateItem(idx, 'asset_id', val)}
-                            options={[
-                              { value: '', label: t('Select Asset...') },
-                              ...assets
-                                .filter(a => a.mime_type !== 'application/x-folder')
-                                .map(a => ({ value: a.id, label: a.file_name }))
-                            ]}
-                            className={styles.itemSelectCustom}
-                          />
-                          
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Clock size={16} color="var(--on-surface-muted)" />
-                            <input 
-                              type="number" 
-                              className={styles.durationInput} 
-                              value={item.duration_seconds}
-                              onChange={(e) => handleUpdateItem(idx, 'duration_seconds', parseInt(e.target.value) || 0)}
-                              min={1}
-                            />
-                            <span style={{ fontSize: '0.85rem', color: 'var(--on-surface-subtle)' }}>s</span>
-                          </div>
-                        </div>
-                        <button className={styles.removeItemBtn} onClick={() => handleRemoveItem(idx)}>
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                <button className={styles.addItemBtn} onClick={handleAddItem} style={{ marginTop: '8px' }}>
-                  <Plus size={16} /> {t('Add Media Item')}
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.modalFooter}>
-              <button className={styles.cancelBtn} onClick={handleCloseModal}>{t('Cancel')}</button>
-              <button className={styles.saveBtn} onClick={handleSave} disabled={!newPlaylistName.trim() || isSaving || isLoadingItems}>
-                {isSaving ? t('Saving...') : (editingPlaylistId ? t('Save Changes') : t('Create Playlist'))}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

@@ -32,6 +32,8 @@ interface AssetTableViewProps {
   onDropOnFolder?: (folder: Asset, draggedAssetIds: string[]) => void
   sortBy?: string
   setSortBy?: (val: string) => void
+  onItemClick?: (e: React.MouseEvent, id: string) => void
+  onItemDoubleClick?: (asset: Asset) => void
 }
 
 export function AssetTableView({
@@ -55,6 +57,8 @@ export function AssetTableView({
   onDropOnFolder,
   sortBy,
   setSortBy,
+  onItemClick,
+  onItemDoubleClick,
 }: AssetTableViewProps) {
   const { t, formatDate } = useTranslation()
   const supabase = createClient()
@@ -151,13 +155,12 @@ export function AssetTableView({
                 role="button"
                 aria-label={isFolder ? `Open folder ${asset.file_name}` : `Preview asset ${asset.file_name}`}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                  if (e.key === ' ') {
                     e.preventDefault()
-                    if (selectedAssetIds.size > 0) {
-                      handleToggleSelect(asset.id)
-                    } else {
-                      setPreviewAsset(asset)
-                    }
+                    handleToggleSelect(asset.id)
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault()
+                    onItemDoubleClick?.(asset)
                   }
                 }}
                 draggable={!isFolder && !deletingIds.has(asset.id)}
@@ -195,12 +198,30 @@ export function AssetTableView({
                   if (sanitized.length === 0) return
                   onDropOnFolder(asset, sanitized)
                 }}
-                onClick={() => {
-                  if (selectedAssetIds.size > 0) {
-                    handleToggleSelect(asset.id)
-                  } else {
-                    setPreviewAsset(asset)
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (
+                    target.closest('button') ||
+                    target.closest('input') ||
+                    target.closest('select') ||
+                    (target.closest('[role="button"]') && target.closest('[role="button"]') !== e.currentTarget) ||
+                    target.closest(`.${styles.moreDropdown}`)
+                  ) {
+                    return;
                   }
+                  onItemClick?.(e, asset.id);
+                }}
+                onDoubleClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (
+                    target.closest('button') ||
+                    target.closest('input') ||
+                    target.closest('select') ||
+                    target.closest(`.${styles.moreDropdown}`)
+                  ) {
+                    return;
+                  }
+                  onItemDoubleClick?.(asset);
                 }}
               >
                 <td 
@@ -221,14 +242,6 @@ export function AssetTableView({
                 </td>
                 <td
                   className={styles.tableCell}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (selectedAssetIds.size > 0) {
-                      handleToggleSelect(asset.id)
-                    } else {
-                      setPreviewAsset(asset)
-                    }
-                  }}
                   style={{ cursor: 'pointer' }}
                 >
                   <div className={styles.nameCellContent}>

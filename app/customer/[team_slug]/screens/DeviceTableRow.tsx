@@ -28,6 +28,8 @@ export interface DeviceTableRowProps {
   onToggleSelect?: () => void
   onGroupClick?: (groupId: string) => void
   now: number
+  onItemClick?: (e: React.MouseEvent, id: string) => void
+  onItemDoubleClick?: (device: Device) => void
 }
 
 export function DeviceTableRow({
@@ -47,7 +49,9 @@ export function DeviceTableRow({
   selected = false,
   onToggleSelect,
   onGroupClick,
-  now
+  now,
+  onItemClick,
+  onItemDoubleClick,
 }: DeviceTableRowProps) {
   const { t } = useTranslation()
   const lastSeen = formatLastSeen(device.last_seen_at, liveStatus === 'online', t, now)
@@ -89,13 +93,29 @@ export function DeviceTableRow({
     if (selection && selection.toString()) {
       return;
     }
-    onEdit();
+    onItemClick?.(e, device.id);
+  };
+
+  const handleRowDoubleClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('select') ||
+      target.closest(`.${styles.moreDropdown}`)
+    ) {
+      return;
+    }
+    onItemDoubleClick?.(device);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (e.key === ' ') {
       e.preventDefault();
-      onEdit();
+      onToggleSelect?.();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      onItemDoubleClick?.(device);
     }
   };
 
@@ -103,6 +123,7 @@ export function DeviceTableRow({
     <tr 
       className={`${styles.tableRow} ${selected ? styles.rowSelected : ''}`}
       onClick={handleRowClick}
+      onDoubleClick={handleRowDoubleClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}
       role="button"

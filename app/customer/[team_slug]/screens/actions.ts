@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redis, rateLimitAction } from '@/lib/redis'
 
 export type PairDeviceResult =
-  | { success: true }
+  | { success: true; deviceId?: string }
   | { success: false; error: string }
 
 export async function claimDevice(
@@ -83,7 +83,7 @@ export async function claimDevice(
   // 4. Revalidate the screens page so the grid refreshes on next server render
   revalidatePath(`/customer/${teamSlug}/screens`)
 
-  return { success: true }
+  return { success: true, deviceId: result.device_id }
 }
 
 export interface AssignmentData {
@@ -119,10 +119,11 @@ export async function updateDeviceAssignment(
   }
 
   // Server-side validation of content type assignment
+  let displayValue = 'None'
   if (data.content_type === 'Asset' && data.asset_id) {
     const { data: asset, error: assetError } = await supabase
       .from('assets')
-      .select('id, team_id, mime_type')
+      .select('id, team_id, mime_type, file_name')
       .eq('id', data.asset_id)
       .single()
 
@@ -132,16 +133,18 @@ export async function updateDeviceAssignment(
     if (asset.mime_type === 'application/x-folder') {
       return { success: false, error: 'Folders cannot be assigned to screens.' }
     }
+    displayValue = asset.file_name || 'Unnamed Asset'
   } else if (data.content_type === 'Playlist' && data.playlist_id) {
     const { data: playlist, error: playlistError } = await supabase
       .from('playlists')
-      .select('id, team_id')
+      .select('id, team_id, name')
       .eq('id', data.playlist_id)
       .single()
 
     if (playlistError || !playlist || playlist.team_id !== teamId) {
       return { success: false, error: 'Invalid or unauthorized playlist selected.' }
     }
+    displayValue = playlist.name || 'Unnamed Playlist'
   }
 
   const assignmentQuery = supabase
@@ -162,6 +165,34 @@ export async function updateDeviceAssignment(
   if (updateError || !updated || updated.length === 0) {
     console.error('[updateDeviceAssignment] update error:', updateError ? { message: updateError.message, details: updateError.details, hint: updateError.hint } : 'No rows updated')
     return { success: false, error: 'Failed to update screen settings. Please try again later.' }
+  }
+
+  // Record assignment to activity log
+  try {
+    const logEntries = updated.map(dev => ({
+      team_id: teamId,
+      device_id: dev.id,
+      event_type: 'content_assignment',
+      description: `Assigned ${data.content_type || 'None'}: ${displayValue}`,
+      metadata: {
+        content_type: data.content_type,
+        asset_id: data.asset_id,
+        playlist_id: data.playlist_id,
+        scale_mode: data.scale_mode,
+        orientation: data.orientation
+      }
+    }))
+
+    if (logEntries.length > 0) {
+      const { error: logError } = await supabase
+        .from('activity_log')
+        .insert(logEntries)
+      if (logError) {
+        console.error('[updateDeviceAssignment] Failed to insert activity log:', logError)
+      }
+    }
+  } catch (err) {
+    console.error('[updateDeviceAssignment] Activity logging failed:', err)
   }
 
   revalidatePath(`/customer/${teamSlug}/screens`)

@@ -7,7 +7,7 @@ import { Asset, ScreenDevice, formatBytes, isImage, isVideo, isWidget } from './
 import { useTranslation } from '@/lib/i18n'
 import styles from './AssetCard.module.css'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
-import { ContentIcon, getAssetKind } from '../screens/DeviceIcon'
+import { ContentIcon, getAssetKind, ContentIconBadge } from '../screens/DeviceIcon'
 import { downloadAsset } from '@/lib/utils/download'
 
 export function AssetCard({
@@ -31,6 +31,8 @@ export function AssetCard({
   onDragOver,
   onDrop,
   isDropTarget = false,
+  onItemClick,
+  onItemDoubleClick,
 }: {
   asset: Asset
   previewUrl: string | null
@@ -52,6 +54,8 @@ export function AssetCard({
   onDragOver?: (e: React.DragEvent) => void
   onDrop?: (e: React.DragEvent) => void
   isDropTarget?: boolean
+  onItemClick?: (e: React.MouseEvent) => void
+  onItemDoubleClick?: () => void
 }) {
   const { t, formatDate } = useTranslation()
   const date = formatDate(asset.created_at)
@@ -65,13 +69,12 @@ export function AssetCard({
   const isFolder = asset.mime_type === 'application/x-folder'
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (e.key === ' ') {
       e.preventDefault()
-      if (isSelectionActive && onToggleSelect) {
-        onToggleSelect()
-      } else {
-        onPreview(asset)
-      }
+      onToggleSelect?.()
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      onItemDoubleClick?.()
     }
   }
 
@@ -87,6 +90,31 @@ export function AssetCard({
       role="button"
       onKeyDown={handleKeyDown}
       aria-label={isFolder ? `Open folder ${asset.file_name}` : `Preview asset ${asset.file_name}`}
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (
+          target.closest('button') ||
+          target.closest('input') ||
+          target.closest('select') ||
+          (target.closest('[role="button"]') && target.closest('[role="button"]') !== e.currentTarget) ||
+          target.closest(`.${styles.moreDropdown}`)
+        ) {
+          return;
+        }
+        onItemClick?.(e);
+      }}
+      onDoubleClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (
+          target.closest('button') ||
+          target.closest('input') ||
+          target.closest('select') ||
+          target.closest(`.${styles.moreDropdown}`)
+        ) {
+          return;
+        }
+        onItemDoubleClick?.();
+      }}
     >
       {onToggleSelect && (
         <div 
@@ -172,20 +200,6 @@ export function AssetCard({
       </div>
       <div
         className={`${styles.assetThumb} ${styles.assetThumbInteractive}`}
-        onClick={(e) => {
-          e.stopPropagation()
-          if (isSelectionActive && onToggleSelect) onToggleSelect()
-          else onPreview(asset)
-        }}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.stopPropagation()
-            if (isSelectionActive && onToggleSelect) onToggleSelect()
-            else onPreview(asset)
-          }
-        }}
         aria-label={isFolder ? `Open ${asset.file_name}` : `Preview ${asset.file_name}`}
       >
         {isFolder ? (
@@ -255,19 +269,10 @@ export function AssetCard({
       </div>
       <div className={styles.assetMeta} style={{ justifyContent: 'space-between', width: '100%', padding: '0 14px 14px', marginTop: '-4px' }}>
           <span>{date}</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--on-surface-subtle)' }} title={asset.mime_type}>
-            <ContentIcon 
-              kind={getAssetKind(asset.mime_type)} 
-              size={12} 
-              style={
-                isFolder ? { stroke: asset.color || '#78716c' }
-                : isImage(asset.mime_type) ? { stroke: '#22c55e' }
-                : isVideo(asset.mime_type) ? { stroke: '#3b82f6' }
-                : asset.mime_type.startsWith('audio/') ? { stroke: '#f59e0b' }
-                : asset.mime_type === 'application/pdf' ? { stroke: '#ef4444' }
-                : isWidget(asset.mime_type) ? { stroke: '#a855f7' }
-                : { stroke: '#64748b' }
-              }
+          <span style={{ display: 'inline-flex', alignItems: 'center' }} title={asset.mime_type}>
+            <ContentIconBadge
+              kind={getAssetKind(asset.mime_type)}
+              color={asset.mime_type === 'application/x-folder' ? (asset.color || '#78716c') : null}
             />
           </span>
         </div>

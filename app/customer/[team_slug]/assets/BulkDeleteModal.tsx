@@ -22,23 +22,40 @@ export function BulkDeleteModal({
   onSuccess,
 }: BulkDeleteModalProps) {
   const { t } = useTranslation()
-  const [isPending, startTransition] = useTransition()
+  const [progress, setProgress] = React.useState(0)
+  const [isDeleting, setIsDeleting] = React.useState(false)
 
-  function handleConfirm() {
-    startTransition(async () => {
-      const items = assetsToDelete.map(a => ({ id: a.id, filePath: a.file_path }))
-      const result = await deleteAssetsBulk(teamSlug, items)
+  async function handleConfirm() {
+    setIsDeleting(true)
+    setProgress(0)
+    
+    let successCount = 0
+    let lastError = ''
+
+    for (let i = 0; i < assetsToDelete.length; i++) {
+      const asset = assetsToDelete[i]
+      const result = await deleteAssetsBulk(teamSlug, [{ id: asset.id, filePath: asset.file_path }])
       if (result.success) {
-        toast.success(
-          assetsToDelete.length === 1
-            ? t('Asset deleted successfully')
-            : t('{count} assets deleted successfully', { count: String(assetsToDelete.length) })
-        )
-        onSuccess()
+        successCount++
       } else {
-        toast.error(result.error || t('Failed to delete selected assets.'))
+        lastError = result.error || t('Failed to delete asset.')
       }
-    })
+      setProgress(i + 1)
+    }
+
+    setIsDeleting(false)
+
+    if (successCount > 0) {
+      toast.success(
+        successCount === 1
+          ? t('Asset deleted successfully')
+          : t('{count} assets deleted successfully', { count: String(successCount) })
+      )
+      onSuccess()
+    } else {
+      toast.error(lastError || t('Failed to delete selected assets.'))
+      onClose()
+    }
   }
 
   return (
@@ -74,7 +91,7 @@ export function BulkDeleteModal({
             className={styles.submitBtn}
             style={{ background: 'var(--surface-low)', color: 'var(--on-surface)', border: '1px solid var(--outline-variant)' }}
             onClick={onClose} 
-            disabled={isPending}
+            disabled={isDeleting}
           >
             {t('Cancel')}
           </button>
@@ -83,9 +100,11 @@ export function BulkDeleteModal({
             className={styles.submitBtn}
             style={{ background: 'var(--error)', color: 'var(--on-primary)', border: 'none' }}
             onClick={handleConfirm} 
-            disabled={isPending}
+            disabled={isDeleting}
           >
-            {isPending ? t('Deleting…') : t('Confirm Delete')}
+            {isDeleting 
+              ? t('Deleting {current} of {total}...', { current: String(progress), total: String(assetsToDelete.length) }) 
+              : t('Confirm Delete')}
           </button>
         </div>
       </div>

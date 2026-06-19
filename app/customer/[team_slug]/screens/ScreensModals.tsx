@@ -25,7 +25,7 @@ interface ScreensModalsProps {
   playlists: Playlist[]
   teamSlug: string
   teamId: string
-  handlePairSuccess: () => void
+  handlePairSuccess: (deviceId: string) => void
   handleAssignSuccess: () => void
   handleDeleteSuccess: () => void
   handleRenameSuccess: (name: string) => void

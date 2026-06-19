@@ -245,7 +245,8 @@
 }
 
 .themeItem,
-.languageItem {
+.languageItem,
+.zoomItem {
   position: relative;
 }
 
@@ -293,7 +294,8 @@
 }
 
 .themeItem:hover .submenu,
-.languageItem:hover .submenu {
+.languageItem:hover .submenu,
+.zoomItem:hover .submenu {
   opacity: 1;
   visibility: visible;
   transform: translateX(0);

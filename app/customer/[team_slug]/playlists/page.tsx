@@ -43,31 +43,18 @@ export default async function PlaylistsPage({ params, searchParams }: Props) {
   const fullName = user.user_metadata?.full_name as string | undefined
   const userRole = profile.role || 'Owner'
 
-  // Fetch playlists and available assets concurrently to eliminate waterfall delays
-  const [playlistsRes, assetsRes] = await Promise.all([
-    supabase
-      .from('playlists')
-      .select('id, name, created_at, updated_at, playlist_items(duration_seconds)')
-      .eq('team_id', profile.team_id)
-      .order('created_at', { ascending: false })
-      .limit(100),
-    supabase
-      .from('assets')
-      .select('id, file_name, file_path, mime_type, size_bytes')
-      .eq('team_id', profile.team_id)
-      .neq('mime_type', 'application/x-folder')
-      .order('created_at', { ascending: false })
-      .limit(100)
-  ])
-    
-  const playlists = playlistsRes.data || []
-  const assets = assetsRes.data || []
+  // Fetch playlists (assets are now fetched in the workspace route's asset picker)
+  const { data: playlists } = await supabase
+    .from('playlists')
+    .select('id, name, created_at, updated_at, playlist_items(duration_seconds)')
+    .eq('team_id', profile.team_id)
+    .order('created_at', { ascending: false })
+    .limit(100)
 
   return (
     <PlaylistsClient
       key={team_slug}
-      initialPlaylists={playlists}
-      assets={assets}
+      initialPlaylists={playlists || []}
       teamSlug={team_slug}
       teamId={profile?.team_id as string}
     />

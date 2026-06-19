@@ -8,7 +8,7 @@ import Modal from '../components/Modal'
 export interface PairModalProps {
   teamSlug: string
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (deviceId: string) => void
 }
 
 export function PairModal({
@@ -27,7 +27,7 @@ export function PairModal({
     startTransition(async () => {
       const result = await claimDevice(teamSlug, code, '')
       if (result.success) {
-        onSuccess()
+        onSuccess(result.deviceId || '')
       } else {
         setError(result.error)
       }

@@ -499,7 +499,7 @@ export async function pushAssetToScreen(
 
   const { data: asset, error: assetError } = await supabase
     .from('assets')
-    .select('id, team_id, file_path, mime_type')
+    .select('id, team_id, file_path, file_name, mime_type')
     .eq('id', assetId)
     .single()
 
@@ -528,6 +528,29 @@ export async function pushAssetToScreen(
   if (updateError || !updated || updated.length === 0) {
     console.error('[pushAssetToScreen] update error:', updateError ? { message: updateError.message, details: updateError.details, hint: updateError.hint } : 'No rows updated')
     return { success: false, error: 'Failed to push asset to screen. Please try again later.' }
+  }
+
+  // Record content push in activity log
+  try {
+    const { error: logError } = await supabase
+      .from('activity_log')
+      .insert({
+        team_id: teamId,
+        device_id: deviceId,
+        event_type: 'content_push',
+        description: `Pushed asset: ${asset.file_name || 'Unnamed Asset'}`,
+        metadata: {
+          asset_id: assetId,
+          content_type: 'Asset',
+          file_name: asset.file_name,
+          mime_type: asset.mime_type
+        }
+      })
+    if (logError) {
+      console.error('[pushAssetToScreen] Failed to insert activity log:', logError)
+    }
+  } catch (err) {
+    console.error('[pushAssetToScreen] Activity logging failed:', err)
   }
 
   revalidatePath(`/customer/${teamSlug}/screens`)

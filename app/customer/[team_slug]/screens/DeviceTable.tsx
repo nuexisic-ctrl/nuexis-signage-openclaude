@@ -26,6 +26,8 @@ interface DeviceTableProps {
   getLiveStatus: (device: Device) => any
   showSuccessPulse: boolean
   now: number
+  onItemClick?: (e: React.MouseEvent, id: string) => void
+  onItemDoubleClick?: (device: Device) => void
 }
 
 export function DeviceTable({
@@ -47,7 +49,9 @@ export function DeviceTable({
   handleGroupBadgeClick,
   getLiveStatus,
   showSuccessPulse,
-  now
+  now,
+  onItemClick,
+  onItemDoubleClick,
 }: DeviceTableProps) {
   const { t } = useTranslation()
   return (
@@ -88,6 +92,8 @@ export function DeviceTable({
               memberships={memberships}
               selected={selectedDeviceIds.has(device.id)}
               onToggleSelect={() => handleToggleSelect(device.id)}
+              onItemClick={onItemClick}
+              onItemDoubleClick={onItemDoubleClick}
               onGroupClick={handleGroupBadgeClick}
               now={now}
             />

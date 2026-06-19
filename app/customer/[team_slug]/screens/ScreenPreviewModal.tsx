@@ -56,11 +56,61 @@ export function ScreenPreviewModal({
 }: Props) {
   const supabase = createClient()
   const { t } = useTranslation()
-  const [activeTab, setActiveTab] = useState<'simulator' | 'live'>('simulator')
+  const [activeTab, setActiveTab] = useState<'simulator' | 'live' | 'history'>('simulator')
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null)
   const [screenshotError, setScreenshotError] = useState<boolean>(false)
   const [capturing, setCapturing] = useState<boolean>(false)
   const [isClosed, setIsClosed] = useState(false)
+
+  const [historyLogs, setHistoryLogs] = useState<any[]>([])
+  const [historyLoading, setHistoryLoading] = useState<boolean>(false)
+
+  const screenshotChannelRef = useRef<any>(null)
+  const captureTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (captureTimeoutRef.current) {
+        clearTimeout(captureTimeoutRef.current)
+      }
+      if (screenshotChannelRef.current) {
+        const client = createClient()
+        client.removeChannel(screenshotChannelRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab !== 'history') return
+
+    let active = true
+    const fetchHistory = async () => {
+      setHistoryLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('activity_log')
+          .select('id, created_at, event_type, description, metadata')
+          .eq('device_id', device.id)
+          .order('created_at', { ascending: false })
+          .limit(50)
+
+        if (error) throw error
+        if (active && data) {
+          setHistoryLogs(data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch device history:', err)
+      } finally {
+        if (active) setHistoryLoading(false)
+      }
+    }
+
+    fetchHistory()
+
+    return () => {
+      active = false
+    }
+  }, [activeTab, device.id, supabase])
 
   const handleClose = useCallback(() => {
     setIsClosed(true)
@@ -126,7 +176,11 @@ export function ScreenPreviewModal({
     if (capturing) return
     setCapturing(true)
     try {
+      if (screenshotChannelRef.current) {
+        supabase.removeChannel(screenshotChannelRef.current)
+      }
       const channel = supabase.channel(`device-pair-${device.id}`)
+      screenshotChannelRef.current = channel
       
       channel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -137,10 +191,13 @@ export function ScreenPreviewModal({
             payload: { backendUrl: window.location.origin }
           })
           
-          setTimeout(async () => {
+          captureTimeoutRef.current = setTimeout(async () => {
             await fetchScreenshotUrl()
             setCapturing(false)
-            supabase.removeChannel(channel)
+            if (screenshotChannelRef.current === channel) {
+              supabase.removeChannel(channel)
+              screenshotChannelRef.current = null
+            }
           }, 3500)
         }
       })
@@ -659,6 +716,12 @@ export function ScreenPreviewModal({
               >
                 {t('Live View')}
               </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`${styles.tabBtn} ${activeTab === 'history' ? styles.tabBtnActive : ''}`}
+              >
+                {t('History')}
+              </button>
             </div>
           </div>
           <div className={styles.metaInfo}>
@@ -795,7 +858,7 @@ export function ScreenPreviewModal({
               </div>
             )}
           </div>
-        ) : (
+        ) : activeTab === 'live' ? (
           <div className={styles.liveViewContainer}>
             {capturing && (
               <div className={styles.capturingOverlay}>
@@ -820,6 +883,40 @@ export function ScreenPreviewModal({
                 <span className={styles.placeholderSubtext}>
                   {t('Click "Capture Screen" to request a live screenshot from this device.')}
                 </span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className={styles.historyContainer}>
+            <div className={styles.historyHeader}>
+              <h3 className={styles.historyTitle}>{t('Device Activity History')}</h3>
+            </div>
+            {historyLoading ? (
+              <div className={styles.historyLoading}>
+                <div className={styles.spinner} />
+                <p className={styles.historyLoadingText}>{t('Loading activity history...')}</p>
+              </div>
+            ) : historyLogs.length === 0 ? (
+              <div className={styles.historyEmpty}>
+                <Tv size={36} style={{ opacity: 0.4 }} aria-hidden="true" />
+                <p className={styles.historyEmptyText}>{t('No activity history found')}</p>
+                <span className={styles.historyEmptySub}>
+                  {t('Activity history will appear here once content is assigned or pushed to this screen.')}
+                </span>
+              </div>
+            ) : (
+              <div className={styles.historyList}>
+                {historyLogs.map((log) => (
+                  <div key={log.id} className={styles.historyItem}>
+                    <div className={styles.historyItemLeft}>
+                      <span className={styles.historyItemType}>{t(log.event_type)}</span>
+                      <p className={styles.historyItemDesc}>{log.description}</p>
+                    </div>
+                    <span className={styles.historyItemTime}>
+                      {new Date(log.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { createGroup, renameGroup, deleteGroup } from './actions'
+import { handleRangeSelection } from '@/lib/utils/selection'
 import styles from './groups.module.css'
 import { Group, Device, Membership } from './types'
 import { ManageMembersModal } from './ManageMembersModal'
@@ -91,6 +92,7 @@ export default function GroupsClient({
 
   // Selection & Query States
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set())
+  const [lastSelectedGroupId, setLastSelectedGroupId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSelectDropdownOpen, setIsSelectDropdownOpen] = useState(false)
   const selectDropdownRef = useRef<HTMLDivElement>(null)
@@ -119,11 +121,63 @@ export default function GroupsClient({
       const next = new Set(prev)
       if (next.has(groupId)) {
         next.delete(groupId)
+        if (lastSelectedGroupId === groupId) {
+          setLastSelectedGroupId(null)
+        }
       } else {
         next.add(groupId)
+        setLastSelectedGroupId(groupId)
       }
       return next
     })
+  }
+
+  const handleGroupCardDoubleClick = (e: React.MouseEvent, group: Group) => {
+    const target = e.target as HTMLElement
+    if (
+      target.closest(`.${styles.cardCheckbox}`) ||
+      target.closest(`.${styles.contextBtn}`) ||
+      target.closest(`.${styles.menuOverlay}`) ||
+      target.closest(`.${styles.cardFooter}`) ||
+      target.closest('button') ||
+      target.closest('input')
+    ) {
+      return
+    }
+    e.preventDefault()
+    setAssignContentGroup(group)
+  }
+
+  const handleGroupCardClick = (e: React.MouseEvent, groupId: string) => {
+    const target = e.target as HTMLElement
+    if (
+      target.closest(`.${styles.cardCheckbox}`) ||
+      target.closest(`.${styles.contextBtn}`) ||
+      target.closest(`.${styles.menuOverlay}`) ||
+      target.closest(`.${styles.cardFooter}`) ||
+      target.closest('button') ||
+      target.closest('input')
+    ) {
+      return
+    }
+    e.preventDefault()
+
+    if (selectedGroupIds.size === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      const group = filteredGroups.find(g => g.id === groupId)
+      if (group) {
+        handleGroupCardDoubleClick(e, group)
+      }
+    } else {
+      const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
+        e,
+        groupId,
+        lastSelectedGroupId,
+        filteredGroups,
+        selectedGroupIds
+      )
+      setSelectedGroupIds(nextSelectedIds)
+      setLastSelectedGroupId(nextLastSelectedId)
+    }
   }
 
   const handleBulkDelete = () => {
@@ -394,7 +448,12 @@ export default function GroupsClient({
               }
 
               return (
-                <div key={group.id} className={styles.card}>
+                <div 
+                  key={group.id} 
+                  className={`${styles.card} ${selectedGroupIds.has(group.id) ? styles.cardSelected : ''}`}
+                  onClick={(e) => handleGroupCardClick(e, group.id)}
+                  onDoubleClick={(e) => handleGroupCardDoubleClick(e, group)}
+                >
                   <div className={styles.colorBar} style={{ backgroundColor: group.color || '#3b82f6' }} />
                   
                   <div className={styles.cardHeader}>

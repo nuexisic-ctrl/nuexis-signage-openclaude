@@ -434,4 +434,105 @@
   }
 }
 
+/* ─── Interface Zoom Styling Scale ────────────────────────────────────────── */
+:root {
+  --ui-zoom-scale: 1.0;
+  --spacing-scale: 1.0;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 80px;
+}
+
+:root[data-zoom="smaller"] {
+  --ui-zoom-scale: 0.85;
+  --spacing-scale: 0.85;
+  --sidebar-width: 221px;
+  --sidebar-collapsed-width: 68px;
+}
+
+:root[data-zoom="default"] {
+  --ui-zoom-scale: 1.0;
+  --spacing-scale: 1.0;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 80px;
+}
+
+:root[data-zoom="larger"] {
+  --ui-zoom-scale: 1.15;
+  --spacing-scale: 1.15;
+  --sidebar-width: 299px;
+  --sidebar-collapsed-width: 92px;
+}
+
+/* Adjust root font size to scale all rem-based typography and layout */
+html {
+  font-size: calc(16px * var(--ui-zoom-scale)) !important;
+}
+
+/* Sidebar scaling overrides */
+html[data-zoom] [class*="sidebar_sidebar"] {
+  width: var(--sidebar-width) !important;
+}
+html[data-zoom] [class*="sidebar_sidebar"][class*="collapsed"] {
+  width: var(--sidebar-collapsed-width) !important;
+}
+html[data-zoom] [class*="layout_main"] {
+  margin-left: var(--sidebar-width) !important;
+  width: calc(100% - var(--sidebar-width)) !important;
+}
+body.sidebar-collapsed [class*="layout_main"] {
+  margin-left: var(--sidebar-collapsed-width) !important;
+  width: calc(100% - var(--sidebar-collapsed-width)) !important;
+}
+
+/* Spacing and table density */
+html[data-zoom="smaller"] td,
+html[data-zoom="smaller"] th {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+html[data-zoom="larger"] td,
+html[data-zoom="larger"] th {
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+
+/* Cards density */
+html[data-zoom="smaller"] [class*="card"], 
+html[data-zoom="smaller"] [class*="Card"] {
+  padding: calc(16px * 0.85) !important;
+  gap: calc(12px * 0.85) !important;
+}
+html[data-zoom="larger"] [class*="card"],
+html[data-zoom="larger"] [class*="Card"] {
+  padding: calc(16px * 1.15) !important;
+  gap: calc(12px * 1.15) !important;
+}
+
+/* Inputs, buttons, and form controls scaling */
+html[data-zoom="smaller"] button,
+html[data-zoom="smaller"] input,
+html[data-zoom="smaller"] select,
+html[data-zoom="smaller"] textarea {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+html[data-zoom="larger"] button,
+html[data-zoom="larger"] input,
+html[data-zoom="larger"] select,
+html[data-zoom="larger"] textarea {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+/* Dialogs and Modals spacing */
+html[data-zoom="smaller"] [class*="modal"],
+html[data-zoom="smaller"] [class*="dialog"] {
+  padding: 16px !important;
+}
+html[data-zoom="larger"] [class*="modal"],
+html[data-zoom="larger"] [class*="dialog"] {
+  padding: 32px !important;
+}
+
+
 

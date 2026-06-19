@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       activity_log: {
@@ -91,10 +66,12 @@ export type Database = {
           file_name: string
           file_path: string
           folder_id: string | null
+          height: number | null
           id: string
           mime_type: string
           size_bytes: number
           team_id: string
+          width: number | null
         }
         Insert: {
           color?: string | null
@@ -102,10 +79,12 @@ export type Database = {
           file_name: string
           file_path: string
           folder_id?: string | null
+          height?: number | null
           id?: string
           mime_type: string
           size_bytes: number
           team_id: string
+          width?: number | null
         }
         Update: {
           color?: string | null
@@ -113,10 +92,12 @@ export type Database = {
           file_name?: string
           file_path?: string
           folder_id?: string | null
+          height?: number | null
           id?: string
           mime_type?: string
           size_bytes?: number
           team_id?: string
+          width?: number | null
         }
         Relationships: [
           {
@@ -159,72 +140,1206 @@ export type Database = {
         }
         Relationships: []
       }
+      device_health_events: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_health_events_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_health_events_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_health_events_y2026_06_12: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_health_events_y2026_06_13: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_health_events_y2026_06_14: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_health_events_y2026_06_15: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_health_events_y2026_06_16: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_health_events_y2026_06_17: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_health_events_y2026_06_18: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_health_events_y2026_06_19: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_health_events_y2026_06_20: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_health_events_y2026_06_21: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_health_events_y2026_06_22: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          current_item_id: string | null
+          device_id: string
+          free_disk_bytes: number | null
+          id: string
+          last_error: string | null
+          manifest_version: string | null
+          memory_class_mb: number | null
+          network_type: string | null
+          os_version: string | null
+          team_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          current_item_id?: string | null
+          device_id?: string
+          free_disk_bytes?: number | null
+          id?: string
+          last_error?: string | null
+          manifest_version?: string | null
+          memory_class_mb?: number | null
+          network_type?: string | null
+          os_version?: string | null
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_playback_events_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_playback_events_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_playback_events_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_playback_events_y2026_06_12: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events_y2026_06_13: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events_y2026_06_14: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events_y2026_06_15: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events_y2026_06_16: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events_y2026_06_17: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events_y2026_06_18: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events_y2026_06_19: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events_y2026_06_20: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events_y2026_06_21: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_playback_events_y2026_06_22: {
+        Row: {
+          asset_id: string | null
+          cache_status: string | null
+          created_at: string
+          device_id: string
+          duration_ms: number
+          error_message: string | null
+          event_type: string
+          id: string
+          item_id: string | null
+          position_ms: number
+          team_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          cache_status?: string | null
+          created_at?: string
+          device_id?: string
+          duration_ms?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          item_id?: string | null
+          position_ms?: number
+          team_id?: string | null
+        }
+        Relationships: []
+      }
+      device_sessions: {
+        Row: {
+          device_id: string
+          expires_at: string
+          id: string
+          issued_at: string
+          last_seen_at: string | null
+          revoked_at: string | null
+          token_hash: string
+        }
+        Insert: {
+          device_id: string
+          expires_at: string
+          id?: string
+          issued_at?: string
+          last_seen_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+        }
+        Update: {
+          device_id?: string
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          last_seen_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_sessions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       devices: {
         Row: {
+          app_version: string | null
           asset_id: string | null
           content: string | null
           content_type: string | null
           created_at: string
+          current_manifest_version: string | null
           expires_at: string
+          free_disk_bytes: number | null
           hardware_id: string | null
           id: string
+          last_error: string | null
           last_seen_at: string | null
+          memory_class_mb: number | null
           name: string | null
+          network_type: string | null
           orientation: number | null
+          os_version: string | null
           pairing_code: string
           playlist_id: string | null
+          scale_mode: string | null
           secret: string | null
           status: string
           team_id: string | null
           total_playtime_seconds: number
-          app_version: string | null
-          os_version: string | null
-          scale_mode: string | null
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
+          app_version?: string | null
           asset_id?: string | null
           content?: string | null
           content_type?: string | null
           created_at?: string
+          current_manifest_version?: string | null
           expires_at?: string
+          free_disk_bytes?: number | null
           hardware_id?: string | null
           id?: string
+          last_error?: string | null
           last_seen_at?: string | null
+          memory_class_mb?: number | null
           name?: string | null
+          network_type?: string | null
           orientation?: number | null
+          os_version?: string | null
           pairing_code: string
           playlist_id?: string | null
+          scale_mode?: string | null
           secret?: string | null
           status?: string
           team_id?: string | null
           total_playtime_seconds?: number
-          app_version?: string | null
-          os_version?: string | null
-          scale_mode?: string | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
+          app_version?: string | null
           asset_id?: string | null
           content?: string | null
           content_type?: string | null
           created_at?: string
+          current_manifest_version?: string | null
           expires_at?: string
+          free_disk_bytes?: number | null
           hardware_id?: string | null
           id?: string
+          last_error?: string | null
           last_seen_at?: string | null
+          memory_class_mb?: number | null
           name?: string | null
+          network_type?: string | null
           orientation?: number | null
+          os_version?: string | null
           pairing_code?: string
           playlist_id?: string | null
+          scale_mode?: string | null
           secret?: string | null
           status?: string
           team_id?: string | null
           total_playtime_seconds?: number
-          app_version?: string | null
-          os_version?: string | null
-          scale_mode?: string | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -474,6 +1589,7 @@ export type Database = {
       }
       teams: {
         Row: {
+          allowed_domains: string[] | null
           created_at: string | null
           historical_playtime_seconds: number
           id: string
@@ -481,6 +1597,7 @@ export type Database = {
           slug: string
         }
         Insert: {
+          allowed_domains?: string[] | null
           created_at?: string | null
           historical_playtime_seconds?: number
           id?: string
@@ -488,6 +1605,7 @@ export type Database = {
           slug: string
         }
         Update: {
+          allowed_domains?: string[] | null
           created_at?: string | null
           historical_playtime_seconds?: number
           id?: string
@@ -552,6 +1670,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_device_session_token: {
+        Args: { p_device_id: string; p_token: string }
+        Returns: boolean
+      }
       check_team_exists: { Args: { p_slug: string }; Returns: boolean }
       check_team_slug_available: { Args: { p_slug: string }; Returns: boolean }
       claim_device: {
@@ -574,6 +1696,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      exchange_device_secret_for_session: {
+        Args: { p_device_id: string; p_hardware_id: string; p_secret: string }
+        Returns: Json
+      }
       get_player_asset: {
         Args: { p_asset_id: string; p_hardware_id: string; p_secret: string }
         Returns: Json
@@ -583,7 +1709,12 @@ export type Database = {
         Returns: Json
       }
       get_player_device_state: {
-        Args: { p_hardware_id: string; p_secret?: string }
+        Args: {
+          p_app_version?: string
+          p_hardware_id: string
+          p_os_version?: string
+          p_secret?: string
+        }
         Returns: Json
       }
       get_player_manifest: {
@@ -603,6 +1734,15 @@ export type Database = {
         }
         Returns: string
       }
+      get_player_signed_media_url_by_session: {
+        Args: {
+          p_device_id: string
+          p_expires_in?: number
+          p_file_path: string
+          p_session_token: string
+        }
+        Returns: string
+      }
       increment_device_playtime: {
         Args: {
           p_device_id: string
@@ -612,6 +1752,28 @@ export type Database = {
         }
         Returns: undefined
       }
+      manage_partitions: { Args: never; Returns: undefined }
+      notify_devices_for_asset: {
+        Args: { p_asset_id: string }
+        Returns: undefined
+      }
+      notify_devices_for_playlist: {
+        Args: { p_playlist_id: string }
+        Returns: undefined
+      }
+      ping_device:
+        | {
+            Args: {
+              p_device_id: string
+              p_hardware_id: string
+              p_secret: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: { p_device_id: string; p_session_token: string }
+            Returns: Json
+          }
       refresh_player_device_code: {
         Args: {
           p_device_id: string
@@ -648,22 +1810,31 @@ export type Database = {
       resolve_device_state: {
         Args: { p_device: Database["public"]["Tables"]["devices"]["Row"] }
         Returns: {
+          app_version: string | null
           asset_id: string | null
           content: string | null
           content_type: string | null
           created_at: string
+          current_manifest_version: string | null
           expires_at: string
+          free_disk_bytes: number | null
           hardware_id: string | null
           id: string
+          last_error: string | null
           last_seen_at: string | null
+          memory_class_mb: number | null
           name: string | null
+          network_type: string | null
           orientation: number | null
+          os_version: string | null
           pairing_code: string
           playlist_id: string | null
+          scale_mode: string | null
           secret: string | null
           status: string
           team_id: string | null
           total_playtime_seconds: number
+          updated_at: string | null
         }
         SetofOptions: {
           from: "devices"
@@ -675,7 +1846,7 @@ export type Database = {
       sanitize_name: { Args: { input: string }; Returns: string }
       unpair_player_device: {
         Args: { p_device_id: string; p_hardware_id: string; p_secret: string }
-        Returns: undefined
+        Returns: Json
       }
       update_device_statuses: { Args: never; Returns: undefined }
       update_player_device_orientation: {
@@ -696,15 +1867,7 @@ export type Database = {
         }
         Returns: Json
       }
-      ping_device: {
-        Args: {
-          p_device_id: string
-          p_hardware_id?: string
-          p_secret?: string
-          p_session_token?: string
-        }
-        Returns: Json
-      }
+      url_encode_path: { Args: { p_path: string }; Returns: string }
       validate_device_session: {
         Args: { p_device_id: string; p_session_token: string }
         Returns: Json
@@ -837,9 +2000,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

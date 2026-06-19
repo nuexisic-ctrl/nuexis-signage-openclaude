@@ -23,6 +23,7 @@ import { CreateFolderModal } from './CreateFolderModal'
 import { BulkMoveModal } from './BulkMoveModal'
 import { PushToScreenModal } from './PushToScreenModal'
 import { useTranslation } from '@/lib/i18n'
+import { handleRangeSelection } from '@/lib/utils/selection'
 import styles from './asset.module.css'
 import ErrorBoundary from '@/app/components/ErrorBoundary'
 import EmptyState from '../components/EmptyState'
@@ -145,6 +146,7 @@ export default function AssetClient({
   const [deleteModalAsset, setDeleteModalAsset] = useState<Asset | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
+  const [lastSelectedAssetId, setLastSelectedAssetId] = useState<string | null>(null)
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [showCreateFolder, setShowCreateFolder] = useState(false)
   const [showBulkMoveModal, setShowBulkMoveModal] = useState(false)
@@ -160,7 +162,12 @@ export default function AssetClient({
       }
       return next
     })
+    setLastSelectedAssetId(assetId)
   }, [])
+
+
+
+
   
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
@@ -371,6 +378,7 @@ export default function AssetClient({
   }, [isRefreshing, refreshData, activeFolder])
 
   const loadingRef = useRef<Set<string>>(new Set())
+  const lastLoadedFolderIdRef = useRef<string | null | undefined>(undefined)
 
   // Caching: SWR file fetcher
   const loadFolderFiles = useCallback(async (folderId: string | null) => {
@@ -427,7 +435,12 @@ export default function AssetClient({
   }, [teamSlug, t, supabase, handleRefresh]) // Removed filesCache from deps
 
   useEffect(() => {
-    loadFolderFiles(activeFolder?.id || null)
+    const currentFolderId = activeFolder?.id || null
+    if (lastLoadedFolderIdRef.current === currentFolderId) {
+      return
+    }
+    lastLoadedFolderIdRef.current = currentFolderId
+    loadFolderFiles(currentFolderId)
   }, [activeFolder, loadFolderFiles])
 
   const resolveFolderFromPath = useCallback((pathStr: string | null): Asset | null => {
@@ -755,6 +768,10 @@ export default function AssetClient({
     }
   }
 
+  const handleAssetDoubleClick = useCallback((asset: Asset) => {
+    handlePreviewAsset(asset)
+  }, [handlePreviewAsset])
+
   useEffect(() => {
     const folderList = assets.filter(a => a.mime_type === 'application/x-folder')
     const cachedFolders: Record<string, { name: string; color: string }> = {}
@@ -879,6 +896,27 @@ export default function AssetClient({
     return filteredAssets.slice(from, from + pageSize)
   }, [filteredAssets, currentPage, pageSize])
 
+  const handleAssetClick = useCallback((e: React.MouseEvent, assetId: string) => {
+    if (selectedAssetIds.size === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      const asset = assets.find(a => a.id === assetId)
+      if (asset) {
+        handleAssetDoubleClick(asset)
+      }
+    } else {
+      setSelectedAssetIds(prev => {
+        const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
+          e,
+          assetId,
+          lastSelectedAssetId,
+          paginatedAssets,
+          prev
+        )
+        setLastSelectedAssetId(nextLastSelectedId)
+        return nextSelectedIds
+      })
+    }
+  }, [selectedAssetIds, lastSelectedAssetId, paginatedAssets, assets, handleAssetDoubleClick])
+
   const folderAssetsCount = useMemo(() => {
     if (!activeFolder) return 0
     return (filesCache[activeFolder.id] || []).length
@@ -936,68 +974,70 @@ export default function AssetClient({
             )}
           </p>
 
-          <div className={styles.breadcrumbContainer} style={{ marginTop: '8px' }}>
-            {breadcrumbs.map((item, index) => {
-              const isLast = index === breadcrumbs.length - 1
-              const isDragOver = dragOverBreadcrumbIndex === index
-              
-              return (
-                <span key={index} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                  {index > 0 && <span className={styles.breadcrumbSeparator}>&gt;</span>}
-                  <button
-                    type="button"
-                    onClick={() => navigateToFolder(item.folder, item.path)}
-                    className={`${isLast ? styles.breadcrumbActive : styles.breadcrumbLink} ${isDragOver ? styles.breadcrumbDragOver : ''}`}
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      e.dataTransfer.dropEffect = 'move'
-                    }}
-                    onDragEnter={(e) => {
-                      e.preventDefault()
-                      setDragOverBreadcrumbIndex(index)
-                    }}
-                    onDragLeave={() => {
-                      setDragOverBreadcrumbIndex(null)
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault()
-                      setDragOverBreadcrumbIndex(null)
-                      let ids: string[] = []
-                      try {
-                        const raw = e.dataTransfer.getData('application/x-nuexis-asset-ids') || '[]'
-                        ids = JSON.parse(raw)
-                      } catch {
-                        ids = (e.dataTransfer.getData('text/plain') || '')
-                          .split(',')
-                          .map(x => x.trim())
-                          .filter(Boolean)
-                      }
-                      const targetFolderId = item.folder ? item.folder.id : null
-                      const targetFolderName = item.name
-                      
-                      const sanitized = ids.filter(id => id && id !== targetFolderId)
-                      if (sanitized.length === 0) return
+          {(folders.length > 0 || activeFolder !== null) && (
+            <div className={styles.breadcrumbContainer} style={{ marginTop: '8px' }}>
+              {breadcrumbs.map((item, index) => {
+                const isLast = index === breadcrumbs.length - 1
+                const isDragOver = dragOverBreadcrumbIndex === index
+                
+                return (
+                  <span key={index} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                    {index > 0 && <span className={styles.breadcrumbSeparator}>&gt;</span>}
+                    <button
+                      type="button"
+                      onClick={() => navigateToFolder(item.folder, item.path)}
+                      className={`${isLast ? styles.breadcrumbActive : styles.breadcrumbLink} ${isDragOver ? styles.breadcrumbDragOver : ''}`}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        e.dataTransfer.dropEffect = 'move'
+                      }}
+                      onDragEnter={(e) => {
+                        e.preventDefault()
+                        setDragOverBreadcrumbIndex(index)
+                      }}
+                      onDragLeave={() => {
+                        setDragOverBreadcrumbIndex(null)
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        setDragOverBreadcrumbIndex(null)
+                        let ids: string[] = []
+                        try {
+                          const raw = e.dataTransfer.getData('application/x-nuexis-asset-ids') || '[]'
+                          ids = JSON.parse(raw)
+                        } catch {
+                          ids = (e.dataTransfer.getData('text/plain') || '')
+                            .split(',')
+                            .map(x => x.trim())
+                            .filter(Boolean)
+                        }
+                        const targetFolderId = item.folder ? item.folder.id : null
+                        const targetFolderName = item.name
+                        
+                        const sanitized = ids.filter(id => id && id !== targetFolderId)
+                        if (sanitized.length === 0) return
 
-                      moveAssetsOptimistically(sanitized, targetFolderId, targetFolderName)
-                    }}
-                  >
-                    {item.folder && (
-                      <Folder size={16} style={{ stroke: item.folder.color || '#78716c', fill: item.folder.color || '#78716c', fillOpacity: 0.15 }} />
-                    )}
-                    {item.name === 'Root' ? t('Root') : item.name}
-                  </button>
-                </span>
-              )
-            })}
-          </div>
+                        moveAssetsOptimistically(sanitized, targetFolderId, targetFolderName)
+                      }}
+                    >
+                      {item.folder && (
+                        <Folder size={16} style={{ stroke: item.folder.color || '#78716c', fill: item.folder.color || '#78716c', fillOpacity: 0.15 }} />
+                      )}
+                      {item.name === 'Root' ? t('Root') : item.name}
+                    </button>
+                  </span>
+                )
+              })}
+            </div>
+          )}
         </div>
         <div className={styles.topbarActions}>
           <button
@@ -1401,8 +1441,10 @@ export default function AssetClient({
                         }
                       }}
                       selected={selectedAssetIds.has(asset.id)}
-                        onToggleSelect={() => handleToggleSelect(asset.id)}
-                        isSelectionActive={selectedAssetIds.size > 0}
+                      onToggleSelect={() => handleToggleSelect(asset.id)}
+                      onItemClick={(e) => handleAssetClick(e, asset.id)}
+                      onItemDoubleClick={() => handleAssetDoubleClick(asset)}
+                      isSelectionActive={selectedAssetIds.size > 0}
                       draggable={!deletingIds.has(asset.id)}
                       isDropTarget={dragOverFolderId === asset.id && asset.mime_type === 'application/x-folder'}
                       onDragStart={(e) => {
@@ -1481,6 +1523,8 @@ export default function AssetClient({
                     selectedAssetIds={selectedAssetIds}
                     setSelectedAssetIds={setSelectedAssetIds}
                     handleToggleSelect={handleToggleSelect}
+                    onItemClick={handleAssetClick}
+                    onItemDoubleClick={handleAssetDoubleClick}
                     dragOverFolderId={dragOverFolderId}
                     setDragOverFolderId={setDragOverFolderId}
                     onDropOnFolder={(targetFolder, draggedIds) => {

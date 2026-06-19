@@ -10,27 +10,39 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="047cc275-006d-4d0d-94af-8cd6c4837cc3" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../../app/components/ModalDragFix.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/components/ModalDragFix.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/FilterSidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/FilterSidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetClient.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetClient.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetTableView.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetTableView.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/BulkDeleteModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/BulkDeleteModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/actions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/actions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/Header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/Header.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/header.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/header.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/PlaylistsClient.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/PlaylistsClient.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/GroupsSection.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/GroupsSection.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/GroupsSection.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/GroupsSection.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/player/PairedView.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/player/PairedView.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/player/PlaylistEngine.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/player/PlaylistEngine.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/player/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/player/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/groups/GroupsClient.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/groups/GroupsClient.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/groups/groups.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/groups/groups.module.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTable.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTable.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/PairModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/PairModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreenPreviewModal.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreenPreviewModal.module.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreenPreviewModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreenPreviewModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreensClient.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreensClient.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreensModals.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreensModals.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/actions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/actions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/globals.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/globals.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/player/actions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/player/actions.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/app/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/assets/widget_bootstrap.html" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/assets/widget_bootstrap.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/data/SupabaseClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/data/SupabaseClient.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/playback/MediaEngine.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/playback/MediaEngine.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/playback/PlaylistEngine.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/playback/PlaylistEngine.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../lib/i18n.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../../package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/de.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/de.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/en.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/en.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/es.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/es.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/fr.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/fr.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/hi.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/hi.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/it.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/it.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/ja.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/ja.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/nl.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/nl.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/pt.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/pt.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/sv.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/sv.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -59,22 +71,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Android App.app.executor&quot;: &quot;Run&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;reference.settingsdialog.project.gradle&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Android App.app.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "6ddb42bc",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player",
+    "settings.editor.selected.configurable": "reference.settingsdialog.project.gradle"
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration name="app" type="AndroidRunConfigurationType" factoryName="Android App" activateToolWindowBeforeRun="false">
       <module name="android-player.app" />

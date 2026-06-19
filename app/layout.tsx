@@ -23,9 +23,10 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const sidebarCollapsed = cookieStore.get("nuexis_sidebar_collapsed")?.value === "true";
+  const zoom = cookieStore.get("nuexis_interface_zoom")?.value || "default";
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-zoom={zoom} suppressHydrationWarning>
       <head>
         <script
           id="theme-script"
@@ -37,6 +38,10 @@ export default async function RootLayout({
                 } else {
                   document.documentElement.setAttribute('data-theme', 'light');
                 }
+              } catch (_) {}
+              try {
+                var zoom = localStorage.getItem('nuexis_interface_zoom') || 'default';
+                document.documentElement.setAttribute('data-zoom', zoom);
               } catch (_) {}
               try {
                 if ('serviceWorker' in navigator && ${process.env.NODE_ENV === 'development'}) {

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus, Check, ChevronDown, Clock, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { handleRangeSelection } from '@/lib/utils/selection'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
 import { useTranslation } from '@/lib/i18n'
 import { formatPlaytime } from './DeviceIcon'
@@ -116,6 +117,7 @@ export default function ScreensClient({
   const [viewMode, setViewMode] = useState<'grid' | 'table'>(initialViewMode)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
+  const [lastSelectedDeviceId, setLastSelectedDeviceId] = useState<string | null>(null)
   const [filterGroupIds, setFilterGroupIds] = useState<string[]>(initialFilterGroupIds)
 
   const handleSetFilterGroupIds = (ids: string[]) => {
@@ -339,7 +341,27 @@ export default function ScreensClient({
     }
   }
 
-  const handlePairSuccess = () => { setShowPairModal(false); router.refresh(); }
+  const handlePairSuccess = async (deviceId: string) => {
+    setShowPairModal(false)
+    router.refresh()
+    if (!deviceId) return
+    try {
+      const { data, error } = await supabase
+        .from('devices')
+        .select(DEVICE_SELECT_FIELDS)
+        .eq('id', deviceId)
+        .single()
+      if (error) {
+        console.error('[handlePairSuccess] Error fetching newly paired device:', error)
+        return
+      }
+      if (data) {
+        setAssignModalDevice(mapDevice(data))
+      }
+    } catch (err) {
+      console.error('[handlePairSuccess] Error:', err)
+    }
+  }
   const handleAssignSuccess = () => { setAssignModalDevice(null); router.refresh(); }
   const handleDeleteSuccess = () => {
     setDeleteModalDevice(null)
@@ -386,6 +408,32 @@ export default function ScreensClient({
       }
       return next
     })
+    setLastSelectedDeviceId(deviceId)
+  }
+
+  const handleDeviceDoubleClick = (device: Device) => {
+    setAssignModalDevice(device)
+  }
+
+  const handleDeviceClick = (e: React.MouseEvent, deviceId: string) => {
+    if (selectedDeviceIds.size === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      const device = devices.find(d => d.id === deviceId)
+      if (device) {
+        handleDeviceDoubleClick(device)
+      }
+    } else {
+      setSelectedDeviceIds(prev => {
+        const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
+          e,
+          deviceId,
+          lastSelectedDeviceId,
+          paginatedDevices,
+          prev
+        )
+        setLastSelectedDeviceId(nextLastSelectedId)
+        return nextSelectedIds
+      })
+    }
   }
 
   const handleGroupBadgeClick = (groupId: string) => {
@@ -867,6 +915,8 @@ export default function ScreensClient({
                       memberships={memberships}
                       selected={selectedDeviceIds.has(device.id)}
                       onToggleSelect={() => handleToggleSelect(device.id)}
+                      onItemClick={(e) => handleDeviceClick(e, device.id)}
+                      onItemDoubleClick={() => handleDeviceDoubleClick(device)}
                       onGroupClick={handleGroupBadgeClick}
                       now={now}
                     />
@@ -908,6 +958,8 @@ export default function ScreensClient({
                   groups={groups}
                   memberships={memberships}
                   handleToggleSelect={handleToggleSelect}
+                  onItemClick={handleDeviceClick}
+                  onItemDoubleClick={handleDeviceDoubleClick}
                   handleGroupBadgeClick={handleGroupBadgeClick}
                   getLiveStatus={getLiveStatus}
                   showSuccessPulse={showSuccessPulse}

@@ -448,10 +448,28 @@ export function ContentIcon({ kind, size = 18, style, className }: { kind: Conte
   )
 }
 
+export function getKindColor(kind: ContentKind): string {
+  switch (kind) {
+    case 'image': return '#22c55e';
+    case 'video': return '#3b82f6';
+    case 'audio': return '#f59e0b';
+    case 'pdf': return '#ef4444';
+    case 'remote-url': return '#0ea5e9';
+    case 'youtube': return '#ff0000';
+    case 'html-widget': return '#10b981';
+    case 'clock': return '#8b5cf6';
+    case 'countdown': return '#eab308';
+    case 'slideshow': return '#ec4899';
+    case 'qrcode': return '#a855f7';
+    case 'document': default: return '#64748b';
+  }
+}
+
 // ── Content icon badge (shared wrapper matching DeviceTableRow's contentIconWrap style) ─
 // Use this whenever you need the icon in a table cell — it renders the same
 // 26px rounded badge with the surface-container background used in the Screens table.
 export function ContentIconBadge({ kind, size = 15, color }: { kind: ContentKind; size?: number; color?: string | null }) {
+  const resolvedColor = color || getKindColor(kind)
   return (
     <span style={{
       width: 26,
@@ -462,11 +480,11 @@ export function ContentIconBadge({ kind, size = 15, color }: { kind: ContentKind
       justifyContent: 'center',
       flexShrink: 0,
       background: 'var(--surface-container, #f1f5f9)',
-      color: color || 'var(--on-surface, #0f172a)',
+      color: resolvedColor,
       border: '1px solid var(--outline-variant)',
       verticalAlign: 'middle',
     }}>
-      <ContentIcon kind={kind} size={size} />
+      <ContentIcon kind={kind} size={size} style={{ stroke: resolvedColor }} />
     </span>
   )
 }
