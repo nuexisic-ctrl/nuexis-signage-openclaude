@@ -13,12 +13,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const user = await getCachedUser()
 
   if (!user) {
-    return { title: `Playlists — ${team_slug} | NuExis` }
+    return { title: `Campaigns — ${team_slug} | NuExis` }
   }
 
   const teamId = user.app_metadata?.team_id as string | undefined
   if (!teamId) {
-    return { title: `Playlists — ${team_slug} | NuExis` }
+    return { title: `Campaigns — ${team_slug} | NuExis` }
   }
 
   const { data: playlist } = await supabase
@@ -28,10 +28,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq('team_id', teamId)
     .single()
 
-  const name = playlist?.name || 'Playlist'
+  const name = playlist?.name || 'Campaign'
   return {
-    title: `${name} — Playlists | NuExis`,
-    description: `Edit and manage the "${name}" playlist.`,
+    title: `${name} — Campaigns | NuExis`,
+    description: `Edit and manage the "${name}" campaign.`,
   }
 }
 
@@ -69,7 +69,7 @@ export default async function PlaylistDetailPage({ params }: Props) {
   // Fetch playlist header — cross-team UUID guess returns not found (no info leak)
   const { data: playlist, error: playlistError } = await supabase
     .from('playlists')
-    .select('id, name, created_at, updated_at')
+    .select('id, name, color, created_at, updated_at, version')
     .eq('id', playlistId)
     .eq('team_id', teamId)
     .single()
@@ -87,7 +87,7 @@ export default async function PlaylistDetailPage({ params }: Props) {
 
   const typedItems = (items || []) as any[]
 
-  // Compute summary server-side
+  // Compute summary from loaded items
   let totalSizeBytes = 0
   let totalDurationSeconds = 0
   for (const item of typedItems) {
@@ -97,7 +97,7 @@ export default async function PlaylistDetailPage({ params }: Props) {
     }
   }
 
-  // Fetch assigned devices & assets concurrently
+  // Fetch assigned devices & assets concurrently (limit assets picker to 200)
   const [assignedDevicesRes, assetsRes] = await Promise.all([
     supabase
       .from('devices')
@@ -109,6 +109,7 @@ export default async function PlaylistDetailPage({ params }: Props) {
       .select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color, width, height')
       .eq('team_id', teamId)
       .order('created_at', { ascending: false })
+      .limit(200)
   ])
 
   const assignedDevices = assignedDevicesRes.data ?? []
@@ -119,8 +120,10 @@ export default async function PlaylistDetailPage({ params }: Props) {
       initialData={{
         id: playlist.id,
         name: playlist.name || '',
+        color: playlist.color || '#3b82f6',
         created_at: playlist.created_at || '',
         updated_at: playlist.updated_at || '',
+        version: playlist.version ?? 0,
         items: typedItems,
         summary: {
           totalItems: typedItems.length,

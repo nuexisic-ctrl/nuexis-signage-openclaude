@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import Link from 'next/link'
 import {
-  ListVideo, ChevronRight, Undo2, Redo2, Eye,
+  Megaphone, ChevronRight, Undo2, Redo2, Eye,
   Monitor, Copy, Trash2, MoreHorizontal, Layers, HardDrive, Clock, CalendarCheck
 } from 'lucide-react'
 import styles from '../workspace.module.css'
@@ -34,6 +34,7 @@ interface WorkspaceHeaderProps {
   saveStatus: 'saved' | 'saving' | 'unsaved'
   canUndo: boolean
   canRedo: boolean
+  color?: string
   onUndo: () => void
   onRedo: () => void
   onPreviewToggle: () => void
@@ -54,6 +55,7 @@ export default function WorkspaceHeader({
   saveStatus,
   canUndo,
   canRedo,
+  color,
   onUndo,
   onRedo,
   onPreviewToggle,
@@ -70,7 +72,12 @@ export default function WorkspaceHeader({
   const { t } = useTranslation()
   const [editName, setEditName] = useState(name)
   const [showMenu, setShowMenu] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   useEffect(() => {
     setEditName(name)
@@ -121,7 +128,7 @@ export default function WorkspaceHeader({
       {/* Breadcrumb */}
       <nav className={styles.breadcrumb}>
         <Link href={`/customer/${teamSlug}/playlists`} className={styles.breadcrumbLink}>
-          {t('Playlists')}
+          {t('Campaigns')}
         </Link>
         <ChevronRight size={12} className={styles.breadcrumbSep} />
         <span className={styles.breadcrumbCurrent}>{name}</span>
@@ -130,8 +137,15 @@ export default function WorkspaceHeader({
       {/* Title row */}
       <div className={styles.headerRow}>
         <div className={styles.titleArea}>
-          <div className={styles.titleIcon}>
-            <ListVideo size={20} />
+          <div 
+            className={styles.titleIcon}
+            style={{ 
+              borderColor: color || 'var(--outline-variant)',
+              color: color || 'var(--on-surface-muted)',
+              backgroundColor: color ? `color-mix(in srgb, ${color} 8%, var(--surface-low))` : 'var(--surface-low)'
+            }}
+          >
+            <Megaphone size={20} />
           </div>
           <input
             type="text"
@@ -140,7 +154,7 @@ export default function WorkspaceHeader({
             onChange={e => setEditName(e.target.value)}
             onBlur={handleNameBlur}
             onKeyDown={handleNameKeyDown}
-            aria-label={t('Playlist Name')}
+            aria-label={t('Campaign Name')}
             maxLength={200}
           />
         </div>
@@ -226,7 +240,7 @@ export default function WorkspaceHeader({
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-low)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <Copy size={15} /> {t('Duplicate Playlist')}
+                  <Copy size={15} /> {t('Duplicate Campaign')}
                 </button>
                 <div style={{ height: '1px', background: 'var(--outline-variant)' }} />
                 <button
@@ -248,7 +262,7 @@ export default function WorkspaceHeader({
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--error-container)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <Trash2 size={15} /> {t('Delete Playlist')}
+                  <Trash2 size={15} /> {t('Delete Campaign')}
                 </button>
               </div>
             )}
@@ -281,7 +295,7 @@ export default function WorkspaceHeader({
         <span className={styles.headerDetailDivider}>•</span>
         <span className={styles.headerDetailItem} title={t('Created Date')}>
           <CalendarCheck size={13} />
-          <span>{createdAt ? new Date(createdAt).toLocaleDateString() : '—'}</span>
+          <span>{isMounted && createdAt ? new Date(createdAt).toLocaleDateString() : '—'}</span>
         </span>
         <span className={styles.headerDetailDivider}>•</span>
         <span className={styles.headerDetailItem} title={t('Screen Assignments')}>

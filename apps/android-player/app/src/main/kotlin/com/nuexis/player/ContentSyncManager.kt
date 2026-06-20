@@ -174,13 +174,26 @@ class ContentSyncManager(
                             isContentLoaded = true
 
                             // Update tracked values
+                            val activePlaylistId = if (state.content_type == "Playlist") state.playlist_id else null
+                            val lastActivePlaylistId = if (lastContentType == "Playlist") lastPlaylistId else null
+                            
                             lastTeamId = state.team_id
                             lastOrientation = state.orientation
                             lastContentType = state.content_type
                             lastAssetId = state.asset_id
+                            
+                            val playlistIdChanged = state.playlist_id != lastPlaylistId
                             lastPlaylistId = state.playlist_id
                             lastScaleMode = state.scale_mode
                             lastUpdatedAt = state.updated_at
+
+                            if (playlistIdChanged) {
+                                listener.onPlaylistIdChanged(state.playlist_id)
+                            }
+
+                            if (activePlaylistId != lastActivePlaylistId || forceReload || !isContentLoaded) {
+                                listener.onPlaylistIdChanged(activePlaylistId)
+                            }
 
                             if (state.orientation != null) {
                                 storageManager.setOrientation(state.orientation)
@@ -401,4 +414,5 @@ interface ContentSyncListener {
     fun onPreparePlayerUI()
     fun onOnlineRestored()
     fun onDeviceUnpaired()
+    fun onPlaylistIdChanged(playlistId: String?)
 }

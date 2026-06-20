@@ -533,6 +533,7 @@ html[data-zoom="larger"] [class*="modal"],
 html[data-zoom="larger"] [class*="dialog"] {
   padding: 32px !important;
 }
-
-
+input[type="checkbox"] {
+  cursor: pointer;
+}
 

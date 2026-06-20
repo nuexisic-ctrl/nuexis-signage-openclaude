@@ -12,8 +12,8 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { team_slug } = await params
   return {
-    title: `Playlists — ${team_slug} | NuExis`,
-    description: 'Manage playlists for your digital signage displays.',
+    title: `Campaigns — ${team_slug} | NuExis`,
+    description: 'Manage campaigns for your digital signage displays.',
   }
 }
 
@@ -46,7 +46,7 @@ export default async function PlaylistsPage({ params, searchParams }: Props) {
   // Fetch playlists (assets are now fetched in the workspace route's asset picker)
   const { data: playlists } = await supabase
     .from('playlists')
-    .select('id, name, created_at, updated_at, playlist_items(duration_seconds)')
+    .select('id, name, color, created_at, updated_at, playlist_items(duration_seconds)')
     .eq('team_id', profile.team_id)
     .order('created_at', { ascending: false })
     .limit(100)

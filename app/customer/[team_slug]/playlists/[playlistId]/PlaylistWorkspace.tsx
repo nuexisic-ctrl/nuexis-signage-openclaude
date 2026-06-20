@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from '@/app/components/Toast'
+import ConfirmDialog from '@/app/components/ConfirmDialog'
 import { updatePlaylist, deletePlaylist } from '../actions'
 import { updatePlaylistName, duplicatePlaylist } from './actions'
 import type { PlaylistEditorData, PlaylistItemWithAsset, AssignedDevice } from './actions'
@@ -13,6 +14,7 @@ import PlaylistTable from './components/PlaylistTable'
 import PlaylistPreview from './components/PlaylistPreview'
 import PushToScreenModal from './components/PushToScreenModal'
 import { AssetBrowserModal } from '../../components/AssetBrowser'
+import { AssetPreviewModal } from '../../assets/AssetPreviewModal'
 import type { Asset } from '../../assets/types'
 import { Trash2, X } from 'lucide-react'
 import styles from './workspace.module.css'
@@ -109,6 +111,16 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
   } = useUndoRedo(initialData.items)
 
   const [playlistName, setPlaylistName] = useState(initialData.name)
+  const [playlistVersion, setPlaylistVersion] = useState(initialData.version ?? 0)
+  const isMountedRef = useRef(true)
+  
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
   const [isSaving, setIsSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
@@ -116,6 +128,44 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
   const [showAssetPicker, setShowAssetPicker] = useState(false)
   const [assignedDevices, setAssignedDevices] = useState<AssignedDevice[]>(initialData.assignedDevices)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [previewState, setPreviewState] = useState<{ asset: Asset; url: string | null } | null>(null)
+  const [isDeleteCampaignOpen, setIsDeleteCampaignOpen] = useState(false)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
+
+  const getWidgetMimeType = useCallback((widgetType: string | null): string => {
+    if (widgetType === 'flow-clock') return 'application/x-widget-flow'
+    if (widgetType === 'flow-countdown') return 'application/x-widget-countdown'
+    if (widgetType === 'flow-countup') return 'application/x-widget-countup'
+    if (widgetType === 'flow-worldclock') return 'application/x-widget-worldclock'
+    if (widgetType === 'flow-slideshow') return 'application/x-widget-slideshow'
+    return 'application/x-widget-html'
+  }, [])
+
+  const handlePreviewAsset = useCallback((item: PlaylistItemWithAsset, signedUrl: string | null) => {
+    if (item.assets) {
+      const previewAsset: Asset = {
+        id: item.assets.id,
+        file_name: item.assets.file_name,
+        file_path: item.assets.file_path,
+        mime_type: item.assets.mime_type,
+        size_bytes: item.assets.size_bytes,
+        created_at: item.created_at,
+      }
+      setPreviewState({ asset: previewAsset, url: signedUrl })
+    } else {
+      const previewAsset: Asset = {
+        id: item.id,
+        file_name: item.widget_type || t('Widget'),
+        file_path: typeof item.widget_config === 'string'
+          ? item.widget_config
+          : JSON.stringify(item.widget_config || {}),
+        mime_type: getWidgetMimeType(item.widget_type),
+        size_bytes: 0,
+        created_at: item.created_at,
+      }
+      setPreviewState({ asset: previewAsset, url: null })
+    }
+  }, [t, getWidgetMimeType])
 
   // Track dirty state
   useEffect(() => {
@@ -123,6 +173,59 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
       setSaveStatus('unsaved')
     }
   }, [items, isDirty])
+
+  // ── Save ──
+  const handleSave = useCallback(async () => {
+    if (isSaving || !isMountedRef.current) return
+    setIsSaving(true)
+    setSaveStatus('saving')
+
+    try {
+      const itemsPayload = items.map((item, index) => ({
+        id: item.id,
+        type: item.type,
+        asset_id: item.asset_id || null,
+        duration_seconds: item.duration_seconds,
+        widget_type: item.widget_type || null,
+        widget_config: item.widget_config || null,
+      }))
+
+      await updatePlaylist(initialData.id, playlistName, teamSlug, itemsPayload, undefined, playlistVersion)
+
+      if (!isMountedRef.current) return
+
+      // Broadcast refresh to players
+      const supabase = createClient()
+      const channel = supabase.channel(`playlist-broadcast-${initialData.id}`)
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.send({
+            type: 'broadcast',
+            event: 'refresh',
+            payload: { timestamp: Date.now() },
+          })
+          setTimeout(() => supabase.removeChannel(channel), 1000)
+        }
+      })
+
+      markPersisted()
+      setPlaylistVersion(prev => prev + 1)
+      setSaveStatus('saved')
+    } catch (err: any) {
+      if (!isMountedRef.current) return
+      console.error(err)
+      if (err.message === 'CONCURRENCY_ERROR') {
+        toast.error(t('CONCURRENCY_ERROR'))
+      } else {
+        toast.error(err.message || t('Failed to save playlist'))
+      }
+      setSaveStatus('unsaved')
+    } finally {
+      if (isMountedRef.current) {
+        setIsSaving(false)
+      }
+    }
+  }, [items, playlistName, initialData.id, teamSlug, isSaving, markPersisted, t, playlistVersion])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -148,50 +251,7 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [undo, redo])
-
-  // ── Save ──
-  const handleSave = useCallback(async () => {
-    if (isSaving) return
-    setIsSaving(true)
-    setSaveStatus('saving')
-
-    try {
-      const itemsPayload = items.map((item, index) => ({
-        type: item.type,
-        asset_id: item.asset_id || null,
-        duration_seconds: item.duration_seconds,
-        widget_type: item.widget_type || null,
-        widget_config: item.widget_config || null,
-      }))
-
-      await updatePlaylist(initialData.id, playlistName, teamSlug, itemsPayload)
-
-      // Broadcast refresh to players
-      const supabase = createClient()
-      const channel = supabase.channel(`playlist-broadcast-${initialData.id}`)
-      channel.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          channel.send({
-            type: 'broadcast',
-            event: 'refresh',
-            payload: { timestamp: Date.now() },
-          })
-          setTimeout(() => supabase.removeChannel(channel), 1000)
-        }
-      })
-
-      markPersisted()
-      setSaveStatus('saved')
-      toast.success(t('Playlist saved successfully'))
-    } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || t('Failed to save playlist'))
-      setSaveStatus('unsaved')
-    } finally {
-      setIsSaving(false)
-    }
-  }, [items, playlistName, initialData.id, teamSlug, isSaving, markPersisted, t])
+  }, [undo, redo, handleSave])
 
   // ── Rename ──
   const handleRename = useCallback(async (newName: string) => {
@@ -199,7 +259,6 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
     setPlaylistName(newName) // optimistic
     try {
       await updatePlaylistName(initialData.id, newName, teamSlug)
-      toast.success(t('Playlist renamed'))
     } catch (err: any) {
       setPlaylistName(oldName) // rollback
       toast.error(err.message || t('Failed to rename playlist'))
@@ -208,13 +267,16 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
 
   // ── Delete ──
   const handleDelete = useCallback(async () => {
-    if (!confirm(t('Are you sure you want to delete this playlist?'))) return
+    setIsDeleteCampaignOpen(true)
+  }, [])
+
+  const handleConfirmDelete = useCallback(async () => {
     try {
       await deletePlaylist(initialData.id, teamSlug)
-      toast.success(t('Playlist deleted'))
+      toast.success(t('Campaign deleted'))
       router.push(`/customer/${teamSlug}/playlists`)
     } catch (err: any) {
-      toast.error(err.message || t('Failed to delete playlist'))
+      toast.error(err.message || t('Failed to delete campaign'))
     }
   }, [initialData.id, teamSlug, router, t])
 
@@ -259,10 +321,12 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
     ))
   }, [setItems])
 
-  const handleBulkDelete = useCallback(() => {
+  const handleBulkDeleteClick = useCallback(() => {
     if (selectedIds.size === 0) return
-    if (!confirm(t('Are you sure you want to remove the selected {count} items?', { count: selectedIds.size }))) return
-    
+    setIsBulkDeleteOpen(true)
+  }, [selectedIds.size])
+
+  const handleConfirmBulkDelete = useCallback(() => {
     setItems(prev => prev.filter(item => !selectedIds.has(item.id)).map((item, i) => ({ ...item, sort_order: i })))
     setSelectedIds(new Set())
     toast.success(t('Selected items removed'))
@@ -364,7 +428,34 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
       handleSave()
     }, 3000) // Auto-save after 3 seconds of inactivity
     return () => clearTimeout(timeout)
-  }, [items])
+  }, [items, isDirty, handleSave])
+
+  // Click-away listener to clear selection when clicking on empty space
+  useEffect(() => {
+    if (selectedIds.size === 0) return
+
+    const handleClickAway = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target) return
+
+      const isInteractive = target.closest('button') ||
+                            target.closest('input') ||
+                            target.closest('select') ||
+                            target.closest('a') ||
+                            target.closest(`.${styles.batchBar}`) ||
+                            target.closest('td') ||
+                            target.closest('th') ||
+                            target.closest('[role="dialog"]') ||
+                            target.closest('[role="listbox"]')
+
+      if (!isInteractive) {
+        setSelectedIds(new Set())
+      }
+    }
+
+    document.addEventListener('click', handleClickAway)
+    return () => document.removeEventListener('click', handleClickAway)
+  }, [selectedIds.size])
 
   return (
     <>
@@ -374,6 +465,7 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
         saveStatus={saveStatus}
         canUndo={canUndo}
         canRedo={canRedo}
+        color={initialData.color}
         onUndo={undo}
         onRedo={redo}
         onPreviewToggle={() => setShowPreview(!showPreview)}
@@ -408,6 +500,7 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
             selectedIds={selectedIds}
             onToggleSelect={handleToggleSelect}
             onToggleSelectAll={handleToggleSelectAll}
+            onPreviewAsset={handlePreviewAsset}
           />
         </div>
       </div>
@@ -440,30 +533,34 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
       {selectedIds.size > 0 && (
         <div className={styles.batchBar}>
           <div className={styles.batchCount}>
-            <strong>{selectedIds.size}</strong> {selectedIds.size === 1 ? t('item selected') : t('items selected')}
+            <span className={styles.batchCountBadge}>{selectedIds.size}</span>
+            <span>{selectedIds.size === 1 ? t('item selected') : t('items selected')}</span>
           </div>
           
           <div className={styles.batchDivider} />
           
           <div className={styles.batchDurationForm}>
             <span className={styles.batchFormLabel}>{t('Set Duration:')}</span>
-            <input
-              type="number"
-              min={1}
-              max={86400}
-              placeholder="10"
-              className={styles.batchDurationInput}
-              id="batch-duration-field"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const val = parseInt((e.target as HTMLInputElement).value, 10)
-                  if (!isNaN(val) && val >= 1 && val <= 86400) {
-                    handleBulkUpdateDuration(val)
-                    ;(e.target as HTMLInputElement).value = ''
+            <div className={styles.batchDurationInputWrapper}>
+              <input
+                type="number"
+                min={1}
+                max={86400}
+                placeholder="10"
+                className={styles.batchDurationInput}
+                id="batch-duration-field"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const val = parseInt((e.target as HTMLInputElement).value, 10)
+                    if (!isNaN(val) && val >= 1 && val <= 86400) {
+                      handleBulkUpdateDuration(val)
+                      ;(e.target as HTMLInputElement).value = ''
+                    }
                   }
-                }
-              }}
-            />
+                }}
+              />
+              <span className={styles.batchDurationSuffix}>s</span>
+            </div>
             <button
               type="button"
               className={styles.batchApplyBtn}
@@ -489,7 +586,7 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
           <button
             type="button"
             className={styles.batchDeleteBtn}
-            onClick={handleBulkDelete}
+            onClick={handleBulkDeleteClick}
           >
             <Trash2 size={14} />
             <span>{t('Delete')}</span>
@@ -505,6 +602,39 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
           </button>
         </div>
       )}
+
+      {/* Asset Preview Modal */}
+      {previewState && (
+        <AssetPreviewModal
+          asset={previewState.asset}
+          previewUrl={previewState.url}
+          onClose={() => setPreviewState(null)}
+        />
+      )}
+
+      {/* Custom confirmation dialog for deleting campaign */}
+      <ConfirmDialog
+        isOpen={isDeleteCampaignOpen}
+        onClose={() => setIsDeleteCampaignOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title={t('Delete Campaign')}
+        description={t('Are you sure you want to delete this campaign? This action cannot be undone.')}
+        confirmLabel={t('Delete')}
+        cancelLabel={t('Cancel')}
+        variant="danger"
+      />
+
+      {/* Custom confirmation dialog for bulk removing items */}
+      <ConfirmDialog
+        isOpen={isBulkDeleteOpen}
+        onClose={() => setIsBulkDeleteOpen(false)}
+        onConfirm={handleConfirmBulkDelete}
+        title={t('Remove Items')}
+        description={t('Are you sure you want to remove the selected {count} items?', { count: selectedIds.size })}
+        confirmLabel={t('Remove')}
+        cancelLabel={t('Cancel')}
+        variant="danger"
+      />
     </>
   )
 }

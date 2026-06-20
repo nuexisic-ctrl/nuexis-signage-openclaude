@@ -10,29 +10,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="047cc275-006d-4d0d-94af-8cd6c4837cc3" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetClient.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetClient.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetTableView.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/AssetTableView.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/BulkDeleteModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/BulkDeleteModal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/actions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/assets/actions.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/Header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/Header.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/header.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/header.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/groups/GroupsClient.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/groups/GroupsClient.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/groups/groups.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/groups/groups.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceIcon.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTable.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTable.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/DeviceTableRow.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/PairModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/PairModal.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreenPreviewModal.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreenPreviewModal.module.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreenPreviewModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreenPreviewModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/Pagination.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/Pagination.module.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/Pagination.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/Pagination.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/components/Sidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/PlaylistsClient.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/PlaylistsClient.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/PlaylistWorkspace.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/PlaylistWorkspace.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/actions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/actions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/components/PlaylistTable.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/components/PlaylistTable.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/components/WorkspaceHeader.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/components/WorkspaceHeader.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/workspace.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/[playlistId]/workspace.module.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/actions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/actions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/playlists.module.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/playlists/playlists.module.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreensClient.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreensClient.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreensModals.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/ScreensModals.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/actions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/customer/[team_slug]/screens/actions.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../app/globals.css" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/globals.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/layout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../app/player/actions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../app/player/actions.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/ContentSyncManager.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/ContentSyncManager.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/MainActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/realtime/RealtimeClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/kotlin/com/nuexis/player/realtime/RealtimeClient.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/de.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/de.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/en.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/en.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/es.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/es.ts" afterDir="false" />
@@ -43,6 +38,7 @@
       <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/nl.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/nl.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/pt.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/pt.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../lib/i18n/locales/sv.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../lib/i18n/locales/sv.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../types/supabase.ts" beforeDir="false" afterPath="$PROJECT_DIR$/../../types/supabase.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,7 +77,7 @@
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "6ddb42bc",
+    "git-widget-placeholder": "31d546a2",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Users/nikhi/Downloads/Projects/Digital-Signage-Openclaude/apps/android-player",
     "settings.editor.selected.configurable": "reference.settingsdialog.project.gradle"

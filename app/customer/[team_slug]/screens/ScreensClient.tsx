@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useTransition, useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Plus, RefreshCw, ChevronLeft, ChevronRight, FolderPlus, Check, ChevronDown, Clock, AlertTriangle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import ConfirmDialog from '@/app/components/ConfirmDialog'
 import { handleRangeSelection } from '@/lib/utils/selection'
 import { GroupFilterDropdown } from './GroupFilterDropdown'
 import { useTranslation } from '@/lib/i18n'
@@ -119,6 +120,7 @@ export default function ScreensClient({
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<Set<string>>(new Set())
   const [lastSelectedDeviceId, setLastSelectedDeviceId] = useState<string | null>(null)
   const [filterGroupIds, setFilterGroupIds] = useState<string[]>(initialFilterGroupIds)
+  const [deleteGroupTarget, setDeleteGroupTarget] = useState<any | null>(null)
 
   const handleSetFilterGroupIds = (ids: string[]) => {
     setFilterGroupIds(ids)
@@ -163,6 +165,21 @@ export default function ScreensClient({
     isRefreshing,
     router
   )
+
+  const [showConnectionError, setShowConnectionError] = useState(false)
+
+  useEffect(() => {
+    const isErrorStatus = channelStatus === 'CHANNEL_ERROR' || channelStatus === 'TIMED_OUT' || channelStatus === 'CLOSED'
+    
+    if (isErrorStatus) {
+      const timer = setTimeout(() => {
+        setShowConnectionError(true)
+      }, 2000)
+      return () => clearTimeout(timer)
+    } else {
+      setShowConnectionError(false)
+    }
+  }, [channelStatus])
 
   useEffect(() => {
     const saved = localStorage.getItem('screensViewMode')
@@ -384,17 +401,22 @@ export default function ScreensClient({
   }
 
   const handleDeleteGroup = (group: any) => {
-    if (window.confirm(`Are you sure you want to delete the group "${group.name}"?`)) {
-      startTransition(async () => {
-        const res = await deleteGroup(teamSlug, group.id)
-        if (res.success) {
-          toast.success(`Group "${group.name}" deleted successfully`)
-          router.refresh()
-        } else {
-          toast.error(res.error || 'Failed to delete group.')
-        }
-      })
-    }
+    setDeleteGroupTarget(group)
+  }
+
+  const handleConfirmDeleteGroup = () => {
+    if (!deleteGroupTarget) return
+    const group = deleteGroupTarget
+    startTransition(async () => {
+      const res = await deleteGroup(teamSlug, group.id)
+      if (res.success) {
+        toast.success(`Group "${group.name}" deleted successfully`)
+        router.refresh()
+      } else {
+        toast.error(res.error || 'Failed to delete group.')
+      }
+      setDeleteGroupTarget(null)
+    })
   }
 
 
@@ -416,24 +438,17 @@ export default function ScreensClient({
   }
 
   const handleDeviceClick = (e: React.MouseEvent, deviceId: string) => {
-    if (selectedDeviceIds.size === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-      const device = devices.find(d => d.id === deviceId)
-      if (device) {
-        handleDeviceDoubleClick(device)
-      }
-    } else {
-      setSelectedDeviceIds(prev => {
-        const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
-          e,
-          deviceId,
-          lastSelectedDeviceId,
-          paginatedDevices,
-          prev
-        )
-        setLastSelectedDeviceId(nextLastSelectedId)
-        return nextSelectedIds
-      })
-    }
+    setSelectedDeviceIds(prev => {
+      const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
+        e,
+        deviceId,
+        lastSelectedDeviceId,
+        paginatedDevices,
+        prev
+      )
+      setLastSelectedDeviceId(nextLastSelectedId)
+      return nextSelectedIds
+    })
   }
 
   const handleGroupBadgeClick = (groupId: string) => {
@@ -782,7 +797,7 @@ export default function ScreensClient({
               <div className={styles.progressBarLine} />
             </div>
 
-            {(channelStatus === 'CHANNEL_ERROR' || channelStatus === 'TIMED_OUT' || channelStatus === 'CLOSED') && (
+            {showConnectionError && (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1027,6 +1042,18 @@ export default function ScreensClient({
         setSelectedDeviceIds={setSelectedDeviceIds}
         router={router}
         handleCreateGroupSuccess={handleCreateGroupSuccess}
+      />
+
+      {/* Custom Confirmation Dialog for deleting group */}
+      <ConfirmDialog
+        isOpen={deleteGroupTarget !== null}
+        onClose={() => setDeleteGroupTarget(null)}
+        onConfirm={handleConfirmDeleteGroup}
+        title={t('Delete Group')}
+        description={t('Are you sure you want to delete the group "{name}"?', { name: deleteGroupTarget?.name || '' })}
+        confirmLabel={t('Delete')}
+        cancelLabel={t('Cancel')}
+        variant="danger"
       />
     </>
 

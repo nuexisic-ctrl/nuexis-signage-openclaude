@@ -215,6 +215,13 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
         startRealtime(deviceId)
         realtimeClient?.startPresence(teamId)
 
+        // Ensure we subscribe to playlist changes immediately if a playlist was already cached
+        val cachedPlaylistId = storageManager.getCachedPlaylistId()
+        val cachedContentType = storageManager.getCachedContentType()
+        if (cachedContentType == "Playlist" && !cachedPlaylistId.isNullOrEmpty()) {
+            realtimeClient?.startPlaylistSubscription(cachedPlaylistId)
+        }
+
         val viewport = getViewport()
         if (viewport != null) {
             contentSyncManager.initMediaEngine(viewport)
@@ -253,6 +260,16 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
 
     override fun onDeviceUnpaired() {
         handleUnpair()
+    }
+
+    override fun onPlaylistIdChanged(playlistId: String?) {
+        if (playlistId != null) {
+            Log.d("MainActivity", "Subscribing to playlist updates: $playlistId")
+            realtimeClient?.startPlaylistSubscription(playlistId)
+        } else {
+            Log.d("MainActivity", "Stopping playlist subscription")
+            realtimeClient?.stopPlaylistSubscription()
+        }
     }
 
     private fun startRealtime(deviceId: String) {

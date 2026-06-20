@@ -184,8 +184,12 @@ class RealtimeClient(
         joinPresenceChannel(teamId)
     }
 
-    fun startPlaylistSubscription(playlistId: String) {
+    fun startPlaylistSubscription(playlistId: String?) {
         val oldPlaylistId = activePlaylistId
+        if (playlistId.isNullOrEmpty()) {
+            stopPlaylistSubscription()
+            return
+        }
         if (oldPlaylistId == playlistId) return
         
         if (oldPlaylistId != null) {
@@ -193,6 +197,14 @@ class RealtimeClient(
         }
         activePlaylistId = playlistId
         joinPlaylistChannel(playlistId)
+    }
+
+    fun stopPlaylistSubscription() {
+        val oldPlaylistId = activePlaylistId
+        if (oldPlaylistId != null) {
+            leaveChannel("realtime:playlist-broadcast-$oldPlaylistId")
+            activePlaylistId = null
+        }
     }
 
     private fun joinPlaylistChannel(playlistId: String) {

@@ -62,36 +62,34 @@ export default function Pagination({
             <option value="100">100</option>
           </select>
         </div>
-        {totalPages > 1 && (
-          <div className={styles.pagination}>
-            <span className={styles.pageIndicator}>
-              {t('Page {current} of {total}', {
-                current: String(currentPage),
-                total: String(totalPages),
-              })}
-            </span>
-            <button
-              className={styles.pageBtn}
-              onClick={() => onPageChange(currentPage - 1, pageSize)}
-              disabled={!hasPrevPage}
-              type="button"
-              aria-label={t('Previous page')}
-              style={{ cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
-            >
-              <ChevronLeft size={16} aria-hidden="true" />
-            </button>
-            <button
-              className={styles.pageBtn}
-              onClick={() => onPageChange(currentPage + 1, pageSize)}
-              disabled={!hasNextPage}
-              type="button"
-              aria-label={t('Next page')}
-              style={{ cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
-            >
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
-          </div>
-        )}
+        <div className={styles.pagination}>
+          <span className={styles.pageIndicator}>
+            {t('Page {current} of {total}', {
+              current: String(currentPage),
+              total: String(totalPages),
+            })}
+          </span>
+          <button
+            className={styles.pageBtn}
+            onClick={() => onPageChange(currentPage - 1, pageSize)}
+            disabled={!hasPrevPage}
+            type="button"
+            aria-label={t('Previous page')}
+            style={{ cursor: hasPrevPage ? 'pointer' : 'not-allowed' }}
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          <button
+            className={styles.pageBtn}
+            onClick={() => onPageChange(currentPage + 1, pageSize)}
+            disabled={!hasNextPage}
+            type="button"
+            aria-label={t('Next page')}
+            style={{ cursor: hasNextPage ? 'pointer' : 'not-allowed' }}
+          >
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
   )

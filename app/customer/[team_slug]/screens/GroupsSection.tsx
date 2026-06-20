@@ -10,6 +10,7 @@ import styles from './GroupsSection.module.css'
 import { Device } from './types'
 import { deleteGroup } from '../groups/actions'
 import { toast } from '@/app/components/Toast'
+import ConfirmDialog from '@/app/components/ConfirmDialog'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 import { useTranslation } from '@/lib/i18n'
 import EmptyState from '../components/EmptyState'
@@ -99,6 +100,7 @@ export function GroupsSection({
   const [pageSize, setPageSize] = useState<number>(5)
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set())
   const [isSelectDropdownOpen, setIsSelectDropdownOpen] = useState(false)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
   const selectDropdownRef = React.useRef<HTMLDivElement>(null)
 
   const [openMenuGroupId, setOpenMenuGroupId] = useState<string | null>(null)
@@ -132,8 +134,10 @@ export function GroupsSection({
 
   const handleDeleteSelectedGroups = () => {
     if (selectedGroupIds.size === 0) return
-    if (!window.confirm(t('Are you sure you want to delete the {count} selected group(s)?', { count: selectedGroupIds.size }))) return
+    setIsBulkDeleteOpen(true)
+  }
 
+  const handleConfirmDeleteSelectedGroups = () => {
     startTransition(async () => {
       let successCount = 0
       let lastError = ''
@@ -155,6 +159,7 @@ export function GroupsSection({
       if (lastError) {
         toast.error(lastError)
       }
+      setIsBulkDeleteOpen(false)
     })
   }
 
@@ -740,6 +745,17 @@ export function GroupsSection({
         </div>
       )}
       </div>
+      {/* Custom Confirmation Dialog for bulk deleting groups */}
+      <ConfirmDialog
+        isOpen={isBulkDeleteOpen}
+        onClose={() => setIsBulkDeleteOpen(false)}
+        onConfirm={handleConfirmDeleteSelectedGroups}
+        title={t('Delete Screen Groups')}
+        description={t('Are you sure you want to delete the {count} selected group(s)?', { count: selectedGroupIds.size })}
+        confirmLabel={t('Delete')}
+        cancelLabel={t('Cancel')}
+        variant="danger"
+      />
     </div>
   )
 }

@@ -26,6 +26,8 @@ async function getAuthenticatedTeamId(supabase: Awaited<ReturnType<typeof create
 export interface PlaylistEditorData {
   id: string
   name: string
+  version: number
+  color?: string
   created_at: string
   updated_at: string
   items: PlaylistItemWithAsset[]
@@ -78,7 +80,7 @@ export async function getPlaylistForEditor(playlistId: string): Promise<Playlist
   // Fetch playlist header
   const { data: playlist, error: playlistError } = await supabase
     .from('playlists')
-    .select('id, name, created_at, updated_at')
+    .select('id, name, color, version, created_at, updated_at')
     .eq('id', playlistId)
     .eq('team_id', teamId)
     .single()
@@ -100,14 +102,20 @@ export async function getPlaylistForEditor(playlistId: string): Promise<Playlist
 
   const typedItems = (items || []) as unknown as PlaylistItemWithAsset[]
 
-  // Compute summary
-  let totalSizeBytes = 0
-  let totalDurationSeconds = 0
-  for (const item of typedItems) {
-    totalDurationSeconds += item.duration_seconds || 0
-    if (item.assets?.size_bytes) {
-      totalSizeBytes += item.assets.size_bytes
-    }
+  // Fetch summary from database RPC
+  const { data: summaryResult, error: summaryError } = await supabase
+    .rpc('get_playlist_summary', { p_playlist_id: playlistId })
+
+  const summary = (summaryResult as any) || {
+    total_items: 0,
+    total_duration_seconds: 0,
+    total_size_bytes: 0
+  }
+
+  const summaryPayload = {
+    totalItems: summary.total_items || 0,
+    totalSizeBytes: summary.total_size_bytes || 0,
+    totalDurationSeconds: summary.total_duration_seconds || 0
   }
 
   // Fetch assigned devices (directly or via groups)
@@ -122,14 +130,12 @@ export async function getPlaylistForEditor(playlistId: string): Promise<Playlist
   return {
     id: playlist.id,
     name: playlist.name || '',
+    version: playlist.version || 0,
+    color: playlist.color || '#3b82f6',
     created_at: playlist.created_at || '',
     updated_at: playlist.updated_at || '',
     items: typedItems,
-    summary: {
-      totalItems: typedItems.length,
-      totalSizeBytes,
-      totalDurationSeconds,
-    },
+    summary: summaryPayload,
     assignedDevices,
   }
 }

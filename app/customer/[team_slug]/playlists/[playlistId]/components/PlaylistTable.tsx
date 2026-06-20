@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { ListVideo, GripVertical, Trash2, Plus } from 'lucide-react'
 import styles from '../workspace.module.css'
 import type { PlaylistItemWithAsset } from '../actions'
 import { ContentIconBadge, getAssetKind } from '../../../screens/DeviceIcon'
+import { createClient } from '@/lib/supabase/client'
+import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 
 interface PlaylistTableProps {
   items: PlaylistItemWithAsset[]
@@ -16,6 +18,7 @@ interface PlaylistTableProps {
   selectedIds: Set<string>
   onToggleSelect: (id: string) => void
   onToggleSelectAll: () => void
+  onPreviewAsset: (item: PlaylistItemWithAsset, signedUrl: string | null) => void
 }
 
 function getPlaylistItemKind(item: PlaylistItemWithAsset): string {
@@ -41,10 +44,49 @@ export default function PlaylistTable({
   selectedIds,
   onToggleSelect,
   onToggleSelectAll,
+  onPreviewAsset,
 }: PlaylistTableProps) {
   const { t } = useTranslation()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+  const [previewUrls, setPreviewUrls] = useState<Map<string, string>>(new Map())
+  const previewUrlsRef = useRef<Map<string, string>>(previewUrls)
+  previewUrlsRef.current = previewUrls
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    let cancelled = false
+    const generateUrls = async () => {
+      const targetAssets = items
+        .map(item => item.assets)
+        .filter((asset): asset is NonNullable<typeof asset> => !!asset && (asset.mime_type.startsWith('image/') || asset.mime_type.startsWith('video/')))
+
+      const existing = previewUrlsRef.current
+      const missing = targetAssets.filter(asset => !existing.has(asset.file_path))
+      if (missing.length === 0) return
+
+      const results = await Promise.all(
+        missing.map(async (asset) => {
+          const url = await getCachedSignedUrl(supabase, asset.file_path, 3600)
+          return { path: asset.file_path, url }
+        })
+      )
+      
+      if (cancelled) return
+
+      setPreviewUrls(prev => {
+        const next = new Map(prev)
+        for (const res of results) {
+          if (res.url) next.set(res.path, res.url)
+        }
+        return next
+      })
+    }
+    generateUrls()
+    return () => { cancelled = true }
+  }, [items, supabase])
 
   const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
     setDragIndex(index)
@@ -97,7 +139,6 @@ export default function PlaylistTable({
       <table className={styles.table}>
         <thead>
           <tr className={styles.tableHead}>
-            <th style={{ width: '36px' }}></th>
             <th style={{ width: '36px' }}>
               <input
                 type="checkbox"
@@ -113,7 +154,7 @@ export default function PlaylistTable({
             </th>
             <th style={{ width: '30px' }}>#</th>
             <th>{t('Name')}</th>
-            <th style={{ width: '120px' }}>{t('Content Type')}</th>
+            <th style={{ width: '120px' }}>{t('TYPE')}</th>
             <th style={{ width: '100px' }}>{t('Duration')}</th>
             <th style={{ width: '80px' }}>{t('Actions')}</th>
           </tr>
@@ -133,17 +174,32 @@ export default function PlaylistTable({
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={(e) => handleDrop(e, index)}
                 onDragEnd={handleDragEnd}
+                onClick={(e) => {
+                  const target = e.target as HTMLElement
+                  if (
+                    target.closest('button') ||
+                    target.closest('input') ||
+                    target.closest('a') ||
+                    target.closest('svg') ||
+                    target.tagName === 'IMG' ||
+                    target.tagName === 'VIDEO'
+                  ) {
+                    return
+                  }
+                  onToggleSelect(item.id)
+                }}
                 style={{
                   opacity: isBeingDragged ? 0.5 : 1,
                   borderTop: isDragOver ? '2px solid var(--primary)' : undefined,
+                  cursor: 'pointer',
                 }}
               >
-                <td>
-                  <div className={styles.dragHandle} title={t('Drag to reorder')}>
-                    <GripVertical size={16} />
-                  </div>
-                </td>
-                <td>
+                <td
+                  style={{ cursor: 'pointer' }}
+                  onClick={(e) => {
+                    onToggleSelect(item.id)
+                  }}
+                >
                   <input
                     type="checkbox"
                     checked={selectedIds.has(item.id)}
@@ -156,16 +212,72 @@ export default function PlaylistTable({
                   {index + 1}
                 </td>
                 <td>
-                  <span className={styles.itemName}>{fileName}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div 
+                      style={{ 
+                        width: '36px', 
+                        height: '36px', 
+                        borderRadius: '6px', 
+                        overflow: 'hidden', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        background: 'var(--surface-low)', 
+                        border: '1px solid var(--outline-variant)',
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const path = item.assets?.file_path
+                        const signedUrl = path ? previewUrls.get(path) || null : null
+                        onPreviewAsset(item, signedUrl)
+                      }}
+                    >
+                      {item.assets && (item.assets.mime_type.startsWith('image/') || item.assets.mime_type.startsWith('video/')) && previewUrls.get(item.assets.file_path) ? (
+                        item.assets.mime_type.startsWith('image/') ? (
+                          <img 
+                            src={previewUrls.get(item.assets.file_path)} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            alt={fileName} 
+                          />
+                        ) : (
+                          <video 
+                            src={previewUrls.get(item.assets.file_path) + '#t=0.001'} 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            preload="metadata" 
+                            muted 
+                            playsInline 
+                          />
+                        )
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: 'var(--on-surface-muted)' }}>
+                          <ContentIconBadge kind={getPlaylistItemKind(item) as any} />
+                        </div>
+                      )}
+                    </div>
+                    <span 
+                      className={styles.itemName}
+                      style={{ cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const path = item.assets?.file_path
+                        const signedUrl = path ? previewUrls.get(path) || null : null
+                        onPreviewAsset(item, signedUrl)
+                      }}
+                    >
+                      {fileName}
+                    </span>
+                  </div>
                 </td>
                 <td>
                   <ContentIconBadge kind={getPlaylistItemKind(item) as any} />
                 </td>
                 <td>
-                  <div className={styles.durationCell}>
+                  <div className={styles.durationInputWrapper}>
                     <input
                       type="number"
-                      className={styles.durationInput}
+                      className={styles.durationInputField}
                       value={item.duration_seconds}
                       onChange={(e) => {
                         const val = parseInt(e.target.value, 10)
@@ -177,7 +289,7 @@ export default function PlaylistTable({
                       max={86400}
                       aria-label={t('Duration in seconds')}
                     />
-                    <span className={styles.durationUnit}>s</span>
+                    <span className={styles.durationSuffix}>s</span>
                   </div>
                 </td>
                 <td>

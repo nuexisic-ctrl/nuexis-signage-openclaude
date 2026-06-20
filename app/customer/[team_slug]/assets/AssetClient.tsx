@@ -781,6 +781,38 @@ export default function AssetClient({
     localStorage.setItem('nuexis_folders_cache', JSON.stringify(cachedFolders))
   }, [assets])
 
+  // Click away to clear selected assets
+  useEffect(() => {
+    if (selectedAssetIds.size === 0) return
+
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target) return
+
+      // If clicking interactive elements, do not clear
+      if (
+        target.closest('button') ||
+        target.closest('input') ||
+        target.closest('select') ||
+        target.closest('a') ||
+        target.closest('[role="button"]') ||
+        target.closest('[role="dialog"]') ||
+        target.closest(`.${styles.globalSelectContainer}`) ||
+        target.closest(`.${styles.controlsBar}`) ||
+        target.closest('[class*="assetCard"]') ||
+        target.closest('[class*="card"]') ||
+        target.closest('tr')
+      ) {
+        return
+      }
+
+      setSelectedAssetIds(new Set())
+    }
+
+    document.addEventListener('click', handleGlobalClick)
+    return () => document.removeEventListener('click', handleGlobalClick)
+  }, [selectedAssetIds.size])
+
   const allLoadedAssets = useMemo(() => {
     return [...folders, ...Object.values(filesCache).flat()]
   }, [folders, filesCache])
@@ -897,25 +929,18 @@ export default function AssetClient({
   }, [filteredAssets, currentPage, pageSize])
 
   const handleAssetClick = useCallback((e: React.MouseEvent, assetId: string) => {
-    if (selectedAssetIds.size === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-      const asset = assets.find(a => a.id === assetId)
-      if (asset) {
-        handleAssetDoubleClick(asset)
-      }
-    } else {
-      setSelectedAssetIds(prev => {
-        const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
-          e,
-          assetId,
-          lastSelectedAssetId,
-          paginatedAssets,
-          prev
-        )
-        setLastSelectedAssetId(nextLastSelectedId)
-        return nextSelectedIds
-      })
-    }
-  }, [selectedAssetIds, lastSelectedAssetId, paginatedAssets, assets, handleAssetDoubleClick])
+    setSelectedAssetIds(prev => {
+      const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
+        e,
+        assetId,
+        lastSelectedAssetId,
+        paginatedAssets,
+        prev
+      )
+      setLastSelectedAssetId(nextLastSelectedId)
+      return nextSelectedIds
+    })
+  }, [lastSelectedAssetId, paginatedAssets])
 
   const folderAssetsCount = useMemo(() => {
     if (!activeFolder) return 0

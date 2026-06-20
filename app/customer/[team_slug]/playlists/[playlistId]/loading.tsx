@@ -18,8 +18,8 @@ export default function PlaylistWorkspaceLoading() {
         <div className="skeleton" style={{ width: '140px', height: '14px' }} />
       </div>
 
-      {/* Two-column body */}
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+      {/* Single-column body */}
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', width: '100%' }}>
         {/* Content table area */}
         <div style={{
           flex: 1,
@@ -27,6 +27,7 @@ export default function PlaylistWorkspaceLoading() {
           border: '1px solid var(--outline-variant)',
           borderRadius: '16px',
           overflow: 'hidden',
+          width: '100%',
         }}>
           {/* Table header */}
           <div style={{
@@ -34,10 +35,15 @@ export default function PlaylistWorkspaceLoading() {
             gap: '16px',
             padding: '14px 16px',
             borderBottom: '1px solid var(--outline-variant)',
+            alignItems: 'center',
           }}>
-            {['40px', '36px', '160px', '80px', '90px', '80px', '100px'].map((w, i) => (
-              <div key={i} className="skeleton" style={{ width: w, height: '14px' }} />
-            ))}
+            {/* Checkbox (36px), # (30px), Name (flex: 1), TYPE (120px), Duration (100px), Actions (80px) */}
+            <div className="skeleton" style={{ width: '36px', height: '14px' }} />
+            <div className="skeleton" style={{ width: '30px', height: '14px' }} />
+            <div className="skeleton" style={{ flex: 1, height: '14px' }} />
+            <div className="skeleton" style={{ width: '120px', height: '14px' }} />
+            <div className="skeleton" style={{ width: '100px', height: '14px' }} />
+            <div className="skeleton" style={{ width: '80px', height: '14px' }} />
           </div>
           {/* Table rows */}
           {[1, 2, 3, 4].map((row) => (
@@ -48,41 +54,21 @@ export default function PlaylistWorkspaceLoading() {
               borderBottom: '1px solid var(--outline-variant)',
               gap: '16px',
             }}>
-              <div className="skeleton" style={{ width: '24px', height: '14px' }} />
-              <div className="skeleton" style={{ width: '36px', height: '36px', borderRadius: '6px' }} />
-              <div className="skeleton" style={{ width: '140px', height: '14px', flex: 1 }} />
-              <div className="skeleton" style={{ width: '60px', height: '14px' }} />
-              <div className="skeleton" style={{ width: '70px', height: '14px' }} />
-              <div className="skeleton" style={{ width: '50px', height: '14px' }} />
+              <div className="skeleton" style={{ width: '36px', height: '16px', borderRadius: '4px' }} />
+              <div className="skeleton" style={{ width: '30px', height: '14px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                <div className="skeleton" style={{ width: '36px', height: '36px', borderRadius: '6px', flexShrink: 0 }} />
+                <div className="skeleton" style={{ width: '140px', height: '14px' }} />
+              </div>
+              <div className="skeleton" style={{ width: '120px', height: '14px' }} />
+              <div className="skeleton" style={{ width: '100px', height: '14px' }} />
               <div className="skeleton" style={{ width: '80px', height: '14px' }} />
-              <div className="skeleton" style={{ width: '32px', height: '32px', borderRadius: '8px' }} />
             </div>
           ))}
           {/* Add media button */}
           <div style={{ padding: '16px' }}>
             <div className="skeleton" style={{ width: '100%', height: '38px', borderRadius: '8px' }} />
           </div>
-        </div>
-
-        {/* Info panel */}
-        <div style={{
-          width: '300px',
-          flexShrink: 0,
-          background: 'var(--surface-lowest)',
-          border: '1px solid var(--outline-variant)',
-          borderRadius: '16px',
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '20px',
-        }}>
-          <div className="skeleton" style={{ width: '100px', height: '16px' }} />
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div className="skeleton" style={{ width: '80px', height: '14px' }} />
-              <div className="skeleton" style={{ width: '60px', height: '14px' }} />
-            </div>
-          ))}
         </div>
       </div>
     </div>

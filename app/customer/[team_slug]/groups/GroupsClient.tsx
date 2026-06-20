@@ -9,6 +9,8 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { createGroup, renameGroup, deleteGroup } from './actions'
 import { handleRangeSelection } from '@/lib/utils/selection'
+import { toast } from '@/app/components/Toast'
+import ConfirmDialog from '@/app/components/ConfirmDialog'
 import styles from './groups.module.css'
 import { Group, Device, Membership } from './types'
 import { ManageMembersModal } from './ManageMembersModal'
@@ -95,6 +97,7 @@ export default function GroupsClient({
   const [lastSelectedGroupId, setLastSelectedGroupId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSelectDropdownOpen, setIsSelectDropdownOpen] = useState(false)
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
   const selectDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -162,48 +165,43 @@ export default function GroupsClient({
     }
     e.preventDefault()
 
-    if (selectedGroupIds.size === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-      const group = filteredGroups.find(g => g.id === groupId)
-      if (group) {
-        handleGroupCardDoubleClick(e, group)
-      }
-    } else {
-      const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
-        e,
-        groupId,
-        lastSelectedGroupId,
-        filteredGroups,
-        selectedGroupIds
-      )
-      setSelectedGroupIds(nextSelectedIds)
-      setLastSelectedGroupId(nextLastSelectedId)
-    }
+    const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
+      e,
+      groupId,
+      lastSelectedGroupId,
+      filteredGroups,
+      selectedGroupIds
+    )
+    setSelectedGroupIds(nextSelectedIds)
+    setLastSelectedGroupId(nextLastSelectedId)
   }
 
   const handleBulkDelete = () => {
-    const count = selectedGroupIds.size
-    if (window.confirm(`Are you sure you want to delete the ${count} selected screen groups?`)) {
-      startTransition(async () => {
-        const ids = Array.from(selectedGroupIds)
-        let successCount = 0
-        let errorOccurred = false
-        for (const id of ids) {
-          const res = await deleteGroup(teamSlug, id)
-          if (res.success) {
-            successCount++
-          } else {
-            errorOccurred = true
-          }
+    if (selectedGroupIds.size === 0) return
+    setIsBulkDeleteOpen(true)
+  }
+
+  const handleConfirmBulkDelete = () => {
+    startTransition(async () => {
+      const ids = Array.from(selectedGroupIds)
+      let successCount = 0
+      let errorOccurred = false
+      for (const id of ids) {
+        const res = await deleteGroup(teamSlug, id)
+        if (res.success) {
+          successCount++
+        } else {
+          errorOccurred = true
         }
-        if (successCount > 0) {
-          setSelectedGroupIds(new Set())
-          router.refresh()
-        }
-        if (errorOccurred) {
-          alert('Some groups could not be deleted.')
-        }
-      })
-    }
+      }
+      if (successCount > 0) {
+        setSelectedGroupIds(new Set())
+        router.refresh()
+      }
+      if (errorOccurred) {
+        toast.error('Some groups could not be deleted.')
+      }
+    })
   }
 
   // ── Postgres changes realtime subscription ──────────────────────────
@@ -243,6 +241,36 @@ export default function GroupsClient({
     if (activeMenuGroupId) document.addEventListener('click', handleOutsideClick)
     return () => document.removeEventListener('click', handleOutsideClick)
   }, [activeMenuGroupId])
+
+  // Click away to clear selected groups
+  useEffect(() => {
+    if (selectedGroupIds.size === 0) return
+
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target) return
+
+      // If clicking interactive elements, do not clear
+      if (
+        target.closest('button') ||
+        target.closest('input') ||
+        target.closest('select') ||
+        target.closest('a') ||
+        target.closest('[role="button"]') ||
+        target.closest('[role="dialog"]') ||
+        target.closest(`.${styles.globalSelectContainer}`) ||
+        target.closest(`.${styles.card}`) ||
+        target.closest(`.${styles.controlsBar}`)
+      ) {
+        return
+      }
+
+      setSelectedGroupIds(new Set())
+    }
+
+    document.addEventListener('click', handleGlobalClick)
+    return () => document.removeEventListener('click', handleGlobalClick)
+  }, [selectedGroupIds.size])
 
   // Create Group Submit
   const handleCreateSubmit = (e: React.FormEvent) => {
@@ -726,6 +754,18 @@ export default function GroupsClient({
           router={router}
         />
       )}
+
+      {/* Custom Confirmation Dialog for bulk deleting groups */}
+      <ConfirmDialog
+        isOpen={isBulkDeleteOpen}
+        onClose={() => setIsBulkDeleteOpen(false)}
+        onConfirm={handleConfirmBulkDelete}
+        title="Delete Screen Groups"
+        description={`Are you sure you want to delete the ${selectedGroupIds.size} selected screen groups?`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+      />
     </>
   )
 }

@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, ListVideo, Trash2, Clock, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Plus, ListVideo, Trash2, Clock, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
 import styles from './playlists.module.css'
 import { createPlaylist, deletePlaylist } from './actions'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from '@/app/components/Toast'
+import ConfirmDialog from '@/app/components/ConfirmDialog'
 import { useTranslation } from '@/lib/i18n'
+import Pagination from '../components/Pagination'
+import { PRESET_COLORS } from '@/lib/utils/constants'
 
 interface PlaylistsClientProps {
   initialPlaylists: any[]
@@ -20,11 +23,32 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
   const { t } = useTranslation()
   const router = useRouter()
   const [playlists, setPlaylists] = useState(initialPlaylists)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(10)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newPlaylistName, setNewPlaylistName] = useState('')
+  const [newPlaylistColor, setNewPlaylistColor] = useState(PRESET_COLORS[0])
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const colorPickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showColorPicker) return
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setTimeout(() => {
+          setShowColorPicker(false)
+        }, 120)
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [showColorPicker])
 
   useEffect(() => {
     const savedLimit = localStorage.getItem('nuexis_playlists_per_page')
@@ -60,7 +84,7 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
       const supabase = createClient()
       const { data, error } = await supabase
         .from('playlists')
-        .select('id, name, created_at, updated_at, playlist_items(duration_seconds)')
+        .select('id, name, color, created_at, updated_at, playlist_items(duration_seconds)')
         .eq('team_id', teamId)
         .order('created_at', { ascending: false })
         .limit(100)
@@ -80,6 +104,8 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
 
   const handleNewPlaylistClick = () => {
     setNewPlaylistName('')
+    setNewPlaylistColor(PRESET_COLORS[0])
+    setShowColorPicker(false)
     setShowCreateModal(true)
   }
 
@@ -90,7 +116,7 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
     if (isCreating) return
     setIsCreating(true)
     try {
-      const result = await createPlaylist(teamId, nameTrimmed, teamSlug, [])
+      const result = await createPlaylist(teamId, nameTrimmed, teamSlug, [], newPlaylistColor)
       if (result?.id) {
         toast.success(t('Playlist created'))
         setShowCreateModal(false)
@@ -103,19 +129,24 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
     }
   }
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDeleteClick = (id: string, name: string, e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
-    const targetName = playlists.find(p => p.id === id)?.name || 'Playlist'
-    if (!confirm(t('Are you sure you want to delete the playlist "{name}"?', { name: targetName }))) return
-    
+    setDeleteTarget({ id, name })
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    const { id, name } = deleteTarget
     try {
       await deletePlaylist(id, teamSlug)
       setPlaylists(playlists.filter(p => p.id !== id))
-      toast.success(t('Playlist "{name}" deleted successfully', { name: targetName }))
+      toast.success(t('Playlist "{name}" deleted successfully', { name }))
     } catch (err: any) {
       console.error(err)
       toast.error(err.message || t('Failed to delete playlist'))
+    } finally {
+      setDeleteTarget(null)
     }
   }
 
@@ -171,20 +202,20 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
   return (
     <>
       <div className={styles.topbar}>
-        <div>
+        <div className={styles.titleContainer}>
           <h1 className={styles.pageTitle}>{t('Playlists')}</h1>
-          <p className={styles.pageSubtitle}>{t('Create and schedule dynamic playback loops')}</p>
-        </div>
-        <div className={styles.topbarActions}>
           <button
-            className={styles.refreshBtn}
+            className={styles.headerRefreshBtn}
             onClick={handleRefresh}
             disabled={isRefreshing}
             aria-label={t('Refresh Status')}
             title={t('Refresh Status')}
+            type="button"
           >
-            <RefreshCw size={20} className={isRefreshing ? styles.spin : ''} />
+            <RefreshCw size={16} className={isRefreshing ? styles.spin : ''} />
           </button>
+        </div>
+        <div className={styles.topbarActions}>
           <button
             className={styles.addBtn}
             onClick={handleNewPlaylistClick}
@@ -268,8 +299,10 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{ 
                         width: '42px', height: '42px', borderRadius: '12px', 
-                        background: 'var(--surface-low)', border: '1px solid var(--outline-variant)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-surface-muted)',
+                        background: 'var(--surface-low)', 
+                        border: `1.5px solid ${playlist.color || 'var(--outline-variant)'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                        color: playlist.color || 'var(--on-surface-muted)',
                         flexShrink: 0
                       }}>
                         <ListVideo size={20} />
@@ -282,7 +315,7 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
                       </div>
                     </div>
                     <button 
-                      onClick={(e) => handleDelete(playlist.id, e)}
+                      onClick={(e) => handleDeleteClick(playlist.id, playlist.name, e)}
                       style={{ background: 'transparent', border: 0, color: 'var(--on-surface-muted)', cursor: 'pointer', padding: '6px', marginLeft: 'auto' }}
                       title={t('Delete Playlist')}
                     >
@@ -325,18 +358,24 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
                   const totalDuration = playlistItems.reduce((acc: number, item: any) => acc + (item.duration_seconds || 0), 0)
 
                   return (
-                    <tr key={playlist.id} className={styles.tableRow}>
+                    <tr 
+                      key={playlist.id} 
+                      className={styles.tableRow}
+                      onClick={() => router.push(`/customer/${teamSlug}/playlists/${playlist.id}`)}
+                    >
                       <td>
-                        <Link
-                          href={`/customer/${teamSlug}/playlists/${playlist.id}`}
-                          className={styles.playlistNameCell}
-                          style={{ textDecoration: 'none', color: 'inherit' }}
-                        >
-                          <div className={styles.playlistIconWrapper}>
+                        <div className={styles.playlistNameCell}>
+                          <div 
+                            className={styles.playlistIconWrapper}
+                            style={{ 
+                              border: `1.5px solid ${playlist.color || 'var(--outline-variant)'}`, 
+                              color: playlist.color || 'var(--on-surface-muted)' 
+                            }}
+                          >
                             <ListVideo size={18} />
                           </div>
                           <span className={styles.playlistNameText}>{playlist.name}</span>
-                        </Link>
+                        </div>
                       </td>
                       <td>{totalItems === 1 ? t('{count} item', { count: totalItems }) : t('{count} items', { count: totalItems })}</td>
                       <td>{formatPlaytime(totalDuration)}</td>
@@ -345,7 +384,7 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
                       <td onClick={(e) => e.stopPropagation()}>
                         <div className={styles.actionsGroup}>
                           <button 
-                            onClick={(e) => handleDelete(playlist.id, e)}
+                            onClick={(e) => handleDeleteClick(playlist.id, playlist.name, e)}
                             className={styles.deleteRowBtn}
                             title={t('Delete Playlist')}
                           >
@@ -362,59 +401,26 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
         )}
 
         {playlists.length > 0 && filteredPlaylists.length > 0 && (
-          <div className={styles.tableFooter}>
-            <div className={styles.paginationInfo}>
-              {t('Showing {start} to {end} of {total} playlists', { start: startItem, end: endItem, total: filteredPlaylists.length })}
-            </div>
-            <div className={styles.footerControls}>
-              <div className={styles.perPageSelector}>
-                <span>{t('Per page:')}</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    const newLimit = parseInt(val, 10)
-                    setPageSize(newLimit)
-                    setCurrentPage(1)
-                    localStorage.setItem('nuexis_playlists_per_page', String(newLimit))
-                  }}
-                >
-                  <option value="5">5</option>
-                  <option value="10">10</option>
-                  <option value="25">25</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                </select>
-              </div>
-              <div className={styles.pagination}>
-                <span className={styles.pageIndicator}>
-                  {t('Page {current} of {total}', { current: currentPage, total: totalPages })}
-                </span>
-                <button 
-                  className={styles.pageBtn} 
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  style={{ opacity: currentPage > 1 ? 1 : 0.5, cursor: currentPage > 1 ? 'pointer' : 'not-allowed' }}
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button 
-                  className={styles.pageBtn} 
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  style={{ opacity: currentPage < totalPages ? 1 : 0.5, cursor: currentPage < totalPages ? 'pointer' : 'not-allowed' }}
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filteredPlaylists.length}
+            onPageChange={(page, size) => {
+              setCurrentPage(page)
+              if (size !== pageSize) {
+                setPageSize(size)
+                localStorage.setItem('nuexis_playlists_per_page', String(size))
+              }
+            }}
+            itemLabel="playlists"
+          />
         )}
       </div>
 
       {showCreateModal && (
         <div className={styles.modalOverlay} onClick={() => setShowCreateModal(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <div className={`${styles.modalContent} ${styles.createModalContent}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>{t('New Playlist')}</h2>
               <button className={styles.closeBtn} onClick={() => setShowCreateModal(false)} aria-label={t('Close modal')}>
@@ -425,17 +431,79 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
               <div className={styles.modalBody}>
                 <div className={styles.formGroup}>
                   <label className={styles.label} htmlFor="new-playlist-name">{t('Playlist Name')}</label>
-                  <input
-                    id="new-playlist-name"
-                    type="text"
-                    className={styles.input}
-                    placeholder={t('e.g. Lobby Morning Loop')}
-                    value={newPlaylistName}
-                    onChange={(e) => setNewPlaylistName(e.target.value)}
-                    maxLength={200}
-                    required
-                    autoFocus
-                  />
+                  <div className={styles.inputWithColorContainer}>
+                    <input
+                      id="new-playlist-name"
+                      type="text"
+                      className={styles.inputWithColor}
+                      placeholder={t('e.g. Lobby Morning Loop')}
+                      value={newPlaylistName}
+                      onChange={(e) => setNewPlaylistName(e.target.value)}
+                      maxLength={200}
+                      required
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      className={styles.colorIndicatorDot}
+                      style={{ backgroundColor: newPlaylistColor }}
+                      onClick={() => setShowColorPicker(!showColorPicker)}
+                      title={t('Select Playlist Color')}
+                      aria-label={t('Select Playlist Color')}
+                    />
+                    {showColorPicker && (
+                      <div className={styles.colorPickerPopover} ref={colorPickerRef}>
+                        <div className={styles.popoverHeader}>
+                          <span className={styles.popoverTitle}>{t('Select Color')}</span>
+                          <button 
+                            type="button" 
+                            className={styles.popoverCloseBtn} 
+                            onClick={() => setShowColorPicker(false)}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                        
+                        <div className={styles.predefinedColorsGrid}>
+                          {PRESET_COLORS.map((c) => {
+                            const isSelected = newPlaylistColor === c
+                            return (
+                              <button
+                                type="button"
+                                key={c}
+                                className={`${styles.colorOptionBubble} ${isSelected ? styles.colorOptionBubbleSelected : ''}`}
+                                style={{ backgroundColor: c }}
+                                onClick={() => {
+                                  setNewPlaylistColor(c)
+                                  setShowColorPicker(false)
+                                }}
+                              >
+                                {isSelected && <Check size={10} style={{ color: c === '#ffffff' ? '#000' : '#fff' }} />}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        
+                        <div className={styles.customColorSection}>
+                          <label className={styles.customColorLabel}>{t('Custom Color')}</label>
+                          <div className={styles.customColorRow}>
+                            <input
+                              type="color"
+                              className={styles.customColorInput}
+                              value={newPlaylistColor}
+                              onChange={(e) => setNewPlaylistColor(e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              className={styles.customColorHexInput}
+                              value={newPlaylistColor}
+                              onChange={(e) => setNewPlaylistColor(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className={styles.modalFooter}>
@@ -450,6 +518,18 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
           </div>
         </div>
       )}
+
+      {/* Custom Confirmation Dialog for deleting campaign */}
+      <ConfirmDialog
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title={t('Delete Campaign')}
+        description={t('Are you sure you want to delete the campaign "{name}"?', { name: deleteTarget?.name || '' })}
+        confirmLabel={t('Delete')}
+        cancelLabel={t('Cancel')}
+        variant="danger"
+      />
     </>
   )
 }

@@ -25,6 +25,7 @@ async function getAuthenticatedTeamId(supabase: Awaited<ReturnType<typeof create
 
 // ── Playlist item type for server-side validation ───────────────────────
 interface PlaylistItemInput {
+  id?: string | null
   type: string
   asset_id?: string | null
   duration_seconds: number
@@ -36,7 +37,8 @@ export async function createPlaylist(
   _teamId: string, // kept for API compat, but IGNORED — we use the JWT value
   name: string,
   teamSlug: string,
-  items: PlaylistItemInput[]
+  items: PlaylistItemInput[],
+  color?: string
 ) {
   const supabase = await createClient()
   const { user, teamId } = await getAuthenticatedTeamId(supabase)
@@ -90,6 +92,7 @@ export async function createPlaylist(
     p_team_id: teamId,
     p_name: trimmedName,
     p_items: itemsJson,
+    p_color: color || undefined,
   })
 
   if (rpcError) {
@@ -157,7 +160,9 @@ export async function updatePlaylist(
   playlistId: string,
   name: string,
   teamSlug: string,
-  items: PlaylistItemInput[]
+  items: PlaylistItemInput[],
+  color?: string,
+  expectedVersion?: number
 ) {
   const supabase = await createClient()
   const { user, teamId } = await getAuthenticatedTeamId(supabase)
@@ -197,6 +202,7 @@ export async function updatePlaylist(
   // Use the SECURITY DEFINER RPC — runs delete/insert/update in a
   // single Postgres transaction. If any step fails, ALL changes roll back.
   const itemsJson = items.map((item, index) => ({
+    id: (item.id && !item.id.startsWith('new-')) ? item.id : null,
     type: item.type,
     asset_id: item.asset_id || null,
     duration_seconds: item.duration_seconds,
@@ -210,6 +216,8 @@ export async function updatePlaylist(
     p_name: trimmedName,
     p_team_id: teamId,
     p_items: itemsJson, // pass object directly for jsonb
+    p_color: color || undefined,
+    p_expected_version: expectedVersion !== undefined ? expectedVersion : undefined,
   })
 
   if (rpcError) {
@@ -217,8 +225,11 @@ export async function updatePlaylist(
     throw new Error('Failed to update playlist. Please try again.')
   }
 
-  const result = data as unknown as { success: boolean; error?: string }
+  const result = data as unknown as { success: boolean; error?: string; message?: string }
   if (!result.success) {
+    if (result.error === 'concurrency_conflict') {
+      throw new Error('CONCURRENCY_ERROR')
+    }
     throw new Error(result.error || 'Failed to update playlist.')
   }
 

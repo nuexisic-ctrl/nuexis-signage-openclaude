@@ -959,25 +959,87 @@
   cursor: grab;
 }
 
+/* Duration Input Wrapper */
+.durationInputWrapper {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  background: var(--surface-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  padding: 0 8px;
+  height: 32px;
+  width: 72px;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
+}
+
+.durationInputWrapper:hover {
+  background: var(--surface-container);
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--outline-variant));
+}
+
+.durationInputWrapper:focus-within {
+  background: var(--surface-lowest);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(9, 76, 178, 0.15);
+}
+
+.durationInputField {
+  border: none;
+  background: transparent;
+  width: 100%;
+  height: 100%;
+  color: var(--on-surface);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: right;
+  padding-right: 2px;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+/* Hide spin buttons */
+.durationInputField::-webkit-outer-spin-button,
+.durationInputField::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.durationSuffix {
+  font-size: 0.78rem;
+  color: var(--on-surface-subtle);
+  font-weight: 500;
+  user-select: none;
+  margin-left: 2px;
+}
+
 /* ═══ Batch Actions Bar ═════════════════════════════════════════════════ */
 
 .batchBar {
   position: fixed;
-  bottom: 24px;
+  bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100;
+  z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 24px;
-  background: color-mix(in srgb, var(--surface-lowest) 85%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--outline-variant);
-  border-radius: 16px;
-  box-shadow: var(--shadow-modal);
-  animation: batchBarSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  animation: batchBarSlideUp 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  color: #ffffff;
+}
+
+[data-theme="light"] .batchBar {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px rgba(9, 76, 178, 0.12);
+  color: #1a1c20;
 }
 
 @keyframes batchBarSlideUp {
@@ -992,17 +1054,35 @@
 }
 
 .batchCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-label);
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--on-surface);
-  white-space: nowrap;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding-left: 4px;
+}
+
+.batchCountBadge {
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .batchDivider {
   width: 1px;
-  height: 20px;
-  background: var(--outline-variant);
+  height: 18px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .batchDivider {
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .batchDurationForm {
@@ -1013,88 +1093,138 @@
 
 .batchFormLabel {
   font-family: var(--font-label);
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--on-surface-subtle);
+  font-size: 0.75rem;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  white-space: nowrap;
+  opacity: 0.8;
+}
+
+.batchDurationInputWrapper {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+  padding: 0 10px;
+  height: 28px;
+  width: 64px;
+}
+
+[data-theme="light"] .batchDurationInputWrapper {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .batchDurationInput {
-  width: 56px;
-  height: 32px;
-  background: var(--surface-low);
-  border: 1px solid var(--outline-variant);
-  border-radius: 8px;
-  padding: 0 6px;
-  color: var(--on-surface);
-  font-size: 0.85rem;
+  border: none;
+  background: transparent;
+  width: 100%;
+  height: 100%;
+  color: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
   text-align: center;
   outline: none;
-  transition: border-color var(--transition-base);
+  -moz-appearance: textfield;
 }
 
-.batchDurationInput:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(9, 76, 178, 0.15);
+.batchDurationInput::-webkit-outer-spin-button,
+.batchDurationInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.batchDurationSuffix {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  font-weight: 500;
+  user-select: none;
 }
 
 .batchApplyBtn {
-  height: 32px;
+  height: 28px;
   padding: 0 12px;
   background: var(--primary);
   border: none;
-  border-radius: 8px;
+  border-radius: 9999px;
   color: var(--on-primary);
   font-family: var(--font-label);
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: opacity var(--transition-base);
+  transition: transform var(--transition-base), opacity var(--transition-base);
 }
 
 .batchApplyBtn:hover {
   opacity: 0.9;
+  transform: translateY(-0.5px);
+}
+
+.batchApplyBtn:active {
+  transform: translateY(0);
 }
 
 .batchDeleteBtn {
-  height: 32px;
+  height: 28px;
   padding: 0 12px;
   display: flex;
   align-items: center;
   gap: 6px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--error);
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 9999px;
+  color: #f87171;
   font-family: var(--font-label);
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-base);
+}
+
+[data-theme="light"] .batchDeleteBtn {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  color: #dc2626;
 }
 
 .batchDeleteBtn:hover {
-  background: var(--error-container);
-  border-color: var(--error-container);
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.3);
+  transform: translateY(-0.5px);
+}
+
+.batchDeleteBtn:active {
+  transform: translateY(0);
 }
 
 .batchCancelBtn {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-low);
-  border: 1px solid var(--outline-variant);
-  border-radius: 8px;
-  color: var(--on-surface-subtle);
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   transition: all var(--transition-base);
 }
 
-.batchCancelBtn:hover {
-  background: var(--surface-container);
-  color: var(--on-surface);
+[data-theme="light"] .batchCancelBtn {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.6);
 }
+
+.batchCancelBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+[data-theme="light"] .batchCancelBtn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #000000;
+}
+
