@@ -324,5 +324,9 @@ export const en: Record<string, string> = {
   'Search assets...': 'Search assets...',
   '{count} asset selected': '{count} asset selected',
   '{count} assets selected': '{count} assets selected',
-  'Load More': 'Load More'
+  'Load More': 'Load More',
+  'New Playlist': 'New Playlist',
+  'Create Playlist': 'Create Playlist',
+  'Playlist Name': 'Playlist Name',
+  'e.g. Lobby Morning Loop': 'e.g. Lobby Morning Loop'
 };

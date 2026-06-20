@@ -314,5 +314,9 @@ export const sv: Record<string, string> = {
   "Search assets...": "Sök media...",
   "{count} asset selected": "{count} media vald",
   "{count} assets selected": "{count} media valda",
-  "Load More": "Ladda fler"
+  "Load More": "Ladda fler",
+  "New Playlist": "Ny spellista",
+  "Create Playlist": "Skapa spellista",
+  "Playlist Name": "Spellistans namn",
+  "e.g. Lobby Morning Loop": "t.ex. Lobby morgonloop"
 };

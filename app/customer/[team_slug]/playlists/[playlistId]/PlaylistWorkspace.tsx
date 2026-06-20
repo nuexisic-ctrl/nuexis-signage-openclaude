@@ -8,20 +8,26 @@ import { toast } from '@/app/components/Toast'
 import { updatePlaylist, deletePlaylist } from '../actions'
 import { updatePlaylistName, duplicatePlaylist } from './actions'
 import type { PlaylistEditorData, PlaylistItemWithAsset, AssignedDevice } from './actions'
-import type { SelectedAsset } from './components/AssetPickerModal'
 import WorkspaceHeader from './components/WorkspaceHeader'
 import PlaylistTable from './components/PlaylistTable'
-import PlaylistInfoPanel from './components/PlaylistInfoPanel'
 import PlaylistPreview from './components/PlaylistPreview'
 import PushToScreenModal from './components/PushToScreenModal'
-import AssetPickerModal from './components/AssetPickerModal'
+import { AssetBrowserModal } from '../../components/AssetBrowser'
+import type { Asset } from '../../assets/types'
+import { Trash2, X } from 'lucide-react'
 import styles from './workspace.module.css'
+
+interface PlaylistAsset extends Asset {
+  width?: number | null
+  height?: number | null
+}
 
 interface PlaylistWorkspaceProps {
   initialData: PlaylistEditorData
   teamSlug: string
   teamId: string
   userRole: string
+  assets: PlaylistAsset[]
 }
 
 // ── Undo/Redo Engine ────────────────────────────────────────────────────
@@ -94,7 +100,7 @@ function useUndoRedo(initial: PlaylistItemWithAsset[]) {
 
 // ── Main Workspace Component ────────────────────────────────────────────
 
-export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userRole }: PlaylistWorkspaceProps) {
+export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userRole, assets }: PlaylistWorkspaceProps) {
   const { t } = useTranslation()
   const router = useRouter()
 
@@ -109,6 +115,7 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
   const [showPushModal, setShowPushModal] = useState(false)
   const [showAssetPicker, setShowAssetPicker] = useState(false)
   const [assignedDevices, setAssignedDevices] = useState<AssignedDevice[]>(initialData.assignedDevices)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // Track dirty state
   useEffect(() => {
@@ -233,7 +240,17 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
   }, [setItems])
 
   const handleRemoveItem = useCallback((index: number) => {
-    setItems(prev => prev.filter((_, i) => i !== index).map((item, i) => ({ ...item, sort_order: i })))
+    setItems(prev => {
+      const itemToRemove = prev[index]
+      if (itemToRemove) {
+        setSelectedIds(current => {
+          const next = new Set(current)
+          next.delete(itemToRemove.id)
+          return next
+        })
+      }
+      return prev.filter((_, i) => i !== index).map((item, i) => ({ ...item, sort_order: i }))
+    })
   }, [setItems])
 
   const handleUpdateDuration = useCallback((index: number, seconds: number) => {
@@ -242,10 +259,73 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
     ))
   }, [setItems])
 
-  const handleAssetsSelected = useCallback((assets: SelectedAsset[]) => {
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.size === 0) return
+    if (!confirm(t('Are you sure you want to remove the selected {count} items?', { count: selectedIds.size }))) return
+    
+    setItems(prev => prev.filter(item => !selectedIds.has(item.id)).map((item, i) => ({ ...item, sort_order: i })))
+    setSelectedIds(new Set())
+    toast.success(t('Selected items removed'))
+  }, [selectedIds, setItems, t])
+
+  const handleBulkUpdateDuration = useCallback((seconds: number) => {
+    if (selectedIds.size === 0) return
+    setItems(prev => prev.map(item =>
+      selectedIds.has(item.id) ? { ...item, duration_seconds: seconds } : item
+    ))
+    toast.success(t('Duration updated for selected items'))
+  }, [selectedIds, setItems, t])
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  const handleToggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      if (prev.size === items.length) {
+        return new Set()
+      } else {
+        return new Set(items.map(item => item.id))
+      }
+    })
+  }, [items])
+
+  const handleAssetsSelected = useCallback(async (ids: string[]) => {
+    const foundAssets = ids.map(id => assets.find(a => a.id === id)).filter(Boolean) as PlaylistAsset[]
+    const foundIdsSet = new Set(foundAssets.map(a => a.id))
+    const missingIds = ids.filter(id => !foundIdsSet.has(id))
+
+    let fetchedAssets: PlaylistAsset[] = []
+    if (missingIds.length > 0) {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('assets')
+          .select('id, file_name, file_path, mime_type, size_bytes, width, height')
+          .in('id', missingIds)
+        if (!error && data) {
+          fetchedAssets = data as unknown as PlaylistAsset[]
+        }
+      } catch (err) {
+        console.error('Failed to fetch missing assets:', err)
+      }
+    }
+
+    const allSelectedAssets = ids.map(id => {
+      return foundAssets.find(a => a.id === id) || fetchedAssets.find(a => a.id === id)
+    }).filter(Boolean) as PlaylistAsset[]
+
     setItems(prev => {
       const newItems = [...prev]
-      for (const asset of assets) {
+      for (const asset of allSelectedAssets) {
         const type = asset.mime_type.startsWith('video/') ? 'video' : 'image'
         newItems.push({
           id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -263,14 +343,14 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
             file_path: asset.file_path,
             mime_type: asset.mime_type,
             size_bytes: asset.size_bytes,
-            width: asset.width,
-            height: asset.height,
+            width: asset.width || null,
+            height: asset.height || null,
           },
         })
       }
       return newItems
     })
-  }, [initialData.id, setItems])
+  }, [assets, initialData.id, setItems])
 
   const handlePushed = useCallback(() => {
     // Re-fetch assigned devices by refreshing page data
@@ -302,6 +382,10 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
         onDelete={handleDelete}
         onRename={handleRename}
         isPreviewOpen={showPreview}
+        items={items}
+        createdAt={initialData.created_at}
+        updatedAt={initialData.updated_at}
+        assignedDevices={assignedDevices}
       />
 
       <div className={styles.body}>
@@ -321,16 +405,11 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
             onRemoveItem={handleRemoveItem}
             onUpdateDuration={handleUpdateDuration}
             onOpenAssetPicker={() => setShowAssetPicker(true)}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onToggleSelectAll={handleToggleSelectAll}
           />
         </div>
-
-        {/* Info Panel */}
-        <PlaylistInfoPanel
-          items={items}
-          createdAt={initialData.created_at}
-          updatedAt={initialData.updated_at}
-          assignedDevices={assignedDevices}
-        />
       </div>
 
       {/* Push to Screen Modal */}
@@ -345,13 +424,86 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
         />
       )}
 
-      {/* Asset Picker Modal */}
+      {/* Asset Browser Modal */}
       {showAssetPicker && (
-        <AssetPickerModal
+        <AssetBrowserModal
+          assets={assets}
+          teamSlug={teamSlug}
           teamId={teamId}
-          onSelect={handleAssetsSelected}
+          isMultiSelect={true}
+          onSelectMultiple={handleAssetsSelected}
           onClose={() => setShowAssetPicker(false)}
         />
+      )}
+
+      {/* Floating Glassmorphic Batch Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className={styles.batchBar}>
+          <div className={styles.batchCount}>
+            <strong>{selectedIds.size}</strong> {selectedIds.size === 1 ? t('item selected') : t('items selected')}
+          </div>
+          
+          <div className={styles.batchDivider} />
+          
+          <div className={styles.batchDurationForm}>
+            <span className={styles.batchFormLabel}>{t('Set Duration:')}</span>
+            <input
+              type="number"
+              min={1}
+              max={86400}
+              placeholder="10"
+              className={styles.batchDurationInput}
+              id="batch-duration-field"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const val = parseInt((e.target as HTMLInputElement).value, 10)
+                  if (!isNaN(val) && val >= 1 && val <= 86400) {
+                    handleBulkUpdateDuration(val)
+                    ;(e.target as HTMLInputElement).value = ''
+                  }
+                }
+              }}
+            />
+            <button
+              type="button"
+              className={styles.batchApplyBtn}
+              onClick={() => {
+                const el = document.getElementById('batch-duration-field') as HTMLInputElement
+                if (el) {
+                  const val = parseInt(el.value, 10)
+                  if (!isNaN(val) && val >= 1 && val <= 86400) {
+                    handleBulkUpdateDuration(val)
+                    el.value = ''
+                  } else {
+                    toast.error(t('Please enter a duration between 1 and 86400 seconds'))
+                  }
+                }
+              }}
+            >
+              {t('Apply')}
+            </button>
+          </div>
+          
+          <div className={styles.batchDivider} />
+          
+          <button
+            type="button"
+            className={styles.batchDeleteBtn}
+            onClick={handleBulkDelete}
+          >
+            <Trash2 size={14} />
+            <span>{t('Delete')}</span>
+          </button>
+          
+          <button
+            type="button"
+            className={styles.batchCancelBtn}
+            onClick={() => setSelectedIds(new Set())}
+            title={t('Clear selection')}
+          >
+            <X size={14} />
+          </button>
+        </div>
       )}
     </>
   )

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, ListVideo, Trash2, Clock, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, ListVideo, Trash2, Clock, RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import styles from './playlists.module.css'
 import { createPlaylist, deletePlaylist } from './actions'
 import { createClient } from '@/lib/supabase/client'
@@ -23,6 +23,8 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
   const [isCreating, setIsCreating] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(10)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newPlaylistName, setNewPlaylistName] = useState('')
 
   useEffect(() => {
     const savedLimit = localStorage.getItem('nuexis_playlists_per_page')
@@ -76,13 +78,22 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
     }
   }
 
-  const handleNewPlaylist = async () => {
+  const handleNewPlaylistClick = () => {
+    setNewPlaylistName('')
+    setShowCreateModal(true)
+  }
+
+  const handleConfirmCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const nameTrimmed = newPlaylistName.trim()
+    if (!nameTrimmed) return
     if (isCreating) return
     setIsCreating(true)
     try {
-      const result = await createPlaylist(teamId, 'Untitled Playlist', teamSlug, [])
+      const result = await createPlaylist(teamId, nameTrimmed, teamSlug, [])
       if (result?.id) {
         toast.success(t('Playlist created'))
+        setShowCreateModal(false)
         router.push(`/customer/${teamSlug}/playlists/${result.id}`)
       }
     } catch (err: any) {
@@ -176,7 +187,7 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
           </button>
           <button
             className={styles.addBtn}
-            onClick={handleNewPlaylist}
+            onClick={handleNewPlaylistClick}
             disabled={isCreating}
           >
             <Plus size={18} className={styles.addBtnIcon} />
@@ -400,6 +411,45 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
           </div>
         )}
       </div>
+
+      {showCreateModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowCreateModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>{t('New Playlist')}</h2>
+              <button className={styles.closeBtn} onClick={() => setShowCreateModal(false)} aria-label={t('Close modal')}>
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleConfirmCreate}>
+              <div className={styles.modalBody}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label} htmlFor="new-playlist-name">{t('Playlist Name')}</label>
+                  <input
+                    id="new-playlist-name"
+                    type="text"
+                    className={styles.input}
+                    placeholder={t('e.g. Lobby Morning Loop')}
+                    value={newPlaylistName}
+                    onChange={(e) => setNewPlaylistName(e.target.value)}
+                    maxLength={200}
+                    required
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.cancelBtn} onClick={() => setShowCreateModal(false)}>
+                  {t('Cancel')}
+                </button>
+                <button type="submit" className={styles.saveBtn} disabled={isCreating || !newPlaylistName.trim()}>
+                  {isCreating ? t('Creating...') : t('Create Playlist')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   )
 }

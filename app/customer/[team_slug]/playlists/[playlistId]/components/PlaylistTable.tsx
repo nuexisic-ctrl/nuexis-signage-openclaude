@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useTranslation } from '@/lib/i18n'
-import { ListVideo, Image, Film, Puzzle, GripVertical, Trash2, Plus } from 'lucide-react'
+import { ListVideo, GripVertical, Trash2, Plus } from 'lucide-react'
 import styles from '../workspace.module.css'
 import type { PlaylistItemWithAsset } from '../actions'
+import { ContentIconBadge, getAssetKind } from '../../../screens/DeviceIcon'
 
 interface PlaylistTableProps {
   items: PlaylistItemWithAsset[]
@@ -12,28 +13,35 @@ interface PlaylistTableProps {
   onRemoveItem: (index: number) => void
   onUpdateDuration: (index: number, seconds: number) => void
   onOpenAssetPicker: () => void
+  selectedIds: Set<string>
+  onToggleSelect: (id: string) => void
+  onToggleSelectAll: () => void
 }
 
-function formatSize(bytes: number): string {
-  if (!bytes) return '—'
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-}
-
-function getTypeInfo(item: PlaylistItemWithAsset) {
-  const mime = item.assets?.mime_type || ''
-  if (item.type === 'widget' || mime.startsWith('application/x-widget')) {
-    return { label: 'Widget', style: styles.typeBadgeWidget, Icon: Puzzle }
+function getPlaylistItemKind(item: PlaylistItemWithAsset): string {
+  if (item.assets?.mime_type) {
+    return getAssetKind(item.assets.mime_type)
   }
-  if (item.type === 'video' || mime.startsWith('video/')) {
-    return { label: 'Video', style: styles.typeBadgeVideo, Icon: Film }
+  if (item.type === 'video') return 'video'
+  if (item.type === 'image') return 'image'
+  if (item.type === 'widget') {
+    if (item.widget_type === 'flow-clock') return 'clock'
+    if (item.widget_type === 'flow-countdown') return 'countdown'
+    return 'html-widget'
   }
-  return { label: 'Image', style: styles.typeBadgeImage, Icon: Image }
+  return 'document'
 }
 
-export default function PlaylistTable({ items, onReorder, onRemoveItem, onUpdateDuration, onOpenAssetPicker }: PlaylistTableProps) {
+export default function PlaylistTable({
+  items,
+  onReorder,
+  onRemoveItem,
+  onUpdateDuration,
+  onOpenAssetPicker,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
+}: PlaylistTableProps) {
   const { t } = useTranslation()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -90,19 +98,28 @@ export default function PlaylistTable({ items, onReorder, onRemoveItem, onUpdate
         <thead>
           <tr className={styles.tableHead}>
             <th style={{ width: '36px' }}></th>
-            <th style={{ width: '24px' }}>#</th>
-            <th style={{ width: '44px' }}></th>
+            <th style={{ width: '36px' }}>
+              <input
+                type="checkbox"
+                checked={items.length > 0 && selectedIds.size === items.length}
+                ref={el => {
+                  if (el) {
+                    el.indeterminate = selectedIds.size > 0 && selectedIds.size < items.length
+                  }
+                }}
+                onChange={onToggleSelectAll}
+                aria-label={t('Select all')}
+              />
+            </th>
+            <th style={{ width: '30px' }}>#</th>
             <th>{t('Name')}</th>
-            <th>{t('Type')}</th>
-            <th>{t('Duration')}</th>
-            <th>{t('Size')}</th>
-            <th>{t('Resolution')}</th>
-            <th style={{ width: '40px' }}></th>
+            <th style={{ width: '120px' }}>{t('Content Type')}</th>
+            <th style={{ width: '100px' }}>{t('Duration')}</th>
+            <th style={{ width: '80px' }}>{t('Actions')}</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item, index) => {
-            const typeInfo = getTypeInfo(item)
             const isBeingDragged = dragIndex === index
             const isDragOver = dragOverIndex === index && dragIndex !== index
             const fileName = item.assets?.file_name || item.widget_type || t('Unknown')
@@ -110,7 +127,7 @@ export default function PlaylistTable({ items, onReorder, onRemoveItem, onUpdate
             return (
               <tr
                 key={item.id || `item-${index}`}
-                className={`${styles.tableRow} ${isBeingDragged ? styles.tableRowDragging : ''}`}
+                className={`${styles.tableRow} ${isBeingDragged ? styles.tableRowDragging : ''} ${selectedIds.has(item.id) ? styles.tableRowSelected : ''}`}
                 draggable
                 onDragStart={(e) => handleDragStart(e, index)}
                 onDragOver={(e) => handleDragOver(e, index)}
@@ -126,23 +143,23 @@ export default function PlaylistTable({ items, onReorder, onRemoveItem, onUpdate
                     <GripVertical size={16} />
                   </div>
                 </td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(item.id)}
+                    onChange={() => onToggleSelect(item.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={t('Select item')}
+                  />
+                </td>
                 <td style={{ color: 'var(--on-surface-subtle)', fontWeight: 700, fontSize: '0.82rem' }}>
                   {index + 1}
-                </td>
-                <td>
-                  <div className={styles.thumbnail}>
-                    <div className={styles.thumbnailPlaceholder}>
-                      <typeInfo.Icon size={16} />
-                    </div>
-                  </div>
                 </td>
                 <td>
                   <span className={styles.itemName}>{fileName}</span>
                 </td>
                 <td>
-                  <span className={`${styles.typeBadge} ${typeInfo.style}`}>
-                    {typeInfo.label}
-                  </span>
+                  <ContentIconBadge kind={getPlaylistItemKind(item) as any} />
                 </td>
                 <td>
                   <div className={styles.durationCell}>
@@ -162,18 +179,6 @@ export default function PlaylistTable({ items, onReorder, onRemoveItem, onUpdate
                     />
                     <span className={styles.durationUnit}>s</span>
                   </div>
-                </td>
-                <td>
-                  <span className={styles.sizeCell}>
-                    {item.assets?.size_bytes ? formatSize(item.assets.size_bytes) : '—'}
-                  </span>
-                </td>
-                <td>
-                  <span className={styles.resolutionCell}>
-                    {item.assets?.width && item.assets?.height
-                      ? `${item.assets.width}×${item.assets.height}`
-                      : '—'}
-                  </span>
                 </td>
                 <td>
                   <button

@@ -314,5 +314,9 @@ export const nl: Record<string, string> = {
   "Search assets...": "Media zoeken...",
   "{count} asset selected": "{count} media geselecteerd",
   "{count} assets selected": "{count} media geselecteerd",
-  "Load More": "Meer laden"
+  "Load More": "Meer laden",
+  "New Playlist": "Nieuwe afspeellijst",
+  "Create Playlist": "Afspeellijst maken",
+  "Playlist Name": "Afspeellijstnaam",
+  "e.g. Lobby Morning Loop": "bijv. Lobby ochtend loop"
 };

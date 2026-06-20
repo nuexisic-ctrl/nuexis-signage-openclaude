@@ -97,12 +97,22 @@ export default async function PlaylistDetailPage({ params }: Props) {
     }
   }
 
-  // Fetch assigned devices
-  const { data: assignedDevices } = await supabase
-    .from('devices')
-    .select('id, name, status')
-    .eq('team_id', teamId)
-    .eq('playlist_id', playlistId)
+  // Fetch assigned devices & assets concurrently
+  const [assignedDevicesRes, assetsRes] = await Promise.all([
+    supabase
+      .from('devices')
+      .select('id, name, status')
+      .eq('team_id', teamId)
+      .eq('playlist_id', playlistId),
+    supabase
+      .from('assets')
+      .select('id, file_name, file_path, mime_type, size_bytes, created_at, folder_id, color, width, height')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false })
+  ])
+
+  const assignedDevices = assignedDevicesRes.data ?? []
+  const assets = assetsRes.data ?? []
 
   return (
     <PlaylistWorkspace
@@ -122,6 +132,7 @@ export default async function PlaylistDetailPage({ params }: Props) {
       teamSlug={team_slug}
       teamId={teamId}
       userRole={profile.role || 'Owner'}
+      assets={(assets || []) as any[]}
     />
   )
 }

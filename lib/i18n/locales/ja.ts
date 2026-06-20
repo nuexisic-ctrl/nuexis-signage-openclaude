@@ -314,5 +314,9 @@ export const ja: Record<string, string> = {
   "Search assets...": "メディアを検索...",
   "{count} asset selected": "{count}メディア選択済み",
   "{count} assets selected": "{count}メディア選択済み",
-  "Load More": "さらに読み込む"
+  "Load More": "さらに読み込む",
+  "New Playlist": "新規プレイリスト",
+  "Create Playlist": "プレイリストの作成",
+  "Playlist Name": "プレイリスト名",
+  "e.g. Lobby Morning Loop": "例：ロビーのモーニングループ"
 };

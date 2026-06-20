@@ -5,9 +5,28 @@ import { useTranslation } from '@/lib/i18n'
 import Link from 'next/link'
 import {
   ListVideo, ChevronRight, Undo2, Redo2, Eye,
-  Monitor, Copy, Trash2, MoreHorizontal
+  Monitor, Copy, Trash2, MoreHorizontal, Layers, HardDrive, Clock, CalendarCheck
 } from 'lucide-react'
 import styles from '../workspace.module.css'
+import type { PlaylistItemWithAsset, AssignedDevice } from '../actions'
+
+function formatSize(bytes: number): string {
+  if (!bytes) return '0 B'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
+function formatDuration(seconds: number): string {
+  if (!seconds) return '0s'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) return `${h}h ${m}m ${s > 0 ? `${s}s` : ''}`.trim()
+  if (m > 0) return `${m}m ${s > 0 ? `${s}s` : ''}`.trim()
+  return `${s}s`
+}
 
 interface WorkspaceHeaderProps {
   name: string
@@ -23,6 +42,10 @@ interface WorkspaceHeaderProps {
   onDelete: () => void
   onRename: (newName: string) => void
   isPreviewOpen: boolean
+  items: PlaylistItemWithAsset[]
+  createdAt: string
+  updatedAt: string
+  assignedDevices: AssignedDevice[]
 }
 
 export default function WorkspaceHeader({
@@ -39,6 +62,10 @@ export default function WorkspaceHeader({
   onDelete,
   onRename,
   isPreviewOpen,
+  items,
+  createdAt,
+  updatedAt,
+  assignedDevices,
 }: WorkspaceHeaderProps) {
   const { t } = useTranslation()
   const [editName, setEditName] = useState(name)
@@ -233,6 +260,40 @@ export default function WorkspaceHeader({
       <div className={styles.saveStatus}>
         <span className={`${styles.saveStatusDot} ${statusInfo.dot}`} />
         {statusInfo.label}
+      </div>
+
+      {/* Playlist Details inline */}
+      <div className={styles.headerDetails}>
+        <span className={styles.headerDetailItem} title={t('Total Items')}>
+          <Layers size={13} />
+          <span>{t('{count} items', { count: items.length })}</span>
+        </span>
+        <span className={styles.headerDetailDivider}>•</span>
+        <span className={styles.headerDetailItem} title={t('Total Size')}>
+          <HardDrive size={13} />
+          <span>{formatSize(items.reduce((acc, item) => acc + (item.assets?.size_bytes || 0), 0))}</span>
+        </span>
+        <span className={styles.headerDetailDivider}>•</span>
+        <span className={styles.headerDetailItem} title={t('Total Duration')}>
+          <Clock size={13} />
+          <span>{formatDuration(items.reduce((acc, item) => acc + (item.duration_seconds || 0), 0))}</span>
+        </span>
+        <span className={styles.headerDetailDivider}>•</span>
+        <span className={styles.headerDetailItem} title={t('Created Date')}>
+          <CalendarCheck size={13} />
+          <span>{createdAt ? new Date(createdAt).toLocaleDateString() : '—'}</span>
+        </span>
+        <span className={styles.headerDetailDivider}>•</span>
+        <span className={styles.headerDetailItem} title={t('Screen Assignments')}>
+          <Monitor size={13} />
+          <span>
+            {assignedDevices.length > 0
+              ? assignedDevices.length === 1
+                ? t('Assigned to {count} screen', { count: assignedDevices.length })
+                : t('Assigned to {count} screens', { count: assignedDevices.length })
+              : t('Unassigned')}
+          </span>
+        </span>
       </div>
     </div>
   )

@@ -314,5 +314,9 @@ export const hi: Record<string, string> = {
   "Search assets...": "मीडिया खोजें...",
   "{count} asset selected": "{count} मीडिया चयनित",
   "{count} assets selected": "{count} मीडिया चयनित",
-  "Load More": "और लोड करें"
+  "Load More": "और लोड करें",
+  "New Playlist": "नई प्लेलिस्ट",
+  "Create Playlist": "प्लेलिस्ट बनाएं",
+  "Playlist Name": "प्लेलिस्ट का नाम",
+  "e.g. Lobby Morning Loop": "जैसे लॉबी मॉर्निंग लूप"
 };

@@ -314,5 +314,9 @@ export const pt: Record<string, string> = {
   "Search assets...": "Pesquisar mídias...",
   "{count} asset selected": "{count} mídia selecionada",
   "{count} assets selected": "{count} mídias selecionadas",
-  "Load More": "Carregar mais"
+  "Load More": "Carregar mais",
+  "New Playlist": "Nova lista de reprodução",
+  "Create Playlist": "Criar lista de reprodução",
+  "Playlist Name": "Nome da lista de reprodução",
+  "e.g. Lobby Morning Loop": "ex. Loop matinal do saguão"
 };

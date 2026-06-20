@@ -314,5 +314,9 @@ export const de: Record<string, string> = {
   "Search assets...": "Medien suchen...",
   "{count} asset selected": "{count} Medium ausgewählt",
   "{count} assets selected": "{count} Medien ausgewählt",
-  "Load More": "Mehr laden"
+  "Load More": "Mehr laden",
+  "New Playlist": "Neue Wiedergabeliste",
+  "Create Playlist": "Wiedergabeliste erstellen",
+  "Playlist Name": "Name der Wiedergabeliste",
+  "e.g. Lobby Morning Loop": "z. B. Lobby-Morgenschleife"
 };
