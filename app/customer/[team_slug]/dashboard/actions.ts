@@ -45,13 +45,6 @@ export interface DeviceHealth {
   uptimePercent: number
 }
 
-export interface ScheduleEvent {
-  id: string
-  deviceId: string
-  deviceName: string | null
-  contentType: string | null
-  contentName: string | null
-}
 
 export interface UptimeDataPoint {
   date: string
@@ -356,38 +349,7 @@ export async function getDeviceHealth(teamSlug: string): Promise<DeviceHealth[]>
   })
 }
 
-export async function getScheduledTimeline(teamSlug: string): Promise<ScheduleEvent[]> {
-  const data = await fetchRawDashboardData(teamSlug)
-  if (!data) return []
 
-  const { devices, assets, playlists } = data
-  const scheduledDevices = devices.filter(d => d.content_type !== null)
-
-  const assetMap = new Map(assets.map(a => [a.id, a.file_name]))
-  const playlistMap = new Map(playlists.map(p => [p.id, p.name]))
-
-  const events: ScheduleEvent[] = []
-
-  for (const d of scheduledDevices) {
-    let contentName: string | null = null
-
-    if (d.content_type === 'Asset' && d.asset_id) {
-      contentName = assetMap.get(d.asset_id) ?? null
-    } else if (d.content_type === 'Playlist' && d.playlist_id) {
-      contentName = playlistMap.get(d.playlist_id) ?? null
-    }
-
-    events.push({
-      id: `sch-${d.id}`,
-      deviceId: d.id,
-      deviceName: d.name,
-      contentType: d.content_type,
-      contentName,
-    })
-  }
-
-  return events
-}
 
 export async function getUptimeHistory(teamSlug: string): Promise<UptimeDataPoint[]> {
   const data = await fetchRawDashboardData(teamSlug)

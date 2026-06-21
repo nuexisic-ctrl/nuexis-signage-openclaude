@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from '@/lib/i18n'
 import { X, Monitor, Search } from 'lucide-react'
 import { getAssignableDevices, pushPlaylistToScreens } from '../actions'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from '@/app/components/Toast'
 import { modalStack } from '@/lib/utils/modalStack'
 import styles from '../workspace.module.css'
@@ -99,6 +100,24 @@ export default function PushToScreenModal({
         Array.from(selectedIds),
         teamSlug
       )
+
+      // Broadcast content_update to the player(s) so they update in real-time
+      const supabase = createClient()
+      const deviceIds = Array.from(selectedIds)
+      for (const devId of deviceIds) {
+        const channel = supabase.channel(`device-pair-${devId}`)
+        channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            channel.send({
+              type: 'broadcast',
+              event: 'content_update',
+              payload: { timestamp: Date.now() }
+            }).catch(console.error)
+            setTimeout(() => supabase.removeChannel(channel), 1000)
+          }
+        })
+      }
+
       toast.success(
         t('Playlist pushed to {count} screen(s) successfully', { count: result.count })
       )

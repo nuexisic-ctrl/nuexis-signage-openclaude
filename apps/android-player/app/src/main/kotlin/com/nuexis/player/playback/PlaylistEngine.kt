@@ -4,252 +4,188 @@ import android.content.Context
 import android.util.Log
 import com.nuexis.player.data.StorageManager
 import com.nuexis.player.data.SupabaseClient
+import com.nuexis.player.data.SupabaseClient.PlayerManifest
+import com.nuexis.player.data.SupabaseClient.ManifestPlaylistItem
 import kotlinx.coroutines.*
 import java.io.File
 
 class PlaylistEngine(
     private val context: Context,
-    private val coroutineScope: CoroutineScope,
-    private val supabaseClient: SupabaseClient,
-    private val cacheManager: CacheManager,
     private val mediaEngine: MediaEngine,
-    private val storageManager: StorageManager,
-    private val diagnosticsManager: com.nuexis.player.diagnostics.DiagnosticsManager? = null
+    private val cacheManager: CacheManager,
+    private val storageManager: StorageManager
 ) {
-    private val tag = "PlaylistEngine"
-    private var playlistId: String? = null
-    private var items: List<SupabaseClient.PlaylistItem> = emptyList()
-    private var currentIndex = 0
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var playbackJob: Job? = null
-    private var isRunning = false
-    var currentItemId: String? = null
 
-    fun start(playlistId: String, hardwareId: String, secret: String) {
-        this.playlistId = playlistId
-        this.isRunning = true
-        Log.d(tag, "Starting PlaylistEngine for playlist $playlistId")
-        
-        coroutineScope.launch(Dispatchers.IO) {
-            try {
-                val fetchedItems = supabaseClient.getPlaylistItems(playlistId, hardwareId, secret)
-                withContext(Dispatchers.Main) {
-                    if (!isRunning) return@withContext
-                    updatePlaylist(fetchedItems, hardwareId, secret)
-                }
-            } catch (e: Exception) {
-                Log.e(tag, "Failed to fetch playlist items on start: ${e.message}", e)
-            }
-        }
-    }
+    var currentManifest: PlayerManifest? = null
+        private set
+    private var currentIndex = 0
+    var isPlaying = false
+        private set
 
-    fun updatePlaylist(newItems: List<SupabaseClient.PlaylistItem>, hardwareId: String, secret: String) {
-        Log.d(tag, "Updating playlist with ${newItems.size} items")
-        stopPlayback()
-        
-        val previousPlayingId = currentItemId ?: items.getOrNull(currentIndex)?.id
-        val sortedNewItems = newItems.sortedBy { it.sort_order }
-        this.items = sortedNewItems
 
-        // Cache the updated manifest items
-        if (newItems.isNotEmpty()) {
-            try {
-                val itemsJson = com.google.gson.Gson().toJson(newItems)
-                storageManager.setCachedManifest(itemsJson)
-            } catch (e: Exception) {
-                Log.e(tag, "Failed to cache manifest: ${e.message}")
-            }
-        }
-        
-        // Evict stale cache files by collecting all active non-widget file paths
-        val activeFilePaths = items.mapNotNull { item ->
-            val assets = item.assets
-            if (assets != null && !assets.mime_type.startsWith("application/x-widget")) {
-                assets.file_path
-            } else null
-        }.toSet()
-        coroutineScope.launch(Dispatchers.IO) {
-            cacheManager.evictStaleFiles(activeFilePaths)
-        }
+    fun start(manifest: PlayerManifest) {
+        stop()
+        currentManifest = manifest
+        currentIndex = 0
+        isPlaying = true
 
+        val items = manifest.playlist
         if (items.isEmpty()) {
+            Log.w("PlaylistEngine", "Playlist is empty, stopping playback views")
             mediaEngine.stopAll()
             return
         }
 
-        // Try to maintain index or reset to 0
-        if (previousPlayingId != null) {
-            val indexInNew = sortedNewItems.indexOfFirst { it.id == previousPlayingId }
-            currentIndex = if (indexInNew != -1) {
-                indexInNew
-            } else {
-                0
-            }
-        } else {
-            if (currentIndex >= items.size) {
-                currentIndex = 0
-            }
-        }
-
-        playCurrentIndex(hardwareId, secret)
+        playCurrentItem()
     }
 
-    private fun playCurrentIndex(hardwareId: String, secret: String) {
-        if (items.isEmpty() || !isRunning) return
-
-        val currentItem = items[currentIndex]
-        Log.d(tag, "Playing item at index $currentIndex: ID=${currentItem.id}, type=${currentItem.type}")
-
-        // 1. Play active item
-        coroutineScope.launch(Dispatchers.Main) {
-            try {
-                playItem(currentItem, hardwareId, secret, active = true)
-                currentItemId = currentItem.id
-                
-                val cacheStatus = if (currentItem.assets != null) {
-                    if (cacheManager.isCached(currentItem.assets.file_path)) "HIT" else "MISS"
-                } else null
-                
-                diagnosticsManager?.reportPlaybackEvent(
-                    eventType = "PLAY_START",
-                    itemId = currentItem.id,
-                    assetId = currentItem.asset_id,
-                    cacheStatus = cacheStatus
-                )
-            } catch (e: Exception) {
-                Log.e(tag, "Error playing active item at index $currentIndex: ${e.message}", e)
-                diagnosticsManager?.reportPlaybackEvent(
-                    eventType = "ERROR",
-                    itemId = currentItem.id,
-                    assetId = currentItem.asset_id,
-                    errorMessage = e.message
-                )
-            }
-        }
-
-        // If there is only 1 item, play it and do not set timers or preload transitions
-        if (items.size == 1) {
-            Log.d(tag, "Single-item playlist. Playing indefinitely without transition timers.")
-            return
-        }
-
-        // 2. Preload the next item in the background
-        val nextIndex = (currentIndex + 1) % items.size
-        val nextItem = items[nextIndex]
-        preloadItem(nextItem, hardwareId, secret)
-
-        // 3. Schedule transition to the next item
-        playbackJob = coroutineScope.launch(Dispatchers.Main) {
-            delay(currentItem.duration_seconds * 1000L)
-            
-            Log.d(tag, "Item duration completed. Transitioning to index $nextIndex")
-            
-            diagnosticsManager?.reportPlaybackEvent(
-                eventType = "PLAY_COMPLETE",
-                itemId = currentItem.id,
-                assetId = currentItem.asset_id
-            )
-            
-            mediaEngine.transitionToNext(transitionMs = 350) {
-                currentIndex = nextIndex
-                playCurrentIndex(hardwareId, secret)
-            }
-        }
-    }
-
-    private suspend fun playItem(
-        item: SupabaseClient.PlaylistItem,
-        hardwareId: String,
-        secret: String,
-        active: Boolean
-    ) {
-        val assets = item.assets
-        val scaleMode = storageManager.getScaleMode()
-        val isMuted = storageManager.isMuted()
-
-        if (assets == null) {
-            // Widget or unsupported item with no asset
-            if (active) mediaEngine.stopAll()
-            return
-        }
-
-        val isWidget = assets.mime_type.startsWith("application/x-widget")
-
-        if (isWidget) {
-            // Widget configurations are stored as strings directly in file_path
-            val widgetConfig = assets.file_path
-            val mimeType = assets.mime_type
-
-            if (active) {
-                Log.d(tag, "Active play of widget: $mimeType")
-                mediaEngine.playWidget(mimeType, widgetConfig)
-            } else {
-                Log.d(tag, "Preload widget: $mimeType")
-                mediaEngine.preloadWidget(mimeType, widgetConfig)
-            }
-        } else {
-            // Standard media (image/video)
-            val file = withContext(Dispatchers.IO) {
-                cacheManager.downloadAsset(assets.file_path, hardwareId, secret)
-            }
-
-            if (active) {
-                if (assets.mime_type.startsWith("video/")) {
-                    mediaEngine.playVideo(file, scaleMode, isMuted)
-                } else {
-                    mediaEngine.playImage(file, scaleMode)
-                }
-            } else {
-                if (assets.mime_type.startsWith("video/")) {
-                    mediaEngine.preloadVideo(file, scaleMode, isMuted)
-                } else {
-                    mediaEngine.preloadImage(file, scaleMode)
-                }
-            }
-        }
-    }
-
-    private fun preloadItem(item: SupabaseClient.PlaylistItem, hardwareId: String, secret: String) {
-        val assets = item.assets ?: return
-        val isWidget = assets.mime_type.startsWith("application/x-widget")
-
-        coroutineScope.launch(Dispatchers.IO) {
-            try {
-                if (!isWidget) {
-                    // Pre-download file to cache
-                    cacheManager.downloadAsset(assets.file_path, hardwareId, secret)
-                }
-                
-                withContext(Dispatchers.Main) {
-                    if (!isRunning) return@withContext
-                    playItem(item, hardwareId, secret, active = false)
-                }
-            } catch (e: Exception) {
-                Log.e(tag, "Failed to preload item: ${e.message}", e)
-            }
-        }
-    }
-
-    private fun stopPlayback() {
+    fun stop() {
+        isPlaying = false
         playbackJob?.cancel()
         playbackJob = null
     }
 
-    fun startOffline(itemsJson: String) {
-        this.isRunning = true
-        Log.d(tag, "Starting PlaylistEngine offline with cached items.")
-        try {
-            val type = object : com.google.gson.reflect.TypeToken<List<SupabaseClient.PlaylistItem>>() {}.type
-            val parsedItems: List<SupabaseClient.PlaylistItem> = com.google.gson.Gson().fromJson(itemsJson, type)
-            updatePlaylist(parsedItems, "", "")
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to parse offline playlist: ${e.message}", e)
+    private fun playCurrentItem() {
+        if (!isPlaying) return
+        val manifest = currentManifest ?: return
+        val items = manifest.playlist
+        if (items.isEmpty()) return
+
+        // Bound check index
+        if (currentIndex < 0 || currentIndex >= items.size) {
+            currentIndex = 0
+        }
+
+        val item = items[currentIndex]
+        Log.d("PlaylistEngine", "Playing item index $currentIndex: ${item.type}, assetId: ${item.asset_id}")
+
+        // Play the item in the active viewport
+        val playedSuccessfully = playItemInViewport(item, isPreload = false)
+
+        if (!playedSuccessfully) {
+            Log.e("PlaylistEngine", "Failed to play item ${item.id}, skipping to next")
+            scope.launch {
+                delay(1000) // Small delay before skipping to avoid infinite rapid loops
+                advanceToNext()
+            }
+            return
+        }
+
+        // If there's only one item, don't schedule transitions or preloads
+        if (items.size <= 1) {
+            Log.d("PlaylistEngine", "Single item playlist, loop handled by player or static display")
+            return
+        }
+
+        // Preload the next item
+        val nextIndex = (currentIndex + 1) % items.size
+        val nextItem = items[nextIndex]
+        preloadItem(nextItem)
+
+        // Schedule transition
+        val durationMs = (item.duration_seconds.coerceAtLeast(1) * 1000L)
+        playbackJob?.cancel()
+        playbackJob = scope.launch {
+            delay(durationMs)
+            Log.d("PlaylistEngine", "Duration expired for item index $currentIndex, transitioning")
+            transitionToNextItem()
         }
     }
 
-    fun stop() {
-        isRunning = false
-        stopPlayback()
-        mediaEngine.stopAll()
-        Log.d(tag, "PlaylistEngine stopped.")
+    private fun transitionToNextItem() {
+        if (!isPlaying) return
+        val manifest = currentManifest ?: return
+        val items = manifest.playlist
+        if (items.isEmpty()) return
+
+        val transitionMs = manifest.transition_ms.toLong().coerceAtLeast(0L)
+
+        mediaEngine.transitionToNext(transitionMs) {
+            // Callback when transition animation completes
+            currentIndex = (currentIndex + 1) % items.size
+            
+            // If loop is disabled and we completed the cycle, stop
+            if (!manifest.loop_enabled && currentIndex == 0) {
+                Log.d("PlaylistEngine", "Playlist loop is disabled, completed sequence. Stopping.")
+                stop()
+                return@transitionToNext
+            }
+
+            playCurrentItem()
+        }
+    }
+
+    private fun advanceToNext() {
+        val manifest = currentManifest ?: return
+        val items = manifest.playlist
+        if (items.isEmpty()) return
+
+        currentIndex = (currentIndex + 1) % items.size
+        playCurrentItem()
+    }
+
+    private fun playItemInViewport(item: ManifestPlaylistItem, isPreload: Boolean): Boolean {
+        try {
+            val scaleMode = storageManager.getScaleMode()
+            val isMuted = storageManager.isMuted()
+
+            when (item.type.lowercase()) {
+                "image" -> {
+                    val asset = item.asset ?: return false
+                    val file = cacheManager.getCachedFile(asset.file_path)
+                    if (!file.exists() || file.length() == 0L) {
+                        Log.e("PlaylistEngine", "Image asset file not found in cache: ${asset.file_path}")
+                        return false
+                    }
+                    if (isPreload) {
+                        mediaEngine.preloadImage(file, scaleMode)
+                    } else {
+                        mediaEngine.playImage(file, scaleMode)
+                    }
+                }
+                "video" -> {
+                    val asset = item.asset ?: return false
+                    val file = cacheManager.getCachedFile(asset.file_path)
+                    if (!file.exists() || file.length() == 0L) {
+                        Log.e("PlaylistEngine", "Video asset file not found in cache: ${asset.file_path}")
+                        return false
+                    }
+                    if (isPreload) {
+                        mediaEngine.preloadVideo(file, scaleMode, isMuted)
+                    } else {
+                        mediaEngine.playVideo(file, scaleMode, isMuted)
+                    }
+                }
+                "widget" -> {
+                    val mimeType = item.asset?.mime_type ?: item.widget_type ?: "application/x-widget-website"
+                    val configJson = item.widget_config?.toString() ?: ""
+                    if (isPreload) {
+                        mediaEngine.preloadWidget(mimeType, configJson)
+                    } else {
+                        mediaEngine.playWidget(mimeType, configJson)
+                    }
+                }
+                else -> {
+                    Log.e("PlaylistEngine", "Unknown playlist item type: ${item.type}")
+                    return false
+                }
+            }
+            return true
+        } catch (e: Exception) {
+            Log.e("PlaylistEngine", "Error playing item in viewport (isPreload=$isPreload)", e)
+            return false
+        }
+    }
+
+    private fun preloadItem(item: ManifestPlaylistItem) {
+        Log.d("PlaylistEngine", "Preloading next item: ${item.type}, assetId: ${item.asset_id}")
+        playItemInViewport(item, isPreload = true)
+    }
+
+    fun release() {
+        stop()
+        scope.cancel()
     }
 }

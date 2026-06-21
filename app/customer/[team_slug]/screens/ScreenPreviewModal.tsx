@@ -17,7 +17,7 @@ interface Props {
   teamSlug: string
   onClose: () => void
   // Current form values passed from AssignModal (unsaved options can be tested!)
-  contentType: 'Asset' | 'Playlist' | 'Schedule'
+  contentType: 'Asset' | 'Playlist'
   assetId: string | null
   playlistId: string | null
   scaleMode: string

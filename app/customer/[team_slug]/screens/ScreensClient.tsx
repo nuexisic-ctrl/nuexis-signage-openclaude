@@ -108,7 +108,7 @@ export default function ScreensClient({
   const [isMounted, setIsMounted] = useState(false)
   const [previewState, setPreviewState] = useState<{
     device: Device
-    contentType: 'Asset' | 'Playlist' | 'Schedule'
+    contentType: 'Asset' | 'Playlist'
     assetId: string | null
     playlistId: string | null
     scaleMode: string
@@ -438,6 +438,13 @@ export default function ScreensClient({
   }
 
   const handleDeviceClick = (e: React.MouseEvent, deviceId: string) => {
+    if (selectedDeviceIds.size === 0) {
+      const device = paginatedDevices.find(d => d.id === deviceId)
+      if (device) {
+        setAssignModalDevice(device)
+      }
+      return
+    }
     setSelectedDeviceIds(prev => {
       const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
         e,
@@ -457,7 +464,14 @@ export default function ScreensClient({
 
   function getLiveStatus(device: Device): LiveStatus {
     if (device.status === 'pairing') return 'pairing'
-    return onlineDeviceIds.has(device.id) ? 'online' : 'offline'
+    if (onlineDeviceIds.has(device.id)) return 'online'
+    if (device.last_seen_at && device.status === 'online') {
+      const lastSeenMs = new Date(device.last_seen_at).getTime()
+      if (!isNaN(lastSeenMs) && (now - lastSeenMs) < 180000) {
+        return 'online'
+      }
+    }
+    return 'offline'
   }
 
   const filteredDevices = useMemo(() => {

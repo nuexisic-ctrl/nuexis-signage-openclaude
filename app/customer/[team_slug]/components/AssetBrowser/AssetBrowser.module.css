@@ -834,12 +834,43 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--surface-lowest);
+  background: var(--surface-low);
   border-top: 1px solid var(--outline-variant);
   padding: 12px 24px;
   z-index: 200;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
   animation: slideUpFooter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.actionBtn {
+  height: 28px;
+  padding: 0 12px;
+  background: var(--primary);
+  border: none;
+  border-radius: 6px;
+  color: var(--on-primary);
+  font-family: var(--font-label);
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.actionBtn:hover {
+  background: var(--primary-hover, #083c92);
+}
+
+.globalSelectContainer {
+  display: flex;
+  align-items: center;
+  background: var(--surface-low) !important;
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  overflow: hidden;
+  height: 40px;
 }
 
 @keyframes slideUpFooter {

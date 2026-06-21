@@ -128,7 +128,7 @@ export default function WorkspaceHeader({
       {/* Breadcrumb */}
       <nav className={styles.breadcrumb}>
         <Link href={`/customer/${teamSlug}/playlists`} className={styles.breadcrumbLink}>
-          {t('Campaigns')}
+          {t('Playlists')}
         </Link>
         <ChevronRight size={12} className={styles.breadcrumbSep} />
         <span className={styles.breadcrumbCurrent}>{name}</span>
@@ -154,7 +154,7 @@ export default function WorkspaceHeader({
             onChange={e => setEditName(e.target.value)}
             onBlur={handleNameBlur}
             onKeyDown={handleNameKeyDown}
-            aria-label={t('Campaign Name')}
+            aria-label={t('Playlist Name')}
             maxLength={200}
           />
         </div>
@@ -240,7 +240,7 @@ export default function WorkspaceHeader({
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-low)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <Copy size={15} /> {t('Duplicate Campaign')}
+                  <Copy size={15} /> {t('Duplicate Playlist')}
                 </button>
                 <div style={{ height: '1px', background: 'var(--outline-variant)' }} />
                 <button
@@ -262,7 +262,7 @@ export default function WorkspaceHeader({
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--error-container)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <Trash2 size={15} /> {t('Delete Campaign')}
+                  <Trash2 size={15} /> {t('Delete Playlist')}
                 </button>
               </div>
             )}

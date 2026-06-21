@@ -13,6 +13,7 @@ import WeatherRenderer from '@/app/components/WeatherRenderer'
 import NewsTickerRenderer from '@/app/components/NewsTickerRenderer'
 
 interface PairedViewProps {
+  deviceName: string | null
   contentType: string | null
   assetUrl: string | null
   mimeType: string | null
@@ -29,6 +30,7 @@ interface PairedViewProps {
 }
 
 export default function PairedView({
+  deviceName,
   contentType, assetUrl, mimeType, playlistId,
   scaleMode, isMuted, orientation,
   hardwareId, secret,
@@ -423,6 +425,12 @@ export default function PairedView({
               </button>
             </div>
             <div className={styles.sidebarContent}>
+              {deviceName && (
+                <div className={styles.menuItem} style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid var(--outline-variant)' }}>
+                  <span className={styles.menuItemLabel}>Screen Name</span>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--on-surface)' }}>{deviceName}</div>
+                </div>
+              )}
               <div className={styles.menuItem}>
                 <span className={styles.menuItemLabel}>Device Actions</span>
                 <button className={styles.menuButton} onClick={() => window.location.assign(window.location.pathname)}>

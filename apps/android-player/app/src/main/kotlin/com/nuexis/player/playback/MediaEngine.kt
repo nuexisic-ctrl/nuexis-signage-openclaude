@@ -2,6 +2,7 @@ package com.nuexis.player.playback
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.JavascriptInterface
@@ -93,6 +94,10 @@ class MediaEngine(
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
+                allowFileAccess = true
+                allowFileAccessFromFileURLs = true
+                allowUniversalAccessFromFileURLs = true
+                mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 mediaPlaybackRequiresUserGesture = false
                 useWideViewPort = true
                 loadWithOverviewMode = true
@@ -155,7 +160,12 @@ class MediaEngine(
             stopVideo()
 
             if (mimeType == "application/x-widget-remote-url" || mimeType == "application/x-widget-website") {
-                webView.webViewClient = WebViewClient()
+                webView.webViewClient = object : WebViewClient() {
+                    override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                        super.onReceivedError(view, errorCode, description, failingUrl)
+                        Log.e("MediaEngine", "Website widget error loading $failingUrl: $description")
+                    }
+                }
                 var targetUrl = configJson
                 try {
                     val jsonObject = com.google.gson.JsonParser.parseString(configJson).asJsonObject
@@ -188,6 +198,11 @@ class MediaEngine(
                     webView.evaluateJavascript(javaScriptBridgeInit, null)
                     val escapedConfig = configJson.replace("'", "\\'").replace("\n", "\\n").replace("\r", "\\r")
                     webView.evaluateJavascript("javascript:renderWidget('$mimeType', '$escapedConfig')", null)
+                }
+
+                override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                    super.onReceivedError(view, errorCode, description, failingUrl)
+                    Log.e("MediaEngine", "Local widget error loading $failingUrl: $description")
                 }
             }
             webView.loadUrl("file:///android_asset/widget_bootstrap.html")
@@ -228,6 +243,12 @@ class MediaEngine(
             exoPlayer?.release()
             exoPlayer = null
             playerView.player = null
+            // Remove layout from parent before destroying WebView to avoid
+            // "WebView received an Intent broadcast it didn't register for" leaks
+            // when the parent FrameLayout has already been recycled by Activity.
+            try {
+                (layout.parent as? ViewGroup)?.removeView(layout)
+            } catch (_: Exception) {}
             webView.destroy()
         }
     }

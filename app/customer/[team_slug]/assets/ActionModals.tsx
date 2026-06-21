@@ -103,7 +103,7 @@ export function RenameAssetModal({
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder={isFolder ? t('e.g. Campaign 2026, Menu Slides') : t('e.g. Lobby Image, Promo Video')}
+              placeholder={isFolder ? t('e.g. Playlist 2026, Menu Slides') : t('e.g. Lobby Image, Promo Video')}
               className={styles.input}
               autoFocus
             />

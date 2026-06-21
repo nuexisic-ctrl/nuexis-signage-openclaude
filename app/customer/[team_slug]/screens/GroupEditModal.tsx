@@ -11,12 +11,13 @@ import { modalStack } from '@/lib/utils/modalStack'
 import CustomSelect from '../components/CustomSelect'
 import { useTranslation } from '@/lib/i18n'
 import Modal from '../components/Modal'
+import { createClient } from '@/lib/supabase/client'
 
 interface Group {
   id: string
   name: string
   color: string
-  content_type: 'Asset' | 'Playlist' | 'Schedule' | null
+  content_type: 'Asset' | 'Playlist' | null
   asset_id: string | null
   playlist_id: string | null
   orientation: number | null
@@ -65,8 +66,8 @@ export function GroupEditModal({
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Content Configuration
-  const [contentType, setContentType] = useState<'Asset' | 'Playlist' | 'Schedule' | null>(
-    (group.content_type as 'Asset' | 'Playlist' | 'Schedule') || null
+  const [contentType, setContentType] = useState<'Asset' | 'Playlist' | null>(
+    (group.content_type as 'Asset' | 'Playlist' | null) || null
   )
   const [assetId, setAssetId] = useState<string>(group.asset_id || '')
   const [playlistId, setPlaylistId] = useState<string>(group.playlist_id || '')
@@ -152,7 +153,7 @@ export function GroupEditModal({
     }
   }, [showColorPicker])
 
-  function handleContentTypeChange(newType: 'Asset' | 'Playlist' | 'Schedule' | '') {
+  function handleContentTypeChange(newType: 'Asset' | 'Playlist' | '') {
     if (newType === '') {
       setContentType(null)
       setShowAssetBrowser(false)
@@ -217,6 +218,23 @@ export function GroupEditModal({
 
       const result = await saveGroupChanges(teamSlug, group.id, data)
       if (result.success) {
+        // Broadcast content_update to all previous and new member devices
+        const supabase = createClient()
+        const initialDeviceIds = memberships.filter(m => m.group_id === group.id).map(m => m.device_id)
+        const allAffectedDeviceIds = Array.from(new Set([...initialDeviceIds, ...selectedDeviceIds]))
+        for (const devId of allAffectedDeviceIds) {
+          const channel = supabase.channel(`device-pair-${devId}`)
+          channel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              channel.send({
+                type: 'broadcast',
+                event: 'content_update',
+                payload: { timestamp: Date.now() }
+              }).catch(console.error)
+              setTimeout(() => supabase.removeChannel(channel), 1000)
+            }
+          })
+        }
         onSuccess()
       } else {
         setError(result.error || t('Failed to save group changes.'))
@@ -394,12 +412,11 @@ export function GroupEditModal({
             <CustomSelect
               id="group-edit-content-type"
               value={contentType || ''}
-              onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | 'Schedule' | '')}
+              onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | '')}
               options={[
                 ...(!contentType ? [{ value: '', label: t('no content'), disabled: true }] : []),
                 { value: 'Asset', label: t('Asset') },
-                { value: 'Playlist', label: t('Playlist') },
-                { value: 'Schedule', label: t('Schedule (Coming Soon)'), disabled: true }
+                { value: 'Playlist', label: t('Playlist') }
               ]}
             />
           </div>

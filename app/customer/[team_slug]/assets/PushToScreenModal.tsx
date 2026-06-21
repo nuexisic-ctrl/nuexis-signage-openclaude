@@ -110,6 +110,13 @@ export function PushToScreenModal({
 
       setSuccess(t('Pushed to {name}. Awaiting player confirmation...', { name: selectedScreen?.name || t('selected screen') }))
       
+      // Broadcast content_update to the player so they instantly catch the change
+      channel.send({
+        type: 'broadcast',
+        event: 'content_update',
+        payload: { timestamp: Date.now() }
+      }).catch(console.error)
+
       // Fallback timeout: if player is offline or not responsive within 5 seconds, close with basic success state
       timeoutRef.current = window.setTimeout(() => {
         setSuccess(t('Pushed successfully!'))

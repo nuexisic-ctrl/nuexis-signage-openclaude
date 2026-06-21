@@ -13,7 +13,6 @@ import {
   getPlaylistOptions,
   getAssetOptions,
   getRecentActivity,
-  getScheduledTimeline,
   getScreenUptimeHistory,
   getUptimeHistory,
 } from './actions'
@@ -64,7 +63,6 @@ export default async function DashboardPage({ params }: Props) {
     activities,
     analytics,
     deviceHealth,
-    scheduleEvents,
     uptimeHistory,
     screenUptimeData,
     devices,
@@ -77,7 +75,6 @@ export default async function DashboardPage({ params }: Props) {
     getRecentActivity(team_slug),
     getAnalytics(team_slug),
     getDeviceHealth(team_slug),
-    getScheduledTimeline(team_slug),
     getUptimeHistory(team_slug),
     getScreenUptimeHistory(team_slug),
     getDashboardDevices(team_slug),
@@ -105,7 +102,6 @@ export default async function DashboardPage({ params }: Props) {
         activities={activities}
         analytics={analytics}
         deviceHealth={deviceHealth}
-        scheduleEvents={scheduleEvents}
         uptimeHistory={uptimeHistory}
         screenUptimeData={screenUptimeData}
         devices={devices}

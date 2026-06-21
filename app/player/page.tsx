@@ -27,13 +27,16 @@ export default function PlayerPage() {
   const [scaleMode, setScaleMode] = useState<string>('Fit')
   const [orientation, setOrientation] = useState<number>(0)
   const [isMuted, setIsMuted] = useState(true)
+  const [deviceName, setDeviceName] = useState<string | null>(null)
 
   // Refs for latest state access in intervals
   const stateRef = useRef(state)
   const assetUrlRef = useRef(assetUrl)
+  const deviceNameRef = useRef(deviceName)
 
   useEffect(() => { stateRef.current = state }, [state])
   useEffect(() => { assetUrlRef.current = assetUrl }, [assetUrl])
+  useEffect(() => { deviceNameRef.current = deviceName }, [deviceName])
 
   const [hardwareId, setHardwareId] = useState<string | null>(null)
   const [secret, setSecret] = useState<string | null>(null)
@@ -52,6 +55,7 @@ export default function PlayerPage() {
   const reconnectPresenceRef = useRef<(() => void) | null>(null)
   const pollingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastConfigRef = useRef<{
+    name: string | null
     teamId: string | null
     orientation: number | null
     contentType: string | null
@@ -60,6 +64,7 @@ export default function PlayerPage() {
     scaleMode: string | null
     updatedAt: string | null
   }>({
+    name: null,
     teamId: null,
     orientation: null,
     contentType: null,
@@ -109,7 +114,7 @@ export default function PlayerPage() {
         }
       }
 
-      if (stateRef.current === 'paired' && teamChannelRef.current && devId) {
+      if (stateRef.current === 'paired' && devId) {
         const tId = teamIdRef.current
         if (tId && hwId && secret) {
           pingDevice(devId, hwId, secret).catch((err: any) => {
@@ -212,6 +217,7 @@ export default function PlayerPage() {
     }
 
     function applyDeviceState(device: DeviceState) {
+      setDeviceName(device.name || null)
       setContentType(device.content_type)
       setScaleMode(device.scale_mode || 'Fit')
       setOrientation(device.orientation || 0)
@@ -301,6 +307,7 @@ export default function PlayerPage() {
               setState('paired')
               if (timerRef.current) clearTimeout(timerRef.current)
               if (intervalRef.current) clearInterval(intervalRef.current)
+              pingDevice(fresh.id, hwId, sec || '').catch(() => {})
               startPresenceTracking(fresh.team_id, fresh.id)
             }
 
@@ -358,6 +365,7 @@ export default function PlayerPage() {
           if (!window.Android) {
             localStorage.removeItem('nuexis_pairing_code')
           }
+          pingDevice(existing.id, hardwareId, savedSecret || '').catch(() => {})
           startPresenceTracking(existing.team_id, existing.id)
           startStatePolling()
         } else {
@@ -405,6 +413,7 @@ export default function PlayerPage() {
 
       // Initialize lastConfigRef with current activeDevice config values
       lastConfigRef.current = {
+        name: activeDevice.name || null,
         teamId: activeDevice.team_id || null,
         orientation: activeDevice.orientation ?? null,
         contentType: activeDevice.content_type || null,
@@ -436,7 +445,7 @@ export default function PlayerPage() {
                 ctx.font = 'bold 40px sans-serif'
                 ctx.textAlign = 'center'
                 ctx.textBaseline = 'middle'
-                ctx.fillText('NuExis Web Player', canvas.width * 0.5, canvas.height * 0.5 - 100)
+                ctx.fillText(deviceNameRef.current || 'NuExis Web Player', canvas.width * 0.5, canvas.height * 0.5 - 100)
                 
                 ctx.fillStyle = '#3b82f6'
                 ctx.font = '24px sans-serif'
@@ -470,11 +479,51 @@ export default function PlayerPage() {
           }
         )
         .on(
+          'broadcast',
+          { event: 'content_update' },
+          () => {
+            console.log('[Player] Content update broadcast received')
+            getDeviceState(hardwareIdRef.current!, secretRef.current || undefined, 'Web Player 1.0', window.navigator.userAgent)
+              .then((fresh) => {
+                if (fresh && !cancelled) {
+                  applyDeviceState(fresh)
+                  lastConfigRef.current = {
+                    name: fresh.name || null,
+                    teamId: fresh.team_id || null,
+                    orientation: fresh.orientation ?? null,
+                    contentType: fresh.content_type || null,
+                    assetId: fresh.asset_id || null,
+                    playlistId: fresh.playlist_id || null,
+                    scaleMode: fresh.scale_mode || null,
+                    updatedAt: fresh.updated_at || null,
+                  }
+                  channel.send({
+                    type: 'broadcast',
+                    event: 'push_acknowledged',
+                    payload: { assetId: fresh.asset_id || fresh.playlist_id }
+                  }).catch(console.error)
+                }
+              })
+              .catch(console.error)
+          }
+        )
+        .on(
+          'broadcast',
+          { event: 'unpair' },
+          () => {
+            console.log('[Player] Unpair broadcast received')
+            if (navigator.onLine) {
+              window.location.assign(window.location.pathname)
+            }
+          }
+        )
+        .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'devices', filter: `id=eq.${activeDevice.id}` },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (payload: any) => {
             if (payload.new?.team_id) {
+              const newName = payload.new.name || null
               const newTeamId = payload.new.team_id || null
               const newOrientation = payload.new.orientation ?? null
               const newContentType = payload.new.content_type || null
@@ -484,6 +533,7 @@ export default function PlayerPage() {
               const newUpdatedAt = payload.new.updated_at || null
 
               const configChanged =
+                newName !== lastConfigRef.current.name ||
                 newTeamId !== lastConfigRef.current.teamId ||
                 newOrientation !== lastConfigRef.current.orientation ||
                 newContentType !== lastConfigRef.current.contentType ||
@@ -499,6 +549,7 @@ export default function PlayerPage() {
 
               // Update stored ref values
               lastConfigRef.current = {
+                name: newName,
                 teamId: newTeamId,
                 orientation: newOrientation,
                 contentType: newContentType,
@@ -513,6 +564,7 @@ export default function PlayerPage() {
                 setState('paired')
                 clearTimeout(timerRef.current!)
                 clearInterval(intervalRef.current!)
+                pingDevice(activeDevice!.id, hardwareIdRef.current!, secretRef.current || '').catch(() => {})
                 startPresenceTracking(payload.new.team_id, activeDevice!.id)
               }
               
@@ -531,6 +583,7 @@ export default function PlayerPage() {
                     if (fresh && !cancelled) {
                       applyDeviceState(fresh)
                       lastConfigRef.current.updatedAt = fresh.updated_at || null
+                      lastConfigRef.current.name = fresh.name || null
                       channel.send({
                         type: 'broadcast',
                         event: 'push_acknowledged',
@@ -573,12 +626,14 @@ export default function PlayerPage() {
                     setState('paired')
                     clearTimeout(timerRef.current!)
                     clearInterval(intervalRef.current!)
+                    pingDevice(fresh.id, hwId, sec || '').catch(() => {})
                     startPresenceTracking(fresh.team_id, fresh.id)
                     applyDeviceState(fresh)
                   } else if (fresh.team_id && isPairedRef.current) {
                     applyDeviceState(fresh)
                   }
                   lastConfigRef.current.updatedAt = fresh.updated_at || null
+                  lastConfigRef.current.name = fresh.name || null
                 })
                 .catch(console.error)
             }
@@ -645,6 +700,7 @@ export default function PlayerPage() {
   if (state === 'paired') {
     currentView = (
       <PairedView
+        deviceName={deviceName}
         contentType={contentType}
         assetUrl={assetUrl}
         mimeType={mimeType}

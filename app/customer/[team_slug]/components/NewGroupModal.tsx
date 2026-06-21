@@ -6,6 +6,7 @@ import { createGroup, updateGroupMembers } from '../groups/actions'
 import styles from './NewGroupModal.module.css'
 import { Device } from '../screens/types'
 import { useTranslation } from '@/lib/i18n'
+import { createClient } from '@/lib/supabase/client'
 
 interface NewGroupModalProps {
   isOpen: boolean
@@ -101,6 +102,21 @@ export default function NewGroupModal({
           if (!syncRes.success) {
             setErrorMsg(syncRes.error || t('Group created, but failed to assign selected screens.'))
             return
+          }
+          // Broadcast content_update to the newly added devices
+          const supabase = createClient()
+          for (const devId of selectedDeviceIds) {
+            const channel = supabase.channel(`device-pair-${devId}`)
+            channel.subscribe((status) => {
+              if (status === 'SUBSCRIBED') {
+                channel.send({
+                  type: 'broadcast',
+                  event: 'content_update',
+                  payload: { timestamp: Date.now() }
+                }).catch(console.error)
+                setTimeout(() => supabase.removeChannel(channel), 1000)
+              }
+            })
           }
         }
         setGroupName('')

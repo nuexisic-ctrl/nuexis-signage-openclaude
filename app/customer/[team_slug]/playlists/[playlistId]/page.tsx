@@ -13,12 +13,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const user = await getCachedUser()
 
   if (!user) {
-    return { title: `Campaigns — ${team_slug} | NuExis` }
+    return { title: `Playlists — ${team_slug} | NuExis` }
   }
 
   const teamId = user.app_metadata?.team_id as string | undefined
   if (!teamId) {
-    return { title: `Campaigns — ${team_slug} | NuExis` }
+    return { title: `Playlists — ${team_slug} | NuExis` }
   }
 
   const { data: playlist } = await supabase
@@ -28,10 +28,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     .eq('team_id', teamId)
     .single()
 
-  const name = playlist?.name || 'Campaign'
+  const name = playlist?.name || 'Playlist'
   return {
-    title: `${name} — Campaigns | NuExis`,
-    description: `Edit and manage the "${name}" campaign.`,
+    title: `${name} — Playlists | NuExis`,
+    description: `Edit and manage the "${name}" playlist.`,
   }
 }
 

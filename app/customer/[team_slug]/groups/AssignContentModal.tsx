@@ -23,8 +23,8 @@ export function AssignContentModal({
   onClose,
   router
 }: AssignContentProps) {
-  const [contentType, setContentType] = useState<'Asset' | 'Playlist' | 'Schedule' | null>(
-    (group.content_type as 'Asset' | 'Playlist' | 'Schedule' | null) || null
+  const [contentType, setContentType] = useState<'Asset' | 'Playlist' | null>(
+    (group.content_type as 'Asset' | 'Playlist' | null) || null
   )
   const [assetId, setAssetId] = useState<string>(group.asset_id || '')
   const [playlistId, setPlaylistId] = useState<string>(group.playlist_id || '')
@@ -41,7 +41,7 @@ export function AssignContentModal({
   const selectedAsset = assets.find(a => a.id === assetId)
   const selectedPlaylist = playlists.find(p => p.id === playlistId)
 
-  const handleContentTypeChange = (newType: 'Asset' | 'Playlist' | 'Schedule' | '') => {
+  const handleContentTypeChange = (newType: 'Asset' | 'Playlist' | '') => {
     if (newType === '') {
       setContentType(null)
       setShowAssetBrowser(false)
@@ -110,7 +110,6 @@ export function AssignContentModal({
                   )}
                   <option value="Asset">Asset</option>
                   <option value="Playlist">Playlist</option>
-                  <option value="Schedule" disabled>Schedule (Coming Soon)</option>
                 </select>
               </div>
 

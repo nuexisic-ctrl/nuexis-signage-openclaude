@@ -13,11 +13,17 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
+import java.util.concurrent.TimeUnit
+
 class SupabaseClient(
     private val baseUrl: String,
     private val anonKey: String
 ) {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
     private val gson = Gson()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
     private val rateLimiter = RateLimiter(maxTokens = 30, refillRatePerSecond = 1.0)
@@ -103,28 +109,59 @@ class SupabaseClient(
         val status: String,
         val content_type: String?,
         val asset_id: String?,
-        val playlist_id: String?,
         val orientation: Int?,
         val scale_mode: String?,
         val updated_at: String?
     )
 
-    data class PlaylistItem(
-        val id: String,
-        val playlist_id: String?,
-        val type: String,
-        val asset_id: String?,
-        val widget_type: String?,
-        val widget_config: JsonObject?,
-        val duration_seconds: Int,
-        val sort_order: Int,
-        val assets: AssetInfo?
-    )
+
 
     data class AssetInfo(
         val file_path: String,
         val mime_type: String
     )
+
+    data class ManifestAsset(
+        val id: String,
+        val file_name: String,
+        val file_path: String,
+        val mime_type: String,
+        val size_bytes: Long?
+    )
+
+    data class ManifestPlaylistItem(
+        val id: String,
+        val type: String,
+        val asset_id: String?,
+        val duration_seconds: Int,
+        val sort_order: Int,
+        val asset: ManifestAsset?,
+        val widget_type: String?,
+        val widget_config: JsonObject?
+    )
+
+    data class ManifestAssignment(
+        val asset_id: String?,
+        val playlist_id: String?
+    )
+
+    data class PlayerManifest(
+        val manifest_version: String,
+        val device_id: String,
+        val team_id: String?,
+        val content_type: String?,
+        val orientation: Int,
+        val loop_enabled: Boolean,
+        val transition_ms: Int,
+        val assignment: ManifestAssignment?,
+        val playlist: List<ManifestPlaylistItem>
+    )
+
+    sealed class ManifestResult {
+        data class Success(val manifest: PlayerManifest) : ManifestResult()
+        data class Error(val exception: Exception) : ManifestResult()
+    }
+
 
     fun registerDevice(hardwareId: String, pairingCode: String, expiresAt: Long): RegistrationResult {
         val params = JsonObject().apply {
@@ -190,6 +227,21 @@ class SupabaseClient(
         }
     }
 
+    fun getPlayerManifest(deviceId: String, sessionToken: String): ManifestResult {
+        val params = JsonObject().apply {
+            addProperty("p_device_id", deviceId)
+            addProperty("p_session_token", sessionToken)
+        }
+        return try {
+            val response = post("get_player_manifest", gson.toJson(params))
+            val manifest = gson.fromJson(response, PlayerManifest::class.java)
+            ManifestResult.Success(manifest)
+        } catch (e: Exception) {
+            ManifestResult.Error(e)
+        }
+    }
+
+
     fun unpairDevice(deviceId: String, hardwareId: String, secret: String) {
         val params = JsonObject().apply {
             addProperty("p_device_id", deviceId)
@@ -223,16 +275,7 @@ class SupabaseClient(
         }
     }
 
-    fun getPlaylistItems(playlistId: String, hardwareId: String, secret: String): List<PlaylistItem> {
-        val params = JsonObject().apply {
-            addProperty("p_playlist_id", playlistId)
-            addProperty("p_hardware_id", hardwareId)
-            addProperty("p_secret", secret)
-        }
-        val response = post("get_player_playlist_items", gson.toJson(params))
-        val type = object : TypeToken<List<PlaylistItem>>() {}.type
-        return gson.fromJson(response, type) ?: emptyList()
-    }
+
 
     fun getSignedMediaUrl(filePath: String, hardwareId: String, secret: String): String {
         val params = JsonObject().apply {

@@ -3,6 +3,7 @@ import styles from './Modal.module.css'
 import { deleteAndUnpairDevice } from './actions'
 import { useTranslation } from '@/lib/i18n'
 import Modal from '../components/Modal'
+import { createClient } from '@/lib/supabase/client'
 
 export interface DeleteModalProps {
   deviceId: string
@@ -26,6 +27,23 @@ export function DeleteModal({
 
   function handleConfirm() {
     startTransition(async () => {
+      // Send unpair broadcast to the device(s) so they reset immediately
+      const supabase = createClient()
+      const ids = deviceId.split(',')
+      for (const id of ids) {
+        const channel = supabase.channel(`device-pair-${id}`)
+        channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            channel.send({
+              type: 'broadcast',
+              event: 'unpair',
+              payload: {}
+            }).catch(console.error)
+            setTimeout(() => supabase.removeChannel(channel), 1000)
+          }
+        })
+      }
+
       const result = await deleteAndUnpairDevice(teamSlug, deviceId)
       if (result.success) {
         onSuccess()

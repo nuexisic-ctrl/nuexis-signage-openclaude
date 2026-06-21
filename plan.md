@@ -207,7 +207,7 @@ Severity legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Info
 - **🟡 F4 — No OTA player update management.**
   `app_version` is a string column. No version pinning, forced-update, rollback, or staged rollout.
 
-- **🟡 F5 — No emergency broadcast / override, no campaign/AB management, no per-tenant data
+- **🟡 F5 — No emergency broadcast / override, no playlist/AB management, no per-tenant data
   residency.** Multi-tenancy is RLS-only on shared infra.
 
 ---
@@ -285,7 +285,7 @@ Severity legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Info
 21. **F2** Proof-of-play analytics: rollup tables, exports, dashboards.
 22. **F3** RBAC: roles/permissions per screen/group, publish/draft states, approval workflows, SSO/SCIM.
 23. **F4** OTA player management: version pinning, forced update, staged rollout, rollback.
-24. **F5** Emergency broadcast override, campaign/AB, per-tenant data residency options.
+24. **F5** Emergency broadcast override, playlist/AB, per-tenant data residency options.
 
 ---
 

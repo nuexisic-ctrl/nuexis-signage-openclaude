@@ -10,7 +10,6 @@ import { UptimeWidget } from './widgets/uptimeWidget'
 import { QuickActionsWidget } from './widgets/quickActionsWidget'
 import { AlertsWidget } from './widgets/alertsWidget'
 import { RecentActivityWidget } from './widgets/recentActivityWidget'
-import { ScheduledTimelineWidget } from './widgets/scheduledTimelineWidget'
 import { AnalyticsOverviewWidget } from './widgets/analyticsOverviewWidget'
 import { DeviceHealthWidget } from './widgets/deviceHealthWidget'
 import { ScreenUptimeWidget } from './widgets/screenUptimeWidget'
@@ -27,7 +26,6 @@ import type {
   Activity,
   AnalyticsOverview,
   DeviceHealth,
-  ScheduleEvent,
   UptimeDataPoint,
   ScreenUptime,
   DashboardDevice,
@@ -55,7 +53,6 @@ const WIDGET_REGISTRY = new Map<string, WidgetDef>([
   ['statusBreakdown', { id: 'statusBreakdown', title: 'Status Breakdown', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 320 }],
   ['topPlaytime', { id: 'topPlaytime', title: 'Top Screens', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 320 }],
   ['deviceHealth', { id: 'deviceHealth', title: 'Device Health', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 260 }],
-  ['scheduledTimeline', { id: 'scheduledTimeline', title: 'Scheduled Timeline', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 300 }],
   ['analyticsOverview', { id: 'analyticsOverview', title: 'Analytics Overview', span: { lg: 6, md: 6, sm: 1 }, minHeightPx: 240 }],
   ['screenUptime', { id: 'screenUptime', title: 'Screen Uptime', span: { lg: 12, md: 6, sm: 1 }, minHeightPx: 360 }]
 ])
@@ -73,7 +70,6 @@ const DEFAULT_WIDGET_ORDER: string[] = [
   'statusBreakdown',
   'topPlaytime',
   'deviceHealth',
-  'scheduledTimeline',
   'analyticsOverview',
   'screenUptime',
 ]
@@ -85,7 +81,6 @@ interface DashboardData {
   activities: Activity[]
   analytics: AnalyticsOverview
   deviceHealth: DeviceHealth[]
-  scheduleEvents: ScheduleEvent[]
   uptimeHistory: UptimeDataPoint[]
   screenUptimeData: ScreenUptime[]
 }
@@ -106,7 +101,6 @@ export default function DashboardShell({
   activities,
   analytics,
   deviceHealth,
-  scheduleEvents,
   uptimeHistory,
   screenUptimeData,
   devices,
@@ -238,8 +232,6 @@ export default function DashboardShell({
         return <StatusBreakdownWidget devices={filteredDevices} />
       case 'topPlaytime':
         return <TopPlaytimeWidget devices={filteredDevices} />
-      case 'scheduledTimeline':
-        return <ScheduledTimelineWidget events={scheduleEvents} />
       case 'analyticsOverview':
         return <AnalyticsOverviewWidget data={analytics} />
       case 'deviceHealth':

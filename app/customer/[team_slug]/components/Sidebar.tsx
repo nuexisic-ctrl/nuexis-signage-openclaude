@@ -8,11 +8,10 @@ import {
   LayoutDashboard, 
   Monitor, 
   Image as ImageIcon, 
-  CalendarClock, 
   ChevronLeft, 
   ChevronRight, 
   Settings, 
-  Megaphone 
+  ListVideo 
 } from 'lucide-react'
 import styles from './sidebar.module.css'
 import { useTranslation } from '@/lib/i18n'
@@ -81,8 +80,7 @@ export default function Sidebar({ teamSlug, fullName, email, role = 'Owner', ini
     { icon: LayoutDashboard, label: 'Dashboard', href: `/customer/${teamSlug}/dashboard` },
     { icon: Monitor,         label: 'Screens',   href: `/customer/${teamSlug}/screens` },
     { icon: ImageIcon,       label: 'Assets',    href: `/customer/${teamSlug}/assets` },
-    { icon: Megaphone,       label: 'Campaigns', href: `/customer/${teamSlug}/playlists` },
-    { icon: CalendarClock,   label: 'Schedules', href: '#' },
+    { icon: ListVideo,       label: 'Playlists', href: `/customer/${teamSlug}/playlists` },
   ]
 
   const mobileNavItems = [

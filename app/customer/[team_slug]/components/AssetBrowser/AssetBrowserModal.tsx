@@ -17,6 +17,7 @@ import { CreateFolderModal } from '../../assets/CreateFolderModal'
 import { useDragAndDrop } from '../../screens/AssetBrowserPreview'
 import { toast } from '@/app/components/Toast'
 import { Asset } from '../../assets/types'
+import { useTranslation } from '@/lib/i18n'
 import styles from './AssetBrowser.module.css'
 
 export interface AssetBrowserModalProps {
@@ -32,6 +33,7 @@ export interface AssetBrowserModalProps {
 }
 
 function AssetBrowserModalContent() {
+  const { t } = useTranslation()
   const router = useRouter()
   const [, startTransition] = useTransition()
   const {
@@ -55,7 +57,9 @@ function AssetBrowserModalContent() {
     endItem,
     totalItems,
     totalPages,
-    paginatedAssets
+    paginatedAssets,
+    sortBy,
+    setSortBy
   } = useAssetBrowser()
 
   // Creation & Upload sub-modal states
@@ -266,6 +270,33 @@ function AssetBrowserModalContent() {
                 </div>
               )}
 
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--on-surface-subtle)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('Sort By')}:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={{
+                    height: '40px',
+                    padding: '0 12px',
+                    background: 'var(--surface-low)',
+                    border: '1px solid var(--outline-variant)',
+                    borderRadius: '8px',
+                    color: 'var(--on-surface)',
+                    fontSize: '0.84rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="created-desc">{t('Created Date (Newest)')}</option>
+                  <option value="created-asc">{t('Created Date (Oldest)')}</option>
+                  <option value="name-asc">{t('Name (A-Z)')}</option>
+                  <option value="name-desc">{t('Name (Z-A)')}</option>
+                  <option value="type-asc">{t('Type (A-Z)')}</option>
+                  <option value="type-desc">{t('Type (Z-A)')}</option>
+                </select>
+              </div>
+
               <button
                 type="button"
                 className={`${styles.filterToggleBtn} ${showFilters || isFilterActive ? styles.active : ''}`}
@@ -322,8 +353,9 @@ function AssetBrowserModalContent() {
         </div>
 
         <div className={styles.footer}>
-          <div>
-            Showing {startItem} to {endItem} of {totalItems} assets
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <span>{t('Per page:')} 10</span>
+            <span>{t('Page {current} of {total}', { current: currentPage, total: totalPages })}</span>
           </div>
           {totalPages > 1 && (
             <div className={styles.pagination}>

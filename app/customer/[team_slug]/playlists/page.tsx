@@ -12,8 +12,8 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { team_slug } = await params
   return {
-    title: `Campaigns — ${team_slug} | NuExis`,
-    description: 'Manage campaigns for your digital signage displays.',
+    title: `Playlists — ${team_slug} | NuExis`,
+    description: 'Manage playlists for your digital signage displays.',
   }
 }
 

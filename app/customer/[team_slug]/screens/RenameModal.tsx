@@ -62,22 +62,6 @@ export function RenameModal({
       maxWidth="400px"
     >
       <form className={styles.form} onSubmit={handleSubmit}>
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          alignItems: 'flex-start',
-          padding: '10px 12px',
-          background: 'var(--surface-low)',
-          border: '1px solid var(--outline-variant)',
-          borderRadius: '8px',
-          fontSize: '0.82rem',
-          color: 'var(--on-surface-subtle)',
-          lineHeight: '1.4'
-        }}>
-          <span style={{ fontSize: '1.1rem', lineHeight: '1', marginTop: '-1px' }}>ℹ️</span>
-          <span>{t('Renaming this screen will update its name in your dashboard and on the active display in real-time.')}</span>
-        </div>
-
         <div className={styles.fieldGroup}>
           <label htmlFor="rename-input" className={styles.label}>{t('Screen Name')}</label>
           <input

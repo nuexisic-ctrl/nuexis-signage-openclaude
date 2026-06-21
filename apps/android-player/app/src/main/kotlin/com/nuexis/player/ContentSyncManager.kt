@@ -7,8 +7,15 @@ import com.nuexis.player.data.StorageManager
 import com.nuexis.player.data.SupabaseClient
 import com.nuexis.player.playback.CacheManager
 import com.nuexis.player.playback.MediaEngine
-import com.nuexis.player.playback.PlaylistEngine
 import kotlinx.coroutines.*
+import com.google.gson.Gson
+import com.nuexis.player.playback.PlaylistEngine
+import java.io.IOException
+import com.nuexis.player.cache.CacheStore
+import com.nuexis.player.cache.DownloadQueue
+import com.nuexis.player.cache.StartupValidator
+import com.nuexis.player.sync.ManifestCoordinator
+import com.nuexis.player.sync.SyncTrigger
 
 class ContentSyncManager(
     private val context: Context,
@@ -20,16 +27,35 @@ class ContentSyncManager(
 ) {
     var mediaEngine: MediaEngine? = null
         private set
+
     var playlistEngine: PlaylistEngine? = null
         private set
 
+    var manifestCoordinator: ManifestCoordinator? = null
+        private set
+
+    private val gson = Gson()
+    private val cacheStore = CacheStore(context)
+    private val downloadQueue = DownloadQueue(context, cacheStore) { filePath ->
+        val hardwareId = storageManager.getHardwareId()
+        val secret = storageManager.getSecret() ?: ""
+        try {
+            supabaseClient.getSignedMediaUrl(filePath, hardwareId, secret)
+        } catch (e: Exception) {
+            filePath
+        }
+    }
+    private val startupValidator = StartupValidator(context, cacheStore, storageManager, downloadQueue)
+
+
+
+    var lastName: String? = null
+        private set
     var lastTeamId: String? = null
         private set
     var lastContentType: String? = null
         private set
     var lastAssetId: String? = null
-        private set
-    var lastPlaylistId: String? = null
         private set
     var lastOrientation: Int? = null
         private set
@@ -44,6 +70,9 @@ class ContentSyncManager(
     var currentScaleMode = "Fit"
     private var statusTrackingJob: Job? = null
     private var accumulatedPlaytimeSeconds = 0
+    // Set whenever initMediaEngine() rebuilds the playback graph so the next
+    // syncSignageContent() cannot short-circuit via the "no change" fast path.
+    private var mediaEngineRebuilt = false
 
     fun getAppVersion(): String {
         return try {
@@ -61,6 +90,19 @@ class ContentSyncManager(
     fun startStatusTracking(deviceId: String) {
         statusTrackingJob?.cancel()
         statusTrackingJob = scope.launch {
+            // Ping immediately on tracking start to reflect online status instantly
+            val initialDeviceId = storageManager.getDeviceId()
+            val initialSessionToken = storageManager.getSessionToken()
+            if (initialDeviceId != null && initialSessionToken != null) {
+                withContext(Dispatchers.IO) {
+                    try {
+                        supabaseClient.pingDevice(initialDeviceId, initialSessionToken)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+
             while (true) {
                 delay(60000)
                 accumulatedPlaytimeSeconds += 60
@@ -117,9 +159,37 @@ class ContentSyncManager(
 
     fun initMediaEngine(viewport: FrameLayout) {
         mediaEngine?.release()
-        mediaEngine = MediaEngine(context, viewport, storageManager, supabaseClient).apply {
+        playlistEngine?.release()
+        manifestCoordinator?.release()
+        val engine = MediaEngine(context, viewport, storageManager, supabaseClient).apply {
             setMuted(storageManager.isMuted())
         }
+        mediaEngine = engine
+        playlistEngine = PlaylistEngine(context, engine, cacheManager, storageManager)
+        manifestCoordinator = ManifestCoordinator(
+            context = context,
+            supabaseClient = supabaseClient,
+            storageManager = storageManager,
+            cacheStore = cacheStore,
+            downloadQueue = downloadQueue,
+            playlistEngine = playlistEngine!!,
+            onDeviceUnpaired = { listener.onDeviceUnpaired() },
+            onOrientationChanged = { orientation: Int ->
+                listener.applyNativeOrientation(orientation)
+                listener.updateOrientationButtonText()
+            },
+            onManifestPromoted = { manifest: SupabaseClient.PlayerManifest ->
+                lastName = manifest.device_id
+                lastTeamId = manifest.team_id
+                lastContentType = manifest.content_type
+                lastOrientation = manifest.orientation
+                lastAssetId = manifest.assignment?.asset_id
+                lastScaleMode = storageManager.getScaleMode()
+                lastUpdatedAt = null
+                isContentLoaded = true
+            }
+        )
+        mediaEngineRebuilt = true
     }
 
     fun setMuted(muted: Boolean) {
@@ -135,179 +205,18 @@ class ContentSyncManager(
         onlineCheckJob?.cancel()
         onlineCheckJob = null
         stopStatusTracking()
-        playlistEngine?.stop()
+        downloadQueue.stop()
+        manifestCoordinator?.release()
+        manifestCoordinator = null
+        playlistEngine?.release()
         playlistEngine = null
         mediaEngine?.release()
         mediaEngine = null
     }
 
     fun syncSignageContent(forceReload: Boolean = false, preFetchedState: SupabaseClient.DeviceState? = null) {
-        scope.launch(Dispatchers.IO) {
-            val hardwareId = storageManager.getHardwareId()
-            val secret = storageManager.getSecret() ?: return@launch
-            val result = if (preFetchedState != null) {
-                SupabaseClient.DeviceStateResult.Success(preFetchedState)
-            } else {
-                supabaseClient.getDeviceState(hardwareId, secret, getAppVersion(), getOsVersion())
-            }
-
-            withContext(Dispatchers.Main) {
-                when (result) {
-                    is SupabaseClient.DeviceStateResult.Success -> {
-                        val state = result.state
-                        if (state != null) {
-                            val changed = forceReload || !isContentLoaded ||
-                                    state.team_id != lastTeamId ||
-                                    state.orientation != lastOrientation ||
-                                    state.content_type != lastContentType ||
-                                    state.asset_id != lastAssetId ||
-                                    state.playlist_id != lastPlaylistId ||
-                                    state.scale_mode != lastScaleMode ||
-                                    state.updated_at != lastUpdatedAt
-
-                            if (!changed) {
-                                Log.d("ContentSyncManager", "syncSignageContent: No change detected. Skipping reload.")
-                                return@withContext
-                            }
-
-                            Log.d("ContentSyncManager", "syncSignageContent: Change detected (forceReload=$forceReload, isContentLoaded=$isContentLoaded). Reloading player configuration.")
-                            isContentLoaded = true
-
-                            // Update tracked values
-                            val activePlaylistId = if (state.content_type == "Playlist") state.playlist_id else null
-                            val lastActivePlaylistId = if (lastContentType == "Playlist") lastPlaylistId else null
-                            
-                            lastTeamId = state.team_id
-                            lastOrientation = state.orientation
-                            lastContentType = state.content_type
-                            lastAssetId = state.asset_id
-                            
-                            val playlistIdChanged = state.playlist_id != lastPlaylistId
-                            lastPlaylistId = state.playlist_id
-                            lastScaleMode = state.scale_mode
-                            lastUpdatedAt = state.updated_at
-
-                            if (playlistIdChanged) {
-                                listener.onPlaylistIdChanged(state.playlist_id)
-                            }
-
-                            if (activePlaylistId != lastActivePlaylistId || forceReload || !isContentLoaded) {
-                                listener.onPlaylistIdChanged(activePlaylistId)
-                            }
-
-                            if (state.orientation != null) {
-                                storageManager.setOrientation(state.orientation)
-                                listener.applyNativeOrientation(state.orientation)
-                                listener.updateOrientationButtonText()
-                            }
-
-                            if (state.scale_mode != null) {
-                                storageManager.setScaleMode(state.scale_mode)
-                                currentScaleMode = state.scale_mode
-                            }
-
-                            // Update cached content configuration
-                            storageManager.setCachedContentType(state.content_type)
-
-                            if (state.content_type == "Asset" && !state.asset_id.isNullOrEmpty()) {
-                                storageManager.setCachedAssetId(state.asset_id)
-                                loadAssetContent(state.asset_id, hardwareId, secret)
-                            } else if (state.content_type == "Playlist" && !state.playlist_id.isNullOrEmpty()) {
-                                storageManager.setCachedPlaylistId(state.playlist_id)
-                                loadPlaylistContent(state.playlist_id, hardwareId, secret)
-                            } else {
-                                playlistEngine?.stop()
-                                mediaEngine?.stopAll()
-                            }
-                        } else {
-                            // Device unlinked or secret invalid
-                            listener.onDeviceUnpaired()
-                        }
-                    }
-                    is SupabaseClient.DeviceStateResult.Error -> {
-                        Log.e("ContentSyncManager", "syncSignageContent failed: ${result.exception.message}", result.exception)
-                        listener.showErrorToast("Sync failed: ${result.exception.message}")
-                        
-                        // Fall back to offline playback if not already playing anything
-                        if (mediaEngine == null) {
-                            val cachedContentType = storageManager.getCachedContentType()
-                            if (cachedContentType != null) {
-                                startOfflinePlaybackFromCache()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun loadAssetContent(assetId: String, hardwareId: String, secret: String) {
-        playlistEngine?.stop()
-        scope.launch(Dispatchers.IO) {
-            try {
-                val asset = supabaseClient.getPlayerAsset(assetId, hardwareId, secret)
-                if (asset != null) {
-                    // Update cache paths
-                    storageManager.setCachedAssetFilePath(asset.file_path)
-                    storageManager.setCachedAssetMimeType(asset.mime_type)
-
-                    // Handle widgets: they store JSON config in file_path, not a storage path
-                    if (asset.mime_type.startsWith("application/x-widget")) {
-                        withContext(Dispatchers.Main) {
-                            mediaEngine?.playWidget(asset.mime_type, asset.file_path)
-                        }
-                        return@launch
-                    }
-
-                    val file = cacheManager.downloadAsset(asset.file_path, hardwareId, secret)
-                    withContext(Dispatchers.Main) {
-                        if (asset.mime_type.startsWith("video/")) {
-                            mediaEngine?.playVideo(file, currentScaleMode, storageManager.isMuted())
-                        } else {
-                            mediaEngine?.playImage(file, currentScaleMode)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    listener.showErrorToast("Failed to load asset online: ${e.message}")
-                    // Offline fallback: try to load the last cached asset file
-                    val cachedPath = storageManager.getCachedAssetFilePath()
-                    val cachedMime = storageManager.getCachedAssetMimeType()
-                    if (cachedPath != null && cachedMime != null) {
-                        if (cachedMime.startsWith("application/x-widget")) {
-                            mediaEngine?.playWidget(cachedMime, cachedPath)
-                        } else {
-                            val file = cacheManager.getCachedFile(cachedPath)
-                            if (file.exists() && file.length() > 0) {
-                                if (cachedMime.startsWith("video/")) {
-                                    mediaEngine?.playVideo(file, currentScaleMode, storageManager.isMuted())
-                                } else {
-                                    mediaEngine?.playImage(file, currentScaleMode)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fun loadPlaylistContent(playlistId: String, hardwareId: String, secret: String) {
-        if (playlistEngine == null) {
-            val media = mediaEngine ?: return
-            playlistEngine = PlaylistEngine(
-                context,
-                scope,
-                supabaseClient,
-                cacheManager,
-                media,
-                storageManager,
-                listener.getDiagnosticsManager()
-            )
-        }
-        playlistEngine?.start(playlistId, hardwareId, secret)
+        val trigger = if (preFetchedState != null) SyncTrigger.REALTIME else SyncTrigger.MANUAL
+        manifestCoordinator?.sync(trigger)
     }
 
     fun startOfflinePlaybackFromCache() {
@@ -321,41 +230,12 @@ class ContentSyncManager(
             initMediaEngine(viewport)
         }
 
-        if (cachedType == "Asset") {
-            val filePath = storageManager.getCachedAssetFilePath()
-            val mimeType = storageManager.getCachedAssetMimeType()
-            if (filePath != null && mimeType != null) {
-                val file = cacheManager.getCachedFile(filePath)
-                if (file.exists() && file.length() > 0) {
-                    if (mimeType.startsWith("video/")) {
-                        mediaEngine?.playVideo(file, currentScaleMode, storageManager.isMuted())
-                    } else {
-                        mediaEngine?.playImage(file, currentScaleMode)
-                    }
-                } else {
-                    listener.showErrorToast("Cached asset file not found locally.")
+        scope.launch {
+            startupValidator.validateAtStartup()
+            withContext(Dispatchers.Main) {
+                if (cachedType == "Asset" || cachedType == "Playlist") {
+                    manifestCoordinator?.loadLocalLiveManifest()
                 }
-            } else {
-                listener.showErrorToast("No cached asset configuration found.")
-            }
-        } else if (cachedType == "Playlist") {
-            val cachedManifest = storageManager.getCachedManifest()
-            if (!cachedManifest.isNullOrEmpty()) {
-                if (playlistEngine == null) {
-                    val media = mediaEngine ?: return
-                    playlistEngine = PlaylistEngine(
-                        context,
-                        scope,
-                        supabaseClient,
-                        cacheManager,
-                        media,
-                        storageManager,
-                        listener.getDiagnosticsManager()
-                    )
-                }
-                playlistEngine?.startOffline(cachedManifest)
-            } else {
-                listener.showErrorToast("No cached playlist manifest found.")
             }
         }
         
@@ -394,10 +274,10 @@ class ContentSyncManager(
     }
 
     fun clearState() {
+        lastName = null
         lastTeamId = null
         lastContentType = null
         lastAssetId = null
-        lastPlaylistId = null
         lastOrientation = null
         lastScaleMode = null
         lastUpdatedAt = null
@@ -414,5 +294,5 @@ interface ContentSyncListener {
     fun onPreparePlayerUI()
     fun onOnlineRestored()
     fun onDeviceUnpaired()
-    fun onPlaylistIdChanged(playlistId: String?)
 }
+

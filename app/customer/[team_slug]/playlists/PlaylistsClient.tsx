@@ -519,13 +519,13 @@ export default function PlaylistsClient({ initialPlaylists, teamSlug, teamId }: 
         </div>
       )}
 
-      {/* Custom Confirmation Dialog for deleting campaign */}
+      {/* Custom Confirmation Dialog for deleting playlist */}
       <ConfirmDialog
         isOpen={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
-        title={t('Delete Campaign')}
-        description={t('Are you sure you want to delete the campaign "{name}"?', { name: deleteTarget?.name || '' })}
+        title={t('Delete Playlist')}
+        description={t('Are you sure you want to delete the playlist "{name}"?', { name: deleteTarget?.name || '' })}
         confirmLabel={t('Delete')}
         cancelLabel={t('Cancel')}
         variant="danger"

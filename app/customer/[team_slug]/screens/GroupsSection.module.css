@@ -852,7 +852,7 @@
   align-items: center;
   gap: 4px;
   position: relative;
-  background: transparent;
+  background: var(--surface-low);
   border: 1.5px solid var(--outline-variant);
   border-radius: 10px;
   padding: 0 8px;

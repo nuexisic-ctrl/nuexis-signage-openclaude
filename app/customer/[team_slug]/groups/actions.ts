@@ -10,6 +10,23 @@ export interface GroupActionResult {
   groupId?: string
 }
 
+async function broadcastContentUpdateToDevices(supabase: any, deviceIds: string[]) {
+  if (!deviceIds || deviceIds.length === 0) return
+  for (const devId of deviceIds) {
+    const channel = supabase.channel(`device-pair-${devId}`)
+    channel.subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') {
+        channel.send({
+          type: 'broadcast',
+          event: 'content_update',
+          payload: { timestamp: Date.now() }
+        }).catch(console.error)
+        setTimeout(() => supabase.removeChannel(channel), 1000)
+      }
+    })
+  }
+}
+
 export async function createGroup(
   teamSlug: string,
   name: string,
@@ -166,7 +183,7 @@ export async function deleteGroup(
 }
 
 export interface GroupAssignmentData {
-  content_type: 'Asset' | 'Playlist' | 'Schedule' | null
+  content_type: 'Asset' | 'Playlist' | null
   asset_id: string | null
   playlist_id: string | null
   orientation: 0 | 90 | 180 | 270
@@ -236,6 +253,9 @@ export async function assignContentToGroup(
     if (pushError) {
       console.error('[assignContentToGroup] Touch member devices error:', pushError)
     }
+
+    // Broadcast realtime content_update
+    await broadcastContentUpdateToDevices(supabase, deviceIds)
   }
 
   revalidatePath(`/customer/${teamSlug}/screens`)
@@ -270,7 +290,15 @@ export async function updateGroupMembers(
     return { success: false, error: 'Too many requests. Please try again later.' }
   }
 
-  // 1. Delete all existing member assignments for this group
+  // 1. Fetch existing member device IDs to notify them
+  const { data: oldMembers } = await supabase
+    .from('screen_group_members')
+    .select('device_id')
+    .eq('group_id', groupId)
+    .eq('team_id', teamId)
+  const oldDeviceIds = oldMembers?.map(m => m.device_id) || []
+
+  // 2. Delete all existing member assignments for this group
   const { error: deleteError } = await supabase
     .from('screen_group_members')
     .delete()
@@ -317,6 +345,10 @@ export async function updateGroupMembers(
       return { success: false, error: 'Failed to add members to group.' }
     }
   }
+
+  // Broadcast realtime content_update to all old and new members
+  const allImpactedIds = Array.from(new Set([...oldDeviceIds, ...deviceIds]))
+  await broadcastContentUpdateToDevices(supabase, allImpactedIds)
 
   revalidatePath(`/customer/${teamSlug}/screens`)
   revalidatePath(`/customer/${teamSlug}/groups`)
@@ -380,6 +412,9 @@ export async function addDevicesToGroup(
     return { success: false, error: 'Failed to add screens to group.' }
   }
 
+  // Broadcast realtime content_update
+  await broadcastContentUpdateToDevices(supabase, validatedIds)
+
   revalidatePath(`/customer/${teamSlug}/screens`)
   revalidatePath(`/customer/${teamSlug}/groups`)
   return { success: true }
@@ -426,6 +461,9 @@ export async function removeDevicesFromGroup(
     return { success: false, error: 'Failed to remove screens from group.' }
   }
 
+  // Broadcast realtime content_update
+  await broadcastContentUpdateToDevices(supabase, deviceIds)
+
   revalidatePath(`/customer/${teamSlug}/screens`)
   revalidatePath(`/customer/${teamSlug}/groups`)
   return { success: true }
@@ -437,7 +475,7 @@ export async function saveGroupChanges(
   data: {
     name: string
     color: string
-    content_type: 'Asset' | 'Playlist' | 'Schedule' | null
+    content_type: 'Asset' | 'Playlist' | null
     asset_id: string | null
     playlist_id: string | null
     orientation: 0 | 90 | 180 | 270
@@ -534,6 +572,9 @@ export async function saveGroupChanges(
       console.error('[saveGroupChanges] Devices update error:', devicesUpdateError)
       return { success: false, error: 'Failed to apply settings to member screens.' }
     }
+
+    // Broadcast realtime content_update
+    await broadcastContentUpdateToDevices(supabase, data.deviceIds)
   }
 
   revalidatePath(`/customer/${teamSlug}/screens`)

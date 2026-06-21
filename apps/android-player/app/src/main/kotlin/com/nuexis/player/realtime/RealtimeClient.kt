@@ -21,7 +21,7 @@ class RealtimeClient(
     interface RealtimeListener {
         fun onDeviceUpdated(record: JsonObject)
         fun onDeviceDeleted()
-        fun onPlaylistRefresh()
+        fun onContentUpdate()
         fun onScreenshotRequested(backendUrl: String?)
         fun onError(t: Throwable)
         fun onConnected()
@@ -36,7 +36,6 @@ class RealtimeClient(
     private var isClosed = false
     private var heartbeatThread: Thread? = null
     private var teamId: String? = null
-    private var activePlaylistId: String? = null
 
     @Volatile
     private var lastPresenceJoinedTeamId: String? = null
@@ -62,10 +61,15 @@ class RealtimeClient(
             return
         }
         isConnecting = true
-        val wsUrl = baseUrl.replace("http://", "ws://").replace("https://", "wss://") +
+        val cleanBaseUrl = baseUrl.trim().removeSuffix("/")
+        val wsUrl = cleanBaseUrl.replace("http://", "ws://").replace("https://", "wss://") +
                 "/realtime/v1/websocket?apikey=$anonKey&vsn=1.0.0"
 
-        val request = Request.Builder().url(wsUrl).build()
+        val request = Request.Builder()
+            .url(wsUrl)
+            .addHeader("apikey", anonKey)
+            .addHeader("Authorization", "Bearer $anonKey")
+            .build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 isConnecting = false
@@ -83,10 +87,6 @@ class RealtimeClient(
                 val currentTeamId = teamId
                 if (currentTeamId != null) {
                     joinPresenceChannel(currentTeamId)
-                }
-                val currentPlaylistId = activePlaylistId
-                if (currentPlaylistId != null) {
-                    joinPlaylistChannel(currentPlaylistId)
                 }
             }
 
@@ -111,11 +111,28 @@ class RealtimeClient(
                                 }
                             }
                         }
-                    } else if (event == "refresh" && (topic?.startsWith("realtime:playlist-broadcast-") == true || topic?.startsWith("playlist-broadcast-") == true)) {
-                        listener.onPlaylistRefresh()
-                    } else if (event == "request_screenshot" && (topic?.startsWith("realtime:device-pair-") == true || topic?.startsWith("device-pair-") == true)) {
-                        val backendUrl = payload?.get("backendUrl")?.asString
-                        listener.onScreenshotRequested(backendUrl)
+                    } else {
+                        val isDevicePairTopic = topic?.startsWith("realtime:device-pair-") == true || topic?.startsWith("device-pair-") == true
+                        
+                        if (event == "broadcast" && payload != null) {
+                            val broadcastEvent = payload.get("event")?.asString
+                            val innerPayload = payload.getAsJsonObject("payload")
+                            if (broadcastEvent == "request_screenshot" && isDevicePairTopic) {
+                                val backendUrl = innerPayload?.get("backendUrl")?.asString
+                                listener.onScreenshotRequested(backendUrl)
+                            } else if (broadcastEvent == "content_update" && isDevicePairTopic) {
+                                listener.onContentUpdate()
+                            } else if (broadcastEvent == "unpair" && isDevicePairTopic) {
+                                listener.onDeviceDeleted()
+                            }
+                        } else if (event == "request_screenshot" && isDevicePairTopic) {
+                            val backendUrl = payload?.get("backendUrl")?.asString
+                            listener.onScreenshotRequested(backendUrl)
+                        } else if (event == "content_update" && isDevicePairTopic) {
+                            listener.onContentUpdate()
+                        } else if (event == "unpair" && isDevicePairTopic) {
+                            listener.onDeviceDeleted()
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -182,40 +199,6 @@ class RealtimeClient(
     fun startPresence(teamId: String) {
         this.teamId = teamId
         joinPresenceChannel(teamId)
-    }
-
-    fun startPlaylistSubscription(playlistId: String?) {
-        val oldPlaylistId = activePlaylistId
-        if (playlistId.isNullOrEmpty()) {
-            stopPlaylistSubscription()
-            return
-        }
-        if (oldPlaylistId == playlistId) return
-        
-        if (oldPlaylistId != null) {
-            leaveChannel("realtime:playlist-broadcast-$oldPlaylistId")
-        }
-        activePlaylistId = playlistId
-        joinPlaylistChannel(playlistId)
-    }
-
-    fun stopPlaylistSubscription() {
-        val oldPlaylistId = activePlaylistId
-        if (oldPlaylistId != null) {
-            leaveChannel("realtime:playlist-broadcast-$oldPlaylistId")
-            activePlaylistId = null
-        }
-    }
-
-    private fun joinPlaylistChannel(playlistId: String) {
-        val topic = "realtime:playlist-broadcast-$playlistId"
-        val joinMsg = JsonObject().apply {
-            addProperty("topic", topic)
-            addProperty("event", "phx_join")
-            add("payload", JsonObject())
-            addProperty("ref", "join_playlist_$playlistId")
-        }
-        webSocket?.send(gson.toJson(joinMsg))
     }
 
     private fun leaveChannel(topic: String) {

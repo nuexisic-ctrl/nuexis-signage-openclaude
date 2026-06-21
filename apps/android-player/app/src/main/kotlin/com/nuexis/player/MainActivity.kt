@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
 
     private var diagnosticsManager: com.nuexis.player.diagnostics.DiagnosticsManager? = null
     private var lastManifestVersion: String? = null
-    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private lateinit var networkMonitor: com.nuexis.player.network.NetworkMonitor
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -215,12 +215,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
         startRealtime(deviceId)
         realtimeClient?.startPresence(teamId)
 
-        // Ensure we subscribe to playlist changes immediately if a playlist was already cached
-        val cachedPlaylistId = storageManager.getCachedPlaylistId()
-        val cachedContentType = storageManager.getCachedContentType()
-        if (cachedContentType == "Playlist" && !cachedPlaylistId.isNullOrEmpty()) {
-            realtimeClient?.startPlaylistSubscription(cachedPlaylistId)
-        }
+
 
         val viewport = getViewport()
         if (viewport != null) {
@@ -262,15 +257,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
         handleUnpair()
     }
 
-    override fun onPlaylistIdChanged(playlistId: String?) {
-        if (playlistId != null) {
-            Log.d("MainActivity", "Subscribing to playlist updates: $playlistId")
-            realtimeClient?.startPlaylistSubscription(playlistId)
-        } else {
-            Log.d("MainActivity", "Stopping playlist subscription")
-            realtimeClient?.stopPlaylistSubscription()
-        }
-    }
+
 
     private fun startRealtime(deviceId: String) {
         if (realtimeClient != null) return
@@ -343,7 +330,7 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
                 storageManager = storageManager,
                 coroutineScope = lifecycleScope,
                 manifestVersionGetter = { lastManifestVersion },
-                currentItemIdGetter = { contentSyncManager.playlistEngine?.currentItemId }
+                currentItemIdGetter = { null }
             )
         }
         diagnosticsManager?.start()
@@ -356,91 +343,8 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
     // Realtime Events
     override fun onDeviceUpdated(record: JsonObject) {
         lifecycleScope.launch(Dispatchers.Main) {
-            val teamId = record.get("team_id")?.let { if (it.isJsonNull) null else it.asString }
-            val contentType = record.get("content_type")?.let { if (it.isJsonNull) null else it.asString }
-            val assetId = record.get("asset_id")?.let { if (it.isJsonNull) null else it.asString }
-            val playlistId = record.get("playlist_id")?.let { if (it.isJsonNull) null else it.asString }
-            val orientation = record.get("orientation")?.let { if (it.isJsonNull) null else it.asInt }
-            val scaleMode = record.get("scale_mode")?.let { if (it.isJsonNull) null else it.asString }
-            val updatedAt = record.get("updated_at")?.let { if (it.isJsonNull) null else it.asString }
-
-            val changed = teamId != contentSyncManager.lastTeamId ||
-                    orientation != contentSyncManager.lastOrientation ||
-                    contentType != contentSyncManager.lastContentType ||
-                    assetId != contentSyncManager.lastAssetId ||
-                    playlistId != contentSyncManager.lastPlaylistId ||
-                    scaleMode != contentSyncManager.lastScaleMode ||
-                    updatedAt != contentSyncManager.lastUpdatedAt
-
-            if (!changed) {
-                return@launch
-            }
-
-            if (teamId != null) {
-                val currentSecret = storageManager.getSecret()
-                if (currentSecret != null) {
-                    if (contentType != null) {
-                        val freshState = try {
-                            val recordDeviceId = record.get("id")?.let { if (it.isJsonNull) "" else it.asString } ?: ""
-                            val pairingCode = record.get("pairing_code")?.let { if (it.isJsonNull) "" else it.asString } ?: ""
-                            val expiresAt = record.get("expires_at")?.let { if (it.isJsonNull) "" else it.asString } ?: ""
-                            val status = record.get("status")?.let { if (it.isJsonNull) "" else it.asString } ?: ""
-                            SupabaseClient.DeviceState(
-                                id = recordDeviceId,
-                                team_id = teamId,
-                                name = record.get("name")?.let { if (it.isJsonNull) null else it.asString },
-                                pairing_code = pairingCode,
-                                expires_at = expiresAt,
-                                status = status,
-                                content_type = contentType,
-                                asset_id = assetId,
-                                playlist_id = playlistId,
-                                orientation = orientation,
-                                scale_mode = scaleMode,
-                                updated_at = updatedAt
-                            )
-                        } catch (e: Exception) {
-                            null
-                        }
-                        if (freshState != null) {
-                            if (drawerLayout.getDrawerLockMode(GravityCompat.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED) {
-                                startPairedPlayer(teamId, freshState.id)
-                            } else {
-                                contentSyncManager.syncSignageContent(forceReload = true, preFetchedState = freshState)
-                            }
-                        } else {
-                            fetchAndApplyDeviceState(teamId, currentSecret)
-                        }
-                    } else {
-                        fetchAndApplyDeviceState(teamId, currentSecret)
-                    }
-                }
-            } else {
-                handleUnpair()
-            }
-        }
-    }
-
-    private fun fetchAndApplyDeviceState(teamId: String, currentSecret: String) {
-        lifecycleScope.launch(Dispatchers.Main) {
-            val freshResult = withContext(Dispatchers.IO) {
-                supabaseClient.getDeviceState(storageManager.getHardwareId(), currentSecret, contentSyncManager.getAppVersion(), contentSyncManager.getOsVersion())
-            }
-            when (freshResult) {
-                is SupabaseClient.DeviceStateResult.Success -> {
-                    val freshState = freshResult.state
-                    if (freshState != null) {
-                        if (drawerLayout.getDrawerLockMode(GravityCompat.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED) {
-                            startPairedPlayer(teamId, freshState.id)
-                        } else {
-                            contentSyncManager.syncSignageContent(forceReload = true, preFetchedState = freshState)
-                        }
-                    }
-                }
-                is SupabaseClient.DeviceStateResult.Error -> {
-                    Log.e("MainActivity", "onDeviceUpdated state fetch failed: ${freshResult.exception.message}")
-                }
-            }
+            Log.d("MainActivity", "onDeviceUpdated: Received device update from realtime channel.")
+            contentSyncManager.manifestCoordinator?.sync(com.nuexis.player.sync.SyncTrigger.REALTIME)
         }
     }
 
@@ -450,28 +354,17 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
         }
     }
 
-    override fun onPlaylistRefresh() {
+    override fun onContentUpdate() {
         lifecycleScope.launch(Dispatchers.Main) {
-            val hardwareId = storageManager.getHardwareId()
-            val secret = storageManager.getSecret()
-            val playlistId = contentSyncManager.lastPlaylistId
-            if (secret != null && playlistId != null) {
-                contentSyncManager.loadPlaylistContent(playlistId, hardwareId, secret)
-            }
+            Log.d("MainActivity", "onContentUpdate: Received content update from realtime channel.")
+            contentSyncManager.manifestCoordinator?.sync(com.nuexis.player.sync.SyncTrigger.REALTIME)
         }
     }
 
     override fun onConnected() {
         lifecycleScope.launch(Dispatchers.Main) {
             Log.d("MainActivity", "onConnected: Realtime client connected.")
-            if (contentSyncManager.isOnlineChecking()) {
-                Log.d("MainActivity", "onConnected: Device is playing offline and network restored. Transitioning online immediately.")
-                contentSyncManager.cancelOnlineCheck()
-                loadDeviceState()
-            } else {
-                Log.d("MainActivity", "onConnected: Syncing signage content.")
-                contentSyncManager.syncSignageContent(forceReload = false)
-            }
+            contentSyncManager.manifestCoordinator?.sync(com.nuexis.player.sync.SyncTrigger.RECONNECT)
         }
     }
     override fun onDisconnected() {}
@@ -511,13 +404,8 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
 
     private fun registerConnectivityListener() {
         try {
-            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            val networkRequest = android.net.NetworkRequest.Builder()
-                .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .build()
-
-            networkCallback = object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: android.net.Network) {
+            networkMonitor = com.nuexis.player.network.NetworkMonitor(this).apply {
+                setOnReconnectListener {
                     Log.d("MainActivity", "Network callback: onAvailable. Reconnecting realtime client if disconnected.")
                     lifecycleScope.launch(Dispatchers.Main) {
                         val deviceId = storageManager.getDeviceId()
@@ -534,10 +422,11 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
                                 }
                             }
                         }
+                        contentSyncManager.manifestCoordinator?.sync(com.nuexis.player.sync.SyncTrigger.RECONNECT)
                     }
                 }
+                startMonitoring()
             }
-            connectivityManager.registerNetworkCallback(networkRequest, networkCallback!!)
         } catch (e: Exception) {
             Log.e("MainActivity", "Failed to register network callback: ${e.message}", e)
         }
@@ -545,11 +434,8 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
 
     private fun unregisterConnectivityListener() {
         try {
-            val callback = networkCallback
-            if (callback != null) {
-                val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-                connectivityManager.unregisterNetworkCallback(callback)
-                networkCallback = null
+            if (::networkMonitor.isInitialized) {
+                networkMonitor.stopMonitoring()
             }
         } catch (e: Exception) {
             Log.e("MainActivity", "Failed to unregister network callback: ${e.message}", e)

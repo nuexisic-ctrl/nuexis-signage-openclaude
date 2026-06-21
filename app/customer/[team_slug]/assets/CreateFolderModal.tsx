@@ -95,7 +95,7 @@ export function CreateFolderModal({
               maxLength={60}
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder={t('e.g. Campaign 2026, Menu Slides')}
+              placeholder={t('e.g. Playlist 2026, Menu Slides')}
               style={{ 
                 width: '100%', 
                 padding: '10px 46px 10px 14px', 

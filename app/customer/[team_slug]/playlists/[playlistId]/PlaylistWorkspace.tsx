@@ -129,7 +129,7 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
   const [assignedDevices, setAssignedDevices] = useState<AssignedDevice[]>(initialData.assignedDevices)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [previewState, setPreviewState] = useState<{ asset: Asset; url: string | null } | null>(null)
-  const [isDeleteCampaignOpen, setIsDeleteCampaignOpen] = useState(false)
+  const [isDeletePlaylistOpen, setIsDeletePlaylistOpen] = useState(false)
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false)
 
   const getWidgetMimeType = useCallback((widgetType: string | null): string => {
@@ -267,16 +267,16 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
 
   // ── Delete ──
   const handleDelete = useCallback(async () => {
-    setIsDeleteCampaignOpen(true)
+    setIsDeletePlaylistOpen(true)
   }, [])
 
   const handleConfirmDelete = useCallback(async () => {
     try {
       await deletePlaylist(initialData.id, teamSlug)
-      toast.success(t('Campaign deleted'))
+      toast.success(t('Playlist deleted'))
       router.push(`/customer/${teamSlug}/playlists`)
     } catch (err: any) {
-      toast.error(err.message || t('Failed to delete campaign'))
+      toast.error(err.message || t('Failed to delete playlist'))
     }
   }, [initialData.id, teamSlug, router, t])
 
@@ -612,13 +612,13 @@ export default function PlaylistWorkspace({ initialData, teamSlug, teamId, userR
         />
       )}
 
-      {/* Custom confirmation dialog for deleting campaign */}
+      {/* Custom confirmation dialog for deleting playlist */}
       <ConfirmDialog
-        isOpen={isDeleteCampaignOpen}
-        onClose={() => setIsDeleteCampaignOpen(false)}
+        isOpen={isDeletePlaylistOpen}
+        onClose={() => setIsDeletePlaylistOpen(false)}
         onConfirm={handleConfirmDelete}
-        title={t('Delete Campaign')}
-        description={t('Are you sure you want to delete this campaign? This action cannot be undone.')}
+        title={t('Delete Playlist')}
+        description={t('Are you sure you want to delete this playlist? This action cannot be undone.')}
         confirmLabel={t('Delete')}
         cancelLabel={t('Cancel')}
         variant="danger"

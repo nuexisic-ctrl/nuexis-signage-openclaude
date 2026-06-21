@@ -14,12 +14,13 @@ import ConfirmDialog from '@/app/components/ConfirmDialog'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 import { useTranslation } from '@/lib/i18n'
 import EmptyState from '../components/EmptyState'
+import { createClient } from '@/lib/supabase/client'
 
 interface Group {
   id: string
   name: string
   color: string
-  content_type: 'Asset' | 'Playlist' | 'Schedule' | null
+  content_type: 'Asset' | 'Playlist' | null
   asset_id: string | null
   playlist_id: string | null
   orientation: number | null
@@ -141,6 +142,16 @@ export function GroupsSection({
     startTransition(async () => {
       let successCount = 0
       let lastError = ''
+      const supabase = createClient()
+      
+      // Collect all member devices of deleted groups to notify them
+      const affectedDeviceIds = new Set<string>()
+      for (const groupId of selectedGroupIds) {
+        memberships
+          .filter(m => m.group_id === groupId)
+          .forEach(m => affectedDeviceIds.add(m.device_id))
+      }
+
       for (const groupId of selectedGroupIds) {
         const group = groups.find(g => g.id === groupId)
         const name = group ? group.name : 'Group'
@@ -152,6 +163,21 @@ export function GroupsSection({
         }
       }
       if (successCount > 0) {
+        // Broadcast content_update to all affected devices so they re-sync
+        for (const devId of affectedDeviceIds) {
+          const channel = supabase.channel(`device-pair-${devId}`)
+          channel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              channel.send({
+                type: 'broadcast',
+                event: 'content_update',
+                payload: { timestamp: Date.now() }
+              }).catch(console.error)
+              setTimeout(() => supabase.removeChannel(channel), 1000)
+            }
+          })
+        }
+
         toast.success(t('Deleted {count} group(s) successfully', { count: successCount }))
         setSelectedGroupIds(new Set())
         router.refresh()
@@ -414,7 +440,14 @@ export function GroupsSection({
                 const groupMemberships = memberships.filter(m => m.group_id === group.id)
                 const memberIds = groupMemberships.map(m => m.device_id)
                 const memberDevices = devices.filter(d => memberIds.includes(d.id))
-                const onlineCount = memberDevices.filter(d => onlineDeviceIds ? onlineDeviceIds.has(d.id) : d.status === 'online').length
+                const onlineCount = memberDevices.filter(d => {
+                  if (onlineDeviceIds?.has(d.id)) return true
+                  if (d.status === 'online' && d.last_seen_at) {
+                    const lastSeenMs = new Date(d.last_seen_at).getTime()
+                    return !isNaN(lastSeenMs) && (Date.now() - lastSeenMs) < 180000
+                  }
+                  return false
+                }).length
                 const offlineCount = memberDevices.length - onlineCount
 
                 let contentName = t('no content')
@@ -586,7 +619,14 @@ export function GroupsSection({
             const groupMemberships = memberships.filter(m => m.group_id === group.id)
             const memberIds = groupMemberships.map(m => m.device_id)
             const memberDevices = devices.filter(d => memberIds.includes(d.id))
-            const onlineCount = memberDevices.filter(d => onlineDeviceIds ? onlineDeviceIds.has(d.id) : d.status === 'online').length
+            const onlineCount = memberDevices.filter(d => {
+              if (onlineDeviceIds?.has(d.id)) return true
+              if (d.status === 'online' && d.last_seen_at) {
+                const lastSeenMs = new Date(d.last_seen_at).getTime()
+                return !isNaN(lastSeenMs) && (Date.now() - lastSeenMs) < 180000
+              }
+              return false
+            }).length
             const offlineCount = memberDevices.length - onlineCount
 
             let contentName = t('no content')
@@ -642,7 +682,15 @@ export function GroupsSection({
                       style={{ width: '14px', height: '14px', cursor: 'pointer', margin: 0, pointerEvents: 'none' }}
                     />
                   </div>
-                  <h3 className={styles.cardTitle}>{group.name}</h3>
+                  <h3 className={styles.cardTitle} style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                    <span 
+                      className={styles.colorIndicator} 
+                      style={{ backgroundColor: group.color || '#3b82f6', display: 'inline-block' }}
+                    />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {group.name}
+                    </span>
+                  </h3>
                   <div className={styles.cardBadge}>
                     <Users size={12} />
                     {memberDevices.length}

@@ -1,38 +1,45 @@
 package com.nuexis.player.playback
 
 import android.content.Context
+import android.util.Log
+import com.nuexis.player.cache.CacheStore
+import com.nuexis.player.cache.IntegrityChecker
 import com.nuexis.player.data.SupabaseClient
+import com.nuexis.player.data.db.CacheEntry
+import com.nuexis.player.data.db.PlayerDatabase
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
 
+@Deprecated("Use CacheStore and DownloadQueue instead", ReplaceWith("CacheStore"))
 class CacheManager(
     private val context: Context,
     private val supabaseClient: SupabaseClient
 ) {
-    private val client = OkHttpClient()
-    private val mediaDir = File(context.filesDir, "media").apply {
-        if (!exists()) {
-            mkdirs()
-        }
-    }
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
 
-    private fun getSanitizedFilename(filePath: String): String {
-        return try {
-            val bytes = MessageDigest.getInstance("MD5").digest(filePath.toByteArray())
-            val hash = bytes.joinToString("") { "%02x".format(it) }
-            val name = filePath.substringAfterLast("/").replace("[^a-zA-Z0-9._-]".toRegex(), "_")
-            "${hash}_${name}"
-        } catch (e: Exception) {
-            filePath.replace("/", "_").replace("\\", "_").replace(":", "_")
-        }
-    }
+    private val cacheStore = CacheStore(context)
+    private val database = PlayerDatabase.getDatabase(context)
+    private val dao = database.cacheEntryDao()
 
     fun getCachedFile(filePath: String): File {
-        return File(mediaDir, getSanitizedFilename(filePath))
+        val key = cacheStore.deriveKey(filePath)
+        // Check if live exists, otherwise staged or archive, default to live
+        val liveFile = cacheStore.getFileForGeneration(key, "live")
+        if (liveFile.exists()) return liveFile
+        val stagedFile = cacheStore.getFileForGeneration(key, "staged")
+        if (stagedFile.exists()) return stagedFile
+        val archiveFile = cacheStore.getFileForGeneration(key, "archive")
+        if (archiveFile.exists()) return archiveFile
+        return liveFile
     }
 
     fun isCached(filePath: String): Boolean {
@@ -45,7 +52,8 @@ class CacheManager(
 
     @Throws(IOException::class)
     fun downloadAsset(filePath: String, hardwareId: String, secret: String, onProgress: (Int) -> Unit = {}): File {
-        val file = getCachedFile(filePath)
+        val key = cacheStore.deriveKey(filePath)
+        val file = cacheStore.getFileForGeneration(key, "live")
         
         if (file.exists() && file.length() > 0) {
             return file
@@ -58,7 +66,7 @@ class CacheManager(
         }
 
         val request = Request.Builder().url(signedUrl).build()
-        val tempFile = File(mediaDir, file.name + ".tmp")
+        val tempFile = File(cacheStore.mediaLiveDir, "$key.tmp")
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
@@ -85,6 +93,24 @@ class CacheManager(
         }
 
         if (tempFile.renameTo(file)) {
+            // Register in database
+            val sha256 = IntegrityChecker.calculateSha256(file) ?: ""
+            val entry = CacheEntry(
+                key = key,
+                manifestVersion = "",
+                assetId = "",
+                mimeType = getMimeTypeFromPath(filePath),
+                sizeBytes = file.length(),
+                sha256 = sha256,
+                status = "live",
+                bytesDownloaded = file.length(),
+                generation = "live",
+                createdAt = System.currentTimeMillis(),
+                lastUsedAt = System.currentTimeMillis()
+            )
+            runBlocking {
+                dao.insertOrUpdate(entry)
+            }
             return file
         } else {
             tempFile.delete()
@@ -92,13 +118,29 @@ class CacheManager(
         }
     }
 
+    private fun getMimeTypeFromPath(path: String): String {
+        val ext = path.substringAfterLast(".").lowercase()
+        return when (ext) {
+            "mp4", "mkv", "webm" -> "video/$ext"
+            "jpg", "jpeg", "png", "gif", "webp" -> "image/$ext"
+            else -> "application/octet-stream"
+        }
+    }
+
     fun evictStaleFiles(activePaths: Set<String>) {
-        val activeFilenames = activePaths.map { getSanitizedFilename(it) }.toSet()
-        val cachedFiles = mediaDir.listFiles() ?: return
-        for (file in cachedFiles) {
-            if (file.isFile && !activeFilenames.contains(file.name) && !file.name.endsWith(".tmp")) {
-                file.delete()
+        val activeKeys = activePaths.map { cacheStore.deriveKey(it) }.toSet()
+        runBlocking {
+            val liveEntries = dao.getByGeneration("live")
+            for (entry in liveEntries) {
+                if (!activeKeys.contains(entry.key)) {
+                    val file = cacheStore.getFileForGeneration(entry.key, "live")
+                    if (file.exists()) {
+                        file.delete()
+                    }
+                    dao.delete(entry)
+                }
             }
         }
     }
 }
+

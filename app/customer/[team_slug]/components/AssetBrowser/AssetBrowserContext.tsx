@@ -67,6 +67,7 @@ export interface AssetBrowserContextType {
 
   // Selection
   selectedIds: Set<string>
+  setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>
   toggleSelect: (id: string) => void
   clearSelection: () => void
 }
@@ -521,6 +522,7 @@ export function AssetBrowserProvider({
       paginatedAssets,
       previewUrls,
       selectedIds,
+      setSelectedIds,
       toggleSelect,
       clearSelection,
       sortBy,

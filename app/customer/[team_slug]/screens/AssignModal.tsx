@@ -10,6 +10,7 @@ import CustomSelect from '../components/CustomSelect'
 import { FilenameTruncator } from '@/app/components/FilenameTruncator'
 import { useTranslation } from '@/lib/i18n'
 import Modal from '../components/Modal'
+import { createClient } from '@/lib/supabase/client'
 
 export interface AssignModalProps {
   device: Device
@@ -21,7 +22,7 @@ export interface AssignModalProps {
   onSuccess: () => void
   onPreview?: (
     device: Device,
-    contentType: 'Asset' | 'Playlist' | 'Schedule',
+    contentType: 'Asset' | 'Playlist',
     assetId: string | null,
     playlistId: string | null,
     scaleMode: string,
@@ -41,8 +42,8 @@ export function AssignModal({
 }: AssignModalProps) {
   const { t } = useTranslation()
   const [screenName, setScreenName] = useState(device.name || '')
-  const [contentType, setContentType] = useState<'Asset' | 'Playlist' | 'Schedule' | null>(
-    (device.content_type as 'Asset' | 'Playlist' | 'Schedule' | null) || null
+  const [contentType, setContentType] = useState<'Asset' | 'Playlist' | null>(
+    (device.content_type as 'Asset' | 'Playlist' | null) || null
   )
   const [assetId, setAssetId] = useState<string>(device.asset_id || '')
   const [playlistId, setPlaylistId] = useState<string>(device.playlist_id || '')
@@ -74,7 +75,7 @@ export function AssignModal({
   }, [])
 
   // Opens the appropriate browser when the user explicitly changes content type.
-  function handleContentTypeChange(newType: 'Asset' | 'Playlist' | 'Schedule' | '') {
+  function handleContentTypeChange(newType: 'Asset' | 'Playlist' | '') {
     if (newType === '') {
       setContentType(null)
       setShowAssetBrowser(false)
@@ -120,6 +121,22 @@ export function AssignModal({
       }
       const result = await updateDeviceAssignment(teamSlug, device.id, data)
       if (result.success) {
+        // Broadcast content_update to the player(s) so they update in real-time
+        const supabase = createClient()
+        const deviceIds = device.id.split(',')
+        for (const devId of deviceIds) {
+          const channel = supabase.channel(`device-pair-${devId}`)
+          channel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              channel.send({
+                type: 'broadcast',
+                event: 'content_update',
+                payload: { timestamp: Date.now() }
+              }).catch(console.error)
+              setTimeout(() => supabase.removeChannel(channel), 1000)
+            }
+          })
+        }
         onSuccess()
       } else {
         setError(result.error)
@@ -163,12 +180,11 @@ export function AssignModal({
             <CustomSelect
               id="assign-content-type"
               value={contentType || ''}
-              onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | 'Schedule' | '')}
+              onChange={(val) => handleContentTypeChange(val as 'Asset' | 'Playlist' | '')}
               options={[
                 ...(!contentType ? [{ value: '', label: t('no content'), disabled: true }] : []),
                 { value: 'Asset', label: t('Asset') },
-                { value: 'Playlist', label: t('Playlist') },
-                { value: 'Schedule', label: t('Schedule (Coming Soon)'), disabled: true }
+                { value: 'Playlist', label: t('Playlist') }
               ]}
             />
           </div>

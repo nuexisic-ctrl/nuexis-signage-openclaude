@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder, X, ChevronDown } from 'lucide-react'
+import { AlertTriangle, Check, File, Plus, RefreshCw, Upload, ChevronLeft, ChevronRight, Trash2, FolderPlus, FolderInput, Folder, X, ChevronDown, Home } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getCachedSignedUrl } from '@/lib/supabase/mediaCache'
 import { moveAssetsToFolder, fetchFolderFiles } from './actions'
@@ -929,6 +929,13 @@ export default function AssetClient({
   }, [filteredAssets, currentPage, pageSize])
 
   const handleAssetClick = useCallback((e: React.MouseEvent, assetId: string) => {
+    if (selectedAssetIds.size === 0) {
+      const asset = paginatedAssets.find(a => a.id === assetId)
+      if (asset) {
+        handlePreviewAsset(asset)
+      }
+      return
+    }
     setSelectedAssetIds(prev => {
       const { nextSelectedIds, nextLastSelectedId } = handleRangeSelection(
         e,
@@ -940,7 +947,7 @@ export default function AssetClient({
       setLastSelectedAssetId(nextLastSelectedId)
       return nextSelectedIds
     })
-  }, [lastSelectedAssetId, paginatedAssets])
+  }, [selectedAssetIds, lastSelectedAssetId, paginatedAssets, handlePreviewAsset])
 
   const folderAssetsCount = useMemo(() => {
     if (!activeFolder) return 0
@@ -1053,6 +1060,7 @@ export default function AssetClient({
                         moveAssetsOptimistically(sanitized, targetFolderId, targetFolderName)
                       }}
                     >
+                      {index === 0 && <Home size={16} style={{ marginRight: '2px' }} />}
                       {item.folder && (
                         <Folder size={16} style={{ stroke: item.folder.color || '#78716c', fill: item.folder.color || '#78716c', fillOpacity: 0.15 }} />
                       )}

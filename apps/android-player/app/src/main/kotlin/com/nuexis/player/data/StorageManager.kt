@@ -91,14 +91,19 @@ class StorageManager(private val context: Context) {
     fun getCachedManifest(): String? = prefs.getString("nuexis_cached_manifest", null)
     fun setCachedManifest(manifestJson: String?) = prefs.edit().putString("nuexis_cached_manifest", manifestJson).apply()
 
+    fun getManifestVersion(): String? = prefs.getString("nuexis_manifest_version", null)
+    fun setManifestVersion(version: String?) = prefs.edit().putString("nuexis_manifest_version", version).apply()
+
+    fun getCachedPlaylistId(): String? = prefs.getString("nuexis_cached_playlist_id", null)
+    fun setCachedPlaylistId(id: String?) = prefs.edit().putString("nuexis_cached_playlist_id", id).apply()
+
+
     fun getCachedContentType(): String? = prefs.getString("nuexis_cached_content_type", null)
     fun setCachedContentType(type: String?) = prefs.edit().putString("nuexis_cached_content_type", type).apply()
 
     fun getCachedAssetId(): String? = prefs.getString("nuexis_cached_asset_id", null)
     fun setCachedAssetId(id: String?) = prefs.edit().putString("nuexis_cached_asset_id", id).apply()
 
-    fun getCachedPlaylistId(): String? = prefs.getString("nuexis_cached_playlist_id", null)
-    fun setCachedPlaylistId(id: String?) = prefs.edit().putString("nuexis_cached_playlist_id", id).apply()
 
     fun getCachedAssetFilePath(): String? = prefs.getString("nuexis_cached_asset_file_path", null)
     fun setCachedAssetFilePath(path: String?) = prefs.edit().putString("nuexis_cached_asset_file_path", path).apply()
