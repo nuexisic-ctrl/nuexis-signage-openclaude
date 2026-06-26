@@ -408,6 +408,10 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
                             } else {
                                 contentSyncManager.syncSignageContent(forceReload = true, preFetchedState = freshState)
                             }
+                            val activeId = freshState.asset_id ?: freshState.playlist_id
+                            if (activeId != null) {
+                                realtimeClient?.sendPushAcknowledged(activeId)
+                            }
                         } else {
                             fetchAndApplyDeviceState(teamId, currentSecret)
                         }
@@ -434,6 +438,10 @@ class MainActivity : AppCompatActivity(), RealtimeClient.RealtimeListener, Conte
                             startPairedPlayer(teamId, freshState.id)
                         } else {
                             contentSyncManager.syncSignageContent(forceReload = true, preFetchedState = freshState)
+                        }
+                        val activeId = freshState.asset_id ?: freshState.playlist_id
+                        if (activeId != null) {
+                            realtimeClient?.sendPushAcknowledged(activeId)
                         }
                     }
                 }

@@ -457,7 +457,8 @@ export default function ScreensClient({
 
   function getLiveStatus(device: Device): LiveStatus {
     if (device.status === 'pairing') return 'pairing'
-    return onlineDeviceIds.has(device.id) ? 'online' : 'offline'
+    const isOnline = onlineDeviceIds.has(device.id) || device.status === 'online'
+    return isOnline ? 'online' : 'offline'
   }
 
   const filteredDevices = useMemo(() => {

@@ -98,6 +98,12 @@ class RealtimeClient(
                     val topic = root.get("topic")?.asString
                     val payload = root.getAsJsonObject("payload")
                     
+                    if (event == "phx_reply" && payload != null) {
+                        val status = payload.get("status")?.asString
+                        val response = payload.get("response")
+                        android.util.Log.d("RealtimeClient", "phx_reply received for topic $topic: status=$status, response=$response")
+                    }
+
                     if (event == "postgres_changes" && payload != null) {
                         val changeEvent = payload.get("event")?.asString
                         if (changeEvent == "DELETE") {
@@ -111,10 +117,13 @@ class RealtimeClient(
                                 }
                             }
                         }
-                    } else if (event == "refresh" && (topic?.startsWith("realtime:playlist-broadcast-") == true || topic?.startsWith("playlist-broadcast-") == true)) {
+                    } else if ((event == "refresh" || (event == "broadcast" && payload?.get("event")?.asString == "refresh")) && 
+                               (topic?.startsWith("realtime:playlist-broadcast-") == true || topic?.startsWith("playlist-broadcast-") == true)) {
                         listener.onPlaylistRefresh()
-                    } else if (event == "request_screenshot" && (topic?.startsWith("realtime:device-pair-") == true || topic?.startsWith("device-pair-") == true)) {
-                        val backendUrl = payload?.get("backendUrl")?.asString
+                    } else if ((event == "request_screenshot" || (event == "broadcast" && payload?.get("event")?.asString == "request_screenshot")) && 
+                               (topic?.startsWith("realtime:device-pair-") == true || topic?.startsWith("device-pair-") == true)) {
+                        val innerPayload = if (event == "broadcast") payload?.getAsJsonObject("payload") else payload
+                        val backendUrl = innerPayload?.get("backendUrl")?.asString
                         listener.onScreenshotRequested(backendUrl)
                     }
                 } catch (e: Exception) {
@@ -208,6 +217,10 @@ class RealtimeClient(
     }
 
     private fun joinPlaylistChannel(playlistId: String) {
+        if (!isConnected) {
+            android.util.Log.d("RealtimeClient", "Not connected yet. Deferring playlist subscription join to onOpen.")
+            return
+        }
         val topic = "realtime:playlist-broadcast-$playlistId"
         val joinMsg = JsonObject().apply {
             addProperty("topic", topic)
@@ -219,6 +232,7 @@ class RealtimeClient(
     }
 
     private fun leaveChannel(topic: String) {
+        if (!isConnected) return
         val leaveMsg = JsonObject().apply {
             addProperty("topic", topic)
             addProperty("event", "phx_leave")
@@ -248,6 +262,10 @@ class RealtimeClient(
     }
 
     private fun joinPresenceChannel(teamId: String) {
+        if (!isConnected) {
+            android.util.Log.d("RealtimeClient", "Not connected yet. Deferring presence channel join to onOpen.")
+            return
+        }
         if (lastPresenceJoinedTeamId == teamId) {
             android.util.Log.d("RealtimeClient", "Presence channel for team $teamId is already joined. Skipping duplicate join.")
             return
@@ -365,5 +383,25 @@ class RealtimeClient(
     fun disconnect() {
         isClosed = true
         cleanup()
+    }
+
+    fun sendPushAcknowledged(assetId: String) {
+        if (!isConnected) return
+        val topic = "realtime:device-pair-$deviceId"
+        val innerPayload = JsonObject().apply {
+            addProperty("assetId", assetId)
+        }
+        val broadcastPayload = JsonObject().apply {
+            addProperty("type", "broadcast")
+            addProperty("event", "push_acknowledged")
+            add("payload", innerPayload)
+        }
+        val msg = JsonObject().apply {
+            addProperty("topic", topic)
+            addProperty("event", "broadcast")
+            add("payload", broadcastPayload)
+            addProperty("ref", "push_ack_${System.currentTimeMillis()}")
+        }
+        webSocket?.send(gson.toJson(msg))
     }
 }
